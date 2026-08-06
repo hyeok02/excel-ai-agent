@@ -1,0 +1,77 @@
+package com.hyeok02.excelaiagent.analysis.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.hyeok02.excelaiagent.BackendApplication;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.web.servlet.MockMvc;
+
+@SpringBootTest(
+		classes = BackendApplication.class,
+		properties = "app.storage.upload-dir=build/test-uploads")
+@AutoConfigureMockMvc
+class AnalysisControllerTests {
+
+	private static final byte[] ZIP_FILE = {0x50, 0x4b, 0x03, 0x04, 0x01};
+
+	@Autowired
+	private MockMvc mockMvc;
+
+	@Test
+	void acceptsValidExcelAnalysisRequest() throws Exception {
+		MockMultipartFile file = new MockMultipartFile(
+				"file",
+				"sales.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				ZIP_FILE);
+
+		mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "BFS"))
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.analysisId").isNotEmpty())
+				.andExpect(jsonPath("$.status").value("QUEUED"))
+				.andExpect(jsonPath("$.mode").value("BFS"))
+				.andExpect(jsonPath("$.originalFilename").value("sales.xlsx"))
+				.andExpect(jsonPath("$.sizeBytes").value(ZIP_FILE.length))
+				.andExpect(jsonPath("$.createdAt").isNotEmpty());
+	}
+
+	@Test
+	void rejectsUnsupportedFile() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "sales.csv", "text/csv", ZIP_FILE);
+
+		mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "BFS"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_EXCEL_FILE"))
+				.andExpect(jsonPath("$.message").value(".xlsx 또는 .xlsm 파일만 업로드할 수 있습니다."));
+	}
+
+	@Test
+	void rejectsUnknownAnalysisMode() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "sales.xlsx", null, ZIP_FILE);
+
+		mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "UNKNOWN"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_ANALYSIS_MODE"))
+				.andExpect(jsonPath("$.message").value("mode는 BFS 또는 LLM 중 하나여야 합니다."));
+	}
+
+	@Test
+	void rejectsRequestWithoutFile() throws Exception {
+		mockMvc.perform(multipart("/api/v1/analyses")
+					.param("mode", "LLM"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MISSING_REQUEST_VALUE"));
+	}
+}
