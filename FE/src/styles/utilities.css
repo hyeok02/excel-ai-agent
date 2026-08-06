@@ -1,0 +1,82 @@
+@reference 'tailwindcss';
+@reference './theme.css';
+
+@layer components {
+  .page-container {
+    @apply mx-auto w-full max-w-[1600px] p-4 md:p-6 lg:py-6;
+  }
+
+  .panel {
+    @apply rounded-[1.5rem] border border-white/70 bg-white/95 shadow-panel;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold tracking-[0.14em] text-brand-600;
+  }
+
+  .page-title {
+    @apply mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl;
+  }
+
+  .page-description {
+    @apply mt-2 max-w-3xl text-sm leading-6 text-slate-500;
+  }
+
+  .section-title {
+    @apply text-base font-bold text-slate-950;
+  }
+
+  .section-description {
+    @apply mt-1 text-sm text-slate-500;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center;
+  }
+
+  .empty-state-icon {
+    @apply mb-2 grid size-12 place-items-center rounded-xl bg-white text-xs font-bold text-slate-500 shadow-sm;
+  }
+
+  .mode-button {
+    @apply rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-brand-300 hover:text-brand-700;
+  }
+
+  .mode-button-active {
+    @apply border-brand-600 bg-brand-600 text-white hover:border-brand-700 hover:text-white;
+  }
+
+  .button-primary {
+    @apply items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-brand transition hover:bg-brand-700;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  .sidebar-brand-block {
+    padding-top: 1.25rem;
+    padding-bottom: 1rem;
+  }
+
+  .system-description {
+    display: none;
+  }
+
+  .operator-card {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .operator-card p:nth-child(2) {
+    margin-top: 0.5rem;
+  }
+
+  .sidebar-navigation {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .business-navigation-item {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+}

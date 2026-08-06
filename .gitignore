@@ -1,0 +1,27 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Frontend
+FE/node_modules/
+FE/dist/
+FE/coverage/
+FE/.env
+FE/.env.*
+!FE/.env.example
+
+# Backend / AI service placeholders
+backend/build/
+ai-service/.venv/
+ai-service/__pycache__/
+
+# Runtime files
+uploads/
+outputs/
+tmp/
+logs/
+*.xlsx
+*.xlsm

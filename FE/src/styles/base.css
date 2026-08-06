@@ -1,0 +1,53 @@
+@layer base {
+  :root {
+    font-family: var(--font-sans);
+    color: #0f172a;
+    background: var(--color-app-background);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(circle at 100% 55%, rgb(207 250 254 / 55%), transparent 34rem),
+      linear-gradient(135deg, #edf2ff 0%, #f7f9fc 56%, #eef7f8 100%);
+    background-attachment: fixed;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button,
+  a,
+  label {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button {
+    cursor: pointer;
+  }
+}
