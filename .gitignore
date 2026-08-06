@@ -13,10 +13,16 @@ FE/.env
 FE/.env.*
 !FE/.env.example
 
-# Backend / AI service placeholders
-backend/build/
-ai-service/.venv/
-ai-service/__pycache__/
+# Backend
+BE/.gradle/
+BE/build/
+BE/.env
+BE/.env.*
+!BE/.env.example
+
+# AI service placeholder
+AI/.venv/
+AI/__pycache__/
 
 # Runtime files
 uploads/
