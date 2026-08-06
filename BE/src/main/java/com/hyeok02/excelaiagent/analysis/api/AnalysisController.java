@@ -1,0 +1,31 @@
+package com.hyeok02.excelaiagent.analysis.api;
+
+import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
+import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+@RestController
+@RequestMapping("/api/v1/analyses")
+public class AnalysisController {
+
+	private final AnalysisSubmissionService analysisSubmissionService;
+
+	public AnalysisController(AnalysisSubmissionService analysisSubmissionService) {
+		this.analysisSubmissionService = analysisSubmissionService;
+	}
+
+	@PostMapping
+	public ResponseEntity<AnalysisSubmission> submit(
+			@RequestPart("file") MultipartFile file,
+			@RequestParam("mode") AnalysisMode mode) {
+		AnalysisSubmission response = analysisSubmissionService.submit(file, mode);
+		return ResponseEntity.accepted().body(response);
+	}
+}
