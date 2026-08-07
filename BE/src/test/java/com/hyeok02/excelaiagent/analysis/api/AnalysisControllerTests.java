@@ -1,9 +1,13 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
+
+import com.jayway.jsonpath.JsonPath;
 import com.hyeok02.excelaiagent.BackendApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,5 +77,47 @@ class AnalysisControllerTests {
 					.param("mode", "LLM"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("MISSING_REQUEST_VALUE"));
+	}
+
+	@Test
+	void returnsSavedAnalysisById() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "finance.xlsm", null, ZIP_FILE);
+		String submissionBody = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "LLM"))
+				.andExpect(status().isAccepted())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+		String analysisId = JsonPath.read(submissionBody, "$.analysisId");
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}", analysisId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.analysisId").value(analysisId))
+				.andExpect(jsonPath("$.status").value("QUEUED"))
+				.andExpect(jsonPath("$.mode").value("LLM"))
+				.andExpect(jsonPath("$.originalFilename").value("finance.xlsm"))
+				.andExpect(jsonPath("$.fileExtension").value("xlsm"))
+				.andExpect(jsonPath("$.sizeBytes").value(ZIP_FILE.length))
+				.andExpect(jsonPath("$.createdAt").isNotEmpty())
+				.andExpect(jsonPath("$.updatedAt").isNotEmpty());
+	}
+
+	@Test
+	void returnsNotFoundForUnknownAnalysisId() throws Exception {
+		UUID unknownId = UUID.randomUUID();
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}", unknownId))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_NOT_FOUND"))
+				.andExpect(jsonPath("$.message").value("분석 작업을 찾을 수 없습니다: " + unknownId));
+	}
+
+	@Test
+	void rejectsMalformedAnalysisId() throws Exception {
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}", "not-a-uuid"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_ANALYSIS_ID"))
+				.andExpect(jsonPath("$.message").value("analysisId는 UUID 형식이어야 합니다."));
 	}
 }
