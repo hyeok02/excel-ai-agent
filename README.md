@@ -10,3 +10,14 @@ excel-ai-agent/
 ├── BE/       # Spring Boot (예정)
 └── AI/    # Python Excel AI Agent (예정)
 ```
+
+## Tech Stack
+
+| 영역 | 기술 |
+|---|---|
+| Frontend | React, Vite, TypeScript, Tailwind CSS |
+| Backend | Java, Spring Boot, Spring Data JPA, Gradle |
+| Database | Oracle 21c, Flyway |
+| Test | JUnit, MockMvc, H2 |
+| AI Service | Python 기반으로 개발 예정 |
+| Development | Docker, GitHub |
