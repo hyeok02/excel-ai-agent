@@ -17,6 +17,7 @@ FE/.env.*
 BE/.gradle/
 BE/build/
 BE/.env
+BE/data/
 BE/.env.*
 !BE/.env.example
 

@@ -3,8 +3,11 @@ package com.hyeok02.excelaiagent.common.error;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
+import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.InvalidExcelFileException;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -70,10 +73,23 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiError> handleTypeMismatch(
 			MethodArgumentTypeMismatchException exception,
 			HttpServletRequest request) {
-		String message = "mode는 BFS 또는 LLM 중 하나여야 합니다.";
+		String code;
+		String message;
+		if (AnalysisMode.class.equals(exception.getRequiredType())) {
+			code = "INVALID_ANALYSIS_MODE";
+			message = "mode는 BFS 또는 LLM 중 하나여야 합니다.";
+		}
+		else if (UUID.class.equals(exception.getRequiredType())) {
+			code = "INVALID_ANALYSIS_ID";
+			message = "analysisId는 UUID 형식이어야 합니다.";
+		}
+		else {
+			code = "INVALID_REQUEST_VALUE";
+			message = "요청 값의 형식을 확인해주세요.";
+		}
 		ApiError body = ApiError.of(
 				HttpStatus.BAD_REQUEST.value(),
-				"INVALID_ANALYSIS_MODE",
+				code,
 				message,
 				request.getRequestURI());
 
@@ -104,5 +120,18 @@ public class GlobalExceptionHandler {
 				request.getRequestURI());
 
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+	}
+
+	@ExceptionHandler(AnalysisNotFoundException.class)
+	public ResponseEntity<ApiError> handleAnalysisNotFound(
+			AnalysisNotFoundException exception,
+			HttpServletRequest request) {
+		ApiError body = ApiError.of(
+				HttpStatus.NOT_FOUND.value(),
+				"ANALYSIS_NOT_FOUND",
+				exception.getMessage(),
+				request.getRequestURI());
+
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
 	}
 }

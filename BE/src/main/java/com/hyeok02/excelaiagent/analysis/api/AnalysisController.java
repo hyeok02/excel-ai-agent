@@ -1,9 +1,14 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
+import java.util.UUID;
+
+import com.hyeok02.excelaiagent.analysis.application.AnalysisDetails;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,5 +32,10 @@ public class AnalysisController {
 			@RequestParam("mode") AnalysisMode mode) {
 		AnalysisSubmission response = analysisSubmissionService.submit(file, mode);
 		return ResponseEntity.accepted().body(response);
+	}
+
+	@GetMapping("/{analysisId}")
+	public AnalysisDetails getDetails(@PathVariable UUID analysisId) {
+		return analysisSubmissionService.getDetails(analysisId);
 	}
 }
