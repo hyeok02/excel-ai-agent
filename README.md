@@ -8,7 +8,7 @@ AI-powered platform for parsing, analyzing, updating, and querying complex Excel
 excel-ai-agent/
 ├── FE/            # React + Vite + TypeScript + Tailwind CSS
 ├── BE/       # Spring Boot
-└── AI/    # Python Excel AI Agent (예정)
+└── AI/    # Python Excel AI Agent
 ```
 
 ## Tech Stack
