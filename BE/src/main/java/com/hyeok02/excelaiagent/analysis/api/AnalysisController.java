@@ -2,11 +2,15 @@ package com.hyeok02.excelaiagent.analysis.api;
 
 import java.util.UUID;
 
+import com.hyeok02.excelaiagent.analysis.application.AnalysisHistoryPage;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisDetails;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/analyses")
+@Validated
 public class AnalysisController {
 
 	private final AnalysisSubmissionService analysisSubmissionService;
@@ -32,6 +37,13 @@ public class AnalysisController {
 			@RequestParam("mode") AnalysisMode mode) {
 		AnalysisSubmission response = analysisSubmissionService.submit(file, mode);
 		return ResponseEntity.accepted().body(response);
+	}
+
+	@GetMapping
+	public AnalysisHistoryPage getHistory(
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+		return analysisSubmissionService.getHistory(page, size);
 	}
 
 	@GetMapping("/{analysisId}")

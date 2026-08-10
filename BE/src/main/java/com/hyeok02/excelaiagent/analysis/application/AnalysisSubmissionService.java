@@ -8,6 +8,9 @@ import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -57,7 +60,27 @@ public class AnalysisSubmissionService {
 	public AnalysisDetails getDetails(UUID analysisId) {
 		AnalysisJob analysisJob = analysisJobRepository.findById(analysisId)
 				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
+		return toDetails(analysisJob);
+	}
 
+	@Transactional(readOnly = true)
+	public AnalysisHistoryPage getHistory(int page, int size) {
+		PageRequest pageRequest = PageRequest.of(
+				page,
+				size,
+				Sort.by(Sort.Direction.DESC, "createdAt"));
+		Page<AnalysisJob> analysisJobs = analysisJobRepository.findAll(pageRequest);
+
+		return new AnalysisHistoryPage(
+				analysisJobs.getContent().stream().map(this::toDetails).toList(),
+				analysisJobs.getNumber(),
+				analysisJobs.getSize(),
+				analysisJobs.getTotalElements(),
+				analysisJobs.getTotalPages(),
+				analysisJobs.hasNext());
+	}
+
+	private AnalysisDetails toDetails(AnalysisJob analysisJob) {
 		return new AnalysisDetails(
 				analysisJob.getAnalysisId(),
 				analysisJob.getStatus(),

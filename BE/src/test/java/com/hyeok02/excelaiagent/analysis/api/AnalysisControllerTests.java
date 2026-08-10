@@ -5,10 +5,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import com.jayway.jsonpath.JsonPath;
 import com.hyeok02.excelaiagent.BackendApplication;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +31,14 @@ class AnalysisControllerTests {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@Autowired
+	private AnalysisJobRepository analysisJobRepository;
+
+	@BeforeEach
+	void clearAnalysisJobs() {
+		analysisJobRepository.deleteAll();
+	}
 
 	@Test
 	void acceptsValidExcelAnalysisRequest() throws Exception {
@@ -101,6 +114,37 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.sizeBytes").value(ZIP_FILE.length))
 				.andExpect(jsonPath("$.createdAt").isNotEmpty())
 				.andExpect(jsonPath("$.updatedAt").isNotEmpty());
+	}
+
+	@Test
+	void returnsAnalysisHistoryNewestFirstWithPagination() throws Exception {
+		Instant now = Instant.now();
+		AnalysisJob older = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "older.xlsx", "xlsx", 100L, now.minusSeconds(60));
+		AnalysisJob newer = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.LLM, "newer.xlsm", "xlsm", 200L, now);
+		analysisJobRepository.save(older);
+		analysisJobRepository.save(newer);
+
+		mockMvc.perform(get("/api/v1/analyses")
+					.param("page", "0")
+					.param("size", "1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content.length()").value(1))
+				.andExpect(jsonPath("$.content[0].analysisId").value(newer.getAnalysisId().toString()))
+				.andExpect(jsonPath("$.content[0].originalFilename").value("newer.xlsm"))
+				.andExpect(jsonPath("$.page").value(0))
+				.andExpect(jsonPath("$.size").value(1))
+				.andExpect(jsonPath("$.totalElements").value(2))
+				.andExpect(jsonPath("$.totalPages").value(2))
+				.andExpect(jsonPath("$.hasNext").value(true));
+	}
+
+	@Test
+	void rejectsInvalidAnalysisHistoryPageSize() throws Exception {
+		mockMvc.perform(get("/api/v1/analyses").param("size", "0"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_PAGINATION"));
 	}
 
 	@Test
