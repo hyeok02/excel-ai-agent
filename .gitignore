@@ -24,6 +24,10 @@ BE/.env.*
 # AI service placeholder
 AI/.venv/
 AI/__pycache__/
+AI/**/__pycache__/
+AI/.pytest_cache/
+AI/.coverage
+AI/*.egg-info/
 
 # Runtime files
 uploads/
