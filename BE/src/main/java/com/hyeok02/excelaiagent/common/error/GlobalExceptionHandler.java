@@ -10,6 +10,7 @@ import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.InvalidExcelFileException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +40,19 @@ public class GlobalExceptionHandler {
 				"요청 값을 확인해주세요.",
 				request.getRequestURI(),
 				Map.copyOf(fieldErrors));
+
+		return ResponseEntity.badRequest().body(body);
+	}
+
+	@ExceptionHandler(ConstraintViolationException.class)
+	public ResponseEntity<ApiError> handleConstraintViolation(
+			ConstraintViolationException exception,
+			HttpServletRequest request) {
+		ApiError body = ApiError.of(
+				HttpStatus.BAD_REQUEST.value(),
+				"INVALID_PAGINATION",
+				"page는 0 이상, size는 1 이상 100 이하여야 합니다.",
+				request.getRequestURI());
 
 		return ResponseEntity.badRequest().body(body);
 	}
