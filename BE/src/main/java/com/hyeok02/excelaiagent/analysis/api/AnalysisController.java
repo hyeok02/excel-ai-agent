@@ -7,6 +7,8 @@ import com.hyeok02.excelaiagent.analysis.application.AnalysisDetails;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/analyses")
 @Validated
+@Tag(name = "Excel Analysis", description = "Excel 분석 작업 API")
 public class AnalysisController {
 
 	private final AnalysisSubmissionService analysisSubmissionService;
@@ -32,6 +35,7 @@ public class AnalysisController {
 	}
 
 	@PostMapping
+	@Operation(summary = "Excel 분석 작업 접수")
 	public ResponseEntity<AnalysisSubmission> submit(
 			@RequestPart("file") MultipartFile file,
 			@RequestParam("mode") AnalysisMode mode) {
@@ -40,6 +44,7 @@ public class AnalysisController {
 	}
 
 	@GetMapping
+	@Operation(summary = "분석 이력 목록 조회")
 	public AnalysisHistoryPage getHistory(
 			@RequestParam(defaultValue = "0") @Min(0) int page,
 			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
@@ -47,6 +52,7 @@ public class AnalysisController {
 	}
 
 	@GetMapping("/{analysisId}")
+	@Operation(summary = "분석 작업 상세 조회")
 	public AnalysisDetails getDetails(@PathVariable UUID analysisId) {
 		return analysisSubmissionService.getDetails(analysisId);
 	}
