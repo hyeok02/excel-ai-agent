@@ -9,6 +9,7 @@ import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.InvalidExcelFileException;
+import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
@@ -147,5 +148,18 @@ public class GlobalExceptionHandler {
 				request.getRequestURI());
 
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+	}
+
+	@ExceptionHandler(AiServiceUnavailableException.class)
+	public ResponseEntity<ApiError> handleAiServiceUnavailable(
+			AiServiceUnavailableException exception,
+			HttpServletRequest request) {
+		ApiError body = ApiError.of(
+				HttpStatus.SERVICE_UNAVAILABLE.value(),
+				"AI_SERVICE_UNAVAILABLE",
+				"AI Service에 연결할 수 없습니다.",
+				request.getRequestURI());
+
+		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
 	}
 }
