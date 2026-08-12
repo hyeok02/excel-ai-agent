@@ -14,6 +14,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -60,5 +61,12 @@ public class AnalysisController {
 	@Operation(summary = "분석 작업 상세 조회")
 	public AnalysisDetails getDetails(@PathVariable UUID analysisId) {
 		return analysisSubmissionService.getDetails(analysisId);
+	}
+
+	@DeleteMapping("/{analysisId}")
+	@Operation(summary = "분석 작업 삭제")
+	public ResponseEntity<Void> delete(@PathVariable UUID analysisId) {
+		analysisSubmissionService.delete(analysisId);
+		return ResponseEntity.noContent().build();
 	}
 }

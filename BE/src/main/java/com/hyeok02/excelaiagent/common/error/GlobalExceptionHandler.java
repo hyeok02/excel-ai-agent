@@ -131,7 +131,7 @@ public class GlobalExceptionHandler {
 		ApiError body = ApiError.of(
 				HttpStatus.INTERNAL_SERVER_ERROR.value(),
 				"FILE_STORAGE_ERROR",
-				"업로드 파일을 저장하지 못했습니다.",
+				exception.getMessage(),
 				request.getRequestURI());
 
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
