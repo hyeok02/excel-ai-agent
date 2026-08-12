@@ -148,6 +148,89 @@ class AnalysisControllerTests {
 	}
 
 	@Test
+	void filtersAnalysisHistoryByMode() throws Exception {
+		Instant now = Instant.now();
+		AnalysisJob bfsJob = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "sales.xlsx", "xlsx", 100L, now);
+		AnalysisJob llmJob = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.LLM, "finance.xlsx", "xlsx", 200L, now.minusSeconds(1));
+		analysisJobRepository.save(bfsJob);
+		analysisJobRepository.save(llmJob);
+
+		mockMvc.perform(get("/api/v1/analyses").param("mode", "BFS"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content.length()").value(1))
+				.andExpect(jsonPath("$.content[0].analysisId").value(bfsJob.getAnalysisId().toString()))
+				.andExpect(jsonPath("$.content[0].mode").value("BFS"))
+				.andExpect(jsonPath("$.totalElements").value(1));
+	}
+
+	@Test
+	void filtersAnalysisHistoryByTrimmedFilenameIgnoringCase() throws Exception {
+		Instant now = Instant.now();
+		AnalysisJob matchingJob = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "Monthly_SALES.xlsx", "xlsx", 100L, now);
+		AnalysisJob otherJob = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "inventory.xlsx", "xlsx", 200L, now.minusSeconds(1));
+		analysisJobRepository.save(matchingJob);
+		analysisJobRepository.save(otherJob);
+
+		mockMvc.perform(get("/api/v1/analyses").param("filename", "  sales  "))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content.length()").value(1))
+				.andExpect(jsonPath("$.content[0].analysisId").value(matchingJob.getAnalysisId().toString()))
+				.andExpect(jsonPath("$.content[0].originalFilename").value("Monthly_SALES.xlsx"))
+				.andExpect(jsonPath("$.totalElements").value(1));
+	}
+
+	@Test
+	void ignoresBlankFilenameFilter() throws Exception {
+		AnalysisJob analysisJob = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "sales.xlsx", "xlsx", 100L, Instant.now());
+		analysisJobRepository.save(analysisJob);
+
+		mockMvc.perform(get("/api/v1/analyses").param("filename", "   "))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content.length()").value(1))
+				.andExpect(jsonPath("$.content[0].analysisId").value(analysisJob.getAnalysisId().toString()))
+				.andExpect(jsonPath("$.totalElements").value(1));
+	}
+
+	@Test
+	void combinesModeAndFilenameFiltersWithPagination() throws Exception {
+		Instant now = Instant.now();
+		AnalysisJob olderMatch = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "sales-old.xlsx", "xlsx", 100L, now.minusSeconds(2));
+		AnalysisJob newerMatch = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "sales-new.xlsx", "xlsx", 200L, now);
+		AnalysisJob wrongMode = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.LLM, "sales-llm.xlsx", "xlsx", 300L, now.minusSeconds(1));
+		analysisJobRepository.save(olderMatch);
+		analysisJobRepository.save(newerMatch);
+		analysisJobRepository.save(wrongMode);
+
+		mockMvc.perform(get("/api/v1/analyses")
+					.param("mode", "BFS")
+					.param("filename", "sales")
+					.param("page", "0")
+					.param("size", "1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content.length()").value(1))
+				.andExpect(jsonPath("$.content[0].analysisId").value(newerMatch.getAnalysisId().toString()))
+				.andExpect(jsonPath("$.totalElements").value(2))
+				.andExpect(jsonPath("$.totalPages").value(2))
+				.andExpect(jsonPath("$.hasNext").value(true));
+	}
+
+	@Test
+	void rejectsUnknownAnalysisHistoryMode() throws Exception {
+		mockMvc.perform(get("/api/v1/analyses").param("mode", "UNKNOWN"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_ANALYSIS_MODE"))
+				.andExpect(jsonPath("$.message").value("mode는 BFS 또는 LLM 중 하나여야 합니다."));
+	}
+
+	@Test
 	void returnsNotFoundForUnknownAnalysisId() throws Exception {
 		UUID unknownId = UUID.randomUUID();
 

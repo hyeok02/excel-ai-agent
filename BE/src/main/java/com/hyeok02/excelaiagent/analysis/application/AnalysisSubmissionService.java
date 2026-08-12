@@ -64,12 +64,13 @@ public class AnalysisSubmissionService {
 	}
 
 	@Transactional(readOnly = true)
-	public AnalysisHistoryPage getHistory(int page, int size) {
+	public AnalysisHistoryPage getHistory(AnalysisMode mode, String filename, int page, int size) {
 		PageRequest pageRequest = PageRequest.of(
 				page,
 				size,
 				Sort.by(Sort.Direction.DESC, "createdAt"));
-		Page<AnalysisJob> analysisJobs = analysisJobRepository.findAll(pageRequest);
+		String normalizedFilename = normalizeFilename(filename);
+		Page<AnalysisJob> analysisJobs = searchHistory(mode, normalizedFilename, pageRequest);
 
 		return new AnalysisHistoryPage(
 				analysisJobs.getContent().stream().map(this::toDetails).toList(),
@@ -78,6 +79,32 @@ public class AnalysisSubmissionService {
 				analysisJobs.getTotalElements(),
 				analysisJobs.getTotalPages(),
 				analysisJobs.hasNext());
+	}
+
+	private Page<AnalysisJob> searchHistory(
+			AnalysisMode mode,
+			String filename,
+			PageRequest pageRequest) {
+		if (mode != null && filename != null) {
+			return analysisJobRepository.findByModeAndOriginalFilenameContainingIgnoreCase(
+					mode,
+					filename,
+					pageRequest);
+		}
+		if (mode != null) {
+			return analysisJobRepository.findByMode(mode, pageRequest);
+		}
+		if (filename != null) {
+			return analysisJobRepository.findByOriginalFilenameContainingIgnoreCase(filename, pageRequest);
+		}
+		return analysisJobRepository.findAll(pageRequest);
+	}
+
+	private String normalizeFilename(String filename) {
+		if (filename == null || filename.isBlank()) {
+			return null;
+		}
+		return filename.trim();
 	}
 
 	private AnalysisDetails toDetails(AnalysisJob analysisJob) {
