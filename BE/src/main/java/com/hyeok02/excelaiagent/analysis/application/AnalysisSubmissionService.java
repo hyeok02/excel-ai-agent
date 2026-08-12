@@ -63,6 +63,16 @@ public class AnalysisSubmissionService {
 		return toDetails(analysisJob);
 	}
 
+	@Transactional
+	public void delete(UUID analysisId) {
+		AnalysisJob analysisJob = analysisJobRepository.findById(analysisId)
+				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
+
+		analysisJobRepository.delete(analysisJob);
+		analysisJobRepository.flush();
+		analysisFileStorage.delete(analysisId);
+	}
+
 	@Transactional(readOnly = true)
 	public AnalysisHistoryPage getHistory(AnalysisMode mode, String filename, int page, int size) {
 		PageRequest pageRequest = PageRequest.of(

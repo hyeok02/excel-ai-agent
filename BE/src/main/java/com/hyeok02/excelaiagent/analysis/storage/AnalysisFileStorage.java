@@ -7,4 +7,6 @@ import org.springframework.web.multipart.MultipartFile;
 public interface AnalysisFileStorage {
 
 	void store(UUID analysisId, String extension, MultipartFile file);
+
+	void delete(UUID analysisId);
 }

@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 import java.util.UUID;
 
 import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
@@ -38,6 +39,27 @@ public class LocalAnalysisFileStorage implements AnalysisFileStorage {
 		}
 		catch (IOException exception) {
 			throw new AnalysisFileStorageException("업로드 파일을 저장하지 못했습니다.", exception);
+		}
+	}
+
+	@Override
+	public void delete(UUID analysisId) {
+		Path analysisDirectory = uploadRoot.resolve(analysisId.toString()).normalize();
+
+		if (!analysisDirectory.startsWith(uploadRoot)) {
+			throw new AnalysisFileStorageException("안전하지 않은 삭제 경로입니다.", null);
+		}
+		if (Files.notExists(analysisDirectory)) {
+			return;
+		}
+
+		try (var paths = Files.walk(analysisDirectory)) {
+			for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
+				Files.deleteIfExists(path);
+			}
+		}
+		catch (IOException exception) {
+			throw new AnalysisFileStorageException("업로드 파일을 삭제하지 못했습니다.", exception);
 		}
 	}
 }

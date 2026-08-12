@@ -1,5 +1,6 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -235,6 +236,30 @@ class AnalysisControllerTests {
 		UUID unknownId = UUID.randomUUID();
 
 		mockMvc.perform(get("/api/v1/analyses/{analysisId}", unknownId))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_NOT_FOUND"))
+				.andExpect(jsonPath("$.message").value("분석 작업을 찾을 수 없습니다: " + unknownId));
+	}
+
+	@Test
+	void deletesAnalysisById() throws Exception {
+		AnalysisJob analysisJob = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "sales.xlsx", "xlsx", 100L, Instant.now());
+		analysisJobRepository.save(analysisJob);
+
+		mockMvc.perform(delete("/api/v1/analyses/{analysisId}", analysisJob.getAnalysisId()))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}", analysisJob.getAnalysisId()))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_NOT_FOUND"));
+	}
+
+	@Test
+	void returnsNotFoundWhenDeletingUnknownAnalysisId() throws Exception {
+		UUID unknownId = UUID.randomUUID();
+
+		mockMvc.perform(delete("/api/v1/analyses/{analysisId}", unknownId))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("ANALYSIS_NOT_FOUND"))
 				.andExpect(jsonPath("$.message").value("분석 작업을 찾을 수 없습니다: " + unknownId));
