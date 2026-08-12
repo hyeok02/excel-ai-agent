@@ -8,10 +8,10 @@ const RootLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
-    <div className="min-h-dvh bg-app-background text-slate-900 lg:flex lg:gap-6">
+    <div className="min-h-dvh bg-app-background text-slate-900 lg:flex">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      <div className="min-w-0 flex-1 lg:pr-6">
+      <div className="min-w-0 flex-1">
         <AppHeader onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="page-container">
           <Outlet />

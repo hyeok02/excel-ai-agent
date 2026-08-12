@@ -1,3 +1,11 @@
+import {
+  Building2,
+  FileSpreadsheet,
+  LayoutDashboard,
+  Newspaper,
+  Sparkles,
+  UserRoundSearch,
+} from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 import {
@@ -10,6 +18,13 @@ interface SidebarProps {
   isOpen: boolean
   onClose: () => void
 }
+
+const NAVIGATION_ICONS = {
+  'public-monitor': Building2,
+  'person-news': UserRoundSearch,
+  'news-collection': Newspaper,
+  'excel-analysis': FileSpreadsheet,
+} as const
 
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   return (
@@ -26,71 +41,70 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-[18.5rem] flex-col overflow-y-auto border-r border-slate-200 bg-white transition-transform duration-200 lg:sticky lg:top-6 lg:ml-6 lg:h-[calc(100dvh-3rem)] lg:translate-x-0 lg:rounded-[1.75rem] lg:border lg:shadow-panel',
+          'fixed inset-y-0 left-0 z-40 flex w-[15.5rem] flex-col overflow-y-auto border-r border-slate-200/80 bg-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="sidebar-brand-block px-7 pb-6 pt-8">
-          <p className="text-lg font-black tracking-tight">
-            <span className="text-[#e11d2e]">SK</span>{' '}
-            <span className="text-[#f59e0b]">hynix</span>
-          </p>
-          <p className="mt-4 text-[1.7rem] font-black leading-[1.05] tracking-[-0.04em] text-slate-950">
-            Decision Support
-            <br />
-            System
-          </p>
-          <p className="system-description mt-4 text-sm leading-6 text-slate-500">
-            POC screens and tool servers are separated by menu so the next expansion step
-            stays manageable.
-          </p>
+        <div className="sidebar-brand-block px-5 pb-4 pt-6">
+          <div className="flex items-center gap-3">
+            <span className="grid size-9 place-items-center rounded-xl bg-brand-600 text-white shadow-brand">
+              <Sparkles aria-hidden="true" size={18} strokeWidth={2.2} />
+            </span>
+            <div>
+              <p className="text-[0.95rem] font-extrabold tracking-[-0.025em] text-slate-950">
+                Decision Support
+              </p>
+              <p className="mt-0.5 text-[0.65rem] font-semibold tracking-[0.1em] text-slate-400">
+                Yun's AI WORKSPACE
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="operator-card mx-7 rounded-xl border border-slate-200 p-5">
-          <p className="text-xs text-slate-500">Signed in as</p>
-          <p className="mt-4 text-xl font-bold text-slate-950">Line Operator</p>
-          <p className="mt-1 text-sm text-slate-500">operations-admin</p>
-        </div>
-
-        <nav className="sidebar-navigation flex-1 px-5 py-7" aria-label="주요 메뉴">
+        <nav className="sidebar-navigation flex-1 px-3 py-5" aria-label="주요 메뉴">
           <NavLink
             className={({ isActive }) =>
               cn(
-                'block rounded-xl px-4 py-3 text-sm font-semibold transition-colors',
+                'sidebar-nav-item',
                 isActive
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-slate-700 hover:bg-slate-50',
+                  ? 'sidebar-nav-item-active'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900',
               )
             }
             end
             onClick={onClose}
             to={DASHBOARD_NAVIGATION_ITEM.to}
           >
-            {DASHBOARD_NAVIGATION_ITEM.label}
+            <LayoutDashboard aria-hidden="true" size={19} strokeWidth={1.9} />
+            <span>{DASHBOARD_NAVIGATION_ITEM.label}</span>
           </NavLink>
 
-          <div className="mt-6 px-4">
-            <p className="text-sm font-bold text-slate-800">업무</p>
-          </div>
+          <p className="mb-2 mt-7 px-3 text-[0.67rem] font-bold tracking-[0.12em] text-slate-400">
+            업무
+          </p>
 
-          <div className="mt-3 space-y-1">
-            {BUSINESS_NAVIGATION_ITEMS.map((item) => (
-              <NavLink
-                className={({ isActive }) =>
-                  cn(
-                    'business-navigation-item flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-colors',
-                    isActive
-                      ? 'bg-brand-50 text-sky-600'
-                      : 'text-slate-700 hover:bg-slate-50',
-                  )
-                }
-                key={item.id}
-                onClick={onClose}
-                to={item.to}
-              >
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
+          <div className="space-y-1.5">
+            {BUSINESS_NAVIGATION_ITEMS.map((item) => {
+              const Icon = NAVIGATION_ICONS[item.id]
+              return (
+                <NavLink
+                  className={({ isActive }) =>
+                    cn(
+                      'business-navigation-item sidebar-nav-item',
+                      isActive
+                        ? 'sidebar-nav-item-active'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900',
+                    )
+                  }
+                  key={item.id}
+                  onClick={onClose}
+                  to={item.to}
+                >
+                  <Icon aria-hidden="true" size={19} strokeWidth={1.9} />
+                  <span>{item.label}</span>
+                </NavLink>
+              )
+            })}
           </div>
         </nav>
       </aside>
