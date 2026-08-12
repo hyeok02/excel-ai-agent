@@ -3,11 +3,11 @@
 
 @layer components {
   .page-container {
-    @apply mx-auto w-full max-w-[1600px] p-4 md:p-6 lg:py-6;
+    @apply mx-auto w-full max-w-[1480px] p-4 md:p-8 lg:px-10 lg:py-9;
   }
 
   .panel {
-    @apply rounded-[1.5rem] border border-white/70 bg-white/95 shadow-panel;
+    @apply rounded-[1.5rem] border border-slate-200/70 bg-white shadow-panel;
   }
 
   .eyebrow {
@@ -15,7 +15,7 @@
   }
 
   .page-title {
-    @apply mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl;
+    @apply mt-2 text-2xl font-extrabold tracking-[-0.035em] text-slate-950 md:text-3xl;
   }
 
   .page-description {
@@ -39,15 +39,96 @@
   }
 
   .mode-button {
-    @apply rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-brand-300 hover:text-brand-700;
+    @apply rounded-xl border border-transparent bg-transparent px-4 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-800;
   }
 
   .mode-button-active {
-    @apply border-brand-600 bg-brand-600 text-white hover:border-brand-700 hover:text-white;
+    @apply border-white bg-white text-brand-700 shadow-sm hover:bg-white hover:text-brand-700;
   }
 
   .button-primary {
-    @apply items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-brand transition hover:bg-brand-700;
+    @apply items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-brand transition hover:-translate-y-0.5 hover:bg-brand-700;
+  }
+
+  .page-heading {
+    @apply flex flex-wrap items-end justify-between gap-5;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm;
+  }
+
+  .status-pill > span {
+    @apply size-1.5 rounded-full bg-amber-400;
+  }
+
+  .sidebar-nav-item {
+    @apply relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-[0.82rem] font-semibold transition-all;
+  }
+
+  .sidebar-nav-item-active {
+    @apply bg-brand-50 font-bold text-brand-700 shadow-[inset_0_0_0_1px_rgb(219_234_254/0.7)];
+  }
+
+  .sidebar-nav-item-active::before {
+    @apply absolute -left-0.5 h-5 w-[3px] rounded-full bg-brand-600 content-[''];
+  }
+
+  .metric-card {
+    @apply rounded-[1.4rem] border border-slate-200/70 bg-white p-5 shadow-panel transition hover:-translate-y-0.5 hover:shadow-lg;
+  }
+
+  .dashboard-hero {
+    @apply relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#1769e0] via-[#287cf1] to-[#65a8ff] p-7 shadow-[0_22px_55px_rgb(37_99_235/22%)] md:p-11;
+  }
+
+  .hero-badge {
+    @apply inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[0.65rem] font-bold tracking-[0.14em] text-blue-50 backdrop-blur;
+  }
+
+  .hero-orbit {
+    @apply pointer-events-none absolute rounded-full border border-white/15;
+  }
+
+  .hero-orbit-one {
+    @apply -right-24 -top-28 size-80;
+  }
+
+  .hero-orbit-two {
+    @apply -bottom-40 right-20 size-72 bg-white/5;
+  }
+
+  .module-card {
+    @apply rounded-[1.4rem] border border-slate-200/70 bg-white p-5 shadow-panel transition duration-200 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl;
+  }
+
+  .module-icon {
+    @apply grid size-11 place-items-center rounded-2xl text-sm font-black;
+  }
+
+  .module-icon-blue {
+    @apply bg-blue-50 text-blue-600;
+  }
+  .module-icon-violet {
+    @apply bg-violet-50 text-violet-600;
+  }
+  .module-icon-amber {
+    @apply bg-amber-50 text-amber-600;
+  }
+  .module-icon-emerald {
+    @apply bg-emerald-50 text-emerald-600;
+  }
+
+  .step-label {
+    @apply inline-flex rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-700;
+  }
+
+  .upload-zone {
+    @apply mt-6 flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-brand-200 bg-gradient-to-b from-brand-50/70 to-white p-8 text-center transition hover:border-brand-400 hover:from-brand-50;
+  }
+
+  .upload-icon {
+    @apply grid size-16 place-items-center rounded-2xl border border-brand-100 bg-white text-xs font-black text-brand-600 shadow-[0_10px_25px_rgb(37_99_235/12%)];
   }
 }
 
@@ -55,19 +136,6 @@
   .sidebar-brand-block {
     padding-top: 1.25rem;
     padding-bottom: 1rem;
-  }
-
-  .system-description {
-    display: none;
-  }
-
-  .operator-card {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-  }
-
-  .operator-card p:nth-child(2) {
-    margin-top: 0.5rem;
   }
 
   .sidebar-navigation {

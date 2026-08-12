@@ -22,9 +22,7 @@
 
   body {
     margin: 0;
-    background:
-      radial-gradient(circle at 100% 55%, rgb(207 250 254 / 55%), transparent 34rem),
-      linear-gradient(135deg, #edf2ff 0%, #f7f9fc 56%, #eef7f8 100%);
+    background: var(--color-app-background);
     background-attachment: fixed;
   }
 
