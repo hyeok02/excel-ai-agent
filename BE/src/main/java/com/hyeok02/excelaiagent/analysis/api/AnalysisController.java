@@ -8,6 +8,7 @@ import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -44,11 +45,15 @@ public class AnalysisController {
 	}
 
 	@GetMapping
-	@Operation(summary = "분석 이력 목록 조회")
+	@Operation(summary = "분석 이력 검색 및 목록 조회")
 	public AnalysisHistoryPage getHistory(
+			@Parameter(description = "분석 모드 필터")
+			@RequestParam(required = false) AnalysisMode mode,
+			@Parameter(description = "원본 파일명 검색어")
+			@RequestParam(required = false) String filename,
 			@RequestParam(defaultValue = "0") @Min(0) int page,
 			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-		return analysisSubmissionService.getHistory(page, size);
+		return analysisSubmissionService.getHistory(mode, filename, page, size);
 	}
 
 	@GetMapping("/{analysisId}")
