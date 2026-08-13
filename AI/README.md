@@ -21,7 +21,7 @@ fastapi dev app/main.py
 The service runs at `http://localhost:8000`.
 
 - Health: `GET /health`
-- Workbook summary: `POST /api/v1/workbooks/summary`
+- Workbook summary and BFS cell-region detection: `POST /api/v1/workbooks/summary`
 - Swagger UI: `GET /docs`
 
 ## Test
