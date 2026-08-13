@@ -6,6 +6,7 @@ from zipfile import BadZipFile
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
+from app.services.formula_analyzer import FormulaAnalysis, analyze_formulas
 from app.services.region_detector import CellRegion, detect_regions
 
 SUPPORTED_EXTENSIONS = {".xlsx", ".xlsm"}
@@ -23,6 +24,7 @@ class SheetSummary:
     formula_count: int
     table_count: int
     chart_count: int
+    formulas: list[FormulaAnalysis]
     region_count: int
     regions: list[CellRegion]
 
@@ -51,20 +53,17 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
     try:
         sheets = []
         for worksheet in workbook.worksheets:
+            formulas = analyze_formulas(worksheet)
             regions = detect_regions(worksheet)
             sheets.append(
                 SheetSummary(
                     name=worksheet.title,
                     rows=worksheet.max_row,
                     columns=worksheet.max_column,
-                    formula_count=sum(
-                        1
-                        for row in worksheet.iter_rows()
-                        for cell in row
-                        if cell.data_type == "f"
-                    ),
+                    formula_count=len(formulas),
                     table_count=len(worksheet.tables),
                     chart_count=len(worksheet._charts),
+                    formulas=formulas,
                     region_count=len(regions),
                     regions=regions,
                 )
