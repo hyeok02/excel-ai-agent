@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.health import router as health_router
+from app.api.workbooks import router as workbooks_router
 
 
 def create_app() -> FastAPI:
@@ -10,6 +11,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
     application.include_router(health_router)
+    application.include_router(workbooks_router)
     return application
 
 
