@@ -56,6 +56,18 @@ def test_returns_workbook_summary() -> None:
                 "formula_count": 2,
                 "table_count": 1,
                 "chart_count": 1,
+                "formulas": [
+                    {
+                        "cell": "D2",
+                        "formula": "=SUM(B2:C2)",
+                        "references": ["B2:C2"],
+                    },
+                    {
+                        "cell": "D3",
+                        "formula": "=SUM(B3:C3)",
+                        "references": ["B3:C3"],
+                    },
+                ],
                 "region_count": 1,
                 "regions": [
                     {
@@ -72,6 +84,7 @@ def test_returns_workbook_summary() -> None:
                 "formula_count": 0,
                 "table_count": 0,
                 "chart_count": 0,
+                "formulas": [],
                 "region_count": 1,
                 "regions": [
                     {

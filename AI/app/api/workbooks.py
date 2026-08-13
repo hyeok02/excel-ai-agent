@@ -19,6 +19,14 @@ class CellRegionResponse(BaseModel):
     cell_count: int
 
 
+class FormulaAnalysisResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    cell: str
+    formula: str
+    references: list[str]
+
+
 class SheetSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -28,6 +36,7 @@ class SheetSummaryResponse(BaseModel):
     formula_count: int
     table_count: int
     chart_count: int
+    formulas: list[FormulaAnalysisResponse]
     region_count: int
     regions: list[CellRegionResponse]
 
