@@ -1,6 +1,6 @@
 # Excel AI Agent Frontend
 
-React, Vite, TypeScript, Tailwind CSS 기반 프런트엔드입니다.
+React, Vite, TypeScript, Tailwind CSS 기반 프론트엔드입니다.
 
 ## 실행
 
