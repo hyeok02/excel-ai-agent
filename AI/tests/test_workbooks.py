@@ -56,6 +56,14 @@ def test_returns_workbook_summary() -> None:
                 "formula_count": 2,
                 "table_count": 1,
                 "chart_count": 1,
+                "region_count": 1,
+                "regions": [
+                    {
+                        "start_cell": "A1",
+                        "end_cell": "D3",
+                        "cell_count": 12,
+                    }
+                ],
             },
             {
                 "name": "요약",
@@ -64,6 +72,14 @@ def test_returns_workbook_summary() -> None:
                 "formula_count": 0,
                 "table_count": 0,
                 "chart_count": 0,
+                "region_count": 1,
+                "regions": [
+                    {
+                        "start_cell": "A1",
+                        "end_cell": "A1",
+                        "cell_count": 1,
+                    }
+                ],
             },
         ],
     }

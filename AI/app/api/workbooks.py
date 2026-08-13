@@ -11,6 +11,14 @@ MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 READ_CHUNK_SIZE = 1024 * 1024
 
 
+class CellRegionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    start_cell: str
+    end_cell: str
+    cell_count: int
+
+
 class SheetSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -20,6 +28,8 @@ class SheetSummaryResponse(BaseModel):
     formula_count: int
     table_count: int
     chart_count: int
+    region_count: int
+    regions: list[CellRegionResponse]
 
 
 class WorkbookSummaryResponse(BaseModel):
