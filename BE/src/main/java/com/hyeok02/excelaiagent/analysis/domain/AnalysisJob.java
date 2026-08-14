@@ -81,6 +81,27 @@ public class AnalysisJob {
 				now);
 	}
 
+	public void markProcessing(Instant now) {
+		transitionFrom(AnalysisStatus.QUEUED, AnalysisStatus.PROCESSING, now);
+	}
+
+	public void markCompleted(Instant now) {
+		transitionFrom(AnalysisStatus.PROCESSING, AnalysisStatus.COMPLETED, now);
+	}
+
+	public void markFailed(Instant now) {
+		transitionFrom(AnalysisStatus.PROCESSING, AnalysisStatus.FAILED, now);
+	}
+
+	private void transitionFrom(AnalysisStatus expected, AnalysisStatus next, Instant now) {
+		if (status != expected) {
+			throw new IllegalStateException(
+					"분석 상태를 %s에서 %s로 변경할 수 없습니다.".formatted(status, next));
+		}
+		status = next;
+		updatedAt = now;
+	}
+
 	public UUID getAnalysisId() {
 		return analysisId;
 	}

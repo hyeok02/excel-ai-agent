@@ -8,6 +8,8 @@ import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
+import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
+import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -21,17 +23,19 @@ public class AnalysisSubmissionService {
 	private final ExcelFileValidator excelFileValidator;
 	private final AnalysisFileStorage analysisFileStorage;
 	private final AnalysisJobRepository analysisJobRepository;
+	private final AiServiceClient aiServiceClient;
 
 	public AnalysisSubmissionService(
 			ExcelFileValidator excelFileValidator,
 			AnalysisFileStorage analysisFileStorage,
-			AnalysisJobRepository analysisJobRepository) {
+			AnalysisJobRepository analysisJobRepository,
+			AiServiceClient aiServiceClient) {
 		this.excelFileValidator = excelFileValidator;
 		this.analysisFileStorage = analysisFileStorage;
 		this.analysisJobRepository = analysisJobRepository;
+		this.aiServiceClient = aiServiceClient;
 	}
 
-	@Transactional
 	public AnalysisSubmission submit(MultipartFile file, AnalysisMode mode) {
 		ValidatedExcelFile validatedFile = excelFileValidator.validate(file);
 		UUID analysisId = UUID.randomUUID();
@@ -44,8 +48,28 @@ public class AnalysisSubmissionService {
 				validatedFile.sizeBytes(),
 				now);
 
-		analysisJobRepository.saveAndFlush(analysisJob);
 		analysisFileStorage.store(analysisId, validatedFile.extension(), file);
+		try {
+			analysisJob = analysisJobRepository.saveAndFlush(analysisJob);
+		}
+		catch (RuntimeException exception) {
+			analysisFileStorage.delete(analysisId);
+			throw exception;
+		}
+
+		analysisJob.markProcessing(Instant.now());
+		analysisJobRepository.saveAndFlush(analysisJob);
+
+		try {
+			aiServiceClient.summarizeWorkbook(file);
+			analysisJob.markCompleted(Instant.now());
+			analysisJobRepository.saveAndFlush(analysisJob);
+		}
+		catch (AiServiceUnavailableException exception) {
+			analysisJob.markFailed(Instant.now());
+			analysisJobRepository.saveAndFlush(analysisJob);
+			throw exception;
+		}
 
 		return new AnalysisSubmission(
 				analysisJob.getAnalysisId(),
