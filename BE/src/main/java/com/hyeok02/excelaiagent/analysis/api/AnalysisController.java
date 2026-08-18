@@ -6,6 +6,7 @@ import com.hyeok02.excelaiagent.analysis.application.AnalysisHistoryPage;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisDetails;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
+import com.hyeok02.excelaiagent.analysis.application.AnalysisResultDetails;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -61,6 +62,12 @@ public class AnalysisController {
 	@Operation(summary = "분석 작업 상세 조회")
 	public AnalysisDetails getDetails(@PathVariable UUID analysisId) {
 		return analysisSubmissionService.getDetails(analysisId);
+	}
+
+	@GetMapping("/{analysisId}/result")
+	@Operation(summary = "분석 작업 결과 조회")
+	public AnalysisResultDetails getResult(@PathVariable UUID analysisId) {
+		return analysisSubmissionService.getResult(analysisId);
 	}
 
 	@DeleteMapping("/{analysisId}")
