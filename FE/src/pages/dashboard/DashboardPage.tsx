@@ -39,7 +39,7 @@ const DashboardPage = () => {
     <div className="space-y-8">
       <section className="dashboard-hero">
         <div className="relative z-10 max-w-3xl">
-          <span className="hero-badge">AI DECISION WORKSPACE</span>
+          <span className="hero-badge">YUN'S AI DECISION WORKSPACE</span>
           <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-[-0.045em] text-white md:text-[2.7rem]">
             복잡한 데이터를,
             <br />더 빠른 판단으로 바꿉니다.
