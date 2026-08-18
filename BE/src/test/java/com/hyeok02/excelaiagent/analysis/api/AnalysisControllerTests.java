@@ -19,6 +19,7 @@ import com.hyeok02.excelaiagent.BackendApplication;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisStatus;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
@@ -45,6 +46,9 @@ class AnalysisControllerTests {
 
 	@Autowired
 	private AnalysisJobRepository analysisJobRepository;
+
+	@Autowired
+	private AnalysisResultRepository analysisResultRepository;
 
 	@MockitoBean
 	private AiServiceClient aiServiceClient;
@@ -130,6 +134,53 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.sizeBytes").value(ZIP_FILE.length))
 				.andExpect(jsonPath("$.createdAt").isNotEmpty())
 				.andExpect(jsonPath("$.updatedAt").isNotEmpty());
+	}
+
+	@Test
+	void returnsStoredAnalysisResult() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "sales.xlsx", null, ZIP_FILE);
+		String submissionBody = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "BFS"))
+				.andExpect(status().isAccepted())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+		String analysisId = JsonPath.read(submissionBody, "$.analysisId");
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", analysisId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.analysisId").value(analysisId))
+				.andExpect(jsonPath("$.createdAt").isNotEmpty())
+				.andExpect(jsonPath("$.workbook.filename").value("sales.xlsx"))
+				.andExpect(jsonPath("$.workbook.sheetCount").value(1))
+				.andExpect(jsonPath("$.workbook.sheets[0].name").value("Sales"))
+				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].cell").value("D2"))
+				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].references[0]").value("B2:C2"))
+				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].startCell").value("A1"));
+	}
+
+	@Test
+	void returnsConflictWhenAnalysisResultIsNotReady() throws Exception {
+		AnalysisJob queuedJob = AnalysisJob.queued(
+				UUID.randomUUID(), AnalysisMode.BFS, "queued.xlsx", "xlsx", 100L, Instant.now());
+		analysisJobRepository.save(queuedJob);
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", queuedJob.getAnalysisId()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_RESULT_NOT_READY"))
+				.andExpect(jsonPath("$.message").value(
+						"분석 결과가 아직 준비되지 않았습니다: %s (status=QUEUED)"
+								.formatted(queuedJob.getAnalysisId())));
+	}
+
+	@Test
+	void returnsNotFoundForUnknownAnalysisResult() throws Exception {
+		UUID unknownId = UUID.randomUUID();
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", unknownId))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_NOT_FOUND"));
 	}
 
 	@Test
@@ -307,9 +358,25 @@ class AnalysisControllerTests {
 		List<AnalysisJob> jobs = analysisJobRepository.findAll();
 		assertThat(jobs).singleElement().satisfies(job ->
 				assertThat(job.getStatus()).isEqualTo(AnalysisStatus.FAILED));
+		assertThat(analysisResultRepository.findAll()).isEmpty();
 	}
 
 	private AiWorkbookSummary workbookSummary() {
-		return new AiWorkbookSummary("sales.xlsx", 1, List.of());
+		return new AiWorkbookSummary(
+				"sales.xlsx",
+				1,
+				List.of(new AiWorkbookSummary.SheetSummary(
+						"Sales",
+						3,
+						4,
+						1,
+						0,
+						1,
+						List.of(new AiWorkbookSummary.FormulaAnalysis(
+								"D2",
+								"=SUM(B2:C2)",
+								List.of("B2:C2"))),
+						1,
+						List.of(new AiWorkbookSummary.CellRegion("A1", "D3", 12)))));
 	}
 }

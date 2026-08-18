@@ -29,7 +29,8 @@ class OpenApiDocumentationTests {
 				.andExpect(jsonPath("$.info.title").value("Excel AI Agent API"))
 				.andExpect(jsonPath("$.info.version").value("v1"))
 				.andExpect(jsonPath("$.paths['/api/v1/analyses']").exists())
-				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}']").exists());
+				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}/result']").exists());
 	}
 
 	@Test

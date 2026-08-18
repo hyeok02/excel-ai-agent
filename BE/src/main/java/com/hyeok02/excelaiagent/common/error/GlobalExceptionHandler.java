@@ -8,6 +8,8 @@ import java.util.UUID;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
+import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
+import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceException;
 import com.hyeok02.excelaiagent.analysis.error.InvalidExcelFileException;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -161,5 +163,31 @@ public class GlobalExceptionHandler {
 				request.getRequestURI());
 
 		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+	}
+
+	@ExceptionHandler(AnalysisResultNotReadyException.class)
+	public ResponseEntity<ApiError> handleAnalysisResultNotReady(
+			AnalysisResultNotReadyException exception,
+			HttpServletRequest request) {
+		ApiError body = ApiError.of(
+				HttpStatus.CONFLICT.value(),
+				"ANALYSIS_RESULT_NOT_READY",
+				exception.getMessage(),
+				request.getRequestURI());
+
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+	}
+
+	@ExceptionHandler(AnalysisResultPersistenceException.class)
+	public ResponseEntity<ApiError> handleAnalysisResultPersistence(
+			AnalysisResultPersistenceException exception,
+			HttpServletRequest request) {
+		ApiError body = ApiError.of(
+				HttpStatus.INTERNAL_SERVER_ERROR.value(),
+				"ANALYSIS_RESULT_ERROR",
+				exception.getMessage(),
+				request.getRequestURI());
+
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
 	}
 }
