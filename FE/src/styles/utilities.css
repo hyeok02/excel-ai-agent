@@ -55,11 +55,23 @@
   }
 
   .status-pill {
-    @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm;
+    @apply inline-flex w-32 shrink-0 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm;
   }
 
   .status-pill > span {
-    @apply size-1.5 rounded-full bg-amber-400;
+    @apply size-1.5 rounded-full bg-slate-300;
+  }
+
+  .status-pill[data-status='pending'] > span {
+    @apply animate-pulse bg-brand-500;
+  }
+
+  .status-pill[data-status='success'] > span {
+    @apply bg-emerald-500;
+  }
+
+  .status-pill[data-status='error'] > span {
+    @apply bg-red-500;
   }
 
   .sidebar-nav-item {
@@ -124,12 +136,45 @@
   }
 
   .upload-zone {
-    @apply mt-6 flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-brand-200 bg-gradient-to-b from-brand-50/70 to-white p-8 text-center transition hover:border-brand-400 hover:from-brand-50;
+    @apply mt-6 flex min-h-80 flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-brand-200 bg-gradient-to-b from-brand-50/70 to-white p-8 text-center transition hover:border-brand-400 hover:from-brand-50;
+  }
+
+  .upload-zone-selected {
+    @apply border-solid bg-brand-50/40;
+  }
+
+  .analysis-feedback-overlay {
+    @apply pointer-events-none fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/15 p-5 backdrop-blur-[2px];
+  }
+
+  .analysis-feedback-card {
+    @apply flex size-56 shrink-0 flex-col items-center justify-center rounded-[2rem] bg-slate-950/90 px-5 text-center text-white shadow-[0_28px_80px_rgb(15_23_42/35%)];
+  }
+
+  .analysis-feedback-icon {
+    @apply mb-4 grid size-20 shrink-0 place-items-center rounded-full bg-white/10;
+  }
+
+  .analysis-feedback-card[data-result='success'] .analysis-feedback-icon {
+    @apply text-emerald-400;
+  }
+
+  .analysis-feedback-card[data-result='error'] .analysis-feedback-icon {
+    @apply text-red-400;
+  }
+
+  .analysis-feedback-card strong {
+    @apply text-xl font-extrabold tracking-tight;
+  }
+
+  .analysis-feedback-card > span:last-child {
+    @apply mt-2 text-xs font-medium text-slate-300;
   }
 
   .upload-icon {
     @apply grid size-16 place-items-center rounded-2xl border border-brand-100 bg-white text-xs font-black text-brand-600 shadow-[0_10px_25px_rgb(37_99_235/12%)];
   }
+
 }
 
 @media (min-width: 1024px) and (max-height: 820px) {

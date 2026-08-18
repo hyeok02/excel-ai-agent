@@ -55,7 +55,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 Decision Support
               </p>
               <p className="mt-0.5 text-[0.65rem] font-semibold tracking-[0.1em] text-slate-400">
-                Yun's AI WORKSPACE
+                 AI WORKSPACE
               </p>
             </div>
           </div>
