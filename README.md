@@ -23,4 +23,5 @@ excel-ai-agent/
 | Development | Docker, GitHub |
 
 ## Screen
-<img width="1710" height="912" alt="스크린샷 2026-08-13 오후 1 05 28" src="https://github.com/user-attachments/assets/90996dcb-58f9-4482-affa-5a7b8d1863b8" />
+https://github.com/user-attachments/assets/61521d7a-db50-4942-8de7-c9c1bab7fcce
+
