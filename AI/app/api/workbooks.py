@@ -1,8 +1,15 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, ConfigDict
 
+from app.services.insight_generator import (
+    InsightConfigurationError,
+    InsightGenerationError,
+    InsightGenerator,
+    LangChainInsightGenerator,
+    WorkbookInsightReport,
+)
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
@@ -49,6 +56,21 @@ class WorkbookSummaryResponse(BaseModel):
     sheets: list[SheetSummaryResponse]
 
 
+class WorkbookInsightsResponse(BaseModel):
+    workbook: WorkbookSummaryResponse
+    report: WorkbookInsightReport
+
+
+def get_insight_generator() -> InsightGenerator:
+    try:
+        return LangChainInsightGenerator.from_environment()
+    except InsightConfigurationError as exception:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exception),
+        ) from exception
+
+
 async def read_upload(upload: UploadFile) -> bytes:
     chunks: list[bytes] = []
     total_size = 0
@@ -86,3 +108,32 @@ async def summarize_workbook(
         ) from exception
 
     return WorkbookSummaryResponse.model_validate(summary)
+
+
+@router.post("/insights", response_model=WorkbookInsightsResponse)
+async def generate_workbook_insights(
+    file: Annotated[UploadFile, File(description="인사이트를 생성할 Excel 파일")],
+    insight_generator: Annotated[InsightGenerator, Depends(get_insight_generator)],
+) -> WorkbookInsightsResponse:
+    content = await read_upload(file)
+
+    try:
+        summary = parse_workbook(file.filename or "", content)
+    except InvalidWorkbookError as exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exception),
+        ) from exception
+
+    try:
+        report = await insight_generator.generate(summary)
+    except InsightGenerationError as exception:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exception),
+        ) from exception
+
+    return WorkbookInsightsResponse(
+        workbook=WorkbookSummaryResponse.model_validate(summary),
+        report=report,
+    )

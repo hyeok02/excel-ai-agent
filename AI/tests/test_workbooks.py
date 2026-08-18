@@ -6,9 +6,29 @@ from openpyxl.chart import BarChart, Reference
 from openpyxl.worksheet.table import Table
 from pytest import MonkeyPatch
 
+from app.api.workbooks import get_insight_generator
 from app.main import app
+from app.services.insight_generator import WorkbookInsight, WorkbookInsightReport
 
 client = TestClient(app)
+
+
+class StubInsightGenerator:
+    async def generate(self, summary: object) -> WorkbookInsightReport:
+        return WorkbookInsightReport(
+            overview="2개 시트로 구성된 워크북입니다.",
+            insights=[
+                WorkbookInsight(
+                    title="수식 검토 필요",
+                    description="매출현황 시트에 합계 수식이 있습니다.",
+                    category="formula",
+                    severity="info",
+                    evidence=["매출현황!D2 = SUM(B2:C2)"],
+                    recommendation="합계 범위를 확인하세요.",
+                )
+            ],
+            limitations=["실제 셀 값의 의미는 분석하지 않았습니다."],
+        )
 
 
 def create_workbook_file() -> bytes:
@@ -138,3 +158,62 @@ def test_rejects_file_exceeding_size_limit(monkeypatch: MonkeyPatch) -> None:
 
     assert response.status_code == 413
     assert response.json()["detail"] == "파일 크기는 50MB를 초과할 수 없습니다."
+
+
+def test_returns_structured_workbook_insights() -> None:
+    app.dependency_overrides[get_insight_generator] = StubInsightGenerator
+
+    try:
+        response = client.post(
+            "/api/v1/workbooks/insights",
+            files={
+                "file": (
+                    "sales.xlsx",
+                    create_workbook_file(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["workbook"]["filename"] == "sales.xlsx"
+    assert result["report"] == {
+        "overview": "2개 시트로 구성된 워크북입니다.",
+        "insights": [
+            {
+                "title": "수식 검토 필요",
+                "description": "매출현황 시트에 합계 수식이 있습니다.",
+                "category": "formula",
+                "severity": "info",
+                "evidence": ["매출현황!D2 = SUM(B2:C2)"],
+                "recommendation": "합계 범위를 확인하세요.",
+            }
+        ],
+        "limitations": ["실제 셀 값의 의미는 분석하지 않았습니다."],
+    }
+
+
+def test_returns_service_unavailable_without_openai_api_key(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr("app.services.insight_generator.load_dotenv", lambda _: False)
+
+    response = client.post(
+        "/api/v1/workbooks/insights",
+        files={
+            "file": (
+                "sales.xlsx",
+                create_workbook_file(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == (
+        "OPENAI_API_KEY가 설정되지 않았습니다. AI/.env 파일을 확인하세요."
+    )

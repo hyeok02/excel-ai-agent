@@ -28,6 +28,9 @@ AI/**/__pycache__/
 AI/.pytest_cache/
 AI/.coverage
 AI/*.egg-info/
+AI/.env
+AI/.env.*
+!AI/.env.example
 
 # Runtime files
 uploads/
