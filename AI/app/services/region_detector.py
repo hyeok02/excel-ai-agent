@@ -15,8 +15,7 @@ class CellRegion:
 def detect_regions(worksheet: Worksheet) -> list[CellRegion]:
     populated_cells = {
         (cell.row, cell.column)
-        for row in worksheet.iter_rows()
-        for cell in row
+        for cell in worksheet._cells.values()
         if _is_populated(cell.value)
     }
     visited: set[tuple[int, int]] = set()

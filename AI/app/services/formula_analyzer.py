@@ -22,20 +22,25 @@ class FormulaAnalysis:
 def analyze_formulas(worksheet: Worksheet) -> list[FormulaAnalysis]:
     formulas: list[FormulaAnalysis] = []
 
-    for row in worksheet.iter_rows():
-        for cell in row:
-            if cell.data_type != "f" or not isinstance(cell.value, str):
-                continue
+    for cell in worksheet._cells.values():
+        if cell.data_type != "f" or not isinstance(cell.value, str):
+            continue
 
-            formulas.append(
-                FormulaAnalysis(
-                    cell=cell.coordinate,
-                    formula=cell.value,
-                    references=_extract_references(cell.value),
-                )
+        formulas.append(
+            FormulaAnalysis(
+                cell=cell.coordinate,
+                formula=cell.value,
+                references=_extract_references(cell.value),
             )
+        )
 
-    return formulas
+    return sorted(
+        formulas,
+        key=lambda formula: (
+            worksheet[formula.cell].row,
+            worksheet[formula.cell].column,
+        ),
+    )
 
 
 def _extract_references(formula: str) -> list[str]:

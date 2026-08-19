@@ -24,6 +24,50 @@ class CellRegionResponse(BaseModel):
     start_cell: str
     end_cell: str
     cell_count: int
+    preview_rows: list[list["CellSnapshotResponse"]]
+    is_truncated: bool
+
+
+class CellSnapshotResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    address: str
+    value: str | int | float | bool | None
+    formula: str | None
+
+
+class TableSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    display_name: str
+    reference: str
+    headers: list[str]
+    row_count: int
+    column_count: int
+    preview_rows: list[list[CellSnapshotResponse]]
+    is_truncated: bool
+
+
+class ChartSeriesSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str | None
+    categories_reference: str | None
+    values_reference: str | None
+    category_samples: list[str | int | float | bool | None]
+    value_samples: list[str | int | float | bool | None]
+
+
+class ChartSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str | None
+    chart_type: str
+    anchor_cell: str | None
+    series_count: int
+    series: list[ChartSeriesSummaryResponse]
+    is_truncated: bool
 
 
 class FormulaAnalysisResponse(BaseModel):
@@ -46,6 +90,8 @@ class SheetSummaryResponse(BaseModel):
     formulas: list[FormulaAnalysisResponse]
     region_count: int
     regions: list[CellRegionResponse]
+    tables: list[TableSummaryResponse]
+    charts: list[ChartSummaryResponse]
 
 
 class WorkbookSummaryResponse(BaseModel):

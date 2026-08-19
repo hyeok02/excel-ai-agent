@@ -1,6 +1,8 @@
 import { CheckCircle2 } from 'lucide-react'
 
 import type { AnalysisResultDetails, WorkbookResult } from '@/api/analysis'
+import AnalysisExportActions from '@/components/analysis/AnalysisExportActions'
+import InsightReportSection from '@/components/analysis/InsightReportSection'
 import SheetResultCard from '@/components/analysis/SheetResultCard'
 
 interface AnalysisResultSectionProps {
@@ -43,9 +45,12 @@ const AnalysisResultSection = ({ result }: AnalysisResultSectionProps) => {
           </h2>
           <p className="mt-1 text-sm text-slate-500">분석 ID {result.analysisId}</p>
         </div>
-        <span className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
-          {new Date(result.createdAt).toLocaleString('ko-KR')}
-        </span>
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+          <span className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
+            {new Date(result.createdAt).toLocaleString('ko-KR')}
+          </span>
+          <AnalysisExportActions result={result} />
+        </div>
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -58,6 +63,8 @@ const AnalysisResultSection = ({ result }: AnalysisResultSectionProps) => {
           </div>
         ))}
       </div>
+
+      {result.insightReport && <InsightReportSection report={result.insightReport} />}
 
       <div className="mt-6 space-y-3">
         {workbook.sheets.map((sheet) => (

@@ -160,7 +160,11 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.workbook.sheets[0].name").value("Sales"))
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].cell").value("D2"))
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].references[0]").value("B2:C2"))
-				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].startCell").value("A1"));
+				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].startCell").value("A1"))
+				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].previewRows[0][0].address").value("A1"))
+				.andExpect(jsonPath("$.workbook.sheets[0].tables[0].reference").value("A1:D3"))
+				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].title").value("월별 매출"))
+				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].series[0].valueSamples[0]").value(10));
 	}
 
 	@Test
@@ -448,7 +452,33 @@ class AnalysisControllerTests {
 								"=SUM(B2:C2)",
 								List.of("B2:C2"))),
 						1,
-						List.of(new AiWorkbookSummary.CellRegion("A1", "D3", 12)))));
+						List.of(new AiWorkbookSummary.CellRegion(
+								"A1",
+								"D3",
+								12,
+								List.of(List.of(new AiWorkbookSummary.CellSnapshot("A1", "상품", null))),
+								false)),
+						List.of(new AiWorkbookSummary.TableSummary(
+								"SalesTable",
+								"SalesTable",
+								"A1:D3",
+								List.of("상품", "1월", "2월", "합계"),
+								3,
+								4,
+								List.of(),
+								false)),
+						List.of(new AiWorkbookSummary.ChartSummary(
+								"월별 매출",
+								"BarChart",
+								"F2",
+								1,
+								List.of(new AiWorkbookSummary.ChartSeriesSummary(
+										"1월",
+										"'Sales'!$A$2:$A$3",
+										"'Sales'!$B$2:$B$3",
+										List.of("노트북", "모니터"),
+										List.of(10, 5))),
+								false)))));
 	}
 
 	private AiWorkbookInsights workbookInsights() {

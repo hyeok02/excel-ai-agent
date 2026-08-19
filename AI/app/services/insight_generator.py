@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal, Protocol
@@ -12,10 +13,12 @@ from pydantic import BaseModel, Field
 from app.services.workbook_parser import WorkbookSummary
 
 MAX_SHEETS = 30
-MAX_FORMULAS_PER_SHEET = 20
-MAX_REGIONS_PER_SHEET = 20
-MAX_FORMULA_LENGTH = 300
-MAX_REFERENCES_PER_FORMULA = 20
+MAX_FORMULAS_PER_SHEET = 12
+MAX_REGIONS_PER_SHEET = 15
+MAX_FORMULA_LENGTH = 240
+MAX_REFERENCES_PER_FORMULA = 12
+MAX_TABLES_PER_SHEET = 8
+MAX_CHARTS_PER_SHEET = 8
 
 
 class WorkbookInsight(BaseModel):
@@ -79,6 +82,38 @@ def _truncate_formula(formula: str) -> str:
     return f"{formula[:MAX_FORMULA_LENGTH]}..."
 
 
+def _formula_signature(formula: dict[str, object]) -> str:
+    normalized = str(formula["formula"]).upper()
+    references = formula.get("references", [])
+    if isinstance(references, list):
+        for reference in sorted(
+            (str(reference) for reference in references),
+            key=len,
+            reverse=True,
+        ):
+            normalized = normalized.replace(reference.upper(), "<REF>")
+    return re.sub(r"\d+", "#", normalized)
+
+
+def _select_formula_samples(
+    formulas: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    samples: list[dict[str, object]] = []
+    seen_signatures: set[str] = set()
+
+    for formula in formulas:
+        signature = _formula_signature(formula)
+        if signature in seen_signatures:
+            continue
+
+        seen_signatures.add(signature)
+        samples.append(formula)
+        if len(samples) == MAX_FORMULAS_PER_SHEET:
+            break
+
+    return samples
+
+
 def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
     sheets = []
 
@@ -86,22 +121,44 @@ def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
         sheet_data = asdict(sheet)
         formulas = sheet_data.pop("formulas")
         regions = sheet_data.pop("regions")
+        tables = sheet_data.pop("tables")
+        charts = sheet_data.pop("charts")
 
+        selected_formulas = _select_formula_samples(formulas)
         sheet_data["formula_samples"] = [
             {
                 "cell": formula["cell"],
                 "formula": _truncate_formula(formula["formula"]),
                 "references": formula["references"][:MAX_REFERENCES_PER_FORMULA],
             }
-            for formula in formulas[:MAX_FORMULAS_PER_SHEET]
+            for formula in selected_formulas
         ]
         sheet_data["omitted_formula_count"] = max(
-            0, len(formulas) - MAX_FORMULAS_PER_SHEET
+            0, len(formulas) - len(selected_formulas)
         )
         sheet_data["region_samples"] = regions[:MAX_REGIONS_PER_SHEET]
         sheet_data["omitted_region_count"] = max(
             0, len(regions) - MAX_REGIONS_PER_SHEET
         )
+        sheet_data["table_samples"] = [
+            {
+                "name": table["name"],
+                "reference": table["reference"],
+                "headers": table["headers"],
+                "row_count": table["row_count"],
+                "column_count": table["column_count"],
+            }
+            for table in tables[:MAX_TABLES_PER_SHEET]
+        ]
+        sheet_data["chart_samples"] = [
+            {
+                "title": chart["title"],
+                "chart_type": chart["chart_type"],
+                "anchor_cell": chart["anchor_cell"],
+                "series_count": chart["series_count"],
+            }
+            for chart in charts[:MAX_CHARTS_PER_SHEET]
+        ]
         sheets.append(sheet_data)
 
     return {
@@ -117,9 +174,12 @@ def build_user_prompt(summary: WorkbookSummary) -> str:
     context = build_workbook_context(summary)
     return (
         "다음 Excel 워크북 구조 분석 결과를 검토하고 핵심 인사이트를 생성하세요.\n"
-        "구조적 특징, 수식 집중도, 복잡도와 검토 위험을 우선 분석하세요.\n\n"
+        "구조적 특징, 수식 집중도, 복잡도와 검토 위험을 우선 분석하세요.\n"
+        "정보가 충분하면 서로 중복되지 않는 인사이트를 4~5개 생성하세요.\n"
+        "각 설명은 의미와 위험을 2~3문장으로 구체적으로 작성하고, "
+        "근거와 실행 가능한 권고사항을 충분히 제시하세요.\n\n"
         "<workbook_metadata>\n"
-        f"{json.dumps(context, ensure_ascii=False, indent=2)}\n"
+        f"{json.dumps(context, ensure_ascii=False, separators=(',', ':'))}\n"
         "</workbook_metadata>"
     )
 
@@ -142,7 +202,7 @@ class LangChainInsightGenerator:
                 "OPENAI_API_KEY가 설정되지 않았습니다. AI/.env 파일을 확인하세요."
             )
 
-        model_name = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+        model_name = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
         try:
             timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
@@ -151,12 +211,29 @@ class LangChainInsightGenerator:
                 "OPENAI_TIMEOUT_SECONDS는 숫자여야 합니다."
             ) from exception
 
+        reasoning_effort = os.getenv("OPENAI_REASONING_EFFORT", "minimal")
+
+        try:
+            max_completion_tokens = int(
+                os.getenv("OPENAI_MAX_COMPLETION_TOKENS", "2500")
+            )
+        except ValueError as exception:
+            raise InsightConfigurationError(
+                "OPENAI_MAX_COMPLETION_TOKENS는 정수여야 합니다."
+            ) from exception
+
+        model_options: dict[str, object] = {}
+        if model_name.startswith(("gpt-5", "o")):
+            model_options["reasoning_effort"] = reasoning_effort
+
         return cls(
             ChatOpenAI(
                 model=model_name,
                 api_key=api_key,
                 timeout=timeout_seconds,
                 max_retries=2,
+                max_completion_tokens=max_completion_tokens,
+                **model_options,
             )
         )
 

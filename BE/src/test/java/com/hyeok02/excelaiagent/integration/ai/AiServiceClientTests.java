@@ -84,7 +84,43 @@ class AiServiceClientTests {
 						      ],
 						      "region_count": 1,
 						      "regions": [
-						        {"start_cell": "A1", "end_cell": "D3", "cell_count": 12}
+						        {
+						          "start_cell": "A1",
+						          "end_cell": "D3",
+						          "cell_count": 12,
+						          "preview_rows": [[
+						            {"address": "A1", "value": "상품", "formula": null}
+						          ]],
+						          "is_truncated": true
+						        }
+						      ],
+						      "tables": [
+						        {
+						          "name": "SalesTable",
+						          "display_name": "SalesTable",
+						          "reference": "A1:D3",
+						          "headers": ["상품", "1월", "2월", "합계"],
+						          "row_count": 3,
+						          "column_count": 4,
+						          "preview_rows": [],
+						          "is_truncated": false
+						        }
+						      ],
+						      "charts": [
+						        {
+						          "title": "월별 매출",
+						          "chart_type": "BarChart",
+						          "anchor_cell": "F2",
+						          "series_count": 1,
+						          "series": [{
+						            "title": "1월",
+						            "categories_reference": "'Sales'!$A$2:$A$3",
+						            "values_reference": "'Sales'!$B$2:$B$3",
+						            "category_samples": ["노트북", "모니터"],
+						            "value_samples": [10, 5]
+						          }],
+						          "is_truncated": false
+						        }
 						      ]
 						    }
 						  ]
@@ -113,6 +149,16 @@ class AiServiceClientTests {
 			assertThat(sheet.regions()).singleElement().satisfies(region -> {
 				assertThat(region.startCell()).isEqualTo("A1");
 				assertThat(region.endCell()).isEqualTo("D3");
+				assertThat(region.previewRows().getFirst().getFirst().value()).isEqualTo("상품");
+				assertThat(region.truncated()).isTrue();
+			});
+			assertThat(sheet.tables()).singleElement().satisfies(table ->
+					assertThat(table.reference()).isEqualTo("A1:D3"));
+			assertThat(sheet.charts()).singleElement().satisfies(chart -> {
+				assertThat(chart.title()).isEqualTo("월별 매출");
+				assertThat(chart.anchorCell()).isEqualTo("F2");
+				assertThat(chart.series()).singleElement().satisfies(series ->
+						assertThat(series.valueSamples()).containsExactly(10, 5));
 			});
 		});
 		server.verify();

@@ -65,57 +65,33 @@ def test_returns_workbook_summary() -> None:
     )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "filename": "sales.xlsx",
-        "sheet_count": 2,
-        "sheets": [
-            {
-                "name": "매출현황",
-                "rows": 3,
-                "columns": 4,
-                "formula_count": 2,
-                "table_count": 1,
-                "chart_count": 1,
-                "formulas": [
-                    {
-                        "cell": "D2",
-                        "formula": "=SUM(B2:C2)",
-                        "references": ["B2:C2"],
-                    },
-                    {
-                        "cell": "D3",
-                        "formula": "=SUM(B3:C3)",
-                        "references": ["B3:C3"],
-                    },
-                ],
-                "region_count": 1,
-                "regions": [
-                    {
-                        "start_cell": "A1",
-                        "end_cell": "D3",
-                        "cell_count": 12,
-                    }
-                ],
-            },
-            {
-                "name": "요약",
-                "rows": 1,
-                "columns": 1,
-                "formula_count": 0,
-                "table_count": 0,
-                "chart_count": 0,
-                "formulas": [],
-                "region_count": 1,
-                "regions": [
-                    {
-                        "start_cell": "A1",
-                        "end_cell": "A1",
-                        "cell_count": 1,
-                    }
-                ],
-            },
-        ],
+    result = response.json()
+    assert result["filename"] == "sales.xlsx"
+    assert result["sheet_count"] == 2
+
+    sales = result["sheets"][0]
+    assert sales["name"] == "매출현황"
+    assert sales["formula_count"] == 2
+    assert sales["formulas"][0] == {
+        "cell": "D2",
+        "formula": "=SUM(B2:C2)",
+        "references": ["B2:C2"],
     }
+    assert sales["regions"][0]["preview_rows"][1][3] == {
+        "address": "D2",
+        "value": None,
+        "formula": "=SUM(B2:C2)",
+    }
+    assert sales["tables"][0]["name"] == "SalesTable"
+    assert sales["tables"][0]["reference"] == "A1:D3"
+    assert sales["tables"][0]["headers"] == ["상품", "1월", "2월", "합계"]
+    assert sales["charts"][0]["chart_type"] == "BarChart"
+    assert sales["charts"][0]["anchor_cell"] == "F2"
+    assert sales["charts"][0]["series"][0]["value_samples"] == ["1월", 10, 5]
+
+    summary = result["sheets"][1]
+    assert summary["name"] == "요약"
+    assert summary["regions"][0]["preview_rows"][0][0]["value"] == "완료"
 
 
 def test_rejects_unsupported_extension() -> None:
