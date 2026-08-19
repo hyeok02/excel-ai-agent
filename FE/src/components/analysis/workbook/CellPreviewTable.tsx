@@ -5,8 +5,11 @@ interface CellPreviewTableProps {
 }
 
 const formatCellValue = (cell: CellResult) => {
+  if (cell.formula && cell.cachedValue != null && cell.cachedValue !== '') {
+    return String(cell.cachedValue)
+  }
   if (cell.formula) return cell.formula
-  if (cell.value === null || cell.value === '') return '—'
+  if (cell.value == null || cell.value === '') return '빈 셀'
   if (typeof cell.value === 'boolean') return cell.value ? 'TRUE' : 'FALSE'
   return String(cell.value)
 }
@@ -28,20 +31,26 @@ const CellPreviewTable = ({ rows }: CellPreviewTableProps) => {
             <tr className="border-b border-slate-100 last:border-0" key={rowIndex}>
               {row.map((cell) => (
                 <td
-                  className="min-w-32 max-w-64 border-r border-slate-100 p-3 align-top last:border-r-0"
+                  className={`min-w-32 max-w-64 border-r border-slate-100 p-3 align-top last:border-r-0 ${
+                    cell.merged ? 'bg-brand-50/40' : ''
+                  }`}
                   key={cell.address}
                   title={formatCellValue(cell)}
                 >
                   <span className="block text-[10px] font-bold text-slate-400">
                     {cell.address}
                   </span>
-                  <code
-                    className={`mt-1 block truncate font-sans leading-5 ${
-                      cell.formula ? 'font-semibold text-brand-700' : 'text-slate-700'
-                    }`}
-                  >
+                  <code className={`mt-1 block truncate font-sans leading-5 ${cell.bold ? 'font-extrabold' : 'font-medium'} text-slate-700`}>
                     {formatCellValue(cell)}
                   </code>
+                  <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-bold text-slate-400">
+                    {cell.formula && <span className="text-brand-600">수식</span>}
+                    {cell.formula && cell.cachedValue != null && <span>계산 결과 표시</span>}
+                    {cell.merged && <span>병합</span>}
+                    {cell.numberFormat && cell.numberFormat !== 'General' && (
+                      <span>{cell.numberFormat}</span>
+                    )}
+                  </span>
                 </td>
               ))}
             </tr>

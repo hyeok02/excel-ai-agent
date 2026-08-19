@@ -1,9 +1,12 @@
 import { ChartNoAxesCombined } from 'lucide-react'
 
 import type { CellValue, ChartResult } from '@/api/analysis'
+import ChartVisualPreview from '@/components/analysis/workbook/ChartVisualPreview'
+import OriginalLocationButton from '@/components/analysis/workbook/OriginalLocationButton'
 
 interface SheetChartDetailsProps {
   charts: ChartResult[]
+  sheetName: string
 }
 
 const formatSamples = (values: CellValue[]) => {
@@ -11,7 +14,7 @@ const formatSamples = (values: CellValue[]) => {
   return values.map((value) => (value === null ? '—' : String(value))).join(', ')
 }
 
-const SheetChartDetails = ({ charts }: SheetChartDetailsProps) => {
+const SheetChartDetails = ({ charts, sheetName }: SheetChartDetailsProps) => {
   if (charts.length === 0) return null
 
   return (
@@ -48,6 +51,12 @@ const SheetChartDetails = ({ charts }: SheetChartDetailsProps) => {
             </summary>
 
             <div className="space-y-2 border-t border-slate-200 p-3">
+              <div className="flex justify-end">
+                {chart.anchorCell && (
+                  <OriginalLocationButton location={chart.anchorCell} sheetName={sheetName} />
+                )}
+              </div>
+              <ChartVisualPreview chart={chart} />
               {(chart.series ?? []).map((series, seriesIndex) => (
                 <div className="rounded-xl bg-white p-3 text-xs" key={seriesIndex}>
                   <p className="font-extrabold text-slate-700">

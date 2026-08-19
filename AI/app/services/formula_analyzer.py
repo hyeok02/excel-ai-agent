@@ -17,9 +17,14 @@ class FormulaAnalysis:
     cell: str
     formula: str
     references: list[str]
+    cached_value: str | int | float | bool | None = None
+    role: str = "calculation"
 
 
-def analyze_formulas(worksheet: Worksheet) -> list[FormulaAnalysis]:
+def analyze_formulas(
+    worksheet: Worksheet,
+    value_worksheet: Worksheet | None = None,
+) -> list[FormulaAnalysis]:
     formulas: list[FormulaAnalysis] = []
 
     for cell in worksheet._cells.values():
@@ -31,6 +36,12 @@ def analyze_formulas(worksheet: Worksheet) -> list[FormulaAnalysis]:
                 cell=cell.coordinate,
                 formula=cell.value,
                 references=_extract_references(cell.value),
+                cached_value=(
+                    _supported_value(value_worksheet[cell.coordinate].value)
+                    if value_worksheet is not None
+                    else None
+                ),
+                role=_classify_formula(cell.value),
             )
         )
 
@@ -64,3 +75,42 @@ def _extract_references(formula: str) -> list[str]:
             seen.add(value)
 
     return references
+
+
+def _classify_formula(formula: str) -> str:
+    upper_formula = formula.upper()
+
+    if "[" in formula or "_XLL." in upper_formula or "OFFICE.EXCEL.FUNCTIONS" in upper_formula:
+        return "external"
+
+    lookup_functions = (
+        "VLOOKUP(",
+        "HLOOKUP(",
+        "XLOOKUP(",
+        "LOOKUP(",
+        "INDEX(",
+        "MATCH(",
+        "INDIRECT(",
+        "OFFSET(",
+    )
+    if any(function in upper_formula for function in lookup_functions):
+        return "lookup"
+
+    presentation_functions = (
+        "TEXT(",
+        "UPPER(",
+        "LOWER(",
+        "PROPER(",
+        "CONCAT(",
+        "CONCATENATE(",
+    )
+    if any(function in upper_formula for function in presentation_functions) or "&" in formula:
+        return "presentation"
+
+    return "calculation"
+
+
+def _supported_value(value: object) -> str | int | float | bool | None:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)

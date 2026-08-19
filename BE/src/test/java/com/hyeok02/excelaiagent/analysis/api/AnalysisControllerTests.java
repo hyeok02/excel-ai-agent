@@ -164,7 +164,12 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].previewRows[0][0].address").value("A1"))
 				.andExpect(jsonPath("$.workbook.sheets[0].tables[0].reference").value("A1:D3"))
 				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].title").value("월별 매출"))
-				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].series[0].valueSamples[0]").value(10));
+				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].series[0].valueSamples[0]").value(10))
+				.andExpect(jsonPath("$.workbook.dependencyGraph.edgeCount").value(1))
+				.andExpect(jsonPath("$.workbook.dependencyGraph.clusters[0].edges[0].source")
+						.value("Sales!B2:C2"))
+				.andExpect(jsonPath("$.workbook.dependencyGraph.clusters[0].edges[0].target")
+						.value("Sales!D2"));
 	}
 
 	@Test
@@ -478,7 +483,29 @@ class AnalysisControllerTests {
 										"'Sales'!$B$2:$B$3",
 										List.of("노트북", "모니터"),
 										List.of(10, 5))),
-								false)))));
+								false)))),
+				new AiWorkbookSummary.DependencySummary(
+						2,
+						1,
+						1,
+						0,
+						0,
+						0,
+						1,
+						List.of(new AiWorkbookSummary.DependencyCluster(
+								"cluster-1",
+								2,
+								1,
+								1,
+								List.of("Sales"),
+								List.of(
+										new AiWorkbookSummary.DependencyNode(
+												"Sales!B2:C2", "Sales!B2:C2", "Sales", "B2:C2", "range", null),
+										new AiWorkbookSummary.DependencyNode(
+												"Sales!D2", "Sales!D2", "Sales", "D2", "formula", "=SUM(B2:C2)")),
+								List.of(new AiWorkbookSummary.DependencyEdge(
+										"Sales!B2:C2", "Sales!D2", "B2:C2", false)),
+								false))));
 	}
 
 	private AiWorkbookInsights workbookInsights() {

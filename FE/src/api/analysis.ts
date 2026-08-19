@@ -17,6 +17,8 @@ export interface FormulaResult {
   cell: string
   formula: string
   references: string[]
+  cachedValue: CellValue
+  role: 'calculation' | 'lookup' | 'presentation' | 'external'
 }
 
 export type CellValue = string | number | boolean | null
@@ -25,12 +27,28 @@ export interface CellResult {
   address: string
   value: CellValue
   formula: string | null
+  cachedValue: CellValue
+  numberFormat: string | null
+  bold: boolean
+  fillColor: string | null
+  horizontalAlignment: string | null
+  merged: boolean
+}
+
+export interface HeaderPathResult {
+  column: string
+  labels: string[]
 }
 
 export interface RegionResult {
   startCell: string
   endCell: string
   cellCount: number
+  title: string | null
+  rowCount: number
+  columnCount: number
+  mergedRanges: string[]
+  headerPaths: HeaderPathResult[]
   previewRows: CellResult[][]
   truncated: boolean
 }
@@ -77,10 +95,51 @@ export interface SheetResult {
   charts: ChartResult[]
 }
 
+export type DependencyNodeKind = 'formula' | 'cell' | 'range' | 'named' | 'external'
+
+export interface DependencyNodeResult {
+  id: string
+  label: string
+  sheet: string | null
+  cell: string | null
+  kind: DependencyNodeKind
+  formula: string | null
+}
+
+export interface DependencyEdgeResult {
+  source: string
+  target: string
+  reference: string
+  crossSheet: boolean
+}
+
+export interface DependencyClusterResult {
+  id: string
+  nodeCount: number
+  edgeCount: number
+  formulaCount: number
+  sheetNames: string[]
+  nodes: DependencyNodeResult[]
+  edges: DependencyEdgeResult[]
+  truncated: boolean
+}
+
+export interface DependencyGraphResult {
+  nodeCount: number
+  edgeCount: number
+  formulaNodeCount: number
+  crossSheetEdgeCount: number
+  namedReferenceCount: number
+  externalReferenceCount: number
+  clusterCount: number
+  clusters: DependencyClusterResult[]
+}
+
 export interface WorkbookResult {
   filename: string
   sheetCount: number
   sheets: SheetResult[]
+  dependencyGraph?: DependencyGraphResult | null
 }
 
 export type InsightCategory = 'summary' | 'structure' | 'formula' | 'risk'

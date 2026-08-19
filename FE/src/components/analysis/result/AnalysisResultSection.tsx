@@ -1,9 +1,11 @@
 import { CheckCircle2 } from 'lucide-react'
 
 import type { AnalysisResultDetails, WorkbookResult } from '@/api/analysis'
-import AnalysisExportActions from '@/components/analysis/AnalysisExportActions'
-import InsightReportSection from '@/components/analysis/InsightReportSection'
-import SheetResultCard from '@/components/analysis/SheetResultCard'
+import AgentReadySection from '@/components/analysis/result/AgentReadySection'
+import AnalysisExportActions from '@/components/analysis/result/AnalysisExportActions'
+import DependencyMapSection from '@/components/analysis/result/DependencyMapSection'
+import InsightReportSection from '@/components/analysis/result/InsightReportSection'
+import WorkbookExplorer from '@/components/analysis/workbook/WorkbookExplorer'
 
 interface AnalysisResultSectionProps {
   result: AnalysisResultDetails
@@ -66,11 +68,13 @@ const AnalysisResultSection = ({ result }: AnalysisResultSectionProps) => {
 
       {result.insightReport && <InsightReportSection report={result.insightReport} />}
 
-      <div className="mt-6 space-y-3">
-        {workbook.sheets.map((sheet) => (
-          <SheetResultCard key={sheet.name} sheet={sheet} />
-        ))}
-      </div>
+      <WorkbookExplorer sheets={workbook.sheets} />
+
+      {workbook.dependencyGraph && workbook.dependencyGraph.nodeCount > 0 && (
+        <DependencyMapSection graph={workbook.dependencyGraph} />
+      )}
+
+      <AgentReadySection hasInsightReport={result.insightReport !== null} />
     </section>
   )
 }

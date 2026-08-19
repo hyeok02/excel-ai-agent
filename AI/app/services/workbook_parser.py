@@ -6,6 +6,10 @@ from zipfile import BadZipFile
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
+from app.services.dependency_analyzer import (
+    DependencySummary,
+    analyze_dependencies,
+)
 from app.services.formula_analyzer import FormulaAnalysis, analyze_formulas
 from app.services.region_detector import detect_regions
 from app.services.workbook_details import (
@@ -44,6 +48,9 @@ class WorkbookSummary:
     filename: str
     sheet_count: int
     sheets: list[SheetSummary]
+    dependency_summary: DependencySummary = field(
+        default_factory=DependencySummary.empty
+    )
 
 
 def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
@@ -57,17 +64,23 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
             data_only=False,
             keep_vba=extension == ".xlsm",
         )
+        value_workbook = load_workbook(
+            BytesIO(content),
+            data_only=True,
+            keep_vba=extension == ".xlsm",
+        )
     except (BadZipFile, InvalidFileException, KeyError, OSError, ValueError) as exception:
         raise InvalidWorkbookError("올바른 Excel 파일이 아닙니다.") from exception
 
     try:
         sheets = []
         for worksheet in workbook.worksheets:
-            formulas = analyze_formulas(worksheet)
+            value_worksheet = value_workbook[worksheet.title]
+            formulas = analyze_formulas(worksheet, value_worksheet)
             detected_regions = detect_regions(worksheet)
-            regions = summarize_regions(worksheet, detected_regions)
-            tables = summarize_tables(worksheet)
-            charts = summarize_charts(workbook, worksheet)
+            regions = summarize_regions(worksheet, detected_regions, value_worksheet)
+            tables = summarize_tables(worksheet, value_worksheet)
+            charts = summarize_charts(workbook, worksheet, value_workbook)
             sheets.append(
                 SheetSummary(
                     name=worksheet.title,
@@ -85,9 +98,15 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
             )
     finally:
         workbook.close()
+        value_workbook.close()
+
+    dependency_summary = analyze_dependencies(
+        [(sheet.name, sheet.formulas) for sheet in sheets]
+    )
 
     return WorkbookSummary(
         filename=filename,
         sheet_count=len(sheets),
         sheets=sheets,
+        dependency_summary=dependency_summary,
     )
