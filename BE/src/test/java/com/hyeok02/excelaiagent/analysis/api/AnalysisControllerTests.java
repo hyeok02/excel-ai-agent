@@ -19,10 +19,12 @@ import com.hyeok02.excelaiagent.BackendApplication;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisResult;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisStatus;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
+import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,7 @@ class AnalysisControllerTests {
 		analysisJobRepository.deleteAll();
 		reset(aiServiceClient);
 		when(aiServiceClient.summarizeWorkbook(any())).thenReturn(workbookSummary());
+		when(aiServiceClient.generateWorkbookInsights(any())).thenReturn(workbookInsights());
 	}
 
 	@Test
@@ -158,6 +161,53 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].cell").value("D2"))
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].references[0]").value("B2:C2"))
 				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].startCell").value("A1"));
+	}
+
+	@Test
+	void returnsGeneratedInsightsForLlmAnalysis() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "sales.xlsx", null, ZIP_FILE);
+		String submissionBody = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "LLM"))
+				.andExpect(status().isAccepted())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+		String analysisId = JsonPath.read(submissionBody, "$.analysisId");
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", analysisId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.workbook.filename").value("sales.xlsx"))
+				.andExpect(jsonPath("$.insightReport.overview").value("수식 구조를 검토했습니다."))
+				.andExpect(jsonPath("$.insightReport.insights[0].title").value("수식 참조 확인"))
+				.andExpect(jsonPath("$.insightReport.insights[0].category").value("formula"))
+				.andExpect(jsonPath("$.insightReport.insights[0].severity").value("warning"))
+				.andExpect(jsonPath("$.insightReport.insights[0].evidence[0]").value("Sales!D2"))
+				.andExpect(jsonPath("$.insightReport.limitations[0]").value("실제 셀 값은 분석하지 않았습니다."));
+	}
+
+	@Test
+	void returnsLegacyWorkbookSummaryResult() throws Exception {
+		UUID analysisId = UUID.randomUUID();
+		Instant now = Instant.now();
+		analysisJobRepository.save(AnalysisJob.queued(
+				analysisId, AnalysisMode.BFS, "legacy.xlsx", "xlsx", 100L, now));
+		analysisResultRepository.save(AnalysisResult.completed(
+				analysisId,
+				"""
+				{
+				  "filename": "legacy.xlsx",
+				  "sheet_count": 1,
+				  "sheets": []
+				}
+				""",
+				now));
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", analysisId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.workbook.filename").value("legacy.xlsx"))
+				.andExpect(jsonPath("$.workbook.sheetCount").value(1))
+				.andExpect(jsonPath("$.insightReport").doesNotExist());
 	}
 
 	@Test
@@ -361,6 +411,27 @@ class AnalysisControllerTests {
 		assertThat(analysisResultRepository.findAll()).isEmpty();
 	}
 
+	@Test
+	void savesFailedStatusWhenInsightGenerationFails() throws Exception {
+		when(aiServiceClient.generateWorkbookInsights(any()))
+				.thenThrow(new AiServiceUnavailableException());
+		MockMultipartFile file = new MockMultipartFile(
+				"file",
+				"sales.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				ZIP_FILE);
+
+		mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "LLM"))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(jsonPath("$.code").value("AI_SERVICE_UNAVAILABLE"));
+
+		assertThat(analysisJobRepository.findAll()).singleElement().satisfies(job ->
+				assertThat(job.getStatus()).isEqualTo(AnalysisStatus.FAILED));
+		assertThat(analysisResultRepository.findAll()).isEmpty();
+	}
+
 	private AiWorkbookSummary workbookSummary() {
 		return new AiWorkbookSummary(
 				"sales.xlsx",
@@ -378,5 +449,20 @@ class AnalysisControllerTests {
 								List.of("B2:C2"))),
 						1,
 						List.of(new AiWorkbookSummary.CellRegion("A1", "D3", 12)))));
+	}
+
+	private AiWorkbookInsights workbookInsights() {
+		return new AiWorkbookInsights(
+				workbookSummary(),
+				new AiWorkbookInsights.InsightReport(
+						"수식 구조를 검토했습니다.",
+						List.of(new AiWorkbookInsights.Insight(
+								"수식 참조 확인",
+								"Sales 시트의 수식 참조를 확인해야 합니다.",
+								"formula",
+								"warning",
+								List.of("Sales!D2"),
+								"참조 범위를 검토하세요.")),
+						List.of("실제 셀 값은 분석하지 않았습니다.")));
 	}
 }

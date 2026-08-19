@@ -4,24 +4,63 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
 
 public record AnalysisResultDetails(
 		UUID analysisId,
 		Instant createdAt,
-		WorkbookResult workbook) {
+		WorkbookResult workbook,
+		InsightReportResult insightReport) {
 
 	public static AnalysisResultDetails from(
 			UUID analysisId,
 			Instant createdAt,
-			AiWorkbookSummary workbookSummary) {
+			AiWorkbookInsights workbookAnalysis) {
+		AiWorkbookSummary workbookSummary = workbookAnalysis.workbook();
 		return new AnalysisResultDetails(
 				analysisId,
 				createdAt,
 				new WorkbookResult(
 						workbookSummary.filename(),
 						workbookSummary.sheetCount(),
-						workbookSummary.sheets().stream().map(SheetResult::from).toList()));
+						workbookSummary.sheets().stream().map(SheetResult::from).toList()),
+				InsightReportResult.from(workbookAnalysis.report()));
+	}
+
+	public record InsightReportResult(
+			String overview,
+			List<InsightResult> insights,
+			List<String> limitations) {
+
+		private static InsightReportResult from(AiWorkbookInsights.InsightReport report) {
+			if (report == null) {
+				return null;
+			}
+			return new InsightReportResult(
+					report.overview(),
+					report.insights().stream().map(InsightResult::from).toList(),
+					report.limitations());
+		}
+	}
+
+	public record InsightResult(
+			String title,
+			String description,
+			String category,
+			String severity,
+			List<String> evidence,
+			String recommendation) {
+
+		private static InsightResult from(AiWorkbookInsights.Insight insight) {
+			return new InsightResult(
+					insight.title(),
+					insight.description(),
+					insight.category(),
+					insight.severity(),
+					insight.evidence(),
+					insight.recommendation());
+		}
 	}
 
 	public record WorkbookResult(

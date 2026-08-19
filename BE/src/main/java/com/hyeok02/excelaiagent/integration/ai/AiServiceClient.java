@@ -35,16 +35,23 @@ public class AiServiceClient {
 	}
 
 	public AiWorkbookSummary summarizeWorkbook(MultipartFile file) {
+		return postWorkbook(file, "/api/v1/workbooks/summary", AiWorkbookSummary.class);
+	}
+
+	public AiWorkbookInsights generateWorkbookInsights(MultipartFile file) {
+		return postWorkbook(file, "/api/v1/workbooks/insights", AiWorkbookInsights.class);
+	}
+
+	private <T> T postWorkbook(MultipartFile file, String uri, Class<T> responseType) {
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 		body.add("file", file.getResource());
-
 		try {
-			AiWorkbookSummary response = restClient.post()
-					.uri("/api/v1/workbooks/summary")
+			T response = restClient.post()
+					.uri(uri)
 					.contentType(MediaType.MULTIPART_FORM_DATA)
 					.body(body)
 					.retrieve()
-					.body(AiWorkbookSummary.class);
+					.body(responseType);
 
 			if (response == null) {
 				throw new AiServiceUnavailableException();
