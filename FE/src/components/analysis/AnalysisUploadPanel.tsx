@@ -79,8 +79,7 @@ const AnalysisUploadPanel = ({
 
       {mode === 'LLM' && (
         <p className="mt-3 text-xs text-slate-400">
-          현재는 워크북 구조 분석 결과를 제공하며, LLM 인사이트 생성은 후속 단계에서
-          연결됩니다.
+          워크북 구조와 수식 정보를 바탕으로 AI가 요약, 근거 및 검토 권고를 생성합니다.
         </p>
       )}
 

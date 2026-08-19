@@ -43,7 +43,7 @@ src/
 
 ```text
 VITE_API_BASE_URL=http://localhost:8080
-VITE_API_TIMEOUT=30000
+VITE_API_TIMEOUT=180000
 ```
 
 실제 `.env` 파일은 Git에 포함하지 않습니다.

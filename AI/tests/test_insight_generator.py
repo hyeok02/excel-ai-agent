@@ -7,7 +7,7 @@ from app.services.region_detector import CellRegion
 from app.services.workbook_parser import SheetSummary, WorkbookSummary
 
 
-def test_limits_workbook_context_for_llm_prompt() -> None:
+def test_deduplicates_formula_patterns_for_llm_prompt() -> None:
     formulas = [
         FormulaAnalysis(
             cell=f"A{index}",
@@ -37,8 +37,9 @@ def test_limits_workbook_context_for_llm_prompt() -> None:
     context = build_workbook_context(summary)
     sheet = context["sheets"][0]
 
-    assert len(sheet["formula_samples"]) == MAX_FORMULAS_PER_SHEET
-    assert sheet["omitted_formula_count"] == 3
+    assert len(sheet["formula_samples"]) == 1
+    assert sheet["formula_samples"][0]["cell"] == "A0"
+    assert sheet["omitted_formula_count"] == MAX_FORMULAS_PER_SHEET + 2
     assert sheet["region_samples"] == [
         {"start_cell": "A1", "end_cell": "C100", "cell_count": 300}
     ]

@@ -78,7 +78,9 @@ public record AnalysisResultDetails(
 			int chartCount,
 			List<FormulaResult> formulas,
 			int regionCount,
-			List<RegionResult> regions) {
+			List<RegionResult> regions,
+			List<TableResult> tables,
+			List<ChartResult> charts) {
 
 		private static SheetResult from(AiWorkbookSummary.SheetSummary sheet) {
 			return new SheetResult(
@@ -88,9 +90,11 @@ public record AnalysisResultDetails(
 					sheet.formulaCount(),
 					sheet.tableCount(),
 					sheet.chartCount(),
-					sheet.formulas().stream().map(FormulaResult::from).toList(),
+					safeList(sheet.formulas()).stream().map(FormulaResult::from).toList(),
 					sheet.regionCount(),
-					sheet.regions().stream().map(RegionResult::from).toList());
+					safeList(sheet.regions()).stream().map(RegionResult::from).toList(),
+					safeList(sheet.tables()).stream().map(TableResult::from).toList(),
+					safeList(sheet.charts()).stream().map(ChartResult::from).toList());
 		}
 	}
 
@@ -107,10 +111,96 @@ public record AnalysisResultDetails(
 	public record RegionResult(
 			String startCell,
 			String endCell,
-			int cellCount) {
+			int cellCount,
+			List<List<CellResult>> previewRows,
+			boolean truncated) {
 
 		private static RegionResult from(AiWorkbookSummary.CellRegion region) {
-			return new RegionResult(region.startCell(), region.endCell(), region.cellCount());
+			return new RegionResult(
+					region.startCell(),
+					region.endCell(),
+					region.cellCount(),
+					cellRows(region.previewRows()),
+					Boolean.TRUE.equals(region.truncated()));
 		}
+	}
+
+	public record CellResult(
+			String address,
+			Object value,
+			String formula) {
+
+		private static CellResult from(AiWorkbookSummary.CellSnapshot cell) {
+			return new CellResult(cell.address(), cell.value(), cell.formula());
+		}
+	}
+
+	public record TableResult(
+			String name,
+			String displayName,
+			String reference,
+			List<String> headers,
+			int rowCount,
+			int columnCount,
+			List<List<CellResult>> previewRows,
+			boolean truncated) {
+
+		private static TableResult from(AiWorkbookSummary.TableSummary table) {
+			return new TableResult(
+					table.name(),
+					table.displayName(),
+					table.reference(),
+					safeList(table.headers()),
+					table.rowCount(),
+					table.columnCount(),
+					cellRows(table.previewRows()),
+					Boolean.TRUE.equals(table.truncated()));
+		}
+	}
+
+	public record ChartResult(
+			String title,
+			String chartType,
+			String anchorCell,
+			int seriesCount,
+			List<ChartSeriesResult> series,
+			boolean truncated) {
+
+		private static ChartResult from(AiWorkbookSummary.ChartSummary chart) {
+			return new ChartResult(
+					chart.title(),
+					chart.chartType(),
+					chart.anchorCell(),
+					chart.seriesCount(),
+					safeList(chart.series()).stream().map(ChartSeriesResult::from).toList(),
+					Boolean.TRUE.equals(chart.truncated()));
+		}
+	}
+
+	public record ChartSeriesResult(
+			String title,
+			String categoriesReference,
+			String valuesReference,
+			List<Object> categorySamples,
+			List<Object> valueSamples) {
+
+		private static ChartSeriesResult from(AiWorkbookSummary.ChartSeriesSummary series) {
+			return new ChartSeriesResult(
+					series.title(),
+					series.categoriesReference(),
+					series.valuesReference(),
+					safeList(series.categorySamples()),
+					safeList(series.valueSamples()));
+		}
+	}
+
+	private static List<List<CellResult>> cellRows(List<List<AiWorkbookSummary.CellSnapshot>> rows) {
+		return safeList(rows).stream()
+				.map(row -> safeList(row).stream().map(CellResult::from).toList())
+				.toList();
+	}
+
+	private static <T> List<T> safeList(List<T> values) {
+		return values == null ? List.of() : values;
 	}
 }

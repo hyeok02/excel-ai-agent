@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 from zipfile import BadZipFile
@@ -7,7 +7,15 @@ from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
 from app.services.formula_analyzer import FormulaAnalysis, analyze_formulas
-from app.services.region_detector import CellRegion, detect_regions
+from app.services.region_detector import detect_regions
+from app.services.workbook_details import (
+    ChartSummary,
+    RegionSummary,
+    TableSummary,
+    summarize_charts,
+    summarize_regions,
+    summarize_tables,
+)
 
 SUPPORTED_EXTENSIONS = {".xlsx", ".xlsm"}
 
@@ -26,7 +34,9 @@ class SheetSummary:
     chart_count: int
     formulas: list[FormulaAnalysis]
     region_count: int
-    regions: list[CellRegion]
+    regions: list[RegionSummary]
+    tables: list[TableSummary] = field(default_factory=list)
+    charts: list[ChartSummary] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -54,18 +64,23 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
         sheets = []
         for worksheet in workbook.worksheets:
             formulas = analyze_formulas(worksheet)
-            regions = detect_regions(worksheet)
+            detected_regions = detect_regions(worksheet)
+            regions = summarize_regions(worksheet, detected_regions)
+            tables = summarize_tables(worksheet)
+            charts = summarize_charts(workbook, worksheet)
             sheets.append(
                 SheetSummary(
                     name=worksheet.title,
                     rows=worksheet.max_row,
                     columns=worksheet.max_column,
                     formula_count=len(formulas),
-                    table_count=len(worksheet.tables),
-                    chart_count=len(worksheet._charts),
+                    table_count=len(tables),
+                    chart_count=len(charts),
                     formulas=formulas,
                     region_count=len(regions),
                     regions=regions,
+                    tables=tables,
+                    charts=charts,
                 )
             )
     finally:

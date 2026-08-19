@@ -61,7 +61,7 @@ app:
   ai-service:
     base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
     connect-timeout: ${AI_SERVICE_CONNECT_TIMEOUT:3s}
-    read-timeout: ${AI_SERVICE_READ_TIMEOUT:60s}
+    read-timeout: ${AI_SERVICE_READ_TIMEOUT:150s}
 
 logging:
   level:

@@ -27,7 +27,7 @@ curl http://localhost:8080/actuator/health
 | `MAX_REQUEST_SIZE` | `50MB` | 전체 multipart 요청 제한 |
 | `AI_SERVICE_BASE_URL` | `http://localhost:8000` | Python AI 서비스 주소 |
 | `AI_SERVICE_CONNECT_TIMEOUT` | `3s` | AI 서비스 연결 제한 시간 |
-| `AI_SERVICE_READ_TIMEOUT` | `60s` | AI 서비스 응답 제한 시간 |
+| `AI_SERVICE_READ_TIMEOUT` | `150s` | AI 서비스 응답 제한 시간 |
 
 ## 현재 범위
 
