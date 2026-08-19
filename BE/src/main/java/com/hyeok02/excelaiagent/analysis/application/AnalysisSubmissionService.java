@@ -14,6 +14,7 @@ import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceExceptio
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
+import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -74,10 +75,10 @@ public class AnalysisSubmissionService {
 		analysisJobRepository.saveAndFlush(analysisJob);
 
 		try {
-			AiWorkbookSummary workbookSummary = aiServiceClient.summarizeWorkbook(file);
+			AiWorkbookInsights workbookAnalysis = analyzeWorkbook(file, mode);
 			AnalysisResult analysisResult = AnalysisResult.completed(
 					analysisId,
-					serializeResult(workbookSummary),
+					serializeResult(workbookAnalysis),
 					Instant.now());
 			analysisResultRepository.saveAndFlush(analysisResult);
 			analysisJob.markCompleted(Instant.now());
@@ -172,21 +173,45 @@ public class AnalysisSubmissionService {
 		return filename.trim();
 	}
 
-	private String serializeResult(AiWorkbookSummary workbookSummary) {
+	private AiWorkbookInsights analyzeWorkbook(MultipartFile file, AnalysisMode mode) {
+		if (mode == AnalysisMode.LLM) {
+			return aiServiceClient.generateWorkbookInsights(file);
+		}
+		return AiWorkbookInsights.summaryOnly(aiServiceClient.summarizeWorkbook(file));
+	}
+
+	private String serializeResult(AiWorkbookInsights workbookAnalysis) {
 		try {
-			return objectMapper.writeValueAsString(workbookSummary);
+			return objectMapper.writeValueAsString(workbookAnalysis);
 		}
 		catch (JacksonException exception) {
 			throw new AnalysisResultPersistenceException("분석 결과를 저장 형식으로 변환하지 못했습니다.", exception);
 		}
 	}
 
-	private AiWorkbookSummary deserializeResult(String resultJson) {
+	private AiWorkbookInsights deserializeResult(String resultJson) {
+		JacksonException currentFormatException = null;
 		try {
-			return objectMapper.readValue(resultJson, AiWorkbookSummary.class);
+			AiWorkbookInsights workbookAnalysis = objectMapper.readValue(resultJson, AiWorkbookInsights.class);
+			if (workbookAnalysis.workbook() != null) {
+				return workbookAnalysis;
+			}
 		}
 		catch (JacksonException exception) {
-			throw new AnalysisResultPersistenceException("저장된 분석 결과를 읽지 못했습니다.", exception);
+			currentFormatException = exception;
+		}
+
+		try {
+			AiWorkbookSummary workbookSummary = objectMapper.readValue(resultJson, AiWorkbookSummary.class);
+			return AiWorkbookInsights.summaryOnly(workbookSummary);
+		}
+		catch (JacksonException legacyException) {
+			if (currentFormatException != null) {
+				currentFormatException.addSuppressed(legacyException);
+				throw new AnalysisResultPersistenceException(
+						"저장된 분석 결과를 읽지 못했습니다.", currentFormatException);
+			}
+			throw new AnalysisResultPersistenceException("저장된 분석 결과를 읽지 못했습니다.", legacyException);
 		}
 	}
 

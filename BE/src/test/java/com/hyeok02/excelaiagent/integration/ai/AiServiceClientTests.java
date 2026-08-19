@@ -119,6 +119,56 @@ class AiServiceClientTests {
 	}
 
 	@Test
+	void sendsWorkbookAndReturnsGeneratedInsights() {
+		server.expect(once(), requestTo("http://localhost:8000/api/v1/workbooks/insights"))
+				.andExpect(method(POST))
+				.andExpect(header("Content-Type", startsWith("multipart/form-data")))
+				.andExpect(content().string(containsString("sales.xlsx")))
+				.andRespond(withSuccess(
+						"""
+						{
+						  "workbook": {
+						    "filename": "sales.xlsx",
+						    "sheet_count": 1,
+						    "sheets": []
+						  },
+						  "report": {
+						    "overview": "수식이 포함된 단일 시트 워크북입니다.",
+						    "insights": [
+						      {
+						        "title": "수식 검토 필요",
+						        "description": "Sales 시트에 수식이 포함되어 있습니다.",
+						        "category": "formula",
+						        "severity": "warning",
+						        "evidence": ["Sales!D2"],
+						        "recommendation": "참조 범위를 확인하세요."
+						      }
+						    ],
+						    "limitations": ["실제 셀 값은 분석하지 않았습니다."]
+						  }
+						}
+						""",
+						MediaType.APPLICATION_JSON));
+
+		MockMultipartFile file = new MockMultipartFile(
+				"file",
+				"sales.xlsx",
+				MediaType.APPLICATION_OCTET_STREAM_VALUE,
+				new byte[] {0x50, 0x4b, 0x03, 0x04});
+
+		AiWorkbookInsights response = aiServiceClient.generateWorkbookInsights(file);
+
+		assertThat(response.workbook().filename()).isEqualTo("sales.xlsx");
+		assertThat(response.report().overview()).contains("단일 시트");
+		assertThat(response.report().insights()).singleElement().satisfies(insight -> {
+			assertThat(insight.category()).isEqualTo("formula");
+			assertThat(insight.severity()).isEqualTo("warning");
+			assertThat(insight.evidence()).containsExactly("Sales!D2");
+		});
+		server.verify();
+	}
+
+	@Test
 	void throwsUnavailableExceptionWhenWorkbookSummaryRequestFails() {
 		server.expect(once(), requestTo("http://localhost:8000/api/v1/workbooks/summary"))
 				.andExpect(method(POST))
@@ -130,6 +180,22 @@ class AiServiceClientTests {
 				new byte[] {0x50, 0x4b, 0x03, 0x04});
 
 		assertThatThrownBy(() -> aiServiceClient.summarizeWorkbook(file))
+				.isInstanceOf(AiServiceUnavailableException.class);
+		server.verify();
+	}
+
+	@Test
+	void throwsUnavailableExceptionWhenWorkbookInsightRequestFails() {
+		server.expect(once(), requestTo("http://localhost:8000/api/v1/workbooks/insights"))
+				.andExpect(method(POST))
+				.andRespond(withServerError());
+		MockMultipartFile file = new MockMultipartFile(
+				"file",
+				"sales.xlsx",
+				MediaType.APPLICATION_OCTET_STREAM_VALUE,
+				new byte[] {0x50, 0x4b, 0x03, 0x04});
+
+		assertThatThrownBy(() -> aiServiceClient.generateWorkbookInsights(file))
 				.isInstanceOf(AiServiceUnavailableException.class);
 		server.verify();
 	}
