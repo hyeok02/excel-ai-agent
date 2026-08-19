@@ -1,8 +1,8 @@
-import AnalysisFeedback from '@/components/analysis/AnalysisFeedback'
-import AnalysisFlowPanel from '@/components/analysis/AnalysisFlowPanel'
-import AnalysisHeader from '@/components/analysis/AnalysisHeader'
-import AnalysisResultSection from '@/components/analysis/AnalysisResultSection'
-import AnalysisUploadPanel from '@/components/analysis/AnalysisUploadPanel'
+import AnalysisFeedback from '@/components/analysis/common/AnalysisFeedback'
+import AnalysisHeader from '@/components/analysis/common/AnalysisHeader'
+import AnalysisResultSection from '@/components/analysis/result/AnalysisResultSection'
+import AnalysisFlowPanel from '@/components/analysis/upload/AnalysisFlowPanel'
+import AnalysisUploadPanel from '@/components/analysis/upload/AnalysisUploadPanel'
 import { useWorkbookAnalysis } from '@/hooks/useWorkbookAnalysis'
 
 const AnalysisPage = () => {

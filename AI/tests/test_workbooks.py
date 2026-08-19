@@ -44,7 +44,9 @@ def create_workbook_file() -> bytes:
     chart.add_data(Reference(sales_sheet, min_col=2, max_col=3, min_row=1, max_row=3))
     sales_sheet.add_chart(chart, "F2")
 
-    workbook.create_sheet("요약")["A1"] = "완료"
+    summary_sheet = workbook.create_sheet("요약")
+    summary_sheet["A1"] = "완료"
+    summary_sheet["A2"] = "=매출현황!D2"
 
     output = BytesIO()
     workbook.save(output)
@@ -76,11 +78,23 @@ def test_returns_workbook_summary() -> None:
         "cell": "D2",
         "formula": "=SUM(B2:C2)",
         "references": ["B2:C2"],
+        "cached_value": None,
+        "role": "calculation",
     }
-    assert sales["regions"][0]["preview_rows"][1][3] == {
-        "address": "D2",
-        "value": None,
-        "formula": "=SUM(B2:C2)",
+    formula_cell = sales["regions"][0]["preview_rows"][1][3]
+    assert formula_cell["address"] == "D2"
+    assert formula_cell["value"] is None
+    assert formula_cell["formula"] == "=SUM(B2:C2)"
+    assert formula_cell["cached_value"] is None
+    assert formula_cell["number_format"] == "General"
+    assert formula_cell["bold"] is False
+    assert formula_cell["merged"] is False
+    assert sales["regions"][0]["title"] == "상품"
+    assert sales["regions"][0]["row_count"] == 3
+    assert sales["regions"][0]["column_count"] == 4
+    assert sales["regions"][0]["header_paths"][0] == {
+        "column": "A",
+        "labels": ["상품"],
     }
     assert sales["tables"][0]["name"] == "SalesTable"
     assert sales["tables"][0]["reference"] == "A1:D3"
@@ -92,6 +106,19 @@ def test_returns_workbook_summary() -> None:
     summary = result["sheets"][1]
     assert summary["name"] == "요약"
     assert summary["regions"][0]["preview_rows"][0][0]["value"] == "완료"
+
+    dependencies = result["dependency_summary"]
+    assert dependencies["formula_node_count"] == 3
+    assert dependencies["edge_count"] == 3
+    assert dependencies["cross_sheet_edge_count"] == 1
+    assert dependencies["cluster_count"] == 2
+    assert dependencies["clusters"][0]["sheet_names"] == ["매출현황", "요약"]
+    assert dependencies["clusters"][0]["edges"][-1] == {
+        "source": "매출현황!D2",
+        "target": "요약!A2",
+        "reference": "매출현황!D2",
+        "cross_sheet": True,
+    }
 
 
 def test_rejects_unsupported_extension() -> None:

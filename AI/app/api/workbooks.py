@@ -24,6 +24,11 @@ class CellRegionResponse(BaseModel):
     start_cell: str
     end_cell: str
     cell_count: int
+    title: str | None
+    row_count: int
+    column_count: int
+    merged_ranges: list[str]
+    header_paths: list["HeaderPathResponse"]
     preview_rows: list[list["CellSnapshotResponse"]]
     is_truncated: bool
 
@@ -34,6 +39,19 @@ class CellSnapshotResponse(BaseModel):
     address: str
     value: str | int | float | bool | None
     formula: str | None
+    cached_value: str | int | float | bool | None
+    number_format: str | None
+    bold: bool
+    fill_color: str | None
+    horizontal_alignment: str | None
+    merged: bool
+
+
+class HeaderPathResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    column: str
+    labels: list[str]
 
 
 class TableSummaryResponse(BaseModel):
@@ -76,6 +94,8 @@ class FormulaAnalysisResponse(BaseModel):
     cell: str
     formula: str
     references: list[str]
+    cached_value: str | int | float | bool | None
+    role: str
 
 
 class SheetSummaryResponse(BaseModel):
@@ -94,12 +114,59 @@ class SheetSummaryResponse(BaseModel):
     charts: list[ChartSummaryResponse]
 
 
+class DependencyNodeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    label: str
+    sheet: str | None
+    cell: str | None
+    kind: str
+    formula: str | None
+
+
+class DependencyEdgeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    source: str
+    target: str
+    reference: str
+    cross_sheet: bool
+
+
+class DependencyClusterResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    node_count: int
+    edge_count: int
+    formula_count: int
+    sheet_names: list[str]
+    nodes: list[DependencyNodeResponse]
+    edges: list[DependencyEdgeResponse]
+    is_truncated: bool
+
+
+class DependencySummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    node_count: int
+    edge_count: int
+    formula_node_count: int
+    cross_sheet_edge_count: int
+    named_reference_count: int
+    external_reference_count: int
+    cluster_count: int
+    clusters: list[DependencyClusterResponse]
+
+
 class WorkbookSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     filename: str
     sheet_count: int
     sheets: list[SheetSummaryResponse]
+    dependency_summary: DependencySummaryResponse
 
 
 class WorkbookInsightsResponse(BaseModel):

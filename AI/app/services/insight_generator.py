@@ -12,13 +12,14 @@ from pydantic import BaseModel, Field
 
 from app.services.workbook_parser import WorkbookSummary
 
-MAX_SHEETS = 30
-MAX_FORMULAS_PER_SHEET = 12
-MAX_REGIONS_PER_SHEET = 15
+MAX_SHEETS = 20
+MAX_FORMULAS_PER_SHEET = 8
+MAX_REGIONS_PER_SHEET = 6
 MAX_FORMULA_LENGTH = 240
-MAX_REFERENCES_PER_FORMULA = 12
-MAX_TABLES_PER_SHEET = 8
-MAX_CHARTS_PER_SHEET = 8
+MAX_REFERENCES_PER_FORMULA = 8
+MAX_TABLES_PER_SHEET = 5
+MAX_CHARTS_PER_SHEET = 5
+MAX_HEADERS_PER_REGION = 6
 
 
 class WorkbookInsight(BaseModel):
@@ -114,6 +115,37 @@ def _select_formula_samples(
     return samples
 
 
+def _select_region_samples(
+    regions: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    prioritized = sorted(
+        enumerate(regions),
+        key=lambda item: (-int(item[1].get("cell_count", 0)), item[0]),
+    )
+
+    return [
+        {
+            "start_cell": region["start_cell"],
+            "end_cell": region["end_cell"],
+            "cell_count": region["cell_count"],
+            "title": region.get("title"),
+            "row_count": region.get("row_count"),
+            "column_count": region.get("column_count"),
+            "merged_range_count": len(region.get("merged_ranges", [])),
+            "header_paths": [
+                {
+                    "column": header.get("column"),
+                    "labels": header.get("labels", []),
+                }
+                for header in region.get("header_paths", [])[
+                    :MAX_HEADERS_PER_REGION
+                ]
+            ],
+        }
+        for _, region in prioritized[:MAX_REGIONS_PER_SHEET]
+    ]
+
+
 def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
     sheets = []
 
@@ -136,7 +168,9 @@ def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
         sheet_data["omitted_formula_count"] = max(
             0, len(formulas) - len(selected_formulas)
         )
-        sheet_data["region_samples"] = regions[:MAX_REGIONS_PER_SHEET]
+        # 셀 미리보기는 화면 표시용 데이터라 LLM 판단에는 불필요하고,
+        # 큰 워크북에서는 프롬프트를 수십만 자까지 키울 수 있다.
+        sheet_data["region_samples"] = _select_region_samples(regions)
         sheet_data["omitted_region_count"] = max(
             0, len(regions) - MAX_REGIONS_PER_SHEET
         )
@@ -161,11 +195,30 @@ def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
         ]
         sheets.append(sheet_data)
 
+    dependencies = summary.dependency_summary
     return {
         "filename": summary.filename,
         "sheet_count": summary.sheet_count,
         "included_sheet_count": len(sheets),
         "omitted_sheet_count": max(0, len(summary.sheets) - MAX_SHEETS),
+        "dependency_summary": {
+            "node_count": dependencies.node_count,
+            "edge_count": dependencies.edge_count,
+            "formula_node_count": dependencies.formula_node_count,
+            "cross_sheet_edge_count": dependencies.cross_sheet_edge_count,
+            "named_reference_count": dependencies.named_reference_count,
+            "external_reference_count": dependencies.external_reference_count,
+            "cluster_count": dependencies.cluster_count,
+            "largest_clusters": [
+                {
+                    "node_count": cluster.node_count,
+                    "edge_count": cluster.edge_count,
+                    "formula_count": cluster.formula_count,
+                    "sheet_names": cluster.sheet_names,
+                }
+                for cluster in dependencies.clusters[:5]
+            ],
+        },
         "sheets": sheets,
     }
 
@@ -175,9 +228,9 @@ def build_user_prompt(summary: WorkbookSummary) -> str:
     return (
         "다음 Excel 워크북 구조 분석 결과를 검토하고 핵심 인사이트를 생성하세요.\n"
         "구조적 특징, 수식 집중도, 복잡도와 검토 위험을 우선 분석하세요.\n"
-        "정보가 충분하면 서로 중복되지 않는 인사이트를 4~5개 생성하세요.\n"
-        "각 설명은 의미와 위험을 2~3문장으로 구체적으로 작성하고, "
-        "근거와 실행 가능한 권고사항을 충분히 제시하세요.\n\n"
+        "정보가 충분하면 서로 중복되지 않는 핵심 인사이트를 3~4개 생성하세요.\n"
+        "각 설명은 의미와 위험을 1~2문장으로 명확하게 작성하고, "
+        "근거와 실행 가능한 권고사항을 간결하게 제시하세요.\n\n"
         "<workbook_metadata>\n"
         f"{json.dumps(context, ensure_ascii=False, separators=(',', ':'))}\n"
         "</workbook_metadata>"
@@ -215,7 +268,7 @@ class LangChainInsightGenerator:
 
         try:
             max_completion_tokens = int(
-                os.getenv("OPENAI_MAX_COMPLETION_TOKENS", "2500")
+                os.getenv("OPENAI_MAX_COMPLETION_TOKENS", "1600")
             )
         except ValueError as exception:
             raise InsightConfigurationError(
@@ -231,7 +284,7 @@ class LangChainInsightGenerator:
                 model=model_name,
                 api_key=api_key,
                 timeout=timeout_seconds,
-                max_retries=2,
+                max_retries=1,
                 max_completion_tokens=max_completion_tokens,
                 **model_options,
             )

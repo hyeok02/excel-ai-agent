@@ -24,7 +24,8 @@ public record AnalysisResultDetails(
 				new WorkbookResult(
 						workbookSummary.filename(),
 						workbookSummary.sheetCount(),
-						workbookSummary.sheets().stream().map(SheetResult::from).toList()),
+						workbookSummary.sheets().stream().map(SheetResult::from).toList(),
+						DependencyResult.from(workbookSummary.dependencySummary())),
 				InsightReportResult.from(workbookAnalysis.report()));
 	}
 
@@ -66,7 +67,8 @@ public record AnalysisResultDetails(
 	public record WorkbookResult(
 			String filename,
 			int sheetCount,
-			List<SheetResult> sheets) {
+			List<SheetResult> sheets,
+			DependencyResult dependencyGraph) {
 	}
 
 	public record SheetResult(
@@ -101,10 +103,17 @@ public record AnalysisResultDetails(
 	public record FormulaResult(
 			String cell,
 			String formula,
-			List<String> references) {
+			List<String> references,
+			Object cachedValue,
+			String role) {
 
 		private static FormulaResult from(AiWorkbookSummary.FormulaAnalysis formula) {
-			return new FormulaResult(formula.cell(), formula.formula(), formula.references());
+			return new FormulaResult(
+					formula.cell(),
+					formula.formula(),
+					formula.references(),
+					formula.cachedValue(),
+					formula.role());
 		}
 	}
 
@@ -112,6 +121,11 @@ public record AnalysisResultDetails(
 			String startCell,
 			String endCell,
 			int cellCount,
+			String title,
+			int rowCount,
+			int columnCount,
+			List<String> mergedRanges,
+			List<HeaderPathResult> headerPaths,
 			List<List<CellResult>> previewRows,
 			boolean truncated) {
 
@@ -120,18 +134,47 @@ public record AnalysisResultDetails(
 					region.startCell(),
 					region.endCell(),
 					region.cellCount(),
+					region.title(),
+					region.rowCount() == null ? 0 : region.rowCount(),
+					region.columnCount() == null ? 0 : region.columnCount(),
+					safeList(region.mergedRanges()),
+					safeList(region.headerPaths()).stream().map(HeaderPathResult::from).toList(),
 					cellRows(region.previewRows()),
 					Boolean.TRUE.equals(region.truncated()));
+		}
+	}
+
+	public record HeaderPathResult(
+			String column,
+			List<String> labels) {
+
+		private static HeaderPathResult from(AiWorkbookSummary.HeaderPath headerPath) {
+			return new HeaderPathResult(headerPath.column(), safeList(headerPath.labels()));
 		}
 	}
 
 	public record CellResult(
 			String address,
 			Object value,
-			String formula) {
+			String formula,
+			Object cachedValue,
+			String numberFormat,
+			boolean bold,
+			String fillColor,
+			String horizontalAlignment,
+			boolean merged) {
 
 		private static CellResult from(AiWorkbookSummary.CellSnapshot cell) {
-			return new CellResult(cell.address(), cell.value(), cell.formula());
+			return new CellResult(
+					cell.address(),
+					cell.value(),
+					cell.formula(),
+					cell.cachedValue(),
+					cell.numberFormat(),
+					Boolean.TRUE.equals(cell.bold()),
+					cell.fillColor(),
+					cell.horizontalAlignment(),
+					Boolean.TRUE.equals(cell.merged()));
 		}
 	}
 
@@ -191,6 +234,83 @@ public record AnalysisResultDetails(
 					series.valuesReference(),
 					safeList(series.categorySamples()),
 					safeList(series.valueSamples()));
+		}
+	}
+
+	public record DependencyResult(
+			int nodeCount,
+			int edgeCount,
+			int formulaNodeCount,
+			int crossSheetEdgeCount,
+			int namedReferenceCount,
+			int externalReferenceCount,
+			int clusterCount,
+			List<DependencyClusterResult> clusters) {
+
+		private static DependencyResult from(AiWorkbookSummary.DependencySummary summary) {
+			if (summary == null) {
+				return new DependencyResult(0, 0, 0, 0, 0, 0, 0, List.of());
+			}
+			return new DependencyResult(
+					summary.nodeCount(),
+					summary.edgeCount(),
+					summary.formulaNodeCount(),
+					summary.crossSheetEdgeCount(),
+					summary.namedReferenceCount(),
+					summary.externalReferenceCount(),
+					summary.clusterCount(),
+					safeList(summary.clusters()).stream()
+							.map(DependencyClusterResult::from)
+							.toList());
+		}
+	}
+
+	public record DependencyClusterResult(
+			String id,
+			int nodeCount,
+			int edgeCount,
+			int formulaCount,
+			List<String> sheetNames,
+			List<DependencyNodeResult> nodes,
+			List<DependencyEdgeResult> edges,
+			boolean truncated) {
+
+		private static DependencyClusterResult from(AiWorkbookSummary.DependencyCluster cluster) {
+			return new DependencyClusterResult(
+					cluster.id(),
+					cluster.nodeCount(),
+					cluster.edgeCount(),
+					cluster.formulaCount(),
+					safeList(cluster.sheetNames()),
+					safeList(cluster.nodes()).stream().map(DependencyNodeResult::from).toList(),
+					safeList(cluster.edges()).stream().map(DependencyEdgeResult::from).toList(),
+					Boolean.TRUE.equals(cluster.truncated()));
+		}
+	}
+
+	public record DependencyNodeResult(
+			String id,
+			String label,
+			String sheet,
+			String cell,
+			String kind,
+			String formula) {
+
+		private static DependencyNodeResult from(AiWorkbookSummary.DependencyNode node) {
+			return new DependencyNodeResult(
+					node.id(), node.label(), node.sheet(), node.cell(), node.kind(), node.formula());
+		}
+	}
+
+	public record DependencyEdgeResult(
+			String source,
+			String target,
+			String reference,
+			boolean crossSheet) {
+
+		private static DependencyEdgeResult from(AiWorkbookSummary.DependencyEdge edge) {
+			return new DependencyEdgeResult(
+					edge.source(), edge.target(), edge.reference(), edge.crossSheet());
 		}
 	}
 

@@ -80,7 +80,13 @@ class AiServiceClientTests {
 						      "table_count": 0,
 						      "chart_count": 1,
 						      "formulas": [
-						        {"cell": "D2", "formula": "=SUM(B2:C2)", "references": ["B2:C2"]}
+						        {
+						          "cell": "D2",
+						          "formula": "=SUM(B2:C2)",
+						          "references": ["B2:C2"],
+						          "cached_value": 15,
+						          "role": "calculation"
+						        }
 						      ],
 						      "region_count": 1,
 						      "regions": [
@@ -88,8 +94,23 @@ class AiServiceClientTests {
 						          "start_cell": "A1",
 						          "end_cell": "D3",
 						          "cell_count": 12,
+						          "title": "월별 매출",
+						          "row_count": 3,
+						          "column_count": 4,
+						          "merged_ranges": ["A1:B1"],
+						          "header_paths": [{"column": "D", "labels": ["월별 매출", "합계"]}],
 						          "preview_rows": [[
-						            {"address": "A1", "value": "상품", "formula": null}
+						            {
+						              "address": "A1",
+						              "value": "상품",
+						              "formula": null,
+						              "cached_value": null,
+						              "number_format": "General",
+						              "bold": true,
+						              "fill_color": "FFEEF4FF",
+						              "horizontal_alignment": "center",
+						              "merged": true
+						            }
 						          ]],
 						          "is_truncated": true
 						        }
@@ -123,7 +144,29 @@ class AiServiceClientTests {
 						        }
 						      ]
 						    }
-						  ]
+						  ],
+						  "dependency_summary": {
+						    "node_count": 2,
+						    "edge_count": 1,
+						    "formula_node_count": 1,
+						    "cross_sheet_edge_count": 0,
+						    "named_reference_count": 0,
+						    "external_reference_count": 0,
+						    "cluster_count": 1,
+						    "clusters": [{
+						      "id": "cluster-1",
+						      "node_count": 2,
+						      "edge_count": 1,
+						      "formula_count": 1,
+						      "sheet_names": ["Sales"],
+						      "nodes": [
+						        {"id": "Sales!B2:C2", "label": "Sales!B2:C2", "sheet": "Sales", "cell": "B2:C2", "kind": "range", "formula": null},
+						        {"id": "Sales!D2", "label": "Sales!D2", "sheet": "Sales", "cell": "D2", "kind": "formula", "formula": "=SUM(B2:C2)"}
+						      ],
+						      "edges": [{"source": "Sales!B2:C2", "target": "Sales!D2", "reference": "B2:C2", "cross_sheet": false}],
+						      "is_truncated": false
+						    }]
+						  }
 						}
 						""",
 						MediaType.APPLICATION_JSON));
@@ -138,6 +181,14 @@ class AiServiceClientTests {
 
 		assertThat(response.filename()).isEqualTo("sales.xlsx");
 		assertThat(response.sheetCount()).isEqualTo(1);
+		assertThat(response.dependencySummary().edgeCount()).isEqualTo(1);
+		assertThat(response.dependencySummary().clusters()).singleElement().satisfies(cluster -> {
+			assertThat(cluster.sheetNames()).containsExactly("Sales");
+			assertThat(cluster.edges()).singleElement().satisfies(edge -> {
+				assertThat(edge.source()).isEqualTo("Sales!B2:C2");
+				assertThat(edge.target()).isEqualTo("Sales!D2");
+			});
+		});
 		assertThat(response.sheets()).singleElement().satisfies(sheet -> {
 			assertThat(sheet.name()).isEqualTo("Sales");
 			assertThat(sheet.formulaCount()).isEqualTo(1);
@@ -145,11 +196,27 @@ class AiServiceClientTests {
 			assertThat(sheet.formulas()).singleElement().satisfies(formula -> {
 				assertThat(formula.cell()).isEqualTo("D2");
 				assertThat(formula.references()).containsExactly("B2:C2");
+				assertThat(formula.cachedValue()).isEqualTo(15);
+				assertThat(formula.role()).isEqualTo("calculation");
 			});
 			assertThat(sheet.regions()).singleElement().satisfies(region -> {
 				assertThat(region.startCell()).isEqualTo("A1");
 				assertThat(region.endCell()).isEqualTo("D3");
-				assertThat(region.previewRows().getFirst().getFirst().value()).isEqualTo("상품");
+				assertThat(region.title()).isEqualTo("월별 매출");
+				assertThat(region.rowCount()).isEqualTo(3);
+				assertThat(region.columnCount()).isEqualTo(4);
+				assertThat(region.mergedRanges()).containsExactly("A1:B1");
+				assertThat(region.headerPaths()).singleElement().satisfies(header -> {
+					assertThat(header.column()).isEqualTo("D");
+					assertThat(header.labels()).containsExactly("월별 매출", "합계");
+				});
+				assertThat(region.previewRows().getFirst().getFirst()).satisfies(cell -> {
+					assertThat(cell.value()).isEqualTo("상품");
+					assertThat(cell.bold()).isTrue();
+					assertThat(cell.fillColor()).isEqualTo("FFEEF4FF");
+					assertThat(cell.horizontalAlignment()).isEqualTo("center");
+					assertThat(cell.merged()).isTrue();
+				});
 				assertThat(region.truncated()).isTrue();
 			});
 			assertThat(sheet.tables()).singleElement().satisfies(table ->

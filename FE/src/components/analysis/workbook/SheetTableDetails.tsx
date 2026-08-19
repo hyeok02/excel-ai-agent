@@ -1,13 +1,15 @@
 import { Table2 } from 'lucide-react'
 
 import type { TableResult } from '@/api/analysis'
-import CellPreviewTable from '@/components/analysis/CellPreviewTable'
+import CellPreviewTable from '@/components/analysis/workbook/CellPreviewTable'
+import OriginalLocationButton from '@/components/analysis/workbook/OriginalLocationButton'
 
 interface SheetTableDetailsProps {
   tables: TableResult[]
+  sheetName: string
 }
 
-const SheetTableDetails = ({ tables }: SheetTableDetailsProps) => {
+const SheetTableDetails = ({ tables, sheetName }: SheetTableDetailsProps) => {
   if (tables.length === 0) return null
 
   return (
@@ -56,6 +58,9 @@ const SheetTableDetails = ({ tables }: SheetTableDetailsProps) => {
               </div>
             </summary>
             <div className="border-t border-slate-200 p-3">
+              <div className="mb-3 flex justify-end">
+                <OriginalLocationButton location={table.reference} sheetName={sheetName} />
+              </div>
               <CellPreviewTable rows={table.previewRows ?? []} />
               {table.truncated && (
                 <p className="mt-2 text-[11px] text-slate-400">

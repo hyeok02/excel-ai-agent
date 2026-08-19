@@ -1,10 +1,10 @@
 import { FileSpreadsheet } from 'lucide-react'
 
 import type { SheetResult } from '@/api/analysis'
-import SheetChartDetails from '@/components/analysis/SheetChartDetails'
-import SheetFormulaDetails from '@/components/analysis/SheetFormulaDetails'
-import SheetRegionDetails from '@/components/analysis/SheetRegionDetails'
-import SheetTableDetails from '@/components/analysis/SheetTableDetails'
+import SheetChartDetails from '@/components/analysis/workbook/SheetChartDetails'
+import SheetFormulaDetails from '@/components/analysis/workbook/SheetFormulaDetails'
+import SheetRegionDetails from '@/components/analysis/workbook/SheetRegionDetails'
+import SheetTableDetails from '@/components/analysis/workbook/SheetTableDetails'
 
 interface SheetResultCardProps {
   sheet: SheetResult
@@ -12,8 +12,8 @@ interface SheetResultCardProps {
 
 const SheetResultCard = ({ sheet }: SheetResultCardProps) => {
   return (
-    <details className="group rounded-2xl border border-slate-200 bg-white open:shadow-sm">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-4 p-5 marker:hidden">
+    <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <header className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
             <FileSpreadsheet aria-hidden="true" size={18} />
@@ -41,19 +41,19 @@ const SheetResultCard = ({ sheet }: SheetResultCardProps) => {
             차트 {sheet.chartCount}
           </span>
         </div>
-      </summary>
+      </header>
 
       <div className="space-y-4 border-t border-slate-100 p-5">
         <div className="grid gap-4 xl:grid-cols-2">
-          <SheetRegionDetails regions={sheet.regions ?? []} />
-          <SheetFormulaDetails formulas={sheet.formulas ?? []} />
+          <SheetRegionDetails regions={sheet.regions ?? []} sheetName={sheet.name} />
+          <SheetFormulaDetails formulas={sheet.formulas ?? []} sheetName={sheet.name} />
         </div>
         <div className="grid gap-4 xl:grid-cols-2">
-          <SheetTableDetails tables={sheet.tables ?? []} />
-          <SheetChartDetails charts={sheet.charts ?? []} />
+          <SheetTableDetails tables={sheet.tables ?? []} sheetName={sheet.name} />
+          <SheetChartDetails charts={sheet.charts ?? []} sheetName={sheet.name} />
         </div>
       </div>
-    </details>
+    </article>
   )
 }
 
