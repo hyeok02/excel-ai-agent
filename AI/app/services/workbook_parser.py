@@ -20,6 +20,7 @@ from app.services.workbook_details import (
     summarize_regions,
     summarize_tables,
 )
+from app.services.worksheet_filter import is_business_worksheet
 
 SUPPORTED_EXTENSIONS = {".xlsx", ".xlsm"}
 
@@ -75,6 +76,9 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
     try:
         sheets = []
         for worksheet in workbook.worksheets:
+            if not is_business_worksheet(worksheet):
+                continue
+
             value_worksheet = value_workbook[worksheet.title]
             formulas = analyze_formulas(worksheet, value_worksheet)
             detected_regions = detect_regions(worksheet)
