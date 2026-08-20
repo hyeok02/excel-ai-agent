@@ -77,12 +77,6 @@ const AnalysisUploadPanel = ({
         </button>
       </div>
 
-      {mode === 'LLM' && (
-        <p className="mt-3 text-xs text-slate-400">
-          워크북 구조와 수식 정보를 바탕으로 AI가 요약, 근거 및 검토 권고를 생성합니다.
-        </p>
-      )}
-
       <div
         className={cn(
           'upload-zone',

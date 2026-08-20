@@ -54,6 +54,28 @@ def create_workbook_file() -> bytes:
     return output.getvalue()
 
 
+def create_workbook_with_system_sheets() -> bytes:
+    workbook = Workbook()
+    business_sheet = workbook.active
+    business_sheet.title = "업무 데이터"
+    business_sheet["A1"] = "분석 대상"
+
+    hidden_sheet = workbook.create_sheet("숨김 계산")
+    hidden_sheet["A1"] = "화면에 표시하지 않음"
+    hidden_sheet.sheet_state = "hidden"
+
+    add_in_sheet = workbook.create_sheet("__snlofficequeries")
+    add_in_sheet["A1"] = "애드인 캐시"
+
+    cache_sheet = workbook.create_sheet("CIOHiddenCacheSheet")
+    cache_sheet["A1"] = "시스템 캐시"
+
+    output = BytesIO()
+    workbook.save(output)
+    workbook.close()
+    return output.getvalue()
+
+
 def test_returns_workbook_summary() -> None:
     response = client.post(
         "/api/v1/workbooks/summary",
@@ -119,6 +141,24 @@ def test_returns_workbook_summary() -> None:
         "reference": "매출현황!D2",
         "cross_sheet": True,
     }
+
+
+def test_excludes_hidden_and_add_in_cache_sheets() -> None:
+    response = client.post(
+        "/api/v1/workbooks/summary",
+        files={
+            "file": (
+                "system-sheets.xlsx",
+                create_workbook_with_system_sheets(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["sheet_count"] == 1
+    assert [sheet["name"] for sheet in result["sheets"]] == ["업무 데이터"]
 
 
 def test_rejects_unsupported_extension() -> None:
