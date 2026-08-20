@@ -1,6 +1,7 @@
 import apiClient from '@/utils/apiClient'
 
 export type AnalysisMode = 'BFS' | 'LLM'
+export type AnalysisDepth = 'AUTO' | 'FAST' | 'PRECISE'
 
 export type AnalysisStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
 
@@ -173,10 +174,15 @@ export interface CompletedAnalysis {
   result: AnalysisResultDetails
 }
 
-export const submitAnalysis = async (file: File, mode: AnalysisMode) => {
+export const submitAnalysis = async (
+  file: File,
+  mode: AnalysisMode,
+  depth: AnalysisDepth,
+) => {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('mode', mode)
+  formData.append('depth', depth)
 
   const { data } = await apiClient.post<AnalysisSubmission>('/api/v1/analyses', formData)
   return data
@@ -192,8 +198,9 @@ export const getAnalysisResult = async (analysisId: string) => {
 export const analyzeWorkbook = async (
   file: File,
   mode: AnalysisMode,
+  depth: AnalysisDepth,
 ): Promise<CompletedAnalysis> => {
-  const submission = await submitAnalysis(file, mode)
+  const submission = await submitAnalysis(file, mode, depth)
   const result = await getAnalysisResult(submission.analysisId)
 
   return { submission, result }

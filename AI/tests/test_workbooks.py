@@ -8,13 +8,22 @@ from pytest import MonkeyPatch
 
 from app.api.workbooks import get_insight_generator
 from app.main import app
+from app.services.analysis_strategy import AnalysisDepth
 from app.services.insight_generator import WorkbookInsight, WorkbookInsightReport
 
 client = TestClient(app)
 
 
 class StubInsightGenerator:
-    async def generate(self, summary: object) -> WorkbookInsightReport:
+    def __init__(self) -> None:
+        self.requested_depth = AnalysisDepth.AUTO
+
+    async def generate(
+        self,
+        summary: object,
+        depth: AnalysisDepth = AnalysisDepth.AUTO,
+    ) -> WorkbookInsightReport:
+        self.requested_depth = depth
         return WorkbookInsightReport(
             overview="2개 시트로 구성된 워크북입니다.",
             insights=[
@@ -204,11 +213,13 @@ def test_rejects_file_exceeding_size_limit(monkeypatch: MonkeyPatch) -> None:
 
 
 def test_returns_structured_workbook_insights() -> None:
-    app.dependency_overrides[get_insight_generator] = StubInsightGenerator
+    insight_generator = StubInsightGenerator()
+    app.dependency_overrides[get_insight_generator] = lambda: insight_generator
 
     try:
         response = client.post(
             "/api/v1/workbooks/insights",
+            data={"depth": "PRECISE"},
             files={
                 "file": (
                     "sales.xlsx",
@@ -221,6 +232,7 @@ def test_returns_structured_workbook_insights() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
+    assert insight_generator.requested_depth == AnalysisDepth.PRECISE
     result = response.json()
     assert result["workbook"]["filename"] == "sales.xlsx"
     assert result["report"] == {
@@ -237,6 +249,27 @@ def test_returns_structured_workbook_insights() -> None:
         ],
         "limitations": ["실제 셀 값의 의미는 분석하지 않았습니다."],
     }
+
+
+def test_rejects_unknown_analysis_depth() -> None:
+    app.dependency_overrides[get_insight_generator] = StubInsightGenerator
+
+    try:
+        response = client.post(
+            "/api/v1/workbooks/insights",
+            data={"depth": "UNKNOWN"},
+            files={
+                "file": (
+                    "sales.xlsx",
+                    create_workbook_file(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
 
 
 def test_returns_service_unavailable_without_openai_api_key(

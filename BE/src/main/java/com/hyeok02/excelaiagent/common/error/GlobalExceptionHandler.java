@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
@@ -95,6 +96,10 @@ public class GlobalExceptionHandler {
 		if (AnalysisMode.class.equals(exception.getRequiredType())) {
 			code = "INVALID_ANALYSIS_MODE";
 			message = "mode는 BFS 또는 LLM 중 하나여야 합니다.";
+		}
+		else if (AnalysisDepth.class.equals(exception.getRequiredType())) {
+			code = "INVALID_ANALYSIS_DEPTH";
+			message = "depth는 AUTO, FAST 또는 PRECISE 중 하나여야 합니다.";
 		}
 		else if (UUID.class.equals(exception.getRequiredType())) {
 			code = "INVALID_ANALYSIS_ID";

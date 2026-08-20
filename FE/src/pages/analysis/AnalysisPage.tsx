@@ -8,14 +8,17 @@ import { useWorkbookAnalysis } from '@/hooks/useWorkbookAnalysis'
 const AnalysisPage = () => {
   const {
     analysisResult,
+    analysisResultMode,
+    changeDepth,
+    changeMode,
     clearFile,
+    depth,
     errorMessage,
     feedback,
     isPending,
     mode,
     selectFile,
     selectedFile,
-    setMode,
     startAnalysis,
     status,
     statusText,
@@ -29,10 +32,12 @@ const AnalysisPage = () => {
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <AnalysisUploadPanel
           errorMessage={errorMessage}
+          depth={depth}
           isPending={isPending}
           mode={mode}
           onClearFile={clearFile}
-          onModeChange={setMode}
+          onDepthChange={changeDepth}
+          onModeChange={changeMode}
           onSelectFile={selectFile}
           onStartAnalysis={startAnalysis}
           selectedFile={selectedFile}
@@ -42,7 +47,9 @@ const AnalysisPage = () => {
         </aside>
       </section>
 
-      {analysisResult && <AnalysisResultSection result={analysisResult} />}
+      {analysisResult && analysisResultMode && (
+        <AnalysisResultSection mode={analysisResultMode} result={analysisResult} />
+      )}
     </div>
   )
 }
