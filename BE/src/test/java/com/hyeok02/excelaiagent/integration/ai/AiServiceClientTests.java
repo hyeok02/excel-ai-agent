@@ -166,6 +166,17 @@ class AiServiceClientTests {
 						      ],
 						      "edges": [{"source": "Sales!B2:C2", "target": "Sales!D2", "reference": "B2:C2", "cross_sheet": false}],
 						      "is_truncated": false
+						    }],
+						    "cycle_count": 1,
+						    "cyclic_node_count": 1,
+						    "cycles": [{
+						      "id": "cycle-1",
+						      "node_count": 1,
+						      "edge_count": 1,
+						      "sheet_names": ["Sales"],
+						      "nodes": [{"id": "Sales!D2", "label": "Sales!D2", "sheet": "Sales", "cell": "D2", "kind": "formula", "formula": "=D2+1"}],
+						      "edges": [{"source": "Sales!D2", "target": "Sales!D2", "reference": "D2", "cross_sheet": false}],
+						      "is_truncated": false
 						    }]
 						  }
 						}
@@ -183,6 +194,12 @@ class AiServiceClientTests {
 		assertThat(response.filename()).isEqualTo("sales.xlsx");
 		assertThat(response.sheetCount()).isEqualTo(1);
 		assertThat(response.dependencySummary().edgeCount()).isEqualTo(1);
+		assertThat(response.dependencySummary().cycleCount()).isEqualTo(1);
+		assertThat(response.dependencySummary().cycles()).singleElement().satisfies(cycle -> {
+			assertThat(cycle.nodeCount()).isEqualTo(1);
+			assertThat(cycle.nodes()).singleElement().satisfies(node ->
+					assertThat(node.id()).isEqualTo("Sales!D2"));
+		});
 		assertThat(response.dependencySummary().clusters()).singleElement().satisfies(cluster -> {
 			assertThat(cluster.sheetNames()).containsExactly("Sales");
 			assertThat(cluster.edges()).singleElement().satisfies(edge -> {

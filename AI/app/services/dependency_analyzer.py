@@ -2,11 +2,16 @@ import re
 from collections import defaultdict, deque
 from dataclasses import dataclass
 
+from openpyxl.utils.cell import coordinate_to_tuple, range_boundaries
+
 from app.services.formula_analyzer import FormulaAnalysis
 
 MAX_CLUSTERS = 8
 MAX_NODES_PER_CLUSTER = 18
 MAX_EDGES_PER_CLUSTER = 28
+MAX_CYCLES = 20
+MAX_NODES_PER_CYCLE = 12
+MAX_EDGES_PER_CYCLE = 20
 
 CELL_OR_RANGE_PATTERN = re.compile(
     r"^\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?$"
@@ -44,6 +49,17 @@ class DependencyCluster:
 
 
 @dataclass(frozen=True)
+class DependencyCycle:
+    id: str
+    node_count: int
+    edge_count: int
+    sheet_names: list[str]
+    nodes: list[DependencyNode]
+    edges: list[DependencyEdge]
+    is_truncated: bool
+
+
+@dataclass(frozen=True)
 class DependencySummary:
     node_count: int
     edge_count: int
@@ -53,10 +69,13 @@ class DependencySummary:
     external_reference_count: int
     cluster_count: int
     clusters: list[DependencyCluster]
+    cycle_count: int
+    cyclic_node_count: int
+    cycles: list[DependencyCycle]
 
     @classmethod
     def empty(cls) -> "DependencySummary":
-        return cls(0, 0, 0, 0, 0, 0, 0, [])
+        return cls(0, 0, 0, 0, 0, 0, 0, [], 0, 0, [])
 
 
 def analyze_dependencies(
@@ -101,14 +120,19 @@ def analyze_dependencies(
                     )
                 )
 
-    adjacency: dict[str, set[str]] = defaultdict(set)
+    cycle_edges = _expand_range_formula_edges(nodes, edges)
+    directed_adjacency: dict[str, set[str]] = defaultdict(set)
+    undirected_adjacency: dict[str, set[str]] = defaultdict(set)
     for node_id in nodes:
-        adjacency[node_id]
+        directed_adjacency[node_id]
+        undirected_adjacency[node_id]
+    for edge in cycle_edges:
+        directed_adjacency[edge.source].add(edge.target)
     for edge in edges:
-        adjacency[edge.source].add(edge.target)
-        adjacency[edge.target].add(edge.source)
+        undirected_adjacency[edge.source].add(edge.target)
+        undirected_adjacency[edge.target].add(edge.source)
 
-    components = _connected_components(adjacency)
+    components = _connected_components(undirected_adjacency)
     component_by_node = {
         node_id: component_index
         for component_index, component in enumerate(components)
@@ -132,10 +156,27 @@ def analyze_dependencies(
             component,
             edges_by_component[component_index],
             nodes,
-            adjacency,
+            undirected_adjacency,
         )
         for display_index, (component_index, component) in enumerate(
             ranked_components[:MAX_CLUSTERS],
+            start=1,
+        )
+    ]
+    cycle_components = [
+        component
+        for component in _strongly_connected_components(directed_adjacency)
+        if len(component) > 1
+        or any(node_id in directed_adjacency[node_id] for node_id in component)
+    ]
+    ranked_cycle_components = sorted(
+        cycle_components,
+        key=lambda component: (-len(component), sorted(component)),
+    )
+    cycles = [
+        _summarize_cycle(display_index, component, nodes, cycle_edges)
+        for display_index, component in enumerate(
+            ranked_cycle_components[:MAX_CYCLES],
             start=1,
         )
     ]
@@ -151,7 +192,49 @@ def analyze_dependencies(
         ),
         cluster_count=len(components),
         clusters=clusters,
+        cycle_count=len(cycle_components),
+        cyclic_node_count=sum(len(component) for component in cycle_components),
+        cycles=cycles,
     )
+
+
+def _expand_range_formula_edges(
+    nodes: dict[str, DependencyNode],
+    edges: list[DependencyEdge],
+) -> list[DependencyEdge]:
+    expanded_edges = list(edges)
+    edge_keys = {(edge.source, edge.target, edge.reference) for edge in edges}
+    formula_nodes = [node for node in nodes.values() if node.kind == "formula"]
+
+    for edge in edges:
+        range_node = nodes[edge.source]
+        if range_node.kind != "range" or range_node.sheet is None or range_node.cell is None:
+            continue
+
+        min_column, min_row, max_column, max_row = range_boundaries(range_node.cell)
+        for formula_node in formula_nodes:
+            if formula_node.sheet != range_node.sheet or formula_node.cell is None:
+                continue
+
+            row, column = coordinate_to_tuple(formula_node.cell)
+            if not (min_row <= row <= max_row and min_column <= column <= max_column):
+                continue
+
+            edge_key = (formula_node.id, edge.target, edge.reference)
+            if edge_key in edge_keys:
+                continue
+
+            edge_keys.add(edge_key)
+            expanded_edges.append(
+                DependencyEdge(
+                    source=formula_node.id,
+                    target=edge.target,
+                    reference=edge.reference,
+                    cross_sheet=formula_node.sheet != nodes[edge.target].sheet,
+                )
+            )
+
+    return expanded_edges
 
 
 def _reference_node(current_sheet: str, raw_reference: str) -> DependencyNode:
@@ -224,6 +307,101 @@ def _connected_components(adjacency: dict[str, set[str]]) -> list[set[str]]:
         components.append(component)
 
     return components
+
+
+def _strongly_connected_components(
+    adjacency: dict[str, set[str]],
+) -> list[set[str]]:
+    finish_order: list[str] = []
+    visited: set[str] = set()
+
+    for start_node in sorted(adjacency):
+        if start_node in visited:
+            continue
+
+        stack: list[tuple[str, bool]] = [(start_node, False)]
+        while stack:
+            node_id, expanded = stack.pop()
+            if expanded:
+                finish_order.append(node_id)
+                continue
+            if node_id in visited:
+                continue
+
+            visited.add(node_id)
+            stack.append((node_id, True))
+            for neighbor in sorted(adjacency[node_id], reverse=True):
+                if neighbor not in visited:
+                    stack.append((neighbor, False))
+
+    reverse_adjacency: dict[str, set[str]] = defaultdict(set)
+    for node_id in adjacency:
+        reverse_adjacency[node_id]
+    for source, targets in adjacency.items():
+        for target in targets:
+            reverse_adjacency[target].add(source)
+
+    components: list[set[str]] = []
+    visited.clear()
+    for start_node in reversed(finish_order):
+        if start_node in visited:
+            continue
+
+        component: set[str] = set()
+        stack = [(start_node, False)]
+        visited.add(start_node)
+        while stack:
+            node_id, _ = stack.pop()
+            component.add(node_id)
+            for neighbor in sorted(reverse_adjacency[node_id], reverse=True):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append((neighbor, False))
+
+        components.append(component)
+
+    return components
+
+
+def _summarize_cycle(
+    display_index: int,
+    component: set[str],
+    all_nodes: dict[str, DependencyNode],
+    all_edges: list[DependencyEdge],
+) -> DependencyCycle:
+    node_ids = sorted(component)
+    sampled_node_ids = node_ids[:MAX_NODES_PER_CYCLE]
+    sampled_node_set = set(sampled_node_ids)
+    component_edges = [
+        edge
+        for edge in all_edges
+        if edge.source in component and edge.target in component
+    ]
+    sampled_edges = [
+        edge
+        for edge in component_edges
+        if edge.source in sampled_node_set and edge.target in sampled_node_set
+    ][:MAX_EDGES_PER_CYCLE]
+    sheet_names = sorted(
+        {
+            all_nodes[node_id].sheet
+            for node_id in component
+            if all_nodes[node_id].sheet is not None
+        }
+    )
+
+    return DependencyCycle(
+        id=f"cycle-{display_index}",
+        node_count=len(component),
+        edge_count=len(component_edges),
+        sheet_names=sheet_names,
+        nodes=[all_nodes[node_id] for node_id in sampled_node_ids],
+        edges=sampled_edges,
+        is_truncated=(
+            len(component) > len(sampled_node_ids)
+            or len(component_edges) > len(sampled_edges)
+        ),
+    )
 
 
 def _summarize_cluster(

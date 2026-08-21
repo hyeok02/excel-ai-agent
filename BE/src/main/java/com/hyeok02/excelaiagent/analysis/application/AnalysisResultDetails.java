@@ -245,11 +245,14 @@ public record AnalysisResultDetails(
 			int namedReferenceCount,
 			int externalReferenceCount,
 			int clusterCount,
-			List<DependencyClusterResult> clusters) {
+			List<DependencyClusterResult> clusters,
+			int cycleCount,
+			int cyclicNodeCount,
+			List<DependencyCycleResult> cycles) {
 
 		private static DependencyResult from(AiWorkbookSummary.DependencySummary summary) {
 			if (summary == null) {
-				return new DependencyResult(0, 0, 0, 0, 0, 0, 0, List.of());
+				return new DependencyResult(0, 0, 0, 0, 0, 0, 0, List.of(), 0, 0, List.of());
 			}
 			return new DependencyResult(
 					summary.nodeCount(),
@@ -261,6 +264,11 @@ public record AnalysisResultDetails(
 					summary.clusterCount(),
 					safeList(summary.clusters()).stream()
 							.map(DependencyClusterResult::from)
+							.toList(),
+					summary.cycleCount(),
+					summary.cyclicNodeCount(),
+					safeList(summary.cycles()).stream()
+							.map(DependencyCycleResult::from)
 							.toList());
 		}
 	}
@@ -285,6 +293,27 @@ public record AnalysisResultDetails(
 					safeList(cluster.nodes()).stream().map(DependencyNodeResult::from).toList(),
 					safeList(cluster.edges()).stream().map(DependencyEdgeResult::from).toList(),
 					Boolean.TRUE.equals(cluster.truncated()));
+		}
+	}
+
+	public record DependencyCycleResult(
+			String id,
+			int nodeCount,
+			int edgeCount,
+			List<String> sheetNames,
+			List<DependencyNodeResult> nodes,
+			List<DependencyEdgeResult> edges,
+			boolean truncated) {
+
+		private static DependencyCycleResult from(AiWorkbookSummary.DependencyCycle cycle) {
+			return new DependencyCycleResult(
+					cycle.id(),
+					cycle.nodeCount(),
+					cycle.edgeCount(),
+					safeList(cycle.sheetNames()),
+					safeList(cycle.nodes()).stream().map(DependencyNodeResult::from).toList(),
+					safeList(cycle.edges()).stream().map(DependencyEdgeResult::from).toList(),
+					Boolean.TRUE.equals(cycle.truncated()));
 		}
 	}
 

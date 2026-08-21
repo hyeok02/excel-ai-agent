@@ -196,6 +196,10 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].title").value("월별 매출"))
 				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].series[0].valueSamples[0]").value(10))
 				.andExpect(jsonPath("$.workbook.dependencyGraph.edgeCount").value(1))
+				.andExpect(jsonPath("$.workbook.dependencyGraph.cycleCount").value(1))
+				.andExpect(jsonPath("$.workbook.dependencyGraph.cyclicNodeCount").value(1))
+				.andExpect(jsonPath("$.workbook.dependencyGraph.cycles[0].nodes[0].id")
+						.value("Sales!D2"))
 				.andExpect(jsonPath("$.workbook.dependencyGraph.clusters[0].edges[0].source")
 						.value("Sales!B2:C2"))
 				.andExpect(jsonPath("$.workbook.dependencyGraph.clusters[0].edges[0].target")
@@ -535,6 +539,18 @@ class AnalysisControllerTests {
 												"Sales!D2", "Sales!D2", "Sales", "D2", "formula", "=SUM(B2:C2)")),
 								List.of(new AiWorkbookSummary.DependencyEdge(
 										"Sales!B2:C2", "Sales!D2", "B2:C2", false)),
+								false)),
+						1,
+						1,
+						List.of(new AiWorkbookSummary.DependencyCycle(
+								"cycle-1",
+								1,
+								1,
+								List.of("Sales"),
+								List.of(new AiWorkbookSummary.DependencyNode(
+										"Sales!D2", "Sales!D2", "Sales", "D2", "formula", "=D2+1")),
+								List.of(new AiWorkbookSummary.DependencyEdge(
+										"Sales!D2", "Sales!D2", "D2", false)),
 								false))));
 	}
 

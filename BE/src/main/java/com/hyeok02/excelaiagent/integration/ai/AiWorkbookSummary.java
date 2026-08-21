@@ -137,7 +137,10 @@ public record AiWorkbookSummary(
 			@JsonProperty("named_reference_count") int namedReferenceCount,
 			@JsonProperty("external_reference_count") int externalReferenceCount,
 			@JsonProperty("cluster_count") int clusterCount,
-			List<DependencyCluster> clusters) {
+			List<DependencyCluster> clusters,
+			@JsonProperty("cycle_count") int cycleCount,
+			@JsonProperty("cyclic_node_count") int cyclicNodeCount,
+			List<DependencyCycle> cycles) {
 	}
 
 	public record DependencyCluster(
@@ -145,6 +148,16 @@ public record AiWorkbookSummary(
 			@JsonProperty("node_count") int nodeCount,
 			@JsonProperty("edge_count") int edgeCount,
 			@JsonProperty("formula_count") int formulaCount,
+			@JsonProperty("sheet_names") List<String> sheetNames,
+			List<DependencyNode> nodes,
+			List<DependencyEdge> edges,
+			@JsonProperty("is_truncated") Boolean truncated) {
+	}
+
+	public record DependencyCycle(
+			String id,
+			@JsonProperty("node_count") int nodeCount,
+			@JsonProperty("edge_count") int edgeCount,
 			@JsonProperty("sheet_names") List<String> sheetNames,
 			List<DependencyNode> nodes,
 			List<DependencyEdge> edges,

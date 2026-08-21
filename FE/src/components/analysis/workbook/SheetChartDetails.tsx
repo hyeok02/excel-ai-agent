@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined } from 'lucide-react'
+import { ChartNoAxesCombined, ChevronDown } from 'lucide-react'
 
 import type { CellValue, ChartResult } from '@/api/analysis'
 import ChartVisualPreview from '@/components/analysis/workbook/ChartVisualPreview'
@@ -11,7 +11,14 @@ interface SheetChartDetailsProps {
 
 const formatSamples = (values: CellValue[]) => {
   if (values.length === 0) return '표본 없음'
-  return values.map((value) => (value === null ? '—' : String(value))).join(', ')
+  const previewLimit = 6
+  const preview = values
+    .slice(0, previewLimit)
+    .map((value) => (value === null ? '—' : String(value)))
+    .join(', ')
+  const remainingCount = values.length - previewLimit
+
+  return remainingCount > 0 ? `${preview} · 외 ${remainingCount}개` : preview
 }
 
 const SheetChartDetails = ({ charts, sheetName }: SheetChartDetailsProps) => {
@@ -36,7 +43,6 @@ const SheetChartDetails = ({ charts, sheetName }: SheetChartDetailsProps) => {
           <details
             className="rounded-xl bg-slate-50/80"
             key={`${chart.anchorCell}-${chartIndex}`}
-            open={chartIndex === 0}
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden">
               <div>
@@ -48,48 +54,74 @@ const SheetChartDetails = ({ charts, sheetName }: SheetChartDetailsProps) => {
                   {chart.seriesCount}개
                 </p>
               </div>
+              <ChevronDown
+                aria-hidden="true"
+                className="shrink-0 text-slate-400"
+                size={16}
+              />
             </summary>
 
             <div className="space-y-2 border-t border-slate-200 p-3">
               <div className="flex justify-end">
                 {chart.anchorCell && (
-                  <OriginalLocationButton location={chart.anchorCell} sheetName={sheetName} />
+                  <OriginalLocationButton
+                    location={chart.anchorCell}
+                    sheetName={sheetName}
+                  />
                 )}
               </div>
               <ChartVisualPreview chart={chart} />
-              {(chart.series ?? []).map((series, seriesIndex) => (
-                <div className="rounded-xl bg-white p-3 text-xs" key={seriesIndex}>
-                  <p className="font-extrabold text-slate-700">
-                    {series.title || `계열 ${seriesIndex + 1}`}
-                  </p>
-                  <dl className="mt-2 grid gap-2 text-slate-500">
-                    <div>
-                      <dt className="font-bold text-slate-400">범주 참조</dt>
-                      <dd className="mt-0.5 break-all">
-                        {series.categoriesReference || '없음'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-bold text-slate-400">값 참조</dt>
-                      <dd className="mt-0.5 break-all">{series.valuesReference || '없음'}</dd>
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div>
-                        <dt className="font-bold text-slate-400">범주 표본</dt>
-                        <dd className="mt-0.5 break-all">
-                          {formatSamples(series.categorySamples ?? [])}
-                        </dd>
+              {(chart.series ?? []).length > 0 && (
+                <details className="rounded-xl border border-slate-200 bg-white">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-xs font-extrabold text-slate-600 marker:hidden">
+                    <span>계열 상세 데이터</span>
+                    <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                      {chart.series.length}개
+                      <ChevronDown aria-hidden="true" size={14} />
+                    </span>
+                  </summary>
+                  <div className="space-y-2 border-t border-slate-100 p-2">
+                    {chart.series.map((series, seriesIndex) => (
+                      <div
+                        className="rounded-lg bg-slate-50 p-3 text-xs"
+                        key={seriesIndex}
+                      >
+                        <p className="font-extrabold text-slate-700">
+                          {series.title || `계열 ${seriesIndex + 1}`}
+                        </p>
+                        <dl className="mt-2 grid gap-2 text-slate-500">
+                          <div>
+                            <dt className="font-bold text-slate-400">범주 참조</dt>
+                            <dd className="mt-0.5 break-all">
+                              {series.categoriesReference || '없음'}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="font-bold text-slate-400">값 참조</dt>
+                            <dd className="mt-0.5 break-all">
+                              {series.valuesReference || '없음'}
+                            </dd>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <div>
+                              <dt className="font-bold text-slate-400">범주 표본</dt>
+                              <dd className="mt-0.5 break-all">
+                                {formatSamples(series.categorySamples ?? [])}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="font-bold text-slate-400">값 표본</dt>
+                              <dd className="mt-0.5 break-all">
+                                {formatSamples(series.valueSamples ?? [])}
+                              </dd>
+                            </div>
+                          </div>
+                        </dl>
                       </div>
-                      <div>
-                        <dt className="font-bold text-slate-400">값 표본</dt>
-                        <dd className="mt-0.5 break-all">
-                          {formatSamples(series.valueSamples ?? [])}
-                        </dd>
-                      </div>
-                    </div>
-                  </dl>
-                </div>
-              ))}
+                    ))}
+                  </div>
+                </details>
+              )}
               {chart.truncated && (
                 <p className="text-[11px] text-slate-400">
                   계열이 많아 앞쪽 12개만 표시합니다.
