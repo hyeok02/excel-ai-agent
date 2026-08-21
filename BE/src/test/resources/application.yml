@@ -12,5 +12,8 @@ spring:
     locations: classpath:db/migration/h2
 
 app:
+  analysis:
+    async-enabled: false
   storage:
     upload-dir: build/test-uploads
+    cleanup-initial-delay: 24h

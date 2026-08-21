@@ -14,6 +14,11 @@ export interface AnalysisSubmission {
   createdAt: string
 }
 
+export interface AnalysisDetails extends AnalysisSubmission {
+  fileExtension: string
+  updatedAt: string
+}
+
 export interface FormulaResult {
   cell: string
   formula: string
@@ -208,12 +213,43 @@ export const getAnalysisResult = async (analysisId: string) => {
   return data
 }
 
+export const getAnalysisDetails = async (analysisId: string) => {
+  const { data } = await apiClient.get<AnalysisDetails>(`/api/v1/analyses/${analysisId}`)
+  return data
+}
+
+const waitForAnalysis = async (
+  analysisId: string,
+  onStatusChange?: (status: AnalysisStatus) => void,
+) => {
+  const startedAt = Date.now()
+  const timeoutMs = Number(import.meta.env.VITE_ANALYSIS_TIMEOUT ?? 180_000)
+  const pollIntervalMs = Number(import.meta.env.VITE_ANALYSIS_POLL_INTERVAL ?? 1_000)
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const details = await getAnalysisDetails(analysisId)
+    onStatusChange?.(details.status)
+    if (details.status === 'COMPLETED') {
+      return
+    }
+    if (details.status === 'FAILED') {
+      throw new Error('Excel 분석 처리에 실패했습니다.')
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, pollIntervalMs))
+  }
+
+  throw new Error('분석 대기 시간이 초과되었습니다. 분석 이력에서 처리 상태를 확인해주세요.')
+}
+
 export const analyzeWorkbook = async (
   file: File,
   mode: AnalysisMode,
   depth: AnalysisDepth,
+  onStatusChange?: (status: AnalysisStatus) => void,
 ): Promise<CompletedAnalysis> => {
   const submission = await submitAnalysis(file, mode, depth)
+  onStatusChange?.(submission.status)
+  await waitForAnalysis(submission.analysisId, onStatusChange)
   const result = await getAnalysisResult(submission.analysisId)
 
   return { submission, result }

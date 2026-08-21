@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.core.io.Resource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -62,8 +63,8 @@ class AnalysisControllerTests {
 	void clearAnalysisJobs() {
 		analysisJobRepository.deleteAll();
 		reset(aiServiceClient);
-		when(aiServiceClient.summarizeWorkbook(any())).thenReturn(workbookSummary());
-		when(aiServiceClient.generateWorkbookInsights(any(), any())).thenReturn(workbookInsights());
+		when(aiServiceClient.summarizeWorkbook(any(Resource.class))).thenReturn(workbookSummary());
+		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any())).thenReturn(workbookInsights());
 	}
 
 	@Test
@@ -79,7 +80,7 @@ class AnalysisControllerTests {
 					.param("mode", "BFS"))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.analysisId").isNotEmpty())
-				.andExpect(jsonPath("$.status").value("COMPLETED"))
+				.andExpect(jsonPath("$.status").value("QUEUED"))
 				.andExpect(jsonPath("$.mode").value("BFS"))
 				.andExpect(jsonPath("$.originalFilename").value("sales.xlsx"))
 				.andExpect(jsonPath("$.sizeBytes").value(ZIP_FILE.length))
@@ -120,7 +121,7 @@ class AnalysisControllerTests {
 					.param("depth", "PRECISE"))
 				.andExpect(status().isAccepted());
 
-		verify(aiServiceClient).generateWorkbookInsights(any(), eq(AnalysisDepth.PRECISE));
+		verify(aiServiceClient).generateWorkbookInsights(any(Resource.class), eq(AnalysisDepth.PRECISE));
 	}
 
 	@Test
@@ -434,7 +435,7 @@ class AnalysisControllerTests {
 
 	@Test
 	void savesFailedStatusWhenAiServiceCannotAnalyzeWorkbook() throws Exception {
-		when(aiServiceClient.summarizeWorkbook(any()))
+		when(aiServiceClient.summarizeWorkbook(any(Resource.class)))
 				.thenThrow(new AiServiceUnavailableException());
 		MockMultipartFile file = new MockMultipartFile(
 				"file",
@@ -445,8 +446,8 @@ class AnalysisControllerTests {
 		mockMvc.perform(multipart("/api/v1/analyses")
 					.file(file)
 					.param("mode", "BFS"))
-				.andExpect(status().isServiceUnavailable())
-				.andExpect(jsonPath("$.code").value("AI_SERVICE_UNAVAILABLE"));
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.status").value("QUEUED"));
 
 		List<AnalysisJob> jobs = analysisJobRepository.findAll();
 		assertThat(jobs).singleElement().satisfies(job ->
@@ -456,7 +457,7 @@ class AnalysisControllerTests {
 
 	@Test
 	void savesFailedStatusWhenInsightGenerationFails() throws Exception {
-		when(aiServiceClient.generateWorkbookInsights(any(), any()))
+		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any()))
 				.thenThrow(new AiServiceUnavailableException());
 		MockMultipartFile file = new MockMultipartFile(
 				"file",
@@ -467,8 +468,8 @@ class AnalysisControllerTests {
 		mockMvc.perform(multipart("/api/v1/analyses")
 					.file(file)
 					.param("mode", "LLM"))
-				.andExpect(status().isServiceUnavailable())
-				.andExpect(jsonPath("$.code").value("AI_SERVICE_UNAVAILABLE"));
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.status").value("QUEUED"));
 
 		assertThat(analysisJobRepository.findAll()).singleElement().satisfies(job ->
 				assertThat(job.getStatus()).isEqualTo(AnalysisStatus.FAILED));

@@ -3,13 +3,17 @@ package com.hyeok02.excelaiagent.analysis.storage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.UUID;
 
 import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
 import com.hyeok02.excelaiagent.common.config.AppProperties;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -43,9 +47,66 @@ public class LocalAnalysisFileStorage implements AnalysisFileStorage {
 	}
 
 	@Override
-	public void delete(UUID analysisId) {
-		Path analysisDirectory = uploadRoot.resolve(analysisId.toString()).normalize();
+	public Resource load(UUID analysisId, String extension) {
+		Path source = resolveAnalysisDirectory(analysisId).resolve("source." + extension).normalize();
+		if (!source.startsWith(uploadRoot) || Files.notExists(source)) {
+			throw new AnalysisFileStorageException("저장된 업로드 파일을 찾지 못했습니다.", null);
+		}
+		return new FileSystemResource(source);
+	}
 
+	@Override
+	public void delete(UUID analysisId) {
+		deleteDirectory(resolveAnalysisDirectory(analysisId));
+	}
+
+	@Override
+	public int deleteOlderThan(Instant cutoff) {
+		if (Files.notExists(uploadRoot)) {
+			return 0;
+		}
+
+		int deletedCount = 0;
+		try (var paths = Files.list(uploadRoot)) {
+			for (Path path : paths.toList()) {
+				if (!isAnalysisDirectory(path)) {
+					continue;
+				}
+				Instant lastModifiedAt = Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toInstant();
+				if (lastModifiedAt.isBefore(cutoff)) {
+					deleteDirectory(path);
+					deletedCount++;
+				}
+			}
+			return deletedCount;
+		}
+		catch (IOException exception) {
+			throw new AnalysisFileStorageException("만료된 업로드 파일을 정리하지 못했습니다.", exception);
+		}
+	}
+
+	private Path resolveAnalysisDirectory(UUID analysisId) {
+		Path analysisDirectory = uploadRoot.resolve(analysisId.toString()).normalize();
+		if (!analysisDirectory.startsWith(uploadRoot)) {
+			throw new AnalysisFileStorageException("안전하지 않은 저장 경로입니다.", null);
+		}
+		return analysisDirectory;
+	}
+
+	private boolean isAnalysisDirectory(Path path) {
+		if (!Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+			return false;
+		}
+		try {
+			UUID.fromString(path.getFileName().toString());
+			return true;
+		}
+		catch (IllegalArgumentException exception) {
+			return false;
+		}
+	}
+
+	private void deleteDirectory(Path analysisDirectory) {
 		if (!analysisDirectory.startsWith(uploadRoot)) {
 			throw new AnalysisFileStorageException("안전하지 않은 삭제 경로입니다.", null);
 		}

@@ -13,8 +13,6 @@ import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceException;
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
-import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
-import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
 import org.springframework.data.domain.Page;
@@ -33,7 +31,7 @@ public class AnalysisSubmissionService {
 	private final AnalysisFileStorage analysisFileStorage;
 	private final AnalysisJobRepository analysisJobRepository;
 	private final AnalysisResultRepository analysisResultRepository;
-	private final AiServiceClient aiServiceClient;
+	private final AnalysisJobProcessor analysisJobProcessor;
 	private final ObjectMapper objectMapper;
 
 	public AnalysisSubmissionService(
@@ -41,13 +39,13 @@ public class AnalysisSubmissionService {
 			AnalysisFileStorage analysisFileStorage,
 			AnalysisJobRepository analysisJobRepository,
 			AnalysisResultRepository analysisResultRepository,
-			AiServiceClient aiServiceClient,
+			AnalysisJobProcessor analysisJobProcessor,
 			ObjectMapper objectMapper) {
 		this.excelFileValidator = excelFileValidator;
 		this.analysisFileStorage = analysisFileStorage;
 		this.analysisJobRepository = analysisJobRepository;
 		this.analysisResultRepository = analysisResultRepository;
-		this.aiServiceClient = aiServiceClient;
+		this.analysisJobProcessor = analysisJobProcessor;
 		this.objectMapper = objectMapper;
 	}
 
@@ -72,32 +70,15 @@ public class AnalysisSubmissionService {
 			throw exception;
 		}
 
-		analysisJob.markProcessing(Instant.now());
-		analysisJobRepository.saveAndFlush(analysisJob);
-
-		try {
-			AiWorkbookInsights workbookAnalysis = analyzeWorkbook(file, mode, depth);
-			AnalysisResult analysisResult = AnalysisResult.completed(
-					analysisId,
-					serializeResult(workbookAnalysis),
-					Instant.now());
-			analysisResultRepository.saveAndFlush(analysisResult);
-			analysisJob.markCompleted(Instant.now());
-			analysisJobRepository.saveAndFlush(analysisJob);
-		}
-		catch (AiServiceUnavailableException | AnalysisResultPersistenceException exception) {
-			analysisJob.markFailed(Instant.now());
-			analysisJobRepository.saveAndFlush(analysisJob);
-			throw exception;
-		}
-
-		return new AnalysisSubmission(
+		AnalysisSubmission submission = new AnalysisSubmission(
 				analysisJob.getAnalysisId(),
 				analysisJob.getStatus(),
 				analysisJob.getMode(),
 				analysisJob.getOriginalFilename(),
 				analysisJob.getFileSizeBytes(),
 				analysisJob.getCreatedAt());
+		analysisJobProcessor.process(analysisId, depth);
+		return submission;
 	}
 
 	@Transactional(readOnly = true)
@@ -172,25 +153,6 @@ public class AnalysisSubmissionService {
 			return null;
 		}
 		return filename.trim();
-	}
-
-	private AiWorkbookInsights analyzeWorkbook(
-			MultipartFile file,
-			AnalysisMode mode,
-			AnalysisDepth depth) {
-		if (mode == AnalysisMode.LLM) {
-			return aiServiceClient.generateWorkbookInsights(file, depth);
-		}
-		return AiWorkbookInsights.summaryOnly(aiServiceClient.summarizeWorkbook(file));
-	}
-
-	private String serializeResult(AiWorkbookInsights workbookAnalysis) {
-		try {
-			return objectMapper.writeValueAsString(workbookAnalysis);
-		}
-		catch (JacksonException exception) {
-			throw new AnalysisResultPersistenceException("분석 결과를 저장 형식으로 변환하지 못했습니다.", exception);
-		}
 	}
 
 	private AiWorkbookInsights deserializeResult(String resultJson) {
