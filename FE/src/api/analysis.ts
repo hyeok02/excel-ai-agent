@@ -125,6 +125,16 @@ export interface DependencyClusterResult {
   truncated: boolean
 }
 
+export interface DependencyCycleResult {
+  id: string
+  nodeCount: number
+  edgeCount: number
+  sheetNames: string[]
+  nodes: DependencyNodeResult[]
+  edges: DependencyEdgeResult[]
+  truncated: boolean
+}
+
 export interface DependencyGraphResult {
   nodeCount: number
   edgeCount: number
@@ -134,6 +144,9 @@ export interface DependencyGraphResult {
   externalReferenceCount: number
   clusterCount: number
   clusters: DependencyClusterResult[]
+  cycleCount: number
+  cyclicNodeCount: number
+  cycles: DependencyCycleResult[]
 }
 
 export interface WorkbookResult {

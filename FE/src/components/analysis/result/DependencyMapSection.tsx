@@ -2,6 +2,7 @@ import { Network } from 'lucide-react'
 
 import type { AnalysisMode, DependencyGraphResult } from '@/api/analysis'
 import DependencyClusterCard from '@/components/analysis/result/dependency/DependencyClusterCard'
+import DependencyCycleSection from '@/components/analysis/result/dependency/DependencyCycleSection'
 import DependencySummaryGrid from '@/components/analysis/result/dependency/DependencySummaryGrid'
 
 interface DependencyMapSectionProps {
@@ -45,6 +46,12 @@ const DependencyMapSection = ({ graph, mode }: DependencyMapSectionProps) => {
       </div>
 
       <DependencySummaryGrid graph={graph} />
+
+      <DependencyCycleSection
+        cycleCount={graph.cycleCount ?? 0}
+        cycles={graph.cycles ?? []}
+        cyclicNodeCount={graph.cyclicNodeCount ?? 0}
+      />
 
       {graph.clusters.length > 0 && (
         <div className="space-y-4 px-5 pb-5 md:px-6 md:pb-6">

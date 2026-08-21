@@ -230,6 +230,8 @@ def build_workbook_context(
             "named_reference_count": dependencies.named_reference_count,
             "external_reference_count": dependencies.external_reference_count,
             "cluster_count": dependencies.cluster_count,
+            "cycle_count": dependencies.cycle_count,
+            "cyclic_node_count": dependencies.cyclic_node_count,
             "largest_clusters": [
                 {
                     "node_count": cluster.node_count,

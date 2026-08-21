@@ -148,6 +148,18 @@ class DependencyClusterResponse(BaseModel):
     is_truncated: bool
 
 
+class DependencyCycleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    node_count: int
+    edge_count: int
+    sheet_names: list[str]
+    nodes: list[DependencyNodeResponse]
+    edges: list[DependencyEdgeResponse]
+    is_truncated: bool
+
+
 class DependencySummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -159,6 +171,9 @@ class DependencySummaryResponse(BaseModel):
     external_reference_count: int
     cluster_count: int
     clusters: list[DependencyClusterResponse]
+    cycle_count: int
+    cyclic_node_count: int
+    cycles: list[DependencyCycleResponse]
 
 
 class WorkbookSummaryResponse(BaseModel):
