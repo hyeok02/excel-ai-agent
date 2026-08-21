@@ -15,7 +15,7 @@ public record AppProperties(Cors cors, AiService aiService, Analysis analysis, S
 				? new AiService("http://localhost:8000", Duration.ofSeconds(3), Duration.ofSeconds(60))
 				: aiService;
 		analysis = analysis == null ? new Analysis(DataSize.ofMegabytes(50)) : analysis;
-		storage = storage == null ? new Storage("./uploads") : storage;
+		storage = storage == null ? new Storage("./uploads", Duration.ofDays(1)) : storage;
 	}
 
 	public record Cors(List<String> allowedOrigins) {
@@ -37,10 +37,13 @@ public record AppProperties(Cors cors, AiService aiService, Analysis analysis, S
 		}
 	}
 
-	public record Storage(String uploadDir) {
+	public record Storage(String uploadDir, Duration retention) {
 
 		public Storage {
 			uploadDir = uploadDir == null || uploadDir.isBlank() ? "./uploads" : uploadDir;
+			retention = retention == null || retention.isNegative() || retention.isZero()
+					? Duration.ofDays(1)
+					: retention;
 		}
 	}
 }

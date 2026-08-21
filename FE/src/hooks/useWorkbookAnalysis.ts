@@ -1,7 +1,12 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
-import { type AnalysisDepth, type AnalysisMode, analyzeWorkbook } from '@/api/analysis'
+import {
+  type AnalysisDepth,
+  type AnalysisMode,
+  type AnalysisStatus,
+  analyzeWorkbook,
+} from '@/api/analysis'
 import { validateAnalysisFile } from '@/utils/analysisFile'
 import { getErrorMessage } from '@/utils/apiClient'
 
@@ -21,6 +26,7 @@ export const useWorkbookAnalysis = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [clientError, setClientError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<AnalysisFeedback | null>(null)
+  const [processingStatus, setProcessingStatus] = useState<AnalysisStatus | null>(null)
 
   const analysisMutation = useMutation({
     mutationFn: ({
@@ -31,7 +37,7 @@ export const useWorkbookAnalysis = () => {
       file: File
       analysisMode: AnalysisMode
       analysisDepth: AnalysisDepth
-    }) => analyzeWorkbook(file, analysisMode, analysisDepth),
+    }) => analyzeWorkbook(file, analysisMode, analysisDepth, setProcessingStatus),
     onError: () => setFeedback('error'),
     onSuccess: () => setFeedback('success'),
   })
@@ -57,6 +63,7 @@ export const useWorkbookAnalysis = () => {
     const validationMessage = validateAnalysisFile(file)
 
     analysisMutation.reset()
+    setProcessingStatus(null)
     setClientError(validationMessage)
     setSelectedFile(validationMessage ? null : file)
     setFeedback(validationMessage ? 'error' : null)
@@ -71,6 +78,7 @@ export const useWorkbookAnalysis = () => {
 
     setClientError(null)
     setFeedback(null)
+    setProcessingStatus(null)
     analysisMutation.mutate({
       file: selectedFile,
       analysisMode: mode,
@@ -82,6 +90,7 @@ export const useWorkbookAnalysis = () => {
     setSelectedFile(null)
     setClientError(null)
     setFeedback(null)
+    setProcessingStatus(null)
     analysisMutation.reset()
   }
 
@@ -94,6 +103,7 @@ export const useWorkbookAnalysis = () => {
     setClientError(null)
     setFeedback(null)
     analysisMutation.reset()
+    setProcessingStatus(null)
   }
 
   const changeDepth = (nextDepth: AnalysisDepth) => {
@@ -105,6 +115,7 @@ export const useWorkbookAnalysis = () => {
     setClientError(null)
     setFeedback(null)
     analysisMutation.reset()
+    setProcessingStatus(null)
   }
 
   return {
@@ -124,6 +135,9 @@ export const useWorkbookAnalysis = () => {
     selectedFile,
     startAnalysis,
     status,
-    statusText: STATUS_TEXT[status],
+    statusText:
+      status === 'pending' && processingStatus === 'QUEUED'
+        ? '분석 대기 중'
+        : STATUS_TEXT[status],
   }
 }

@@ -2,6 +2,7 @@ package com.hyeok02.excelaiagent.integration.ai;
 
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import org.springframework.http.MediaType;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -36,20 +37,28 @@ public class AiServiceClient {
 	}
 
 	public AiWorkbookSummary summarizeWorkbook(MultipartFile file) {
-		return postWorkbook(file, "/api/v1/workbooks/summary", AiWorkbookSummary.class, null);
+		return summarizeWorkbook(file.getResource());
 	}
 
 	public AiWorkbookInsights generateWorkbookInsights(MultipartFile file, AnalysisDepth depth) {
+		return generateWorkbookInsights(file.getResource(), depth);
+	}
+
+	public AiWorkbookSummary summarizeWorkbook(Resource file) {
+		return postWorkbook(file, "/api/v1/workbooks/summary", AiWorkbookSummary.class, null);
+	}
+
+	public AiWorkbookInsights generateWorkbookInsights(Resource file, AnalysisDepth depth) {
 		return postWorkbook(file, "/api/v1/workbooks/insights", AiWorkbookInsights.class, depth);
 	}
 
 	private <T> T postWorkbook(
-			MultipartFile file,
+			Resource file,
 			String uri,
 			Class<T> responseType,
 			AnalysisDepth depth) {
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-		body.add("file", file.getResource());
+		body.add("file", file);
 		if (depth != null) {
 			body.add("depth", depth.name());
 		}
