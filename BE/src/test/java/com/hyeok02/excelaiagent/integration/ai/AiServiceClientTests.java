@@ -15,6 +15,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -237,6 +238,7 @@ class AiServiceClientTests {
 				.andExpect(method(POST))
 				.andExpect(header("Content-Type", startsWith("multipart/form-data")))
 				.andExpect(content().string(containsString("sales.xlsx")))
+				.andExpect(content().string(containsString("PRECISE")))
 				.andRespond(withSuccess(
 						"""
 						{
@@ -269,7 +271,9 @@ class AiServiceClientTests {
 				MediaType.APPLICATION_OCTET_STREAM_VALUE,
 				new byte[] {0x50, 0x4b, 0x03, 0x04});
 
-		AiWorkbookInsights response = aiServiceClient.generateWorkbookInsights(file);
+		AiWorkbookInsights response = aiServiceClient.generateWorkbookInsights(
+				file,
+				AnalysisDepth.PRECISE);
 
 		assertThat(response.workbook().filename()).isEqualTo("sales.xlsx");
 		assertThat(response.report().overview()).contains("단일 시트");
@@ -308,7 +312,7 @@ class AiServiceClientTests {
 				MediaType.APPLICATION_OCTET_STREAM_VALUE,
 				new byte[] {0x50, 0x4b, 0x03, 0x04});
 
-		assertThatThrownBy(() -> aiServiceClient.generateWorkbookInsights(file))
+		assertThatThrownBy(() -> aiServiceClient.generateWorkbookInsights(file, AnalysisDepth.AUTO))
 				.isInstanceOf(AiServiceUnavailableException.class);
 		server.verify();
 	}

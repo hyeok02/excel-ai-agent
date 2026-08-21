@@ -2,7 +2,9 @@ package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -16,6 +18,7 @@ import java.util.UUID;
 
 import com.jayway.jsonpath.JsonPath;
 import com.hyeok02.excelaiagent.BackendApplication;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
@@ -60,7 +63,7 @@ class AnalysisControllerTests {
 		analysisJobRepository.deleteAll();
 		reset(aiServiceClient);
 		when(aiServiceClient.summarizeWorkbook(any())).thenReturn(workbookSummary());
-		when(aiServiceClient.generateWorkbookInsights(any())).thenReturn(workbookInsights());
+		when(aiServiceClient.generateWorkbookInsights(any(), any())).thenReturn(workbookInsights());
 	}
 
 	@Test
@@ -105,6 +108,33 @@ class AnalysisControllerTests {
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_ANALYSIS_MODE"))
 				.andExpect(jsonPath("$.message").value("mode는 BFS 또는 LLM 중 하나여야 합니다."));
+	}
+
+	@Test
+	void forwardsRequestedAnalysisDepthToAiService() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "finance.xlsx", null, ZIP_FILE);
+
+		mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "LLM")
+					.param("depth", "PRECISE"))
+				.andExpect(status().isAccepted());
+
+		verify(aiServiceClient).generateWorkbookInsights(any(), eq(AnalysisDepth.PRECISE));
+	}
+
+	@Test
+	void rejectsUnknownAnalysisDepth() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "finance.xlsx", null, ZIP_FILE);
+
+		mockMvc.perform(multipart("/api/v1/analyses")
+					.file(file)
+					.param("mode", "LLM")
+					.param("depth", "UNKNOWN"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_ANALYSIS_DEPTH"))
+				.andExpect(jsonPath("$.message")
+						.value("depth는 AUTO, FAST 또는 PRECISE 중 하나여야 합니다."));
 	}
 
 	@Test
@@ -422,7 +452,7 @@ class AnalysisControllerTests {
 
 	@Test
 	void savesFailedStatusWhenInsightGenerationFails() throws Exception {
-		when(aiServiceClient.generateWorkbookInsights(any()))
+		when(aiServiceClient.generateWorkbookInsights(any(), any()))
 				.thenThrow(new AiServiceUnavailableException());
 		MockMultipartFile file = new MockMultipartFile(
 				"file",

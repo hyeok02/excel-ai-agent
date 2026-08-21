@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel, ConfigDict
 
 from app.services.insight_generator import (
@@ -10,6 +10,7 @@ from app.services.insight_generator import (
     LangChainInsightGenerator,
     WorkbookInsightReport,
 )
+from app.services.analysis_strategy import AnalysisDepth
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
@@ -227,6 +228,10 @@ async def summarize_workbook(
 async def generate_workbook_insights(
     file: Annotated[UploadFile, File(description="인사이트를 생성할 Excel 파일")],
     insight_generator: Annotated[InsightGenerator, Depends(get_insight_generator)],
+    depth: Annotated[
+        AnalysisDepth,
+        Form(description="분석 깊이: AUTO, FAST, PRECISE"),
+    ] = AnalysisDepth.AUTO,
 ) -> WorkbookInsightsResponse:
     content = await read_upload(file)
 
@@ -239,7 +244,7 @@ async def generate_workbook_insights(
         ) from exception
 
     try:
-        report = await insight_generator.generate(summary)
+        report = await insight_generator.generate(summary, depth)
     except InsightGenerationError as exception:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

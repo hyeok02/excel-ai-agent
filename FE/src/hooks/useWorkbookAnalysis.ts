@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
-import { type AnalysisMode, analyzeWorkbook } from '@/api/analysis'
+import { type AnalysisDepth, type AnalysisMode, analyzeWorkbook } from '@/api/analysis'
 import { validateAnalysisFile } from '@/utils/analysisFile'
 import { getErrorMessage } from '@/utils/apiClient'
 
@@ -17,13 +17,21 @@ const STATUS_TEXT: Record<AnalysisViewStatus, string> = {
 
 export const useWorkbookAnalysis = () => {
   const [mode, setMode] = useState<AnalysisMode>('BFS')
+  const [depth, setDepth] = useState<AnalysisDepth>('AUTO')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [clientError, setClientError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<AnalysisFeedback | null>(null)
 
   const analysisMutation = useMutation({
-    mutationFn: ({ file, analysisMode }: { file: File; analysisMode: AnalysisMode }) =>
-      analyzeWorkbook(file, analysisMode),
+    mutationFn: ({
+      file,
+      analysisMode,
+      analysisDepth,
+    }: {
+      file: File
+      analysisMode: AnalysisMode
+      analysisDepth: AnalysisDepth
+    }) => analyzeWorkbook(file, analysisMode, analysisDepth),
     onError: () => setFeedback('error'),
     onSuccess: () => setFeedback('success'),
   })
@@ -63,7 +71,11 @@ export const useWorkbookAnalysis = () => {
 
     setClientError(null)
     setFeedback(null)
-    analysisMutation.mutate({ file: selectedFile, analysisMode: mode })
+    analysisMutation.mutate({
+      file: selectedFile,
+      analysisMode: mode,
+      analysisDepth: depth,
+    })
   }
 
   const clearFile = () => {
@@ -73,9 +85,35 @@ export const useWorkbookAnalysis = () => {
     analysisMutation.reset()
   }
 
+  const changeMode = (nextMode: AnalysisMode) => {
+    if (nextMode === mode) {
+      return
+    }
+
+    setMode(nextMode)
+    setClientError(null)
+    setFeedback(null)
+    analysisMutation.reset()
+  }
+
+  const changeDepth = (nextDepth: AnalysisDepth) => {
+    if (nextDepth === depth) {
+      return
+    }
+
+    setDepth(nextDepth)
+    setClientError(null)
+    setFeedback(null)
+    analysisMutation.reset()
+  }
+
   return {
     analysisResult: analysisMutation.data?.result ?? null,
+    analysisResultMode: analysisMutation.data?.submission.mode ?? null,
+    changeDepth,
+    changeMode,
     clearFile,
+    depth,
     errorMessage:
       clientError ??
       (analysisMutation.isError ? getErrorMessage(analysisMutation.error) : null),
@@ -84,7 +122,6 @@ export const useWorkbookAnalysis = () => {
     mode,
     selectFile,
     selectedFile,
-    setMode,
     startAnalysis,
     status,
     statusText: STATUS_TEXT[status],

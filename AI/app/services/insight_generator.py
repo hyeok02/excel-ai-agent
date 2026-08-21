@@ -10,6 +10,12 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
+from app.services.analysis_strategy import (
+    AnalysisDepth,
+    AnalysisProfile,
+    STANDARD_PROFILE,
+    select_analysis_profile,
+)
 from app.services.workbook_parser import WorkbookSummary
 
 MAX_SHEETS = 20
@@ -63,7 +69,11 @@ class InsightGenerationError(RuntimeError):
 
 
 class InsightGenerator(Protocol):
-    async def generate(self, summary: WorkbookSummary) -> WorkbookInsightReport:
+    async def generate(
+        self,
+        summary: WorkbookSummary,
+        depth: AnalysisDepth = AnalysisDepth.AUTO,
+    ) -> WorkbookInsightReport:
         """Generate a structured report from parsed workbook metadata."""
 
 
@@ -98,6 +108,7 @@ def _formula_signature(formula: dict[str, object]) -> str:
 
 def _select_formula_samples(
     formulas: list[dict[str, object]],
+    limit: int = MAX_FORMULAS_PER_SHEET,
 ) -> list[dict[str, object]]:
     samples: list[dict[str, object]] = []
     seen_signatures: set[str] = set()
@@ -109,7 +120,7 @@ def _select_formula_samples(
 
         seen_signatures.add(signature)
         samples.append(formula)
-        if len(samples) == MAX_FORMULAS_PER_SHEET:
+        if len(samples) == limit:
             break
 
     return samples
@@ -117,6 +128,7 @@ def _select_formula_samples(
 
 def _select_region_samples(
     regions: list[dict[str, object]],
+    limit: int = MAX_REGIONS_PER_SHEET,
 ) -> list[dict[str, object]]:
     prioritized = sorted(
         enumerate(regions),
@@ -142,21 +154,27 @@ def _select_region_samples(
                 ]
             ],
         }
-        for _, region in prioritized[:MAX_REGIONS_PER_SHEET]
+        for _, region in prioritized[:limit]
     ]
 
 
-def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
+def build_workbook_context(
+    summary: WorkbookSummary,
+    profile: AnalysisProfile = STANDARD_PROFILE,
+) -> dict[str, object]:
     sheets = []
 
-    for sheet in summary.sheets[:MAX_SHEETS]:
+    for sheet in summary.sheets[: profile.max_sheets]:
         sheet_data = asdict(sheet)
         formulas = sheet_data.pop("formulas")
         regions = sheet_data.pop("regions")
         tables = sheet_data.pop("tables")
         charts = sheet_data.pop("charts")
 
-        selected_formulas = _select_formula_samples(formulas)
+        selected_formulas = _select_formula_samples(
+            formulas,
+            profile.max_formulas_per_sheet,
+        )
         sheet_data["formula_samples"] = [
             {
                 "cell": formula["cell"],
@@ -170,9 +188,12 @@ def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
         )
         # 셀 미리보기는 화면 표시용 데이터라 LLM 판단에는 불필요하고,
         # 큰 워크북에서는 프롬프트를 수십만 자까지 키울 수 있다.
-        sheet_data["region_samples"] = _select_region_samples(regions)
+        sheet_data["region_samples"] = _select_region_samples(
+            regions,
+            profile.max_regions_per_sheet,
+        )
         sheet_data["omitted_region_count"] = max(
-            0, len(regions) - MAX_REGIONS_PER_SHEET
+            0, len(regions) - profile.max_regions_per_sheet
         )
         sheet_data["table_samples"] = [
             {
@@ -182,7 +203,7 @@ def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
                 "row_count": table["row_count"],
                 "column_count": table["column_count"],
             }
-            for table in tables[:MAX_TABLES_PER_SHEET]
+            for table in tables[: profile.max_tables_per_sheet]
         ]
         sheet_data["chart_samples"] = [
             {
@@ -191,7 +212,7 @@ def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
                 "anchor_cell": chart["anchor_cell"],
                 "series_count": chart["series_count"],
             }
-            for chart in charts[:MAX_CHARTS_PER_SHEET]
+            for chart in charts[: profile.max_charts_per_sheet]
         ]
         sheets.append(sheet_data)
 
@@ -200,7 +221,7 @@ def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
         "filename": summary.filename,
         "sheet_count": summary.sheet_count,
         "included_sheet_count": len(sheets),
-        "omitted_sheet_count": max(0, len(summary.sheets) - MAX_SHEETS),
+        "omitted_sheet_count": max(0, len(summary.sheets) - profile.max_sheets),
         "dependency_summary": {
             "node_count": dependencies.node_count,
             "edge_count": dependencies.edge_count,
@@ -223,12 +244,15 @@ def build_workbook_context(summary: WorkbookSummary) -> dict[str, object]:
     }
 
 
-def build_user_prompt(summary: WorkbookSummary) -> str:
-    context = build_workbook_context(summary)
+def build_user_prompt(
+    summary: WorkbookSummary,
+    profile: AnalysisProfile = STANDARD_PROFILE,
+) -> str:
+    context = build_workbook_context(summary, profile)
     return (
         "다음 Excel 워크북 구조 분석 결과를 검토하고 핵심 인사이트를 생성하세요.\n"
         "구조적 특징, 수식 집중도, 복잡도와 검토 위험을 우선 분석하세요.\n"
-        "정보가 충분하면 서로 중복되지 않는 핵심 인사이트를 3~4개 생성하세요.\n"
+        f"정보가 충분하면 서로 중복되지 않는 핵심 인사이트를 최대 {profile.max_insights}개 생성하세요.\n"
         "각 설명은 의미와 위험을 1~2문장으로 명확하게 작성하고, "
         "근거와 실행 가능한 권고사항을 간결하게 제시하세요.\n\n"
         "<workbook_metadata>\n"
@@ -238,11 +262,15 @@ def build_user_prompt(summary: WorkbookSummary) -> str:
 
 
 class LangChainInsightGenerator:
-    def __init__(self, model: ChatOpenAI) -> None:
-        self._structured_model = model.with_structured_output(
-            WorkbookInsightReport,
-            method="json_schema",
-        )
+    def __init__(
+        self,
+        api_key: str,
+        timeout_seconds: float,
+        reasoning_effort: str,
+    ) -> None:
+        self._api_key = api_key
+        self._timeout_seconds = timeout_seconds
+        self._reasoning_effort = reasoning_effort
 
     @classmethod
     def from_environment(cls) -> "LangChainInsightGenerator":
@@ -255,8 +283,6 @@ class LangChainInsightGenerator:
                 "OPENAI_API_KEY가 설정되지 않았습니다. AI/.env 파일을 확인하세요."
             )
 
-        model_name = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-
         try:
             timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
         except ValueError as exception:
@@ -266,36 +292,44 @@ class LangChainInsightGenerator:
 
         reasoning_effort = os.getenv("OPENAI_REASONING_EFFORT", "minimal")
 
-        try:
-            max_completion_tokens = int(
-                os.getenv("OPENAI_MAX_COMPLETION_TOKENS", "1600")
-            )
-        except ValueError as exception:
-            raise InsightConfigurationError(
-                "OPENAI_MAX_COMPLETION_TOKENS는 정수여야 합니다."
-            ) from exception
-
-        model_options: dict[str, object] = {}
-        if model_name.startswith(("gpt-5", "o")):
-            model_options["reasoning_effort"] = reasoning_effort
-
         return cls(
-            ChatOpenAI(
-                model=model_name,
-                api_key=api_key,
-                timeout=timeout_seconds,
-                max_retries=1,
-                max_completion_tokens=max_completion_tokens,
-                **model_options,
-            )
+            api_key=api_key,
+            timeout_seconds=timeout_seconds,
+            reasoning_effort=reasoning_effort,
         )
 
-    async def generate(self, summary: WorkbookSummary) -> WorkbookInsightReport:
+    def _build_model(self, profile: AnalysisProfile):
+        fallback_model = (
+            os.getenv("OPENAI_MODEL", profile.default_model)
+            if profile == STANDARD_PROFILE
+            else profile.default_model
+        )
+        model_name = os.getenv(profile.model_env_name, fallback_model)
+        model_options: dict[str, object] = {}
+        if model_name.startswith(("gpt-5", "o")):
+            model_options["reasoning_effort"] = self._reasoning_effort
+
+        return ChatOpenAI(
+            model=model_name,
+            api_key=self._api_key,
+            timeout=self._timeout_seconds,
+            max_retries=1,
+            max_completion_tokens=profile.max_completion_tokens,
+            **model_options,
+        ).with_structured_output(WorkbookInsightReport, method="json_schema")
+
+    async def generate(
+        self,
+        summary: WorkbookSummary,
+        depth: AnalysisDepth = AnalysisDepth.AUTO,
+    ) -> WorkbookInsightReport:
+        profile = select_analysis_profile(summary, depth)
+        structured_model = self._build_model(profile)
         try:
-            result = await self._structured_model.ainvoke(
+            result = await structured_model.ainvoke(
                 [
                     SystemMessage(content=SYSTEM_PROMPT),
-                    HumanMessage(content=build_user_prompt(summary)),
+                    HumanMessage(content=build_user_prompt(summary, profile)),
                 ]
             )
             return WorkbookInsightReport.model_validate(result)

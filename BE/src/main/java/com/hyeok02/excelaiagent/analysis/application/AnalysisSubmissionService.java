@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResult;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
@@ -50,7 +51,7 @@ public class AnalysisSubmissionService {
 		this.objectMapper = objectMapper;
 	}
 
-	public AnalysisSubmission submit(MultipartFile file, AnalysisMode mode) {
+	public AnalysisSubmission submit(MultipartFile file, AnalysisMode mode, AnalysisDepth depth) {
 		ValidatedExcelFile validatedFile = excelFileValidator.validate(file);
 		UUID analysisId = UUID.randomUUID();
 		Instant now = Instant.now();
@@ -75,7 +76,7 @@ public class AnalysisSubmissionService {
 		analysisJobRepository.saveAndFlush(analysisJob);
 
 		try {
-			AiWorkbookInsights workbookAnalysis = analyzeWorkbook(file, mode);
+			AiWorkbookInsights workbookAnalysis = analyzeWorkbook(file, mode, depth);
 			AnalysisResult analysisResult = AnalysisResult.completed(
 					analysisId,
 					serializeResult(workbookAnalysis),
@@ -173,9 +174,12 @@ public class AnalysisSubmissionService {
 		return filename.trim();
 	}
 
-	private AiWorkbookInsights analyzeWorkbook(MultipartFile file, AnalysisMode mode) {
+	private AiWorkbookInsights analyzeWorkbook(
+			MultipartFile file,
+			AnalysisMode mode,
+			AnalysisDepth depth) {
 		if (mode == AnalysisMode.LLM) {
-			return aiServiceClient.generateWorkbookInsights(file);
+			return aiServiceClient.generateWorkbookInsights(file, depth);
 		}
 		return AiWorkbookInsights.summaryOnly(aiServiceClient.summarizeWorkbook(file));
 	}

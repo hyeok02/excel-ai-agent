@@ -7,6 +7,7 @@ import com.hyeok02.excelaiagent.analysis.application.AnalysisDetails;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisResultDetails;
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,8 +42,10 @@ public class AnalysisController {
 	@Operation(summary = "Excel 분석 작업 접수")
 	public ResponseEntity<AnalysisSubmission> submit(
 			@RequestPart("file") MultipartFile file,
-			@RequestParam("mode") AnalysisMode mode) {
-		AnalysisSubmission response = analysisSubmissionService.submit(file, mode);
+			@RequestParam("mode") AnalysisMode mode,
+			@Parameter(description = "LLM 분석 깊이: AUTO, FAST, PRECISE")
+			@RequestParam(defaultValue = "AUTO") AnalysisDepth depth) {
+		AnalysisSubmission response = analysisSubmissionService.submit(file, mode, depth);
 		return ResponseEntity.accepted().body(response);
 	}
 
