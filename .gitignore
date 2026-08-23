@@ -39,3 +39,4 @@ tmp/
 logs/
 *.xlsx
 *.xlsm
+!AI/tests/fixtures/semantic/*.xlsx
