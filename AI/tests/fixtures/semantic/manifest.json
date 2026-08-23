@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "workbook": "semantic_simple_table.xlsx",
+      "expectation": "semantic_simple_table.expected.json",
+      "coverage": [
+        "single_row_header",
+        "title_and_unit",
+        "data_and_total",
+        "source_note",
+        "formula_answer_reference"
+      ]
+    },
+    {
+      "workbook": "semantic_hierarchical_headers.xlsx",
+      "expectation": "semantic_hierarchical_headers.expected.json",
+      "coverage": [
+        "merged_hierarchical_header",
+        "separate_rule_region",
+        "unit_from_number_format",
+        "system_sheet_exclusion"
+      ]
+    },
+    {
+      "workbook": "semantic_mixed_regions.xlsx",
+      "expectation": "semantic_mixed_regions.expected.json",
+      "coverage": [
+        "input_calculation_output",
+        "decision_rule",
+        "warning_note",
+        "instruction_sheet",
+        "formula_answer_reference"
+      ]
+    }
+  ]
+}

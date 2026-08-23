@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "workbook": "semantic_hierarchical_headers.xlsx",
+  "workbook_intent": "부서별 매출과 비용의 계획 대비 실적을 비교하는 보고서",
+  "sheets": [
+    {
+      "name": "부서별 실적",
+      "decision": "analyze",
+      "sheet_role": "business_data",
+      "reason": "부서별 손익 데이터와 검토 기준을 함께 제공하는 핵심 업무 시트",
+      "expected_formula_count": 4,
+      "regions": [
+        {
+          "range": "A1:E1",
+          "role": "title",
+          "decision": "context",
+          "reason": "기간과 보고서 주제 제공"
+        },
+        {
+          "range": "A2:E2",
+          "role": "unit",
+          "decision": "context",
+          "reason": "금액과 비율 단위 제공"
+        },
+        {
+          "range": "A4:E5",
+          "role": "header",
+          "decision": "context",
+          "reason": "매출·비용 아래에 계획·실적이 배치된 다단계 헤더"
+        },
+        {
+          "range": "A6:E8",
+          "role": "data",
+          "decision": "analyze",
+          "reason": "부서별 계획과 실적 데이터",
+          "units": [
+            {
+              "range": "B6:E8",
+              "unit": "천원",
+              "source": "number_format"
+            }
+          ]
+        },
+        {
+          "range": "A9:E9",
+          "role": "total",
+          "decision": "analyze",
+          "reason": "부서 전체의 계획과 실적 합계"
+        },
+        {
+          "range": "G4:H7",
+          "role": "rule_note",
+          "decision": "context",
+          "reason": "매출과 비용의 이상 여부를 해석할 검토 기준"
+        }
+      ]
+    },
+    {
+      "name": "__snlofficequeries",
+      "decision": "exclude",
+      "sheet_role": "system_cache",
+      "reason": "애드인 쿼리 캐시로 업무 인사이트와 무관",
+      "expected_formula_count": 0,
+      "regions": [
+        {
+          "range": "A1:C3",
+          "role": "system_cache",
+          "decision": "exclude",
+          "reason": "분석 입력과 사용자 화면에서 모두 제외할 캐시 데이터"
+        }
+      ]
+    }
+  ],
+  "reference_answers": [
+    {
+      "question": "영업 부서의 매출 실적은 계획을 달성했는가?",
+      "answer_cells": ["부서별 실적!B7", "부서별 실적!C7"],
+      "supporting_cells": ["부서별 실적!A7", "부서별 실적!B4:C5", "부서별 실적!G5:H5"]
+    },
+    {
+      "question": "전체 비용 실적은 얼마인가?",
+      "answer_cells": ["부서별 실적!E9"],
+      "supporting_cells": ["부서별 실적!A9", "부서별 실적!D4:E5", "부서별 실적!A2"]
+    }
+  ]
+}

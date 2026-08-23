@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "workbook": "semantic_simple_table.xlsx",
+  "workbook_intent": "지역별 월별 매출과 합계를 비교하는 보고서",
+  "sheets": [
+    {
+      "name": "월별 매출",
+      "decision": "analyze",
+      "sheet_role": "business_data",
+      "reason": "월별 매출 원본 값과 합계 수식을 포함한 핵심 업무 시트",
+      "expected_formula_count": 6,
+      "regions": [
+        {
+          "range": "A1:D1",
+          "role": "title",
+          "decision": "context",
+          "reason": "표 전체의 기간과 주제를 설명"
+        },
+        {
+          "range": "A2:D2",
+          "role": "unit",
+          "decision": "context",
+          "reason": "수치 해석에 필요한 백만원 단위 제공"
+        },
+        {
+          "range": "A4:D4",
+          "role": "header",
+          "decision": "context",
+          "reason": "지역과 월별 매출 열의 의미 정의"
+        },
+        {
+          "range": "A5:D7",
+          "role": "data",
+          "decision": "analyze",
+          "reason": "지역별 월별 매출과 행 합계 데이터",
+          "units": [
+            {
+              "range": "B5:D7",
+              "unit": "백만원",
+              "source": "number_format"
+            }
+          ]
+        },
+        {
+          "range": "A8:D8",
+          "role": "total",
+          "decision": "analyze",
+          "reason": "지역 전체의 월별·전체 매출 합계",
+          "units": [
+            {
+              "range": "B8:D8",
+              "unit": "백만원",
+              "source": "number_format"
+            }
+          ]
+        },
+        {
+          "range": "A10:D10",
+          "role": "source_note",
+          "decision": "context",
+          "reason": "데이터 출처와 기준일 제공"
+        }
+      ]
+    }
+  ],
+  "reference_answers": [
+    {
+      "question": "전체 매출 합계는 얼마인가?",
+      "answer_cells": ["월별 매출!D8"],
+      "supporting_cells": ["월별 매출!A8", "월별 매출!A2", "월별 매출!A10"]
+    },
+    {
+      "question": "부산의 2월 매출은 얼마인가?",
+      "answer_cells": ["월별 매출!C6"],
+      "supporting_cells": ["월별 매출!A6", "월별 매출!C4", "월별 매출!A2"]
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "workbook": "semantic_mixed_regions.xlsx",
+  "workbook_intent": "사용자 가정값으로 신규 사업의 수익성을 계산하고 검토하는 워크북",
+  "sheets": [
+    {
+      "name": "예산 검토",
+      "decision": "analyze",
+      "sheet_role": "business_model",
+      "reason": "입력값, 계산식, 판단 결과가 연결된 핵심 분석 시트",
+      "expected_formula_count": 5,
+      "regions": [
+        {
+          "range": "A1:F1",
+          "role": "title",
+          "decision": "context",
+          "reason": "워크북의 분석 목적 제공"
+        },
+        {
+          "range": "A3:B6",
+          "role": "input",
+          "decision": "analyze",
+          "reason": "사용자가 변경하는 매출·비용 가정값",
+          "units": [
+            {
+              "range": "B4",
+              "unit": "원",
+              "source": "number_format"
+            },
+            {
+              "range": "B5",
+              "unit": "%",
+              "source": "number_format"
+            },
+            {
+              "range": "B6",
+              "unit": "원",
+              "source": "number_format"
+            }
+          ]
+        },
+        {
+          "range": "D3:E7",
+          "role": "calculation",
+          "decision": "analyze",
+          "reason": "입력값을 참조해 비용과 수익성을 계산하는 수식 영역"
+        },
+        {
+          "range": "A9:B10",
+          "role": "rule_note",
+          "decision": "context",
+          "reason": "최종 판정을 위한 영업이익 기준"
+        },
+        {
+          "range": "D9:E10",
+          "role": "output",
+          "decision": "analyze",
+          "reason": "의사결정에 직접 사용하는 최종 판정"
+        },
+        {
+          "range": "A12:F12",
+          "role": "warning",
+          "decision": "context",
+          "reason": "가정값 변경 시 결과가 갱신된다는 주의 문구"
+        }
+      ]
+    },
+    {
+      "name": "사용안내",
+      "decision": "metadata_only",
+      "sheet_role": "instruction",
+      "reason": "분석 대상 수치가 아닌 워크북 사용 방법 제공",
+      "expected_formula_count": 0,
+      "regions": [
+        {
+          "range": "A1:D5",
+          "role": "instruction",
+          "decision": "context",
+          "reason": "입력·계산·판정 영역을 설명하는 사용 안내"
+        }
+      ]
+    }
+  ],
+  "reference_answers": [
+    {
+      "question": "현재 가정에서 영업이익은 얼마인가?",
+      "answer_cells": ["예산 검토!E6"],
+      "supporting_cells": ["예산 검토!B4:B6", "예산 검토!D4:E6"]
+    },
+    {
+      "question": "신규 사업 예산 검토 결과는 무엇인가?",
+      "answer_cells": ["예산 검토!E10"],
+      "supporting_cells": ["예산 검토!A10:B10", "예산 검토!E6"]
+    }
+  ]
+}
