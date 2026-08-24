@@ -12,6 +12,8 @@ spring:
     locations: classpath:db/migration/h2
 
 app:
+  auth:
+    security-enabled: false
   analysis:
     async-enabled: false
   storage:

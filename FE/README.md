@@ -49,3 +49,11 @@ VITE_ANALYSIS_POLL_INTERVAL=1000
 ```
 
 실제 `.env` 파일은 Git에 포함하지 않습니다.
+
+## 인증 화면
+
+- `/login`: 사내 계정 및 회사 SSO 로그인
+- `/admin/users`: 관리자 전용 사내 계정 발급과 사용자 목록
+- 기본 관리자: `admin / admin1234`
+
+API 인증은 HttpOnly 세션 쿠키를 사용하며 Axios는 CSRF 쿠키와 자격 증명을 함께 전달합니다.

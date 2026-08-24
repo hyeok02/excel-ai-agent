@@ -24,6 +24,10 @@ spring:
     multipart:
       max-file-size: ${MAX_FILE_SIZE:50MB}
       max-request-size: ${MAX_REQUEST_SIZE:50MB}
+  session:
+    cookie:
+      http-only: true
+      same-site: lax
 
 server:
   port: ${SERVER_PORT:8080}
@@ -66,6 +70,18 @@ app:
     base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
     connect-timeout: ${AI_SERVICE_CONNECT_TIMEOUT:3s}
     read-timeout: ${AI_SERVICE_READ_TIMEOUT:150s}
+  auth:
+    security-enabled: ${AUTH_SECURITY_ENABLED:true}
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    bootstrap:
+      username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:admin1234}
+      display-name: ${BOOTSTRAP_ADMIN_DISPLAY_NAME:System Administrator}
+    sso:
+      enabled: ${SSO_ENABLED:false}
+      registration-id: ${SSO_REGISTRATION_ID:company}
+      allowed-domain: ${SSO_ALLOWED_DOMAIN:}
+      auto-provision: ${SSO_AUTO_PROVISION:true}
 
 logging:
   level:

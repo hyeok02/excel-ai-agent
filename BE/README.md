@@ -33,6 +33,19 @@ curl http://localhost:8080/actuator/health
 | `AI_SERVICE_BASE_URL` | `http://localhost:8000` | Python AI 서비스 주소 |
 | `AI_SERVICE_CONNECT_TIMEOUT` | `3s` | AI 서비스 연결 제한 시간 |
 | `AI_SERVICE_READ_TIMEOUT` | `150s` | AI 서비스 응답 제한 시간 |
+| `AUTH_SECURITY_ENABLED` | `true` | API 로그인 보호 활성화 |
+| `FRONTEND_BASE_URL` | `http://localhost:5173` | SSO 완료 후 돌아갈 Frontend 주소 |
+| `BOOTSTRAP_ADMIN_USERNAME` | `admin` | 최초 관리자 아이디 |
+| `BOOTSTRAP_ADMIN_PASSWORD` | `admin1234` | 최초 관리자 비밀번호 |
+| `SSO_ENABLED` | `false` | 회사 OIDC SSO 활성화 |
+| `SSO_ALLOWED_DOMAIN` | 빈 값 | 허용할 회사 이메일 도메인 |
+| `SSO_AUTO_PROVISION` | `true` | 최초 SSO 로그인 시 사용자 자동 생성 |
+
+## 로그인
+
+최초 실행 시 `admin / admin1234` 관리자 계정이 생성됩니다. 운영 환경에서는 `BOOTSTRAP_ADMIN_PASSWORD`를 반드시 변경해야 합니다. 관리자는 `/api/v1/admin/users`를 통해 별도의 회원가입 없이 사내 계정을 발급할 수 있습니다.
+
+회사 SSO는 OpenID Connect 공급자를 사용합니다. `SSO_ENABLED=true`와 함께 `.env.example`의 `SPRING_SECURITY_OAUTH2_CLIENT_*` 값을 회사 인증 서버 정보로 설정합니다.
 
 ## 현재 범위
 
