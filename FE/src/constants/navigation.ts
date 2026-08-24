@@ -4,6 +4,9 @@ export const ROUTES = {
   personNews: '/person-news',
   newsCollection: '/news-collection',
   excelAnalysis: '/excel-analysis',
+  login: '/login',
+  authCallback: '/auth/callback',
+  userManagement: '/admin/users',
 } as const
 
 export const DASHBOARD_NAVIGATION_ITEM = {

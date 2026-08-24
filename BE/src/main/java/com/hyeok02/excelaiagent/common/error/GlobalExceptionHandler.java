@@ -13,6 +13,9 @@ import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceException;
 import com.hyeok02.excelaiagent.analysis.error.InvalidExcelFileException;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
+import com.hyeok02.excelaiagent.auth.error.DuplicateUsernameException;
+import com.hyeok02.excelaiagent.auth.error.InvalidCredentialsException;
+import com.hyeok02.excelaiagent.auth.error.SsoAccessDeniedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
@@ -28,6 +31,33 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler(InvalidCredentialsException.class)
+	public ResponseEntity<ApiError> handleInvalidCredentials(
+			InvalidCredentialsException exception,
+			HttpServletRequest request) {
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError.of(
+				HttpStatus.UNAUTHORIZED.value(), "INVALID_CREDENTIALS",
+				exception.getMessage(), request.getRequestURI()));
+	}
+
+	@ExceptionHandler(DuplicateUsernameException.class)
+	public ResponseEntity<ApiError> handleDuplicateUsername(
+			DuplicateUsernameException exception,
+			HttpServletRequest request) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(
+				HttpStatus.CONFLICT.value(), "DUPLICATE_USERNAME",
+				exception.getMessage(), request.getRequestURI()));
+	}
+
+	@ExceptionHandler(SsoAccessDeniedException.class)
+	public ResponseEntity<ApiError> handleSsoAccessDenied(
+			SsoAccessDeniedException exception,
+			HttpServletRequest request) {
+		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError.of(
+				HttpStatus.FORBIDDEN.value(), "SSO_ACCESS_DENIED",
+				exception.getMessage(), request.getRequestURI()));
+	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiError> handleValidation(

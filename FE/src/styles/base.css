@@ -16,6 +16,15 @@
     scrollbar-gutter: stable;
   }
 
+  html.auth-screen {
+    background: #0b3f9d;
+    scrollbar-gutter: auto;
+  }
+
+  html.auth-screen body {
+    background: #0b3f9d;
+  }
+
   body,
   #root {
     min-height: 100dvh;
