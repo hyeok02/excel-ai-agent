@@ -40,6 +40,16 @@ export interface SemanticClassification {
   reasons: SemanticReason[]
 }
 
+export const ANALYSIS_DECISIONS = ['include', 'exclude'] as const
+
+export type AnalysisDecision = (typeof ANALYSIS_DECISIONS)[number]
+
+export interface AnalysisInclusion {
+  decision: AnalysisDecision
+  reasonCode: string
+  reason: string
+}
+
 export interface AnalysisSubmission {
   analysisId: string
   status: AnalysisStatus
@@ -94,6 +104,7 @@ export interface RegionResult {
   previewRows: CellResult[][]
   truncated: boolean
   semantic: SemanticClassification | null
+  analysisInclusion: AnalysisInclusion | null
 }
 
 export interface TableResult {
@@ -136,6 +147,13 @@ export interface SheetResult {
   regions: RegionResult[]
   tables: TableResult[]
   charts: ChartResult[]
+  analysisInclusion: AnalysisInclusion | null
+}
+
+export interface ExcludedSheetResult {
+  name: string
+  state: string
+  analysisInclusion: AnalysisInclusion
 }
 
 export type DependencyNodeKind = 'formula' | 'cell' | 'range' | 'named' | 'external'
@@ -194,6 +212,9 @@ export interface DependencyGraphResult {
 export interface WorkbookResult {
   filename: string
   sheetCount: number
+  totalSheetCount: number
+  excludedSheetCount: number
+  excludedSheets: ExcludedSheetResult[]
   sheets: SheetResult[]
   dependencyGraph?: DependencyGraphResult | null
 }

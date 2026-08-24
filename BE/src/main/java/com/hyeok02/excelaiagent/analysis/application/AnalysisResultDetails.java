@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
+import com.hyeok02.excelaiagent.integration.ai.AiAnalysisInclusion;
 import com.hyeok02.excelaiagent.integration.ai.AiSemanticClassification;
 import com.hyeok02.excelaiagent.integration.ai.AiSemanticReason;
 
@@ -26,6 +27,15 @@ public record AnalysisResultDetails(
 				new WorkbookResult(
 						workbookSummary.filename(),
 						workbookSummary.sheetCount(),
+						workbookSummary.totalSheetCount() != null && workbookSummary.totalSheetCount() > 0
+								? workbookSummary.totalSheetCount()
+								: workbookSummary.sheetCount(),
+						workbookSummary.excludedSheetCount() == null
+								? 0
+								: workbookSummary.excludedSheetCount(),
+						safeList(workbookSummary.excludedSheets()).stream()
+								.map(ExcludedSheetResult::from)
+								.toList(),
 						workbookSummary.sheets().stream().map(SheetResult::from).toList(),
 						DependencyResult.from(workbookSummary.dependencySummary())),
 				InsightReportResult.from(workbookAnalysis.report()));
@@ -69,8 +79,24 @@ public record AnalysisResultDetails(
 	public record WorkbookResult(
 			String filename,
 			int sheetCount,
+			int totalSheetCount,
+			int excludedSheetCount,
+			List<ExcludedSheetResult> excludedSheets,
 			List<SheetResult> sheets,
 			DependencyResult dependencyGraph) {
+	}
+
+	public record ExcludedSheetResult(
+			String name,
+			String state,
+			AnalysisInclusionResult analysisInclusion) {
+
+		private static ExcludedSheetResult from(AiWorkbookSummary.ExcludedSheetSummary sheet) {
+			return new ExcludedSheetResult(
+					sheet.name(),
+					sheet.state(),
+					AnalysisInclusionResult.from(sheet.analysisInclusion()));
+		}
 	}
 
 	public record SheetResult(
@@ -84,7 +110,8 @@ public record AnalysisResultDetails(
 			int regionCount,
 			List<RegionResult> regions,
 			List<TableResult> tables,
-			List<ChartResult> charts) {
+			List<ChartResult> charts,
+			AnalysisInclusionResult analysisInclusion) {
 
 		private static SheetResult from(AiWorkbookSummary.SheetSummary sheet) {
 			return new SheetResult(
@@ -98,7 +125,8 @@ public record AnalysisResultDetails(
 					sheet.regionCount(),
 					safeList(sheet.regions()).stream().map(RegionResult::from).toList(),
 					safeList(sheet.tables()).stream().map(TableResult::from).toList(),
-					safeList(sheet.charts()).stream().map(ChartResult::from).toList());
+					safeList(sheet.charts()).stream().map(ChartResult::from).toList(),
+					AnalysisInclusionResult.from(sheet.analysisInclusion()));
 		}
 	}
 
@@ -130,7 +158,8 @@ public record AnalysisResultDetails(
 			List<HeaderPathResult> headerPaths,
 			List<List<CellResult>> previewRows,
 			boolean truncated,
-			SemanticClassificationResult semantic) {
+			SemanticClassificationResult semantic,
+			AnalysisInclusionResult analysisInclusion) {
 
 		private static RegionResult from(AiWorkbookSummary.CellRegion region) {
 			return new RegionResult(
@@ -144,7 +173,24 @@ public record AnalysisResultDetails(
 					safeList(region.headerPaths()).stream().map(HeaderPathResult::from).toList(),
 					cellRows(region.previewRows()),
 					Boolean.TRUE.equals(region.truncated()),
-					SemanticClassificationResult.from(region.semantic()));
+					SemanticClassificationResult.from(region.semantic()),
+					AnalysisInclusionResult.from(region.analysisInclusion()));
+		}
+	}
+
+	public record AnalysisInclusionResult(
+			String decision,
+			String reasonCode,
+			String reason) {
+
+		private static AnalysisInclusionResult from(AiAnalysisInclusion inclusion) {
+			if (inclusion == null) {
+				return null;
+			}
+			return new AnalysisInclusionResult(
+					inclusion.decision().value(),
+					inclusion.reasonCode(),
+					inclusion.reason());
 		}
 	}
 

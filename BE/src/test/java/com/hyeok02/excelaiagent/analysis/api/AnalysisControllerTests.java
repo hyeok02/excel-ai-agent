@@ -26,12 +26,14 @@ import com.hyeok02.excelaiagent.analysis.domain.AnalysisResult;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisStatus;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
+import com.hyeok02.excelaiagent.integration.ai.AiAnalysisInclusion;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
 import com.hyeok02.excelaiagent.integration.ai.AiSemanticClassification;
 import com.hyeok02.excelaiagent.integration.ai.AiSemanticReason;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
 import com.hyeok02.excelaiagent.integration.ai.SemanticRole;
+import com.hyeok02.excelaiagent.integration.ai.AnalysisDecision;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -191,6 +193,11 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.createdAt").isNotEmpty())
 				.andExpect(jsonPath("$.workbook.filename").value("sales.xlsx"))
 				.andExpect(jsonPath("$.workbook.sheetCount").value(1))
+				.andExpect(jsonPath("$.workbook.totalSheetCount").value(2))
+				.andExpect(jsonPath("$.workbook.excludedSheetCount").value(1))
+				.andExpect(jsonPath("$.workbook.excludedSheets[0].name").value("__snlofficequeries"))
+				.andExpect(jsonPath("$.workbook.excludedSheets[0].analysisInclusion.decision")
+						.value("exclude"))
 				.andExpect(jsonPath("$.workbook.sheets[0].name").value("Sales"))
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].cell").value("D2"))
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].references[0]").value("B2:C2"))
@@ -523,6 +530,15 @@ class AnalysisControllerTests {
 										List.of("노트북", "모니터"),
 										List.of(10, 5))),
 								false)))),
+				2,
+				1,
+				List.of(new AiWorkbookSummary.ExcludedSheetSummary(
+						"__snlofficequeries",
+						"visible",
+						new AiAnalysisInclusion(
+								AnalysisDecision.EXCLUDE,
+								"addin_cache_worksheet",
+								"애드인 캐시 시트"))),
 				new AiWorkbookSummary.DependencySummary(
 						2,
 						1,

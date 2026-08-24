@@ -72,6 +72,17 @@ class AiServiceClientTests {
 						{
 						  "filename": "sales.xlsx",
 						  "sheet_count": 1,
+						  "total_sheet_count": 2,
+						  "excluded_sheet_count": 1,
+						  "excluded_sheets": [{
+						    "name": "__snlofficequeries",
+						    "state": "visible",
+						    "analysis_inclusion": {
+						      "decision": "exclude",
+						      "reason_code": "addin_cache_worksheet",
+						      "reason": "애드인 캐시 시트"
+						    }
+						  }],
 						  "sheets": [
 						    {
 						      "name": "Sales",
@@ -80,6 +91,11 @@ class AiServiceClientTests {
 						      "formula_count": 1,
 						      "table_count": 0,
 						      "chart_count": 1,
+						      "analysis_inclusion": {
+						        "decision": "include",
+						        "reason_code": "business_worksheet",
+						        "reason": "사용자 업무 시트"
+						      },
 						      "formulas": [
 						        {
 						          "cell": "D2",
@@ -123,6 +139,11 @@ class AiServiceClientTests {
 							}
 						  ]],
 						  "is_truncated": true,
+						  "analysis_inclusion": {
+						    "decision": "include",
+						    "reason_code": "populated_business_region",
+						    "reason": "값이 존재하는 업무 영역"
+						  },
 						  "semantic": {
 						    "role": "data",
 						    "confidence": 0.91,
@@ -211,6 +232,13 @@ class AiServiceClientTests {
 
 		assertThat(response.filename()).isEqualTo("sales.xlsx");
 		assertThat(response.sheetCount()).isEqualTo(1);
+		assertThat(response.totalSheetCount()).isEqualTo(2);
+		assertThat(response.excludedSheetCount()).isEqualTo(1);
+		assertThat(response.excludedSheets()).singleElement().satisfies(sheet -> {
+			assertThat(sheet.name()).isEqualTo("__snlofficequeries");
+			assertThat(sheet.analysisInclusion().decision()).isEqualTo(AnalysisDecision.EXCLUDE);
+			assertThat(sheet.analysisInclusion().reasonCode()).isEqualTo("addin_cache_worksheet");
+		});
 		assertThat(response.dependencySummary().edgeCount()).isEqualTo(1);
 		assertThat(response.dependencySummary().cycleCount()).isEqualTo(1);
 		assertThat(response.dependencySummary().cycles()).singleElement().satisfies(cycle -> {
@@ -227,6 +255,7 @@ class AiServiceClientTests {
 		});
 		assertThat(response.sheets()).singleElement().satisfies(sheet -> {
 			assertThat(sheet.name()).isEqualTo("Sales");
+			assertThat(sheet.analysisInclusion().decision()).isEqualTo(AnalysisDecision.INCLUDE);
 			assertThat(sheet.formulaCount()).isEqualTo(1);
 			assertThat(sheet.chartCount()).isEqualTo(1);
 			assertThat(sheet.formulas()).singleElement().satisfies(formula -> {
@@ -236,6 +265,8 @@ class AiServiceClientTests {
 				assertThat(formula.role()).isEqualTo("calculation");
 			});
 			assertThat(sheet.regions()).singleElement().satisfies(region -> {
+				assertThat(region.analysisInclusion().reasonCode())
+						.isEqualTo("populated_business_region");
 				assertThat(region.startCell()).isEqualTo("A1");
 				assertThat(region.endCell()).isEqualTo("D3");
 				assertThat(region.title()).isEqualTo("월별 매출");

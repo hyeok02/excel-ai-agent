@@ -101,9 +101,14 @@ def test_returns_workbook_summary() -> None:
     result = response.json()
     assert result["filename"] == "sales.xlsx"
     assert result["sheet_count"] == 2
+    assert result["total_sheet_count"] == 2
+    assert result["excluded_sheet_count"] == 0
+    assert result["excluded_sheets"] == []
 
     sales = result["sheets"][0]
     assert sales["name"] == "매출현황"
+    assert sales["analysis_inclusion"]["decision"] == "include"
+    assert sales["analysis_inclusion"]["reason_code"] == "business_worksheet"
     assert sales["formula_count"] == 2
     assert sales["formulas"][0] == {
         "cell": "D2",
@@ -123,6 +128,11 @@ def test_returns_workbook_summary() -> None:
     assert formula_cell["semantic"] is None
     assert sales["regions"][0]["title"] == "상품"
     assert sales["regions"][0]["semantic"] is None
+    assert sales["regions"][0]["analysis_inclusion"]["decision"] == "include"
+    assert (
+        sales["regions"][0]["analysis_inclusion"]["reason_code"]
+        == "populated_business_region"
+    )
     assert sales["regions"][0]["row_count"] == 3
     assert sales["regions"][0]["column_count"] == 4
     assert sales["regions"][0]["header_paths"][0] == {
@@ -169,7 +179,22 @@ def test_excludes_hidden_and_add_in_cache_sheets() -> None:
     assert response.status_code == 200
     result = response.json()
     assert result["sheet_count"] == 1
+    assert result["total_sheet_count"] == 4
+    assert result["excluded_sheet_count"] == 3
     assert [sheet["name"] for sheet in result["sheets"]] == ["업무 데이터"]
+    assert [sheet["name"] for sheet in result["excluded_sheets"]] == [
+        "숨김 계산",
+        "__snlofficequeries",
+        "CIOHiddenCacheSheet",
+    ]
+    assert [
+        sheet["analysis_inclusion"]["reason_code"]
+        for sheet in result["excluded_sheets"]
+    ] == [
+        "hidden_worksheet",
+        "addin_cache_worksheet",
+        "system_cache_worksheet",
+    ]
 
 
 def test_rejects_unsupported_extension() -> None:

@@ -9,6 +9,10 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook.workbook import Workbook
 
 from app.services.region_detector import CellRegion
+from app.services.analysis_inclusion import (
+    AnalysisInclusion,
+    INCLUDED_POPULATED_REGION,
+)
 from app.services.semantic_models import SemanticClassification
 
 CellValue: TypeAlias = str | int | float | bool | None
@@ -53,6 +57,7 @@ class RegionSummary:
     header_paths: list[HeaderPathSummary]
     preview_rows: list[list[CellSnapshot]]
     is_truncated: bool
+    analysis_inclusion: AnalysisInclusion = INCLUDED_POPULATED_REGION
     semantic: SemanticClassification | None = None
 
 
