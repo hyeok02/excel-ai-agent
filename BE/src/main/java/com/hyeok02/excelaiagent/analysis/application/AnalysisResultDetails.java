@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
+import com.hyeok02.excelaiagent.integration.ai.AiSemanticClassification;
+import com.hyeok02.excelaiagent.integration.ai.AiSemanticReason;
 
 public record AnalysisResultDetails(
 		UUID analysisId,
@@ -127,7 +129,8 @@ public record AnalysisResultDetails(
 			List<String> mergedRanges,
 			List<HeaderPathResult> headerPaths,
 			List<List<CellResult>> previewRows,
-			boolean truncated) {
+			boolean truncated,
+			SemanticClassificationResult semantic) {
 
 		private static RegionResult from(AiWorkbookSummary.CellRegion region) {
 			return new RegionResult(
@@ -140,7 +143,8 @@ public record AnalysisResultDetails(
 					safeList(region.mergedRanges()),
 					safeList(region.headerPaths()).stream().map(HeaderPathResult::from).toList(),
 					cellRows(region.previewRows()),
-					Boolean.TRUE.equals(region.truncated()));
+					Boolean.TRUE.equals(region.truncated()),
+					SemanticClassificationResult.from(region.semantic()));
 		}
 	}
 
@@ -162,7 +166,8 @@ public record AnalysisResultDetails(
 			boolean bold,
 			String fillColor,
 			String horizontalAlignment,
-			boolean merged) {
+			boolean merged,
+			SemanticClassificationResult semantic) {
 
 		private static CellResult from(AiWorkbookSummary.CellSnapshot cell) {
 			return new CellResult(
@@ -174,7 +179,38 @@ public record AnalysisResultDetails(
 					Boolean.TRUE.equals(cell.bold()),
 					cell.fillColor(),
 					cell.horizontalAlignment(),
-					Boolean.TRUE.equals(cell.merged()));
+					Boolean.TRUE.equals(cell.merged()),
+					SemanticClassificationResult.from(cell.semantic()));
+		}
+	}
+
+	public record SemanticClassificationResult(
+			String role,
+			double confidence,
+			List<SemanticReasonResult> reasons) {
+
+		private static SemanticClassificationResult from(AiSemanticClassification semantic) {
+			if (semantic == null) {
+				return null;
+			}
+			return new SemanticClassificationResult(
+					semantic.role().value(),
+					semantic.confidence(),
+					safeList(semantic.reasons()).stream().map(SemanticReasonResult::from).toList());
+		}
+	}
+
+	public record SemanticReasonResult(
+			String code,
+			String message,
+			List<String> evidenceCells) {
+
+		private static SemanticReasonResult from(
+				AiSemanticReason reason) {
+			return new SemanticReasonResult(
+					reason.code(),
+					reason.message(),
+					safeList(reason.evidenceCells()));
 		}
 	}
 

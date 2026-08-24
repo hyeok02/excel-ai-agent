@@ -27,8 +27,11 @@ import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisStatus;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
+import com.hyeok02.excelaiagent.integration.ai.AiSemanticClassification;
+import com.hyeok02.excelaiagent.integration.ai.AiSemanticReason;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
+import com.hyeok02.excelaiagent.integration.ai.SemanticRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -192,7 +195,13 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].cell").value("D2"))
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].references[0]").value("B2:C2"))
 				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].startCell").value("A1"))
+				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].semantic.role").value("data"))
+				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].semantic.confidence").value(0.91))
+				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].semantic.reasons[0].code")
+						.value("tabular_values"))
 				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].previewRows[0][0].address").value("A1"))
+				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].previewRows[0][0].semantic.role")
+						.value("header"))
 				.andExpect(jsonPath("$.workbook.sheets[0].tables[0].reference").value("A1:D3"))
 				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].title").value("월별 매출"))
 				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].series[0].valueSamples[0]").value(10))
@@ -492,12 +501,7 @@ class AnalysisControllerTests {
 								"=SUM(B2:C2)",
 								List.of("B2:C2"))),
 						1,
-						List.of(new AiWorkbookSummary.CellRegion(
-								"A1",
-								"D3",
-								12,
-								List.of(List.of(new AiWorkbookSummary.CellSnapshot("A1", "상품", null))),
-								false)),
+						List.of(regionSummary()),
 						List.of(new AiWorkbookSummary.TableSummary(
 								"SalesTable",
 								"SalesTable",
@@ -553,6 +557,47 @@ class AnalysisControllerTests {
 								List.of(new AiWorkbookSummary.DependencyEdge(
 										"Sales!D2", "Sales!D2", "D2", false)),
 								false))));
+	}
+
+	private AiWorkbookSummary.CellRegion regionSummary() {
+		return new AiWorkbookSummary.CellRegion(
+				"A1",
+				"D3",
+				12,
+				null,
+				3,
+				4,
+				List.of(),
+				List.of(),
+				List.of(List.of(cellSnapshot())),
+				false,
+				new AiSemanticClassification(
+						SemanticRole.DATA,
+						0.91,
+						List.of(new AiSemanticReason(
+								"tabular_values",
+								"헤더 아래 반복 데이터",
+								List.of("Sales!A1:D3")))));
+	}
+
+	private AiWorkbookSummary.CellSnapshot cellSnapshot() {
+		return new AiWorkbookSummary.CellSnapshot(
+				"A1",
+				"상품",
+				null,
+				null,
+				"General",
+				true,
+				null,
+				"center",
+				false,
+				new AiSemanticClassification(
+						SemanticRole.HEADER,
+						0.86,
+						List.of(new AiSemanticReason(
+								"header_style",
+								"굵은 글꼴과 배경색",
+								List.of("Sales!A1")))));
 	}
 
 	private AiWorkbookInsights workbookInsights() {

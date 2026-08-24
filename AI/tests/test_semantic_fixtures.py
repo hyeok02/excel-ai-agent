@@ -4,6 +4,8 @@ from pathlib import Path
 from openpyxl import load_workbook
 from openpyxl.utils.cell import range_boundaries
 
+from app.services.semantic_models import SemanticRole
+
 
 FIXTURE_DIRECTORY = Path(__file__).parent / "fixtures" / "semantic"
 ALLOWED_SHEET_DECISIONS = {"analyze", "metadata_only", "exclude"}
@@ -14,21 +16,7 @@ ALLOWED_SHEET_ROLES = {
     "system_cache",
 }
 ALLOWED_REGION_DECISIONS = {"analyze", "context", "exclude"}
-ALLOWED_REGION_ROLES = {
-    "title",
-    "unit",
-    "header",
-    "data",
-    "total",
-    "source_note",
-    "rule_note",
-    "input",
-    "calculation",
-    "output",
-    "instruction",
-    "warning",
-    "system_cache",
-}
+ALLOWED_REGION_ROLES = {role.value for role in SemanticRole}
 
 
 def test_semantic_fixture_manifest_is_complete() -> None:

@@ -5,6 +5,41 @@ export type AnalysisDepth = 'AUTO' | 'FAST' | 'PRECISE'
 
 export type AnalysisStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
 
+export const SEMANTIC_ROLES = [
+  'title',
+  'description',
+  'unit',
+  'header',
+  'data',
+  'formula',
+  'note',
+  'total',
+  'input',
+  'calculation',
+  'output',
+  'instruction',
+  'warning',
+  'source_note',
+  'rule_note',
+  'system_cache',
+  'ignore',
+  'unknown',
+] as const
+
+export type SemanticRole = (typeof SEMANTIC_ROLES)[number]
+
+export interface SemanticReason {
+  code: string
+  message: string
+  evidenceCells: string[]
+}
+
+export interface SemanticClassification {
+  role: SemanticRole
+  confidence: number
+  reasons: SemanticReason[]
+}
+
 export interface AnalysisSubmission {
   analysisId: string
   status: AnalysisStatus
@@ -39,6 +74,7 @@ export interface CellResult {
   fillColor: string | null
   horizontalAlignment: string | null
   merged: boolean
+  semantic: SemanticClassification | null
 }
 
 export interface HeaderPathResult {
@@ -57,6 +93,7 @@ export interface RegionResult {
   headerPaths: HeaderPathResult[]
   previewRows: CellResult[][]
   truncated: boolean
+  semantic: SemanticClassification | null
 }
 
 export interface TableResult {
@@ -238,7 +275,9 @@ const waitForAnalysis = async (
     await new Promise((resolve) => window.setTimeout(resolve, pollIntervalMs))
   }
 
-  throw new Error('분석 대기 시간이 초과되었습니다. 분석 이력에서 처리 상태를 확인해주세요.')
+  throw new Error(
+    '분석 대기 시간이 초과되었습니다. 분석 이력에서 처리 상태를 확인해주세요.',
+  )
 }
 
 export const analyzeWorkbook = async (

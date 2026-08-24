@@ -108,13 +108,31 @@ class AiServiceClientTests {
 						              "cached_value": null,
 						              "number_format": "General",
 						              "bold": true,
-						              "fill_color": "FFEEF4FF",
-						              "horizontal_alignment": "center",
-						              "merged": true
-						            }
-						          ]],
-						          "is_truncated": true
-						        }
+							  "fill_color": "FFEEF4FF",
+							  "horizontal_alignment": "center",
+							  "merged": true,
+							  "semantic": {
+							    "role": "header",
+							    "confidence": 0.86,
+							    "reasons": [{
+							      "code": "header_style",
+							      "message": "굵은 글꼴과 배경색",
+							      "evidence_cells": ["Sales!A1"]
+							    }]
+							  }
+							}
+						  ]],
+						  "is_truncated": true,
+						  "semantic": {
+						    "role": "data",
+						    "confidence": 0.91,
+						    "reasons": [{
+						      "code": "tabular_values",
+						      "message": "헤더 아래 반복 데이터",
+						      "evidence_cells": ["Sales!A1:D3"]
+						    }]
+						  }
+						}
 						      ],
 						      "tables": [
 						        {
@@ -236,6 +254,12 @@ class AiServiceClientTests {
 					assertThat(cell.merged()).isTrue();
 				});
 				assertThat(region.truncated()).isTrue();
+				assertThat(region.semantic().role()).isEqualTo(SemanticRole.DATA);
+				assertThat(region.semantic().confidence()).isEqualTo(0.91);
+				assertThat(region.semantic().reasons()).singleElement().satisfies(reason ->
+						assertThat(reason.evidenceCells()).containsExactly("Sales!A1:D3"));
+				assertThat(region.previewRows().getFirst().getFirst().semantic().role())
+						.isEqualTo(SemanticRole.HEADER);
 			});
 			assertThat(sheet.tables()).singleElement().satisfies(table ->
 					assertThat(table.reference()).isEqualTo("A1:D3"));

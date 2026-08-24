@@ -64,7 +64,23 @@ public record AiWorkbookSummary(
 			@JsonProperty("merged_ranges") List<String> mergedRanges,
 			@JsonProperty("header_paths") List<HeaderPath> headerPaths,
 			@JsonProperty("preview_rows") List<List<CellSnapshot>> previewRows,
-			@JsonProperty("is_truncated") Boolean truncated) {
+			@JsonProperty("is_truncated") Boolean truncated,
+			AiSemanticClassification semantic) {
+
+		public CellRegion(
+				String startCell,
+				String endCell,
+				int cellCount,
+				String title,
+				Integer rowCount,
+				Integer columnCount,
+				List<String> mergedRanges,
+				List<HeaderPath> headerPaths,
+				List<List<CellSnapshot>> previewRows,
+				Boolean truncated) {
+			this(startCell, endCell, cellCount, title, rowCount, columnCount,
+					mergedRanges, headerPaths, previewRows, truncated, null);
+		}
 
 		public CellRegion(String startCell, String endCell, int cellCount) {
 			this(startCell, endCell, cellCount, null, 0, 0, List.of(), List.of(), List.of(), false);
@@ -94,7 +110,22 @@ public record AiWorkbookSummary(
 			Boolean bold,
 			@JsonProperty("fill_color") String fillColor,
 			@JsonProperty("horizontal_alignment") String horizontalAlignment,
-			Boolean merged) {
+			Boolean merged,
+			AiSemanticClassification semantic) {
+
+		public CellSnapshot(
+				String address,
+				Object value,
+				String formula,
+				Object cachedValue,
+				String numberFormat,
+				Boolean bold,
+				String fillColor,
+				String horizontalAlignment,
+				Boolean merged) {
+			this(address, value, formula, cachedValue, numberFormat, bold,
+					fillColor, horizontalAlignment, merged, null);
+		}
 
 		public CellSnapshot(String address, Object value, String formula) {
 			this(address, value, formula, null, null, false, null, null, false);
