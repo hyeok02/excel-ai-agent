@@ -11,12 +11,29 @@ from app.services.insight_generator import (
     WorkbookInsightReport,
 )
 from app.services.analysis_strategy import AnalysisDepth
+from app.services.semantic_models import SemanticRole
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
 
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 READ_CHUNK_SIZE = 1024 * 1024
+
+
+class SemanticReasonResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    code: str
+    message: str
+    evidence_cells: list[str]
+
+
+class SemanticClassificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    role: SemanticRole
+    confidence: float
+    reasons: list[SemanticReasonResponse]
 
 
 class CellRegionResponse(BaseModel):
@@ -32,6 +49,7 @@ class CellRegionResponse(BaseModel):
     header_paths: list["HeaderPathResponse"]
     preview_rows: list[list["CellSnapshotResponse"]]
     is_truncated: bool
+    semantic: SemanticClassificationResponse | None
 
 
 class CellSnapshotResponse(BaseModel):
@@ -46,6 +64,7 @@ class CellSnapshotResponse(BaseModel):
     fill_color: str | None
     horizontal_alignment: str | None
     merged: bool
+    semantic: SemanticClassificationResponse | None
 
 
 class HeaderPathResponse(BaseModel):

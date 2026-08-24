@@ -9,6 +9,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook.workbook import Workbook
 
 from app.services.region_detector import CellRegion
+from app.services.semantic_models import SemanticClassification
 
 CellValue: TypeAlias = str | int | float | bool | None
 
@@ -31,6 +32,7 @@ class CellSnapshot:
     fill_color: str | None = None
     horizontal_alignment: str | None = None
     merged: bool = False
+    semantic: SemanticClassification | None = None
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,7 @@ class RegionSummary:
     header_paths: list[HeaderPathSummary]
     preview_rows: list[list[CellSnapshot]]
     is_truncated: bool
+    semantic: SemanticClassification | None = None
 
 
 @dataclass(frozen=True)

@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import Callable, Mapping, Protocol, Sequence, TypeVar
 
+from app.services.semantic_models import SemanticRole
+
 
 T = TypeVar("T")
 
@@ -19,7 +21,7 @@ class UnitPrediction:
 @dataclass(frozen=True)
 class RegionPrediction:
     cell_range: str
-    role: str
+    role: SemanticRole
     decision: str
     units: tuple[UnitPrediction, ...] = ()
 
@@ -48,7 +50,7 @@ class SemanticPrediction:
                     regions=tuple(
                         RegionPrediction(
                             cell_range=str(region["range"]),
-                            role=str(region["role"]),
+                            role=SemanticRole(str(region["role"])),
                             decision=str(region["decision"]),
                             units=tuple(
                                 UnitPrediction(

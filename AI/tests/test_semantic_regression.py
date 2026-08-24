@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from app.services.semantic_models import SemanticRole
 from tests.run_semantic_regression import main
 from tests.support.semantic_regression import (
     RegionPrediction,
@@ -70,7 +71,7 @@ def test_comparator_reports_semantic_label_differences() -> None:
     changed_regions = list(expected_sheet.regions)
     changed_regions[0] = replace(
         changed_regions[0],
-        role="data",
+        role=SemanticRole.DATA,
         decision="analyze",
     )
     changed_regions[3] = replace(changed_regions[3], units=())
@@ -78,7 +79,7 @@ def test_comparator_reports_semantic_label_differences() -> None:
     changed_regions.append(
         RegionPrediction(
             cell_range="F1:F2",
-            role="warning",
+            role=SemanticRole.WARNING,
             decision="context",
         )
     )

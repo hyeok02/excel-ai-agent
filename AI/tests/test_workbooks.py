@@ -120,7 +120,9 @@ def test_returns_workbook_summary() -> None:
     assert formula_cell["number_format"] == "General"
     assert formula_cell["bold"] is False
     assert formula_cell["merged"] is False
+    assert formula_cell["semantic"] is None
     assert sales["regions"][0]["title"] == "상품"
+    assert sales["regions"][0]["semantic"] is None
     assert sales["regions"][0]["row_count"] == 3
     assert sales["regions"][0]["column_count"] == 4
     assert sales["regions"][0]["header_paths"][0] == {

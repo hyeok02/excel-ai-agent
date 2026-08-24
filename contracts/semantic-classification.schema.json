@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://excel-ai-agent.local/contracts/semantic-classification.schema.json",
+  "title": "Excel Semantic Classification",
+  "type": "object",
+  "required": ["role", "confidence", "reasons"],
+  "properties": {
+    "role": {
+      "$ref": "#/$defs/semanticRole"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/semanticReason"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "semanticRole": {
+      "type": "string",
+      "enum": [
+        "title",
+        "description",
+        "unit",
+        "header",
+        "data",
+        "formula",
+        "note",
+        "total",
+        "input",
+        "calculation",
+        "output",
+        "instruction",
+        "warning",
+        "source_note",
+        "rule_note",
+        "system_cache",
+        "ignore",
+        "unknown"
+      ]
+    },
+    "semanticReason": {
+      "type": "object",
+      "required": ["code", "message", "evidence_cells"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_cells": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
