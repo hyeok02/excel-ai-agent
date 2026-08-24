@@ -11,6 +11,7 @@ from app.services.insight_generator import (
     WorkbookInsightReport,
 )
 from app.services.analysis_strategy import AnalysisDepth
+from app.services.analysis_inclusion import AnalysisDecision
 from app.services.semantic_models import SemanticRole
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
 
@@ -36,6 +37,14 @@ class SemanticClassificationResponse(BaseModel):
     reasons: list[SemanticReasonResponse]
 
 
+class AnalysisInclusionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    decision: AnalysisDecision
+    reason_code: str
+    reason: str
+
+
 class CellRegionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,6 +58,7 @@ class CellRegionResponse(BaseModel):
     header_paths: list["HeaderPathResponse"]
     preview_rows: list[list["CellSnapshotResponse"]]
     is_truncated: bool
+    analysis_inclusion: AnalysisInclusionResponse
     semantic: SemanticClassificationResponse | None
 
 
@@ -130,8 +140,17 @@ class SheetSummaryResponse(BaseModel):
     formulas: list[FormulaAnalysisResponse]
     region_count: int
     regions: list[CellRegionResponse]
+    analysis_inclusion: AnalysisInclusionResponse
     tables: list[TableSummaryResponse]
     charts: list[ChartSummaryResponse]
+
+
+class ExcludedSheetSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    state: str
+    analysis_inclusion: AnalysisInclusionResponse
 
 
 class DependencyNodeResponse(BaseModel):
@@ -201,6 +220,9 @@ class WorkbookSummaryResponse(BaseModel):
     filename: str
     sheet_count: int
     sheets: list[SheetSummaryResponse]
+    total_sheet_count: int
+    excluded_sheet_count: int
+    excluded_sheets: list[ExcludedSheetSummaryResponse]
     dependency_summary: DependencySummaryResponse
 
 

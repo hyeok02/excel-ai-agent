@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://excel-ai-agent.local/contracts/analysis-inclusion.schema.json",
+  "title": "Excel Analysis Inclusion",
+  "type": "object",
+  "required": ["decision", "reason_code", "reason"],
+  "properties": {
+    "decision": {
+      "$ref": "#/$defs/analysisDecision"
+    },
+    "reason_code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "analysisDecision": {
+      "type": "string",
+      "enum": ["include", "exclude"]
+    }
+  }
+}

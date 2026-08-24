@@ -53,6 +53,7 @@ def test_deduplicates_formula_patterns_for_llm_prompt() -> None:
             "title": None,
             "row_count": None,
             "column_count": None,
+            "analysis_inclusion": None,
             "merged_range_count": 0,
             "header_paths": [],
         }
@@ -107,4 +108,5 @@ def test_excludes_cell_previews_from_llm_prompt_context() -> None:
     assert region["title"] == "매출 현황"
     assert region["merged_range_count"] == 1
     assert region["header_paths"] == [{"column": "A", "labels": ["부서"]}]
+    assert region["analysis_inclusion"]["decision"] == "include"
     assert "preview_rows" not in region

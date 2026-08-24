@@ -10,6 +10,11 @@ from app.services.dependency_analyzer import (
     DependencySummary,
     analyze_dependencies,
 )
+from app.services.analysis_inclusion import (
+    AnalysisDecision,
+    AnalysisInclusion,
+    INCLUDED_BUSINESS_WORKSHEET,
+)
 from app.services.formula_analyzer import FormulaAnalysis, analyze_formulas
 from app.services.region_detector import detect_regions
 from app.services.workbook_details import (
@@ -20,7 +25,7 @@ from app.services.workbook_details import (
     summarize_regions,
     summarize_tables,
 )
-from app.services.worksheet_filter import is_business_worksheet
+from app.services.worksheet_filter import evaluate_worksheet_inclusion
 
 SUPPORTED_EXTENSIONS = {".xlsx", ".xlsm"}
 
@@ -40,8 +45,16 @@ class SheetSummary:
     formulas: list[FormulaAnalysis]
     region_count: int
     regions: list[RegionSummary]
+    analysis_inclusion: AnalysisInclusion = INCLUDED_BUSINESS_WORKSHEET
     tables: list[TableSummary] = field(default_factory=list)
     charts: list[ChartSummary] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ExcludedSheetSummary:
+    name: str
+    state: str
+    analysis_inclusion: AnalysisInclusion
 
 
 @dataclass(frozen=True)
@@ -49,6 +62,9 @@ class WorkbookSummary:
     filename: str
     sheet_count: int
     sheets: list[SheetSummary]
+    total_sheet_count: int = 0
+    excluded_sheet_count: int = 0
+    excluded_sheets: list[ExcludedSheetSummary] = field(default_factory=list)
     dependency_summary: DependencySummary = field(
         default_factory=DependencySummary.empty
     )
@@ -74,9 +90,19 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
         raise InvalidWorkbookError("올바른 Excel 파일이 아닙니다.") from exception
 
     try:
+        total_sheet_count = len(workbook.sheetnames)
         sheets = []
+        excluded_sheets = []
         for worksheet in workbook.worksheets:
-            if not is_business_worksheet(worksheet):
+            analysis_inclusion = evaluate_worksheet_inclusion(worksheet)
+            if analysis_inclusion.decision is AnalysisDecision.EXCLUDE:
+                excluded_sheets.append(
+                    ExcludedSheetSummary(
+                        name=worksheet.title,
+                        state=worksheet.sheet_state,
+                        analysis_inclusion=analysis_inclusion,
+                    )
+                )
                 continue
 
             value_worksheet = value_workbook[worksheet.title]
@@ -96,6 +122,7 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
                     formulas=formulas,
                     region_count=len(regions),
                     regions=regions,
+                    analysis_inclusion=analysis_inclusion,
                     tables=tables,
                     charts=charts,
                 )
@@ -112,5 +139,8 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
         filename=filename,
         sheet_count=len(sheets),
         sheets=sheets,
+        total_sheet_count=total_sheet_count,
+        excluded_sheet_count=len(excluded_sheets),
+        excluded_sheets=excluded_sheets,
         dependency_summary=dependency_summary,
     )

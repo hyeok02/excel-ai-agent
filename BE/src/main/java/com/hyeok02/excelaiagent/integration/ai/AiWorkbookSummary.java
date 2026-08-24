@@ -8,10 +8,27 @@ public record AiWorkbookSummary(
 		String filename,
 		@JsonProperty("sheet_count") int sheetCount,
 		List<SheetSummary> sheets,
+		@JsonProperty("total_sheet_count") Integer totalSheetCount,
+		@JsonProperty("excluded_sheet_count") Integer excludedSheetCount,
+		@JsonProperty("excluded_sheets") List<ExcludedSheetSummary> excludedSheets,
 		@JsonProperty("dependency_summary") DependencySummary dependencySummary) {
 
 	public AiWorkbookSummary(String filename, int sheetCount, List<SheetSummary> sheets) {
-		this(filename, sheetCount, sheets, null);
+		this(filename, sheetCount, sheets, sheetCount, 0, List.of(), null);
+	}
+
+	public AiWorkbookSummary(
+			String filename,
+			int sheetCount,
+			List<SheetSummary> sheets,
+			DependencySummary dependencySummary) {
+		this(filename, sheetCount, sheets, sheetCount, 0, List.of(), dependencySummary);
+	}
+
+	public record ExcludedSheetSummary(
+			String name,
+			String state,
+			@JsonProperty("analysis_inclusion") AiAnalysisInclusion analysisInclusion) {
 	}
 
 	public record SheetSummary(
@@ -25,7 +42,8 @@ public record AiWorkbookSummary(
 			@JsonProperty("region_count") int regionCount,
 			List<CellRegion> regions,
 			List<TableSummary> tables,
-			List<ChartSummary> charts) {
+			List<ChartSummary> charts,
+			@JsonProperty("analysis_inclusion") AiAnalysisInclusion analysisInclusion) {
 
 		public SheetSummary(
 				String name,
@@ -38,7 +56,15 @@ public record AiWorkbookSummary(
 				int regionCount,
 				List<CellRegion> regions) {
 			this(name, rows, columns, formulaCount, tableCount, chartCount, formulas,
-					regionCount, regions, List.of(), List.of());
+					regionCount, regions, List.of(), List.of(), null);
+		}
+
+		public SheetSummary(
+				String name, int rows, int columns, int formulaCount, int tableCount,
+				int chartCount, List<FormulaAnalysis> formulas, int regionCount,
+				List<CellRegion> regions, List<TableSummary> tables, List<ChartSummary> charts) {
+			this(name, rows, columns, formulaCount, tableCount, chartCount, formulas,
+					regionCount, regions, tables, charts, null);
 		}
 	}
 
@@ -65,7 +91,8 @@ public record AiWorkbookSummary(
 			@JsonProperty("header_paths") List<HeaderPath> headerPaths,
 			@JsonProperty("preview_rows") List<List<CellSnapshot>> previewRows,
 			@JsonProperty("is_truncated") Boolean truncated,
-			AiSemanticClassification semantic) {
+			AiSemanticClassification semantic,
+			@JsonProperty("analysis_inclusion") AiAnalysisInclusion analysisInclusion) {
 
 		public CellRegion(
 				String startCell,
@@ -79,7 +106,16 @@ public record AiWorkbookSummary(
 				List<List<CellSnapshot>> previewRows,
 				Boolean truncated) {
 			this(startCell, endCell, cellCount, title, rowCount, columnCount,
-					mergedRanges, headerPaths, previewRows, truncated, null);
+					mergedRanges, headerPaths, previewRows, truncated, null, null);
+		}
+
+		public CellRegion(
+				String startCell, String endCell, int cellCount, String title,
+				Integer rowCount, Integer columnCount, List<String> mergedRanges,
+				List<HeaderPath> headerPaths, List<List<CellSnapshot>> previewRows,
+				Boolean truncated, AiSemanticClassification semantic) {
+			this(startCell, endCell, cellCount, title, rowCount, columnCount,
+					mergedRanges, headerPaths, previewRows, truncated, semantic, null);
 		}
 
 		public CellRegion(String startCell, String endCell, int cellCount) {

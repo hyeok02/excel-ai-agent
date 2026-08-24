@@ -143,6 +143,7 @@ def _select_region_samples(
             "title": region.get("title"),
             "row_count": region.get("row_count"),
             "column_count": region.get("column_count"),
+            "analysis_inclusion": region.get("analysis_inclusion"),
             "merged_range_count": len(region.get("merged_ranges", [])),
             "header_paths": [
                 {
@@ -220,6 +221,9 @@ def build_workbook_context(
     return {
         "filename": summary.filename,
         "sheet_count": summary.sheet_count,
+        "total_sheet_count": summary.total_sheet_count or summary.sheet_count,
+        "excluded_sheet_count": summary.excluded_sheet_count,
+        "excluded_sheets": [asdict(sheet) for sheet in summary.excluded_sheets],
         "included_sheet_count": len(sheets),
         "omitted_sheet_count": max(0, len(summary.sheets) - profile.max_sheets),
         "dependency_summary": {
