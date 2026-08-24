@@ -43,3 +43,37 @@
 - `exclude`: 프롬프트와 인사이트 생성에서 제외
 
 `answer_cells`는 질문의 직접 답을 제공하는 셀이고, `supporting_cells`는 답의 계산이나 해석 근거로 함께 표시할 셀입니다.
+
+## 회귀 테스트 실행
+
+의미 분석기가 생성한 결과를 `<workbook stem>.actual.json` 이름으로 한 디렉터리에 저장한 뒤 아래 명령으로 기대 결과와 비교합니다.
+
+```bash
+cd AI
+.venv/bin/python -m tests.run_semantic_regression --actual-dir <결과 디렉터리>
+```
+
+actual JSON은 다음 필드를 사용합니다. 기대 결과 JSON의 `reason`, `expected_formula_count`, `reference_answers`처럼 비교 대상이 아닌 필드는 포함하지 않아도 됩니다.
+
+```json
+{
+  "workbook": "semantic_simple_table.xlsx",
+  "sheets": [
+    {
+      "name": "월별 매출",
+      "decision": "analyze",
+      "sheet_role": "business_data",
+      "regions": [
+        {
+          "range": "A1:D1",
+          "role": "title",
+          "decision": "context",
+          "units": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+모든 fixture가 일치하면 종료 코드 `0`, 하나라도 오분류되거나 실행 중 예외가 발생하면 종료 코드 `1`을 반환합니다. 실패 결과에는 누락·추가된 시트와 영역, 역할·처리 방식·단위 불일치 위치가 함께 출력됩니다.
