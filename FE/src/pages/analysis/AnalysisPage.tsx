@@ -3,7 +3,7 @@ import AnalysisHeader from '@/components/analysis/common/AnalysisHeader'
 import AnalysisResultSection from '@/components/analysis/result/AnalysisResultSection'
 import AnalysisFlowPanel from '@/components/analysis/upload/AnalysisFlowPanel'
 import AnalysisUploadPanel from '@/components/analysis/upload/AnalysisUploadPanel'
-import { useWorkbookAnalysis } from '@/hooks/useWorkbookAnalysis'
+import { useWorkbookAnalysis } from '@/hooks/analysis/useWorkbookAnalysis'
 
 const AnalysisPage = () => {
   const {

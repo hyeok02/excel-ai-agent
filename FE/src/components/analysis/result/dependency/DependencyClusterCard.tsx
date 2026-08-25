@@ -40,7 +40,8 @@ const DependencyClusterCard = ({ cluster }: DependencyClusterCardProps) => {
 
       {(cluster.truncated || relationships.length > visibleRelationships.length) && (
         <p className="mt-4 text-[11px] leading-5 text-slate-400">
-          복잡한 계산 묶음은 영향이 큰 대표 관계만 보여줘요. 전체 개수에는 모든 셀과 수식이 반영됩니다.
+          복잡한 계산 묶음은 영향이 큰 대표 관계만 보여줘요. 전체 개수에는 모든 셀과
+          수식이 반영됩니다.
         </p>
       )}
     </article>

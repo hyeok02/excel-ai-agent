@@ -9,7 +9,8 @@ const AgentReadySection = ({ hasInsightReport }: AgentReadySectionProps) => {
     {
       icon: Braces,
       title: '구조화 완료',
-      description: '시트·영역·셀·수식·차트 정보가 JSON/YAML로 다시 사용할 수 있게 정리됐어요.',
+      description:
+        '시트·영역·셀·수식·차트 정보가 JSON/YAML로 다시 사용할 수 있게 정리됐어요.',
     },
     {
       icon: Bot,
@@ -30,9 +31,12 @@ const AgentReadySection = ({ hasInsightReport }: AgentReadySectionProps) => {
       <p className="text-xs font-extrabold tracking-[0.16em] text-blue-300">
         AGENT READY DATA
       </p>
-      <h2 className="mt-2 text-lg font-extrabold">분석 결과를 다음 업무에 연결할 수 있어요</h2>
+      <h2 className="mt-2 text-lg font-extrabold">
+        분석 결과를 다음 업무에 연결할 수 있어요
+      </h2>
       <p className="mt-1 max-w-3xl text-xs leading-6 text-slate-400">
-        화면용 요약만 만든 것이 아니라, 다른 AI Agent가 읽을 수 있는 구조화 데이터와 원본 근거를 함께 보존합니다.
+        화면용 요약만 만든 것이 아니라, 다른 AI Agent가 읽을 수 있는 구조화 데이터와 원본
+        근거를 함께 보존합니다.
       </p>
       <div className="mt-5 grid gap-3 lg:grid-cols-3">
         {items.map(({ icon: Icon, title, description }) => (

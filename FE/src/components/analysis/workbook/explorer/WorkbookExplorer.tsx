@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 
 import type { SheetResult } from '@/api/analysis'
 import SheetResultCard from '@/components/analysis/workbook/explorer/SheetResultCard'
+import { SheetRoleBadge } from '@/components/analysis/workbook/semantic/components/ClassificationBadges'
+import { getSheetSemanticMetadata } from '@/components/analysis/workbook/semantic/semanticModel'
 
 interface WorkbookExplorerProps {
   sheets: SheetResult[]
@@ -42,6 +44,7 @@ const WorkbookExplorer = ({ sheets }: WorkbookExplorerProps) => {
       >
         {sheets.map((sheet) => {
           const selected = sheet.name === selectedSheet.name
+          const { classification } = getSheetSemanticMetadata(sheet)
           return (
             <button
               aria-selected={selected}
@@ -55,9 +58,12 @@ const WorkbookExplorer = ({ sheets }: WorkbookExplorerProps) => {
               role="tab"
               type="button"
             >
-              {sheet.name}
-              <span className="ml-2 font-medium text-slate-400">
-                {sheet.rows.toLocaleString()}×{sheet.columns.toLocaleString()}
+              <span className="flex items-center gap-2">
+                <span>{sheet.name}</span>
+                {classification && <SheetRoleBadge role={classification.role} />}
+                <span className="font-medium text-slate-400">
+                  {sheet.rows.toLocaleString()}×{sheet.columns.toLocaleString()}
+                </span>
               </span>
             </button>
           )

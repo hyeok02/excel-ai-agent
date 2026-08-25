@@ -1,4 +1,5 @@
 import type { CellResult } from '@/api/analysis'
+import { SemanticRoleBadge } from '@/components/analysis/workbook/semantic/components/ClassificationBadges'
 
 interface CellPreviewTableProps {
   rows: CellResult[][]
@@ -46,7 +47,12 @@ const CellPreviewTable = ({ rows }: CellPreviewTableProps) => {
                     {formatCellValue(cell)}
                   </code>
                   <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-bold text-slate-400">
-                    {cell.formula && <span className="text-brand-600">수식</span>}
+                    {cell.semantic && (
+                      <SemanticRoleBadge compact role={cell.semantic.role} />
+                    )}
+                    {cell.formula && !cell.semantic && (
+                      <span className="text-brand-600">수식</span>
+                    )}
                     {cell.formula && cell.cachedValue != null && (
                       <span>계산 결과 표시</span>
                     )}

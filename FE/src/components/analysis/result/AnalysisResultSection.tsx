@@ -6,6 +6,7 @@ import AnalysisExportActions from '@/components/analysis/result/AnalysisExportAc
 import DependencyMapSection from '@/components/analysis/result/DependencyMapSection'
 import InsightReportSection from '@/components/analysis/result/InsightReportSection'
 import WorkbookExplorer from '@/components/analysis/workbook/explorer/WorkbookExplorer'
+import WorkbookSemanticOverview from '@/components/analysis/workbook/semantic/summaries/WorkbookSemanticOverview'
 
 interface AnalysisResultSectionProps {
   mode: AnalysisMode
@@ -26,13 +27,13 @@ const getWorkbookTotals = (workbook: WorkbookResult) => {
 
 const MODE_PRESENTATION = {
   BFS: {
-    badge: 'BFS 군집 분석',
-    completion: '군집 분석 완료',
+    badge: 'BFS 구조 분석 · OpenAI 미사용',
+    completion: '규칙 기반 분석 완료',
     icon: Network,
   },
   LLM: {
-    badge: 'LLM 직접 분석',
-    completion: 'AI 분석 완료',
+    badge: 'LLM 인사이트 · OpenAI 사용',
+    completion: 'LLM 인사이트 분석 완료',
     icon: Sparkles,
   },
 } as const
@@ -91,6 +92,11 @@ const AnalysisResultSection = ({ mode, result }: AnalysisResultSectionProps) => 
           </div>
         ))}
       </div>
+
+      <WorkbookSemanticOverview
+        excludedSheets={workbook.excludedSheets ?? []}
+        sheets={workbook.sheets}
+      />
 
       {mode === 'LLM' && result.insightReport && (
         <InsightReportSection report={result.insightReport} />

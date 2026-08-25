@@ -2,8 +2,15 @@ import { ChevronDown, Grid3X3 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import type { RegionResult } from '@/api/analysis'
-import OriginalLocationButton from '@/components/analysis/workbook/common/OriginalLocationButton'
+import OriginalLocationButton from '@/components/analysis/workbook/details/OriginalLocationButton'
+import {
+  regionSizeLabel,
+  safeRegionCount,
+} from '@/components/analysis/workbook/details/regionDetailsUtils'
 import CellPreviewTable from '@/components/analysis/workbook/previews/CellPreviewTable'
+import RegionSemanticSummary, {
+  RegionSemanticBadges,
+} from '@/components/analysis/workbook/semantic/summaries/RegionSemanticSummary'
 
 interface SheetRegionDetailsProps {
   regions: RegionResult[]
@@ -11,22 +18,6 @@ interface SheetRegionDetailsProps {
 }
 
 const INITIAL_REGION_COUNT = 5
-
-const safeCount = (value: number | undefined | null) =>
-  typeof value === 'number' && Number.isFinite(value) ? value : null
-
-const regionSizeLabel = (region: RegionResult) => {
-  const rows = safeCount(region.rowCount)
-  const columns = safeCount(region.columnCount)
-  const cells =
-    safeCount(region.cellCount) ??
-    (rows !== null && columns !== null ? rows * columns : null)
-  const dimensions =
-    rows !== null && columns !== null ? `${rows}행 × ${columns}열` : '크기 정보 없음'
-  const cellCount = cells !== null ? ` · ${cells.toLocaleString()}셀` : ''
-
-  return `${dimensions}${cellCount}`
-}
 
 const SheetRegionDetails = ({ regions, sheetName }: SheetRegionDetailsProps) => {
   const [showAll, setShowAll] = useState(false)
@@ -36,8 +27,8 @@ const SheetRegionDetails = ({ regions, sheetName }: SheetRegionDetailsProps) => 
         .map((region, originalIndex) => ({ region, originalIndex }))
         .sort((left, right) => {
           const sizeDifference =
-            (safeCount(right.region.cellCount) ?? 0) -
-            (safeCount(left.region.cellCount) ?? 0)
+            (safeRegionCount(right.region.cellCount) ?? 0) -
+            (safeRegionCount(left.region.cellCount) ?? 0)
           return sizeDifference || left.originalIndex - right.originalIndex
         }),
     [regions],
@@ -72,7 +63,7 @@ const SheetRegionDetails = ({ regions, sheetName }: SheetRegionDetailsProps) => 
               open={visibleIndex === 0}
             >
               <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 marker:hidden">
-                <div>
+                <div className="min-w-0">
                   <span className="font-bold text-slate-700">
                     {region.title || `데이터 영역 ${originalIndex + 1}`}
                   </span>
@@ -80,13 +71,17 @@ const SheetRegionDetails = ({ regions, sheetName }: SheetRegionDetailsProps) => 
                     {region.startCell}:{region.endCell} · {regionSizeLabel(region)}
                   </p>
                 </div>
-                <ChevronDown
-                  aria-hidden="true"
-                  className="text-slate-300 transition-transform group-open:rotate-180"
-                  size={16}
-                />
+                <div className="flex items-center gap-2">
+                  <RegionSemanticBadges region={region} />
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="text-slate-300 transition-transform group-open:rotate-180"
+                    size={16}
+                  />
+                </div>
               </summary>
               <div className="border-t border-slate-100 p-3">
+                <RegionSemanticSummary region={region} />
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <OriginalLocationButton
                     location={`${region.startCell}:${region.endCell}`}

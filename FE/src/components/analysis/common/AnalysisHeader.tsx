@@ -1,4 +1,4 @@
-import type { AnalysisViewStatus } from '@/hooks/useWorkbookAnalysis'
+import type { AnalysisViewStatus } from '@/hooks/analysis/useWorkbookAnalysis'
 
 interface AnalysisHeaderProps {
   status: AnalysisViewStatus

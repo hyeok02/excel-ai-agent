@@ -1,7 +1,7 @@
 import { Table2 } from 'lucide-react'
 
 import type { TableResult } from '@/api/analysis'
-import OriginalLocationButton from '@/components/analysis/workbook/common/OriginalLocationButton'
+import OriginalLocationButton from '@/components/analysis/workbook/details/OriginalLocationButton'
 import CellPreviewTable from '@/components/analysis/workbook/previews/CellPreviewTable'
 
 interface SheetTableDetailsProps {

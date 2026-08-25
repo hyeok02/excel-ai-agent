@@ -7,7 +7,7 @@ import {
   type AnalysisStatus,
   analyzeWorkbook,
 } from '@/api/analysis'
-import { validateAnalysisFile } from '@/utils/analysisFile'
+import { validateAnalysisFile } from '@/utils/analysis/analysisFile'
 import { getErrorMessage } from '@/utils/apiClient'
 
 export type AnalysisFeedback = 'success' | 'error'
