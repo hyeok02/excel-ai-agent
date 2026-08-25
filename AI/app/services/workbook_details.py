@@ -13,7 +13,11 @@ from app.services.analysis_inclusion import (
     AnalysisInclusion,
     INCLUDED_POPULATED_REGION,
 )
-from app.services.semantic_models import SemanticClassification
+from app.services.semantic_models import (
+    SemanticClassification,
+    SemanticReason,
+    SemanticRole,
+)
 
 CellValue: TypeAlias = str | int | float | bool | None
 
@@ -137,10 +141,12 @@ def summarize_regions(
                     preview_max_row,
                     min_column,
                     preview_max_column,
+                    region.semantic,
                 ),
                 is_truncated=(
                     preview_max_row < max_row or preview_max_column < max_column
                 ),
+                semantic=region.semantic,
             )
         )
 
@@ -219,6 +225,7 @@ def _snapshot_range(
     max_row: int,
     min_column: int,
     max_column: int,
+    region_semantic: SemanticClassification | None = None,
 ) -> list[list[CellSnapshot]]:
     return [
         [
@@ -228,6 +235,7 @@ def _snapshot_range(
                 if value_worksheet is not None
                 else None,
                 worksheet,
+                region_semantic,
             )
             for column in range(min_column, max_column + 1)
         ]
@@ -239,6 +247,7 @@ def _snapshot_cell(
     cell: object,
     value_cell: object | None,
     worksheet: Worksheet,
+    region_semantic: SemanticClassification | None = None,
 ) -> CellSnapshot:
     address = str(getattr(cell, "coordinate"))
     raw_value = getattr(cell, "value", None)
@@ -259,7 +268,38 @@ def _snapshot_cell(
             getattr(getattr(cell, "alignment", None), "horizontal", None)
         ),
         merged=_is_merged_cell(worksheet, address),
+        semantic=_cell_semantic(
+            address,
+            raw_value,
+            is_formula,
+            region_semantic,
+            worksheet,
+        ),
     )
+
+
+def _cell_semantic(
+    address: str,
+    value: object,
+    is_formula: bool,
+    region_semantic: SemanticClassification | None,
+    worksheet: Worksheet,
+) -> SemanticClassification | None:
+    if is_formula:
+        return SemanticClassification(
+            role=SemanticRole.FORMULA,
+            confidence=1.0,
+            reasons=(
+                SemanticReason(
+                    code="formula_cell",
+                    message="Excel 수식이 입력된 계산 셀",
+                    evidence_cells=(address,),
+                ),
+            ),
+        )
+    if value is not None or _is_merged_cell(worksheet, address):
+        return region_semantic
+    return None
 
 
 def _region_title(

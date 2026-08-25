@@ -121,7 +121,15 @@ def test_returns_workbook_summary() -> None:
         "cached_value": None,
         "role": "calculation",
     }
-    formula_cell = sales["regions"][0]["preview_rows"][1][3]
+    assert sales["region_count"] == 2
+    assert [region["semantic"]["role"] for region in sales["regions"]] == [
+        "header",
+        "data",
+    ]
+    assert sales["regions"][0]["semantic"]["reasons"][0]["code"] == (
+        "header_style_transition"
+    )
+    formula_cell = sales["regions"][1]["preview_rows"][0][3]
     assert formula_cell["address"] == "D2"
     assert formula_cell["value"] is None
     assert formula_cell["formula"] == "=SUM(B2:C2)"
@@ -129,15 +137,16 @@ def test_returns_workbook_summary() -> None:
     assert formula_cell["number_format"] == "General"
     assert formula_cell["bold"] is False
     assert formula_cell["merged"] is False
-    assert formula_cell["semantic"] is None
+    assert formula_cell["semantic"]["role"] == "formula"
+    assert formula_cell["semantic"]["reasons"][0]["code"] == "formula_cell"
     assert sales["regions"][0]["title"] == "상품"
-    assert sales["regions"][0]["semantic"] is None
+    assert sales["regions"][0]["semantic"]["role"] == "header"
     assert sales["regions"][0]["analysis_inclusion"]["decision"] == "include"
     assert (
         sales["regions"][0]["analysis_inclusion"]["reason_code"]
         == "populated_business_region"
     )
-    assert sales["regions"][0]["row_count"] == 3
+    assert sales["regions"][0]["row_count"] == 1
     assert sales["regions"][0]["column_count"] == 4
     assert sales["regions"][0]["header_paths"][0] == {
         "column": "A",
@@ -154,6 +163,7 @@ def test_returns_workbook_summary() -> None:
     assert summary["name"] == "요약"
     assert summary["sheet_classification"]["role"] == "output"
     assert summary["regions"][0]["preview_rows"][0][0]["value"] == "완료"
+    assert summary["regions"][0]["semantic"]["role"] == "calculation"
 
     dependencies = result["dependency_summary"]
     assert dependencies["formula_node_count"] == 3
