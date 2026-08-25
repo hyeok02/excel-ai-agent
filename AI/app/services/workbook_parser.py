@@ -128,7 +128,10 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
 
             value_worksheet = value_workbook[worksheet.title]
             formulas = formulas_by_sheet[worksheet.title]
-            detected_regions = detect_regions(worksheet)
+            detected_regions = detect_regions(
+                worksheet,
+                sheet_role=sheet_classification.role.value,
+            )
             regions = summarize_regions(worksheet, detected_regions, value_worksheet)
             tables = summarize_tables(worksheet, value_worksheet)
             charts = summarize_charts(workbook, worksheet, value_workbook)
