@@ -62,7 +62,7 @@ actual JSON은 다음 필드를 사용합니다. 기대 결과 JSON의 `reason`,
     {
       "name": "월별 매출",
       "decision": "analyze",
-      "sheet_role": "business_data",
+      "sheet_role": "output",
       "regions": [
         {
           "range": "A1:D1",

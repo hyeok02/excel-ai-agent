@@ -28,7 +28,15 @@ public record AiWorkbookSummary(
 	public record ExcludedSheetSummary(
 			String name,
 			String state,
-			@JsonProperty("analysis_inclusion") AiAnalysisInclusion analysisInclusion) {
+			@JsonProperty("analysis_inclusion") AiAnalysisInclusion analysisInclusion,
+			@JsonProperty("sheet_classification") AiSheetClassification sheetClassification) {
+
+		public ExcludedSheetSummary(
+				String name,
+				String state,
+				AiAnalysisInclusion analysisInclusion) {
+			this(name, state, analysisInclusion, null);
+		}
 	}
 
 	public record SheetSummary(
@@ -43,7 +51,8 @@ public record AiWorkbookSummary(
 			List<CellRegion> regions,
 			List<TableSummary> tables,
 			List<ChartSummary> charts,
-			@JsonProperty("analysis_inclusion") AiAnalysisInclusion analysisInclusion) {
+			@JsonProperty("analysis_inclusion") AiAnalysisInclusion analysisInclusion,
+			@JsonProperty("sheet_classification") AiSheetClassification sheetClassification) {
 
 		public SheetSummary(
 				String name,
@@ -56,7 +65,7 @@ public record AiWorkbookSummary(
 				int regionCount,
 				List<CellRegion> regions) {
 			this(name, rows, columns, formulaCount, tableCount, chartCount, formulas,
-					regionCount, regions, List.of(), List.of(), null);
+					regionCount, regions, List.of(), List.of(), null, null);
 		}
 
 		public SheetSummary(
@@ -64,7 +73,16 @@ public record AiWorkbookSummary(
 				int chartCount, List<FormulaAnalysis> formulas, int regionCount,
 				List<CellRegion> regions, List<TableSummary> tables, List<ChartSummary> charts) {
 			this(name, rows, columns, formulaCount, tableCount, chartCount, formulas,
-					regionCount, regions, tables, charts, null);
+					regionCount, regions, tables, charts, null, null);
+		}
+
+		public SheetSummary(
+				String name, int rows, int columns, int formulaCount, int tableCount,
+				int chartCount, List<FormulaAnalysis> formulas, int regionCount,
+				List<CellRegion> regions, List<TableSummary> tables, List<ChartSummary> charts,
+				AiAnalysisInclusion analysisInclusion) {
+			this(name, rows, columns, formulaCount, tableCount, chartCount, formulas,
+					regionCount, regions, tables, charts, analysisInclusion, null);
 		}
 	}
 

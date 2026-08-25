@@ -6,7 +6,7 @@
     {
       "name": "월별 매출",
       "decision": "analyze",
-      "sheet_role": "business_data",
+      "sheet_role": "output",
       "reason": "월별 매출 원본 값과 합계 수식을 포함한 핵심 업무 시트",
       "expected_formula_count": 6,
       "regions": [

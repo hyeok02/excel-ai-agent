@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import AppHeader from '@/components/navigation/AppHeader'
-import Sidebar from '@/components/navigation/Sidebar'
+import Sidebar from '@/components/navigation/sidebar/Sidebar'
 
 const RootLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)

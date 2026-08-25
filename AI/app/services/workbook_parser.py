@@ -17,6 +17,7 @@ from app.services.analysis_inclusion import (
 )
 from app.services.formula_analyzer import FormulaAnalysis, analyze_formulas
 from app.services.region_detector import detect_regions
+from app.services.sheet_classifier import SheetClassification, classify_sheets
 from app.services.workbook_details import (
     ChartSummary,
     RegionSummary,
@@ -48,6 +49,7 @@ class SheetSummary:
     analysis_inclusion: AnalysisInclusion = INCLUDED_BUSINESS_WORKSHEET
     tables: list[TableSummary] = field(default_factory=list)
     charts: list[ChartSummary] = field(default_factory=list)
+    sheet_classification: SheetClassification | None = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,7 @@ class ExcludedSheetSummary:
     name: str
     state: str
     analysis_inclusion: AnalysisInclusion
+    sheet_classification: SheetClassification
 
 
 @dataclass(frozen=True)
@@ -91,22 +94,40 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
 
     try:
         total_sheet_count = len(workbook.sheetnames)
+        inclusions_by_sheet = {
+            worksheet.title: evaluate_worksheet_inclusion(worksheet)
+            for worksheet in workbook.worksheets
+        }
+        formulas_by_sheet = {
+            worksheet.title: analyze_formulas(
+                worksheet,
+                value_workbook[worksheet.title],
+            )
+            for worksheet in workbook.worksheets
+        }
+        classifications_by_sheet = classify_sheets(
+            workbook,
+            formulas_by_sheet,
+            inclusions_by_sheet,
+        )
         sheets = []
         excluded_sheets = []
         for worksheet in workbook.worksheets:
-            analysis_inclusion = evaluate_worksheet_inclusion(worksheet)
+            analysis_inclusion = inclusions_by_sheet[worksheet.title]
+            sheet_classification = classifications_by_sheet[worksheet.title]
             if analysis_inclusion.decision is AnalysisDecision.EXCLUDE:
                 excluded_sheets.append(
                     ExcludedSheetSummary(
                         name=worksheet.title,
                         state=worksheet.sheet_state,
                         analysis_inclusion=analysis_inclusion,
+                        sheet_classification=sheet_classification,
                     )
                 )
                 continue
 
             value_worksheet = value_workbook[worksheet.title]
-            formulas = analyze_formulas(worksheet, value_worksheet)
+            formulas = formulas_by_sheet[worksheet.title]
             detected_regions = detect_regions(worksheet)
             regions = summarize_regions(worksheet, detected_regions, value_worksheet)
             tables = summarize_tables(worksheet, value_worksheet)
@@ -125,6 +146,7 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
                     analysis_inclusion=analysis_inclusion,
                     tables=tables,
                     charts=charts,
+                    sheet_classification=sheet_classification,
                 )
             )
     finally:

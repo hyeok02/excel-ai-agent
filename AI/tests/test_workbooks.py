@@ -109,6 +109,10 @@ def test_returns_workbook_summary() -> None:
     assert sales["name"] == "매출현황"
     assert sales["analysis_inclusion"]["decision"] == "include"
     assert sales["analysis_inclusion"]["reason_code"] == "business_worksheet"
+    assert sales["sheet_classification"]["role"] == "output"
+    assert sales["sheet_classification"]["importance"] in {"high", "critical"}
+    assert 0 <= sales["sheet_classification"]["confidence"] <= 1
+    assert sales["sheet_classification"]["reasons"]
     assert sales["formula_count"] == 2
     assert sales["formulas"][0] == {
         "cell": "D2",
@@ -148,6 +152,7 @@ def test_returns_workbook_summary() -> None:
 
     summary = result["sheets"][1]
     assert summary["name"] == "요약"
+    assert summary["sheet_classification"]["role"] == "output"
     assert summary["regions"][0]["preview_rows"][0][0]["value"] == "완료"
 
     dependencies = result["dependency_summary"]
@@ -195,6 +200,10 @@ def test_excludes_hidden_and_add_in_cache_sheets() -> None:
         "addin_cache_worksheet",
         "system_cache_worksheet",
     ]
+    assert [
+        sheet["sheet_classification"]["role"]
+        for sheet in result["excluded_sheets"]
+    ] == ["calculation", "system", "system"]
 
 
 def test_rejects_unsupported_extension() -> None:

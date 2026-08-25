@@ -40,12 +40,16 @@ const CellPreviewTable = ({ rows }: CellPreviewTableProps) => {
                   <span className="block text-[10px] font-bold text-slate-400">
                     {cell.address}
                   </span>
-                  <code className={`mt-1 block truncate font-sans leading-5 ${cell.bold ? 'font-extrabold' : 'font-medium'} text-slate-700`}>
+                  <code
+                    className={`mt-1 block truncate font-sans leading-5 ${cell.bold ? 'font-extrabold' : 'font-medium'} text-slate-700`}
+                  >
                     {formatCellValue(cell)}
                   </code>
                   <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-bold text-slate-400">
                     {cell.formula && <span className="text-brand-600">수식</span>}
-                    {cell.formula && cell.cachedValue != null && <span>계산 결과 표시</span>}
+                    {cell.formula && cell.cachedValue != null && (
+                      <span>계산 결과 표시</span>
+                    )}
                     {cell.merged && <span>병합</span>}
                     {cell.numberFormat && cell.numberFormat !== 'General' && (
                       <span>{cell.numberFormat}</span>

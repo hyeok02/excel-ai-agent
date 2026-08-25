@@ -9,6 +9,8 @@ import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
 import com.hyeok02.excelaiagent.integration.ai.AiAnalysisInclusion;
 import com.hyeok02.excelaiagent.integration.ai.AiSemanticClassification;
 import com.hyeok02.excelaiagent.integration.ai.AiSemanticReason;
+import com.hyeok02.excelaiagent.integration.ai.AiSheetClassification;
+import com.hyeok02.excelaiagent.integration.ai.AiSheetRoleReason;
 
 public record AnalysisResultDetails(
 		UUID analysisId,
@@ -89,13 +91,15 @@ public record AnalysisResultDetails(
 	public record ExcludedSheetResult(
 			String name,
 			String state,
-			AnalysisInclusionResult analysisInclusion) {
+			AnalysisInclusionResult analysisInclusion,
+			SheetClassificationResult sheetClassification) {
 
 		private static ExcludedSheetResult from(AiWorkbookSummary.ExcludedSheetSummary sheet) {
 			return new ExcludedSheetResult(
 					sheet.name(),
 					sheet.state(),
-					AnalysisInclusionResult.from(sheet.analysisInclusion()));
+					AnalysisInclusionResult.from(sheet.analysisInclusion()),
+					SheetClassificationResult.from(sheet.sheetClassification()));
 		}
 	}
 
@@ -111,7 +115,8 @@ public record AnalysisResultDetails(
 			List<RegionResult> regions,
 			List<TableResult> tables,
 			List<ChartResult> charts,
-			AnalysisInclusionResult analysisInclusion) {
+			AnalysisInclusionResult analysisInclusion,
+			SheetClassificationResult sheetClassification) {
 
 		private static SheetResult from(AiWorkbookSummary.SheetSummary sheet) {
 			return new SheetResult(
@@ -126,7 +131,43 @@ public record AnalysisResultDetails(
 					safeList(sheet.regions()).stream().map(RegionResult::from).toList(),
 					safeList(sheet.tables()).stream().map(TableResult::from).toList(),
 					safeList(sheet.charts()).stream().map(ChartResult::from).toList(),
-					AnalysisInclusionResult.from(sheet.analysisInclusion()));
+					AnalysisInclusionResult.from(sheet.analysisInclusion()),
+					SheetClassificationResult.from(sheet.sheetClassification()));
+		}
+	}
+
+	public record SheetClassificationResult(
+			String role,
+			String importance,
+			double confidence,
+			int importanceScore,
+			List<SheetRoleReasonResult> reasons) {
+
+		private static SheetClassificationResult from(AiSheetClassification classification) {
+			if (classification == null) {
+				return null;
+			}
+			return new SheetClassificationResult(
+					classification.role().value(),
+					classification.importance().value(),
+					classification.confidence(),
+					classification.importanceScore(),
+					safeList(classification.reasons()).stream()
+							.map(SheetRoleReasonResult::from)
+							.toList());
+		}
+	}
+
+	public record SheetRoleReasonResult(
+			String code,
+			String message,
+			List<String> evidenceCells) {
+
+		private static SheetRoleReasonResult from(AiSheetRoleReason reason) {
+			return new SheetRoleReasonResult(
+					reason.code(),
+					reason.message(),
+					safeList(reason.evidenceCells()));
 		}
 	}
 

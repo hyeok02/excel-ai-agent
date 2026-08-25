@@ -1,8 +1,8 @@
 import { Table2 } from 'lucide-react'
 
 import type { TableResult } from '@/api/analysis'
-import CellPreviewTable from '@/components/analysis/workbook/CellPreviewTable'
-import OriginalLocationButton from '@/components/analysis/workbook/OriginalLocationButton'
+import OriginalLocationButton from '@/components/analysis/workbook/common/OriginalLocationButton'
+import CellPreviewTable from '@/components/analysis/workbook/previews/CellPreviewTable'
 
 interface SheetTableDetailsProps {
   tables: TableResult[]
@@ -35,7 +35,9 @@ const SheetTableDetails = ({ tables, sheetName }: SheetTableDetailsProps) => {
           >
             <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 marker:hidden">
               <div>
-                <p className="text-sm font-extrabold text-slate-800">{table.displayName}</p>
+                <p className="text-sm font-extrabold text-slate-800">
+                  {table.displayName}
+                </p>
                 <p className="mt-1 text-[11px] text-slate-400">
                   {table.reference} · {table.rowCount.toLocaleString()}행 ×{' '}
                   {table.columnCount.toLocaleString()}열
@@ -59,7 +61,10 @@ const SheetTableDetails = ({ tables, sheetName }: SheetTableDetailsProps) => {
             </summary>
             <div className="border-t border-slate-200 p-3">
               <div className="mb-3 flex justify-end">
-                <OriginalLocationButton location={table.reference} sheetName={sheetName} />
+                <OriginalLocationButton
+                  location={table.reference}
+                  sheetName={sheetName}
+                />
               </div>
               <CellPreviewTable rows={table.previewRows ?? []} />
               {table.truncated && (

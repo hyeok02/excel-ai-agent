@@ -1,8 +1,8 @@
 import { ChartNoAxesCombined, ChevronDown } from 'lucide-react'
 
 import type { CellValue, ChartResult } from '@/api/analysis'
-import ChartVisualPreview from '@/components/analysis/workbook/ChartVisualPreview'
-import OriginalLocationButton from '@/components/analysis/workbook/OriginalLocationButton'
+import OriginalLocationButton from '@/components/analysis/workbook/common/OriginalLocationButton'
+import ChartVisualPreview from '@/components/analysis/workbook/previews/ChartVisualPreview'
 
 interface SheetChartDetailsProps {
   charts: ChartResult[]

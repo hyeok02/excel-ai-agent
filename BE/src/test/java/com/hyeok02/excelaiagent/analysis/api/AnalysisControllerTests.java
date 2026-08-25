@@ -30,8 +30,12 @@ import com.hyeok02.excelaiagent.integration.ai.AiAnalysisInclusion;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
 import com.hyeok02.excelaiagent.integration.ai.AiSemanticClassification;
 import com.hyeok02.excelaiagent.integration.ai.AiSemanticReason;
+import com.hyeok02.excelaiagent.integration.ai.AiSheetClassification;
+import com.hyeok02.excelaiagent.integration.ai.AiSheetRoleReason;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
+import com.hyeok02.excelaiagent.integration.ai.SheetImportance;
+import com.hyeok02.excelaiagent.integration.ai.SheetRole;
 import com.hyeok02.excelaiagent.integration.ai.SemanticRole;
 import com.hyeok02.excelaiagent.integration.ai.AnalysisDecision;
 import org.junit.jupiter.api.BeforeEach;
@@ -198,7 +202,14 @@ class AnalysisControllerTests {
 				.andExpect(jsonPath("$.workbook.excludedSheets[0].name").value("__snlofficequeries"))
 				.andExpect(jsonPath("$.workbook.excludedSheets[0].analysisInclusion.decision")
 						.value("exclude"))
+				.andExpect(jsonPath("$.workbook.excludedSheets[0].sheetClassification.role")
+						.value("system"))
 				.andExpect(jsonPath("$.workbook.sheets[0].name").value("Sales"))
+				.andExpect(jsonPath("$.workbook.sheets[0].sheetClassification.role").value("output"))
+				.andExpect(jsonPath("$.workbook.sheets[0].sheetClassification.importance").value("high"))
+				.andExpect(jsonPath("$.workbook.sheets[0].sheetClassification.importanceScore").value(60))
+				.andExpect(jsonPath("$.workbook.sheets[0].sheetClassification.reasons[0].code")
+						.value("chart_presentation"))
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].cell").value("D2"))
 				.andExpect(jsonPath("$.workbook.sheets[0].formulas[0].references[0]").value("B2:C2"))
 				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].startCell").value("A1"))
@@ -529,7 +540,12 @@ class AnalysisControllerTests {
 										"'Sales'!$B$2:$B$3",
 										List.of("노트북", "모니터"),
 										List.of(10, 5))),
-								false)))),
+								false)),
+						new AiAnalysisInclusion(
+								AnalysisDecision.INCLUDE,
+								"business_worksheet",
+								"사용자 업무 시트"),
+						sheetClassification(SheetRole.OUTPUT, SheetImportance.HIGH, 60))),
 				2,
 				1,
 				List.of(new AiWorkbookSummary.ExcludedSheetSummary(
@@ -538,7 +554,8 @@ class AnalysisControllerTests {
 						new AiAnalysisInclusion(
 								AnalysisDecision.EXCLUDE,
 								"addin_cache_worksheet",
-								"애드인 캐시 시트"))),
+								"애드인 캐시 시트"),
+						sheetClassification(SheetRole.SYSTEM, SheetImportance.LOW, 0))),
 				new AiWorkbookSummary.DependencySummary(
 						2,
 						1,
@@ -573,6 +590,21 @@ class AnalysisControllerTests {
 								List.of(new AiWorkbookSummary.DependencyEdge(
 										"Sales!D2", "Sales!D2", "D2", false)),
 								false))));
+	}
+
+	private AiSheetClassification sheetClassification(
+			SheetRole role,
+			SheetImportance importance,
+			int importanceScore) {
+		return new AiSheetClassification(
+				role,
+				importance,
+				0.9,
+				importanceScore,
+				List.of(new AiSheetRoleReason(
+						role == SheetRole.SYSTEM ? "system_policy" : "chart_presentation",
+						role == SheetRole.SYSTEM ? "애드인 캐시 시트" : "차트 1개 포함",
+						List.of("Sales!D2"))));
 	}
 
 	private AiWorkbookSummary.CellRegion regionSummary() {
