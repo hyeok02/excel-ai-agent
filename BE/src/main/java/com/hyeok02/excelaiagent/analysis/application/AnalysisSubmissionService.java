@@ -3,193 +3,79 @@ package com.hyeok02.excelaiagent.analysis.application;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
-import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
-import com.hyeok02.excelaiagent.analysis.domain.AnalysisResult;
-import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
-import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
-import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceException;
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
-import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
-import com.hyeok02.excelaiagent.integration.ai.AiWorkbookSummary;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AnalysisSubmissionService {
-
 	private final ExcelFileValidator excelFileValidator;
 	private final AnalysisFileStorage analysisFileStorage;
 	private final AnalysisJobRepository analysisJobRepository;
-	private final AnalysisResultRepository analysisResultRepository;
 	private final AnalysisJobProcessor analysisJobProcessor;
-	private final ObjectMapper objectMapper;
+	private final AnalysisResultReader analysisResultReader;
+	private final AnalysisHistoryService analysisHistoryService;
 
 	public AnalysisSubmissionService(
 			ExcelFileValidator excelFileValidator,
 			AnalysisFileStorage analysisFileStorage,
 			AnalysisJobRepository analysisJobRepository,
-			AnalysisResultRepository analysisResultRepository,
 			AnalysisJobProcessor analysisJobProcessor,
-			ObjectMapper objectMapper) {
+			AnalysisResultReader analysisResultReader,
+			AnalysisHistoryService analysisHistoryService) {
 		this.excelFileValidator = excelFileValidator;
 		this.analysisFileStorage = analysisFileStorage;
 		this.analysisJobRepository = analysisJobRepository;
-		this.analysisResultRepository = analysisResultRepository;
 		this.analysisJobProcessor = analysisJobProcessor;
-		this.objectMapper = objectMapper;
+		this.analysisResultReader = analysisResultReader;
+		this.analysisHistoryService = analysisHistoryService;
 	}
 
 	public AnalysisSubmission submit(MultipartFile file, AnalysisMode mode, AnalysisDepth depth) {
 		ValidatedExcelFile validatedFile = excelFileValidator.validate(file);
 		UUID analysisId = UUID.randomUUID();
-		Instant now = Instant.now();
-		AnalysisJob analysisJob = AnalysisJob.queued(
-				analysisId,
-				mode,
-				validatedFile.originalFilename(),
-				validatedFile.extension(),
-				validatedFile.sizeBytes(),
-				now);
-
+		AnalysisJob job = AnalysisJob.queued(
+				analysisId, mode, validatedFile.originalFilename(), validatedFile.extension(),
+				validatedFile.sizeBytes(), Instant.now());
 		analysisFileStorage.store(analysisId, validatedFile.extension(), file);
 		try {
-			analysisJob = analysisJobRepository.saveAndFlush(analysisJob);
+			job = analysisJobRepository.saveAndFlush(job);
 		}
 		catch (RuntimeException exception) {
 			analysisFileStorage.delete(analysisId);
 			throw exception;
 		}
-
 		AnalysisSubmission submission = new AnalysisSubmission(
-				analysisJob.getAnalysisId(),
-				analysisJob.getStatus(),
-				analysisJob.getMode(),
-				analysisJob.getOriginalFilename(),
-				analysisJob.getFileSizeBytes(),
-				analysisJob.getCreatedAt());
+				job.getAnalysisId(), job.getStatus(), job.getMode(),
+				job.getOriginalFilename(), job.getFileSizeBytes(), job.getCreatedAt());
 		analysisJobProcessor.process(analysisId, depth);
 		return submission;
 	}
 
-	@Transactional(readOnly = true)
 	public AnalysisResultDetails getResult(UUID analysisId) {
-		AnalysisJob analysisJob = analysisJobRepository.findById(analysisId)
-				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
-		AnalysisResult analysisResult = analysisResultRepository.findById(analysisId)
-				.orElseThrow(() -> new AnalysisResultNotReadyException(analysisId, analysisJob.getStatus()));
-
-		return AnalysisResultDetails.from(
-				analysisId,
-				analysisResult.getCreatedAt(),
-				deserializeResult(analysisResult.getResultJson()));
+		return analysisResultReader.getResult(analysisId);
 	}
 
-	@Transactional(readOnly = true)
 	public AnalysisDetails getDetails(UUID analysisId) {
-		AnalysisJob analysisJob = analysisJobRepository.findById(analysisId)
-				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
-		return toDetails(analysisJob);
+		return analysisHistoryService.getDetails(analysisId);
+	}
+
+	public AnalysisHistoryPage getHistory(AnalysisMode mode, String filename, int page, int size) {
+		return analysisHistoryService.getHistory(mode, filename, page, size);
 	}
 
 	@Transactional
 	public void delete(UUID analysisId) {
-		AnalysisJob analysisJob = analysisJobRepository.findById(analysisId)
+		AnalysisJob job = analysisJobRepository.findById(analysisId)
 				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
-
-		analysisJobRepository.delete(analysisJob);
+		analysisJobRepository.delete(job);
 		analysisJobRepository.flush();
 		analysisFileStorage.delete(analysisId);
-	}
-
-	@Transactional(readOnly = true)
-	public AnalysisHistoryPage getHistory(AnalysisMode mode, String filename, int page, int size) {
-		PageRequest pageRequest = PageRequest.of(
-				page,
-				size,
-				Sort.by(Sort.Direction.DESC, "createdAt"));
-		String normalizedFilename = normalizeFilename(filename);
-		Page<AnalysisJob> analysisJobs = searchHistory(mode, normalizedFilename, pageRequest);
-
-		return new AnalysisHistoryPage(
-				analysisJobs.getContent().stream().map(this::toDetails).toList(),
-				analysisJobs.getNumber(),
-				analysisJobs.getSize(),
-				analysisJobs.getTotalElements(),
-				analysisJobs.getTotalPages(),
-				analysisJobs.hasNext());
-	}
-
-	private Page<AnalysisJob> searchHistory(
-			AnalysisMode mode,
-			String filename,
-			PageRequest pageRequest) {
-		if (mode != null && filename != null) {
-			return analysisJobRepository.findByModeAndOriginalFilenameContainingIgnoreCase(
-					mode,
-					filename,
-					pageRequest);
-		}
-		if (mode != null) {
-			return analysisJobRepository.findByMode(mode, pageRequest);
-		}
-		if (filename != null) {
-			return analysisJobRepository.findByOriginalFilenameContainingIgnoreCase(filename, pageRequest);
-		}
-		return analysisJobRepository.findAll(pageRequest);
-	}
-
-	private String normalizeFilename(String filename) {
-		if (filename == null || filename.isBlank()) {
-			return null;
-		}
-		return filename.trim();
-	}
-
-	private AiWorkbookInsights deserializeResult(String resultJson) {
-		JacksonException currentFormatException = null;
-		try {
-			AiWorkbookInsights workbookAnalysis = objectMapper.readValue(resultJson, AiWorkbookInsights.class);
-			if (workbookAnalysis.workbook() != null) {
-				return workbookAnalysis;
-			}
-		}
-		catch (JacksonException exception) {
-			currentFormatException = exception;
-		}
-
-		try {
-			AiWorkbookSummary workbookSummary = objectMapper.readValue(resultJson, AiWorkbookSummary.class);
-			return AiWorkbookInsights.summaryOnly(workbookSummary);
-		}
-		catch (JacksonException legacyException) {
-			if (currentFormatException != null) {
-				currentFormatException.addSuppressed(legacyException);
-				throw new AnalysisResultPersistenceException(
-						"저장된 분석 결과를 읽지 못했습니다.", currentFormatException);
-			}
-			throw new AnalysisResultPersistenceException("저장된 분석 결과를 읽지 못했습니다.", legacyException);
-		}
-	}
-
-	private AnalysisDetails toDetails(AnalysisJob analysisJob) {
-		return new AnalysisDetails(
-				analysisJob.getAnalysisId(),
-				analysisJob.getStatus(),
-				analysisJob.getMode(),
-				analysisJob.getOriginalFilename(),
-				analysisJob.getFileExtension(),
-				analysisJob.getFileSizeBytes(),
-				analysisJob.getCreatedAt(),
-				analysisJob.getUpdatedAt());
 	}
 }

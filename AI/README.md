@@ -25,8 +25,8 @@ fastapi dev app/main.py
 The service runs at `http://localhost:8000`.
 
 - Health: `GET /health`
-- Workbook summary, semantic region detection, blank/merged/style/type/formula-aware
-  table boundaries, formula-reference analysis, and
+- Workbook summary, semantic region detection, single-row header recognition,
+  blank/merged/style/type/formula-aware table boundaries, formula-reference analysis, and
   input/calculation/output/documentation/system sheet classification:
   `POST /api/v1/workbooks/summary`
 - LLM-based structured workbook insights:
