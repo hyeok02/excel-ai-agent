@@ -14,7 +14,9 @@ const DependencyRelationshipRow = ({ relationship }: DependencyRelationshipRowPr
   const targetCell = parseCellLabel(relationship.targetLabel)
   const sharedSheet =
     targetCell &&
-    relationship.sourceLabels.every((label) => parseCellLabel(label)?.sheet === targetCell.sheet)
+    relationship.sourceLabels.every(
+      (label) => parseCellLabel(label)?.sheet === targetCell.sheet,
+    )
       ? targetCell.sheet
       : undefined
   const visibleSources = relationship.sourceLabels.slice(0, 3)
@@ -31,7 +33,10 @@ const DependencyRelationshipRow = ({ relationship }: DependencyRelationshipRowPr
           <p className="text-[10px] font-extrabold tracking-[0.12em] text-slate-400">
             입력·참조 범위
           </p>
-          <code className="mt-1 block truncate text-xs font-bold text-slate-700" title={sourceText}>
+          <code
+            className="mt-1 block truncate text-xs font-bold text-slate-700"
+            title={sourceText}
+          >
             {sourceText}
             {hiddenSourceCount > 0 ? ` 외 ${hiddenSourceCount}개 범위` : ''}
           </code>
@@ -55,7 +60,8 @@ const DependencyRelationshipRow = ({ relationship }: DependencyRelationshipRowPr
       <p className="mt-3 text-xs leading-5 text-slate-500">
         {sharedSheet ? `${sharedSheet} 시트에서 ` : ''}
         <strong className="font-bold text-slate-700">{sourceText}</strong>의 값이 바뀌면{' '}
-        <strong className="font-bold text-slate-900">{targetText}</strong> 계산 결과가 영향을 받을 수 있어요.
+        <strong className="font-bold text-slate-900">{targetText}</strong> 계산 결과가
+        영향을 받을 수 있어요.
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

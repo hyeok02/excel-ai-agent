@@ -1,7 +1,10 @@
 import { Braces, Download, FileText } from 'lucide-react'
 
 import type { AnalysisResultDetails } from '@/api/analysis'
-import { type AnalysisExportFormat, downloadAnalysisResult } from '@/utils/analysisExport'
+import {
+  type AnalysisExportFormat,
+  downloadAnalysisResult,
+} from '@/utils/analysis/analysisExport'
 
 interface AnalysisExportActionsProps {
   result: AnalysisResultDetails
@@ -18,7 +21,10 @@ const EXPORT_OPTIONS: Array<{
 
 const AnalysisExportActions = ({ result }: AnalysisExportActionsProps) => {
   return (
-    <div className="inline-flex h-10 items-center gap-2" aria-label="분석 데이터 내보내기">
+    <div
+      className="inline-flex h-10 items-center gap-2"
+      aria-label="분석 데이터 내보내기"
+    >
       <span className="inline-flex items-center gap-1.5 px-1 text-xs font-bold text-slate-500">
         <Download aria-hidden="true" size={15} />
         내보내기

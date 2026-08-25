@@ -1,6 +1,6 @@
 import { CheckCircle2, X } from 'lucide-react'
 
-import type { AnalysisFeedback as Feedback } from '@/hooks/useWorkbookAnalysis'
+import type { AnalysisFeedback as Feedback } from '@/hooks/analysis/useWorkbookAnalysis'
 
 interface AnalysisFeedbackProps {
   feedback: Feedback | null

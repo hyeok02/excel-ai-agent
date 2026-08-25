@@ -22,6 +22,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      'max-lines': ['error', { max: 150 }],
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'simple-import-sort/imports': 'error',
       'simple-import-sort/exports': 'error',

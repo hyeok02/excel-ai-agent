@@ -1,7 +1,7 @@
 import { Calculator, ExternalLink, Search, Sigma, Type } from 'lucide-react'
 
 import type { FormulaResult } from '@/api/analysis'
-import OriginalLocationButton from '@/components/analysis/workbook/common/OriginalLocationButton'
+import OriginalLocationButton from '@/components/analysis/workbook/details/OriginalLocationButton'
 
 interface SheetFormulaDetailsProps {
   formulas: FormulaResult[]
