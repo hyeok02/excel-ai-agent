@@ -13,6 +13,7 @@ from app.services.insight_generator import (
 from app.services.analysis_strategy import AnalysisDepth
 from app.services.analysis_inclusion import AnalysisDecision
 from app.services.semantic_models import SemanticRole
+from app.services.sheet_classifier import SheetImportance, SheetRole
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
@@ -43,6 +44,24 @@ class AnalysisInclusionResponse(BaseModel):
     decision: AnalysisDecision
     reason_code: str
     reason: str
+
+
+class SheetRoleReasonResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    code: str
+    message: str
+    evidence_cells: list[str]
+
+
+class SheetClassificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    role: SheetRole
+    importance: SheetImportance
+    confidence: float
+    importance_score: int
+    reasons: list[SheetRoleReasonResponse]
 
 
 class CellRegionResponse(BaseModel):
@@ -141,6 +160,7 @@ class SheetSummaryResponse(BaseModel):
     region_count: int
     regions: list[CellRegionResponse]
     analysis_inclusion: AnalysisInclusionResponse
+    sheet_classification: SheetClassificationResponse
     tables: list[TableSummaryResponse]
     charts: list[ChartSummaryResponse]
 
@@ -151,6 +171,7 @@ class ExcludedSheetSummaryResponse(BaseModel):
     name: str
     state: str
     analysis_inclusion: AnalysisInclusionResponse
+    sheet_classification: SheetClassificationResponse
 
 
 class DependencyNodeResponse(BaseModel):

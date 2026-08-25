@@ -1,7 +1,7 @@
 import { Calculator, ExternalLink, Search, Sigma, Type } from 'lucide-react'
 
 import type { FormulaResult } from '@/api/analysis'
-import OriginalLocationButton from '@/components/analysis/workbook/OriginalLocationButton'
+import OriginalLocationButton from '@/components/analysis/workbook/common/OriginalLocationButton'
 
 interface SheetFormulaDetailsProps {
   formulas: FormulaResult[]
@@ -61,7 +61,10 @@ const SheetFormulaDetails = ({ formulas, sheetName }: SheetFormulaDetailsProps) 
                 const details = roleDetails[role]
                 const Icon = details.icon
                 return (
-                  <div className="rounded-xl border border-slate-200 bg-white p-3" key={role}>
+                  <div
+                    className="rounded-xl border border-slate-200 bg-white p-3"
+                    key={role}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-2 text-xs font-extrabold text-slate-700">
                         <Icon aria-hidden="true" className="text-brand-600" size={14} />
@@ -99,7 +102,10 @@ const SheetFormulaDetails = ({ formulas, sheetName }: SheetFormulaDetailsProps) 
                           {roleDetails[role].label}
                         </span>
                       </div>
-                      <OriginalLocationButton location={formula.cell} sheetName={sheetName} />
+                      <OriginalLocationButton
+                        location={formula.cell}
+                        sheetName={sheetName}
+                      />
                     </div>
                     {result !== null && (
                       <p className="mt-2 font-semibold text-slate-700">
@@ -110,7 +116,10 @@ const SheetFormulaDetails = ({ formulas, sheetName }: SheetFormulaDetailsProps) 
                       {formula.formula}
                     </code>
                     <p className="mt-2 break-all text-slate-400">
-                      참조 셀: {formula.references.length > 0 ? formula.references.join(', ') : '없음'}
+                      참조 셀:{' '}
+                      {formula.references.length > 0
+                        ? formula.references.join(', ')
+                        : '없음'}
                     </p>
                   </div>
                 )

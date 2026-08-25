@@ -28,7 +28,11 @@ const OriginalLocationButton = ({ sheetName, location }: OriginalLocationButtonP
       title={`${target} 위치를 복사합니다`}
       type="button"
     >
-      {copied ? <Check aria-hidden="true" size={12} /> : <Copy aria-hidden="true" size={12} />}
+      {copied ? (
+        <Check aria-hidden="true" size={12} />
+      ) : (
+        <Copy aria-hidden="true" size={12} />
+      )}
       {copied ? '위치 복사됨' : '원본 위치 복사'}
     </button>
   )

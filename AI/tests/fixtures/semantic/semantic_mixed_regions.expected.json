@@ -6,7 +6,7 @@
     {
       "name": "예산 검토",
       "decision": "analyze",
-      "sheet_role": "business_model",
+      "sheet_role": "calculation",
       "reason": "입력값, 계산식, 판단 결과가 연결된 핵심 분석 시트",
       "expected_formula_count": 5,
       "regions": [
@@ -68,7 +68,7 @@
     {
       "name": "사용안내",
       "decision": "metadata_only",
-      "sheet_role": "instruction",
+      "sheet_role": "documentation",
       "reason": "분석 대상 수치가 아닌 워크북 사용 방법 제공",
       "expected_formula_count": 0,
       "regions": [

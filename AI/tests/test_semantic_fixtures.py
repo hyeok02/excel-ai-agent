@@ -10,10 +10,11 @@ from app.services.semantic_models import SemanticRole
 FIXTURE_DIRECTORY = Path(__file__).parent / "fixtures" / "semantic"
 ALLOWED_SHEET_DECISIONS = {"analyze", "metadata_only", "exclude"}
 ALLOWED_SHEET_ROLES = {
-    "business_data",
-    "business_model",
-    "instruction",
-    "system_cache",
+    "input",
+    "calculation",
+    "output",
+    "documentation",
+    "system",
 }
 ALLOWED_REGION_DECISIONS = {"analyze", "context", "exclude"}
 ALLOWED_REGION_ROLES = {role.value for role in SemanticRole}

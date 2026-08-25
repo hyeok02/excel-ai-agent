@@ -2,8 +2,8 @@ import { ChevronDown, Grid3X3 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import type { RegionResult } from '@/api/analysis'
-import CellPreviewTable from '@/components/analysis/workbook/CellPreviewTable'
-import OriginalLocationButton from '@/components/analysis/workbook/OriginalLocationButton'
+import OriginalLocationButton from '@/components/analysis/workbook/common/OriginalLocationButton'
+import CellPreviewTable from '@/components/analysis/workbook/previews/CellPreviewTable'
 
 interface SheetRegionDetailsProps {
   regions: RegionResult[]
@@ -22,9 +22,7 @@ const regionSizeLabel = (region: RegionResult) => {
     safeCount(region.cellCount) ??
     (rows !== null && columns !== null ? rows * columns : null)
   const dimensions =
-    rows !== null && columns !== null
-      ? `${rows}행 × ${columns}열`
-      : '크기 정보 없음'
+    rows !== null && columns !== null ? `${rows}행 × ${columns}열` : '크기 정보 없음'
   const cellCount = cells !== null ? ` · ${cells.toLocaleString()}셀` : ''
 
   return `${dimensions}${cellCount}`
@@ -103,9 +101,7 @@ const SheetRegionDetails = ({ regions, sheetName }: SheetRegionDetailsProps) => 
 
                 {(region.headerPaths ?? []).length > 0 && (
                   <div className="mb-3 rounded-xl bg-slate-50 p-3">
-                    <p className="text-[11px] font-extrabold text-slate-500">
-                      헤더 구조
-                    </p>
+                    <p className="text-[11px] font-extrabold text-slate-500">헤더 구조</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {region.headerPaths.slice(0, 12).map((path) => (
                         <span

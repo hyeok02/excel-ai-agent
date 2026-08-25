@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import type { SheetResult } from '@/api/analysis'
-import SheetResultCard from '@/components/analysis/workbook/SheetResultCard'
+import SheetResultCard from '@/components/analysis/workbook/explorer/SheetResultCard'
 
 interface WorkbookExplorerProps {
   sheets: SheetResult[]

@@ -64,7 +64,7 @@ const DashboardPage = () => {
           <p className="hidden text-sm text-slate-400 sm:block">4개의 AI 업무 모듈</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {MODULE_SUMMARIES.map((module, index) => {
+          {MODULE_SUMMARIES.map((module) => {
             const navigationItem = BUSINESS_NAVIGATION_ITEMS.find(
               (item) => item.id === module.id,
             )
@@ -75,7 +75,6 @@ const DashboardPage = () => {
                   <span className={`module-icon module-icon-${module.tone}`}>
                     <Icon aria-hidden="true" size={20} strokeWidth={1.9} />
                   </span>
-                  <span className="text-xs font-bold text-slate-300">0{index + 1}</span>
                 </div>
                 <h3 className="mt-8 text-lg font-extrabold tracking-tight text-slate-950">
                   {module.title}

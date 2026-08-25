@@ -50,6 +50,34 @@ export interface AnalysisInclusion {
   reason: string
 }
 
+export const SHEET_ROLES = [
+  'input',
+  'calculation',
+  'output',
+  'documentation',
+  'system',
+] as const
+
+export type SheetRole = (typeof SHEET_ROLES)[number]
+
+export const SHEET_IMPORTANCE_LEVELS = ['low', 'medium', 'high', 'critical'] as const
+
+export type SheetImportance = (typeof SHEET_IMPORTANCE_LEVELS)[number]
+
+export interface SheetRoleReason {
+  code: string
+  message: string
+  evidenceCells: string[]
+}
+
+export interface SheetClassification {
+  role: SheetRole
+  importance: SheetImportance
+  confidence: number
+  importanceScore: number
+  reasons: SheetRoleReason[]
+}
+
 export interface AnalysisSubmission {
   analysisId: string
   status: AnalysisStatus
@@ -148,12 +176,14 @@ export interface SheetResult {
   tables: TableResult[]
   charts: ChartResult[]
   analysisInclusion: AnalysisInclusion | null
+  sheetClassification: SheetClassification | null
 }
 
 export interface ExcludedSheetResult {
   name: string
   state: string
   analysisInclusion: AnalysisInclusion
+  sheetClassification: SheetClassification | null
 }
 
 export type DependencyNodeKind = 'formula' | 'cell' | 'range' | 'named' | 'external'

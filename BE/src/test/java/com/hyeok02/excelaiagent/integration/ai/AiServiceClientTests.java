@@ -81,6 +81,17 @@ class AiServiceClientTests {
 						      "decision": "exclude",
 						      "reason_code": "addin_cache_worksheet",
 						      "reason": "애드인 캐시 시트"
+						    },
+						    "sheet_classification": {
+						      "role": "system",
+						      "importance": "low",
+						      "confidence": 0.99,
+						      "importance_score": 0,
+						      "reasons": [{
+						        "code": "system_policy",
+						        "message": "애드인 캐시 시트",
+						        "evidence_cells": ["__snlofficequeries!A1"]
+						      }]
 						    }
 						  }],
 						  "sheets": [
@@ -95,6 +106,17 @@ class AiServiceClientTests {
 						        "decision": "include",
 						        "reason_code": "business_worksheet",
 						        "reason": "사용자 업무 시트"
+						      },
+						      "sheet_classification": {
+						        "role": "output",
+						        "importance": "high",
+						        "confidence": 0.88,
+						        "importance_score": 60,
+						        "reasons": [{
+						          "code": "chart_presentation",
+						          "message": "차트 1개 포함",
+						          "evidence_cells": ["Sales!D2"]
+						        }]
 						      },
 						      "formulas": [
 						        {
@@ -238,6 +260,8 @@ class AiServiceClientTests {
 			assertThat(sheet.name()).isEqualTo("__snlofficequeries");
 			assertThat(sheet.analysisInclusion().decision()).isEqualTo(AnalysisDecision.EXCLUDE);
 			assertThat(sheet.analysisInclusion().reasonCode()).isEqualTo("addin_cache_worksheet");
+			assertThat(sheet.sheetClassification().role()).isEqualTo(SheetRole.SYSTEM);
+			assertThat(sheet.sheetClassification().importance()).isEqualTo(SheetImportance.LOW);
 		});
 		assertThat(response.dependencySummary().edgeCount()).isEqualTo(1);
 		assertThat(response.dependencySummary().cycleCount()).isEqualTo(1);
@@ -256,6 +280,9 @@ class AiServiceClientTests {
 		assertThat(response.sheets()).singleElement().satisfies(sheet -> {
 			assertThat(sheet.name()).isEqualTo("Sales");
 			assertThat(sheet.analysisInclusion().decision()).isEqualTo(AnalysisDecision.INCLUDE);
+			assertThat(sheet.sheetClassification().role()).isEqualTo(SheetRole.OUTPUT);
+			assertThat(sheet.sheetClassification().importance()).isEqualTo(SheetImportance.HIGH);
+			assertThat(sheet.sheetClassification().importanceScore()).isEqualTo(60);
 			assertThat(sheet.formulaCount()).isEqualTo(1);
 			assertThat(sheet.chartCount()).isEqualTo(1);
 			assertThat(sheet.formulas()).singleElement().satisfies(formula -> {

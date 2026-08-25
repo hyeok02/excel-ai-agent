@@ -1,10 +1,10 @@
 import { FileSpreadsheet } from 'lucide-react'
 
 import type { SheetResult } from '@/api/analysis'
-import SheetChartDetails from '@/components/analysis/workbook/SheetChartDetails'
-import SheetFormulaDetails from '@/components/analysis/workbook/SheetFormulaDetails'
-import SheetRegionDetails from '@/components/analysis/workbook/SheetRegionDetails'
-import SheetTableDetails from '@/components/analysis/workbook/SheetTableDetails'
+import SheetChartDetails from '@/components/analysis/workbook/details/SheetChartDetails'
+import SheetFormulaDetails from '@/components/analysis/workbook/details/SheetFormulaDetails'
+import SheetRegionDetails from '@/components/analysis/workbook/details/SheetRegionDetails'
+import SheetTableDetails from '@/components/analysis/workbook/details/SheetTableDetails'
 
 interface SheetResultCardProps {
   sheet: SheetResult

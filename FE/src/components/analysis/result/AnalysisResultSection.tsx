@@ -5,7 +5,7 @@ import AgentReadySection from '@/components/analysis/result/AgentReadySection'
 import AnalysisExportActions from '@/components/analysis/result/AnalysisExportActions'
 import DependencyMapSection from '@/components/analysis/result/DependencyMapSection'
 import InsightReportSection from '@/components/analysis/result/InsightReportSection'
-import WorkbookExplorer from '@/components/analysis/workbook/WorkbookExplorer'
+import WorkbookExplorer from '@/components/analysis/workbook/explorer/WorkbookExplorer'
 
 interface AnalysisResultSectionProps {
   mode: AnalysisMode
