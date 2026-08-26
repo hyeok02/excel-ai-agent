@@ -39,8 +39,8 @@ export const getAuthConfig = async () => {
 }
 
 export const getCurrentUser = async () => {
-  const { data } = await apiClient.get<CurrentUser>('/api/v1/auth/me')
-  return data
+  const response = await apiClient.get<CurrentUser>('/api/v1/auth/me')
+  return response.status === 204 ? null : response.data
 }
 
 export const loginWithCredentials = async (username: string, password: string) => {
