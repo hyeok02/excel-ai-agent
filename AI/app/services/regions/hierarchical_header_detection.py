@@ -12,7 +12,7 @@ from app.services.regions.utils import (
 )
 from app.services.semantic_models import SemanticReason
 
-MAX_HEADER_ROWS = 4
+MAX_HEADER_ROWS = 8
 
 
 @dataclass(frozen=True)
