@@ -1,13 +1,9 @@
-from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from app.services.semantic_models import SemanticRole
 from app.services.workbook_details.header_labels import header_label
-from app.services.workbook_details.merged_headers import resolved_header_rows
+from app.services.workbook_details.header_path_builder import build_header_paths
 from app.services.workbook_details.models import HeaderPathSummary
-
-HEADER_SCAN_ROWS = 4
-HEADER_SCAN_COLUMNS = 12
 
 
 def region_title(
@@ -40,24 +36,10 @@ def header_paths(
 ) -> list[HeaderPathSummary]:
     if semantic_role is not SemanticRole.HEADER:
         return []
-    header_max_row = min(max_row, min_row + HEADER_SCAN_ROWS - 1)
-    column_max = min(max_column, min_column + HEADER_SCAN_COLUMNS - 1)
-    propagated_rows = resolved_header_rows(
+    return build_header_paths(
         worksheet,
         min_row,
-        header_max_row,
+        max_row,
         min_column,
-        column_max,
+        max_column,
     )
-    paths = []
-    for index, column_number in enumerate(range(min_column, column_max + 1)):
-        labels = []
-        for row_labels in propagated_rows:
-            label = row_labels[index]
-            if label is not None and (not labels or labels[-1] != label):
-                labels.append(label)
-        if labels:
-            paths.append(
-                HeaderPathSummary(column=get_column_letter(column_number), labels=labels)
-            )
-    return paths

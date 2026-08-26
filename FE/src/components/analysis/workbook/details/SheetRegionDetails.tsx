@@ -2,6 +2,7 @@ import { ChevronDown, Grid3X3 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import type { RegionResult } from '@/api/analysis'
+import HeaderPathList from '@/components/analysis/workbook/details/HeaderPathList'
 import OriginalLocationButton from '@/components/analysis/workbook/details/OriginalLocationButton'
 import {
   regionSizeLabel,
@@ -94,22 +95,7 @@ const SheetRegionDetails = ({ regions, sheetName }: SheetRegionDetailsProps) => 
                   )}
                 </div>
 
-                {(region.headerPaths ?? []).length > 0 && (
-                  <div className="mb-3 rounded-xl bg-slate-50 p-3">
-                    <p className="text-[11px] font-extrabold text-slate-500">헤더 구조</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {region.headerPaths.slice(0, 12).map((path) => (
-                        <span
-                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-600"
-                          key={`${path.column}-${path.labels.join('-')}`}
-                        >
-                          <b className="text-slate-400">{path.column}</b>{' '}
-                          {path.labels.join(' › ')}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <HeaderPathList paths={region.headerPaths ?? []} />
                 <CellPreviewTable rows={region.previewRows ?? []} />
                 {region.truncated && (
                   <p className="mt-2 text-[11px] text-slate-400">
