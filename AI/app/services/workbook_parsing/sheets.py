@@ -5,6 +5,7 @@ from app.services.formula_analyzer import FormulaAnalysis
 from app.services.region_detector import detect_regions
 from app.services.sheet_classifier import SheetClassification
 from app.services.workbook_details import (
+    build_column_schemas,
     summarize_charts,
     summarize_regions,
     summarize_tables,
@@ -40,6 +41,9 @@ def build_sheet_summaries(
             worksheet, sheet_role=classification.role.value
         )
         regions = summarize_regions(worksheet, detected, value_worksheet)
+        column_schemas = build_column_schemas(
+            worksheet, value_worksheet, detected, regions
+        )
         tables = summarize_tables(worksheet, value_worksheet)
         charts = summarize_charts(workbook, worksheet, value_workbook)
         sheets.append(
@@ -53,6 +57,7 @@ def build_sheet_summaries(
                 formulas=formulas,
                 region_count=len(regions),
                 regions=regions,
+                column_schemas=column_schemas,
                 analysis_inclusion=inclusion,
                 tables=tables,
                 charts=charts,

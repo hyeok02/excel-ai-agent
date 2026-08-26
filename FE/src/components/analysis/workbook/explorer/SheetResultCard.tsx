@@ -5,6 +5,7 @@ import SheetChartDetails from '@/components/analysis/workbook/details/SheetChart
 import SheetFormulaDetails from '@/components/analysis/workbook/details/SheetFormulaDetails'
 import SheetRegionDetails from '@/components/analysis/workbook/details/SheetRegionDetails'
 import SheetTableDetails from '@/components/analysis/workbook/details/SheetTableDetails'
+import SheetColumnSchema from '@/components/analysis/workbook/schema/SheetColumnSchema'
 import SheetSemanticSummary from '@/components/analysis/workbook/semantic/summaries/SheetSemanticSummary'
 
 interface SheetResultCardProps {
@@ -45,6 +46,11 @@ const SheetResultCard = ({ sheet }: SheetResultCardProps) => {
       </header>
 
       <SheetSemanticSummary sheet={sheet} />
+      <SheetColumnSchema
+        columns={sheet.columnSchemas ?? []}
+        key={sheet.name}
+        sheetName={sheet.name}
+      />
 
       <div className="space-y-4 border-t border-slate-100 p-5">
         <div className="grid gap-4 xl:grid-cols-2">

@@ -15,25 +15,34 @@ public record AiSheetSummary(
 		List<AiCellRegion> regions, List<AiTableSummary> tables,
 		List<AiChartSummary> charts,
 		@JsonProperty("analysis_inclusion") AiAnalysisInclusion analysisInclusion,
-		@JsonProperty("sheet_classification") AiSheetClassification sheetClassification) {
+		@JsonProperty("sheet_classification") AiSheetClassification sheetClassification,
+		@JsonProperty("column_schemas") List<AiColumnSchema> columnSchemas) {
+	public AiSheetSummary(String name, int rows, int columns, int formulasCount,
+			int tablesCount, int chartsCount, List<AiFormulaAnalysis> formulas,
+			int regionsCount, List<AiCellRegion> regions, List<AiTableSummary> tables,
+			List<AiChartSummary> charts, AiAnalysisInclusion inclusion,
+			AiSheetClassification classification) {
+		this(name, rows, columns, formulasCount, tablesCount, chartsCount, formulas,
+				regionsCount, regions, tables, charts, inclusion, classification, List.of());
+	}
 	public AiSheetSummary(String name, int rows, int columns, int formulasCount,
 			int tablesCount, int chartsCount, List<AiFormulaAnalysis> formulas,
 			int regionsCount, List<AiCellRegion> regions) {
 		this(name, rows, columns, formulasCount, tablesCount, chartsCount, formulas,
-				regionsCount, regions, List.of(), List.of(), null, null);
+				regionsCount, regions, List.of(), List.of(), null, null, List.of());
 	}
 	public AiSheetSummary(String name, int rows, int columns, int formulasCount,
 			int tablesCount, int chartsCount, List<AiFormulaAnalysis> formulas,
 			int regionsCount, List<AiCellRegion> regions, List<AiTableSummary> tables,
 			List<AiChartSummary> charts) {
 		this(name, rows, columns, formulasCount, tablesCount, chartsCount, formulas,
-				regionsCount, regions, tables, charts, null, null);
+				regionsCount, regions, tables, charts, null, null, List.of());
 	}
 	public AiSheetSummary(String name, int rows, int columns, int formulasCount,
 			int tablesCount, int chartsCount, List<AiFormulaAnalysis> formulas,
 			int regionsCount, List<AiCellRegion> regions, List<AiTableSummary> tables,
 			List<AiChartSummary> charts, AiAnalysisInclusion inclusion) {
 		this(name, rows, columns, formulasCount, tablesCount, chartsCount, formulas,
-				regionsCount, regions, tables, charts, inclusion, null);
+				regionsCount, regions, tables, charts, inclusion, null, List.of());
 	}
 }

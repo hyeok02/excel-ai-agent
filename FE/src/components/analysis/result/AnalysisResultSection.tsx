@@ -1,4 +1,4 @@
-import { CalendarClock, CheckCircle2, Network, Sparkles } from 'lucide-react'
+import { CalendarClock, CheckCircle2, Network } from 'lucide-react'
 
 import type { AnalysisMode, AnalysisResultDetails, WorkbookResult } from '@/api/analysis'
 import AgentReadySection from '@/components/analysis/result/AgentReadySection'
@@ -27,21 +27,16 @@ const getWorkbookTotals = (workbook: WorkbookResult) => {
 
 const MODE_PRESENTATION = {
   BFS: {
-    badge: 'BFS 구조 분석 · OpenAI 미사용',
     completion: '규칙 기반 분석 완료',
-    icon: Network,
   },
   LLM: {
-    badge: 'LLM 인사이트 · OpenAI 사용',
     completion: 'LLM 인사이트 분석 완료',
-    icon: Sparkles,
   },
 } as const
 
 const AnalysisResultSection = ({ mode, result }: AnalysisResultSectionProps) => {
   const { workbook } = result
   const modePresentation = MODE_PRESENTATION[mode]
-  const ModeIcon = modePresentation.icon
   const totals = getWorkbookTotals(workbook)
   const summaryItems = [
     ['시트', workbook.sheetCount],
@@ -67,10 +62,6 @@ const AnalysisResultSection = ({ mode, result }: AnalysisResultSectionProps) => 
           <p className="mt-1 text-sm text-slate-500">분석 ID {result.analysisId}</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-          <span className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-50 px-3 text-xs font-bold text-brand-700">
-            <ModeIcon aria-hidden="true" size={15} />
-            {modePresentation.badge}
-          </span>
           <time
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500"
             dateTime={result.createdAt}

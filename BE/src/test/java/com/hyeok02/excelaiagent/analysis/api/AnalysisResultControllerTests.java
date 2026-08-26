@@ -24,6 +24,8 @@ class AnalysisResultControllerTests extends AnalysisControllerTestSupport {
 				.andExpect(jsonPath("$.workbook.totalSheetCount").value(2))
 				.andExpect(jsonPath("$.workbook.excludedSheets[0].analysisInclusion.decision").value("exclude"))
 				.andExpect(jsonPath("$.workbook.sheets[0].sheetClassification.role").value("output"))
+				.andExpect(jsonPath("$.workbook.sheets[0].columnSchemas[0].standardField")
+						.value("revenue"))
 				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].semantic.role").value("data"))
 				.andExpect(jsonPath("$.workbook.sheets[0].regions[0].previewRows[0][0].semantic.role")
 						.value("header"))

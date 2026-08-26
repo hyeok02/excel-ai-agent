@@ -52,6 +52,7 @@ def _sheet_context(sheet: object, profile: AnalysisProfile) -> dict[str, object]
     sheet_data = asdict(sheet)
     formulas = sheet_data.pop("formulas")
     regions = sheet_data.pop("regions")
+    column_schemas = sheet_data.pop("column_schemas")
     tables = sheet_data.pop("tables")
     charts = sheet_data.pop("charts")
     selected_formulas = select_formula_samples(formulas, profile.max_formulas_per_sheet)
@@ -69,6 +70,11 @@ def _sheet_context(sheet: object, profile: AnalysisProfile) -> dict[str, object]
     )
     sheet_data["omitted_region_count"] = max(
         0, len(regions) - profile.max_regions_per_sheet
+    )
+    schema_limit = profile.max_regions_per_sheet * 6
+    sheet_data["column_schema_samples"] = column_schemas[:schema_limit]
+    sheet_data["omitted_column_schema_count"] = max(
+        0, len(column_schemas) - schema_limit
     )
     sheet_data["table_samples"] = [
         {

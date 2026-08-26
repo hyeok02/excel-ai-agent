@@ -6,6 +6,7 @@ import com.hyeok02.excelaiagent.integration.ai.model.AiCellRegion;
 import com.hyeok02.excelaiagent.integration.ai.model.AiCellSnapshot;
 import com.hyeok02.excelaiagent.integration.ai.model.AiChartSeriesSummary;
 import com.hyeok02.excelaiagent.integration.ai.model.AiChartSummary;
+import com.hyeok02.excelaiagent.integration.ai.model.AiColumnSchema;
 import com.hyeok02.excelaiagent.integration.ai.model.AiExcludedSheetSummary;
 import com.hyeok02.excelaiagent.integration.ai.model.AiFormulaAnalysis;
 import com.hyeok02.excelaiagent.integration.ai.model.AiHeaderPath;
@@ -42,6 +43,8 @@ final class WorkbookResultMapper {
 				SemanticResultMapper.safe(sheet.formulas()).stream().map(WorkbookResultMapper::map).toList(),
 				sheet.regionCount(),
 				SemanticResultMapper.safe(sheet.regions()).stream().map(WorkbookResultMapper::map).toList(),
+				SemanticResultMapper.safe(sheet.columnSchemas()).stream()
+						.map(WorkbookResultMapper::map).toList(),
 				SemanticResultMapper.safe(sheet.tables()).stream().map(WorkbookResultMapper::map).toList(),
 				SemanticResultMapper.safe(sheet.charts()).stream().map(WorkbookResultMapper::map).toList(),
 				SemanticResultMapper.map(sheet.analysisInclusion()),
@@ -68,6 +71,13 @@ final class WorkbookResultMapper {
 
 	private static AnalysisWorkbookResult.HeaderPath map(AiHeaderPath header) {
 		return new AnalysisWorkbookResult.HeaderPath(header.column(), SemanticResultMapper.safe(header.labels()));
+	}
+
+	private static AnalysisWorkbookResult.ColumnSchema map(AiColumnSchema column) {
+		return new AnalysisWorkbookResult.ColumnSchema(
+				column.column(), column.sourceRange(), SemanticResultMapper.safe(column.headerPath()),
+				column.displayName(), column.standardField(), column.dataType(), column.unitType(),
+				column.unitLabel(), column.confidence(), SemanticResultMapper.safe(column.evidence()));
 	}
 
 	private static AnalysisWorkbookResult.Cell map(AiCellSnapshot cell) {

@@ -30,6 +30,10 @@ class AiWorkbookSummaryClientTests extends AiServiceClientTestSupport {
 				assertThat(cycle.nodes().getFirst().id()).isEqualTo("Sales!D2"));
 		assertThat(response.sheets()).singleElement().satisfies(sheet -> {
 			assertThat(sheet.sheetClassification().role()).isEqualTo(SheetRole.OUTPUT);
+			assertThat(sheet.columnSchemas()).singleElement().satisfies(column -> {
+				assertThat(column.standardField()).isEqualTo("revenue");
+				assertThat(column.unitType()).isEqualTo("currency");
+			});
 			assertThat(sheet.formulas().getFirst().cachedValue()).isEqualTo(15);
 			assertThat(sheet.regions().getFirst().semantic().role()).isEqualTo(SemanticRole.DATA);
 			assertThat(sheet.regions().getFirst().previewRows().getFirst().getFirst().semantic().role())

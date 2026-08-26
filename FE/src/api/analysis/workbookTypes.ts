@@ -33,6 +33,19 @@ export interface HeaderPathResult {
   labels: string[]
 }
 
+export interface ColumnSchemaResult {
+  column: string
+  sourceRange: string
+  headerPath: string[]
+  displayName: string
+  standardField: string
+  dataType: string
+  unitType: string
+  unitLabel: string | null
+  confidence: number
+  evidence: string[]
+}
+
 export interface RegionResult {
   startCell: string
   endCell: string
@@ -86,6 +99,7 @@ export interface SheetResult {
   formulas: FormulaResult[]
   regionCount: number
   regions: RegionResult[]
+  columnSchemas?: ColumnSchemaResult[]
   tables: TableResult[]
   charts: ChartResult[]
   analysisInclusion: AnalysisInclusion | null

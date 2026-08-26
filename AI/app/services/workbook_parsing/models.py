@@ -7,7 +7,12 @@ from app.services.analysis_inclusion import (
 from app.services.dependency_analyzer import DependencySummary
 from app.services.formula_analyzer import FormulaAnalysis
 from app.services.sheet_classifier import SheetClassification
-from app.services.workbook_details import ChartSummary, RegionSummary, TableSummary
+from app.services.workbook_details import (
+    ChartSummary,
+    ColumnSchemaSummary,
+    RegionSummary,
+    TableSummary,
+)
 
 
 @dataclass(frozen=True)
@@ -21,6 +26,7 @@ class SheetSummary:
     formulas: list[FormulaAnalysis]
     region_count: int
     regions: list[RegionSummary]
+    column_schemas: list[ColumnSchemaSummary] = field(default_factory=list)
     analysis_inclusion: AnalysisInclusion = INCLUDED_BUSINESS_WORKSHEET
     tables: list[TableSummary] = field(default_factory=list)
     charts: list[ChartSummary] = field(default_factory=list)

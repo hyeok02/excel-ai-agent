@@ -20,7 +20,7 @@ public final class AnalysisWorkbookResult {
 	public record Sheet(
 			String name, int rows, int columns, int formulaCount, int tableCount, int chartCount,
 			List<Formula> formulas, int regionCount, List<Region> regions,
-			List<Table> tables, List<Chart> charts,
+			List<ColumnSchema> columnSchemas, List<Table> tables, List<Chart> charts,
 			AnalysisSemanticResult.Inclusion analysisInclusion,
 			AnalysisSemanticResult.SheetClassification sheetClassification) {
 	}
@@ -38,6 +38,12 @@ public final class AnalysisWorkbookResult {
 	}
 
 	public record HeaderPath(String column, List<String> labels) {
+	}
+
+	public record ColumnSchema(
+			String column, String sourceRange, List<String> headerPath, String displayName,
+			String standardField, String dataType, String unitType, String unitLabel,
+			double confidence, List<String> evidence) {
 	}
 
 	public record Cell(
