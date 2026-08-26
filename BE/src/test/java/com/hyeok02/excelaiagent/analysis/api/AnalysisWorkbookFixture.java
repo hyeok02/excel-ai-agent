@@ -19,7 +19,11 @@ final class AnalysisWorkbookFixture {
 						List.of(new AiChartSeriesSummary("1월", "'Sales'!$A$2:$A$3",
 								"'Sales'!$B$2:$B$3", List.of("노트북", "모니터"), List.of(10, 5))), false)),
 				new AiAnalysisInclusion(AnalysisDecision.INCLUDE, "business_worksheet", "사용자 업무 시트"),
-				classification(SheetRole.OUTPUT, SheetImportance.HIGH, 60));
+				classification(SheetRole.OUTPUT, SheetImportance.HIGH, 60),
+				List.of(new AiColumnSchema(
+						"B", "A1:D3", List.of("매출액"), "매출액", "revenue",
+						"number", "currency", "KRW", 0.93,
+						List.of("헤더 의미어 일치", "통화 표시 형식"))));
 		AiExcludedSheetSummary excluded = new AiExcludedSheetSummary(
 				"__snlofficequeries", "visible",
 				new AiAnalysisInclusion(AnalysisDecision.EXCLUDE, "addin_cache_worksheet", "애드인 캐시 시트"),

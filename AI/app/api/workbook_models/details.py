@@ -26,6 +26,20 @@ class HeaderPathResponse(BaseModel):
     labels: list[str]
 
 
+class ColumnSchemaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    column: str
+    source_range: str
+    header_path: list[str]
+    display_name: str
+    standard_field: str
+    data_type: str
+    unit_type: str
+    unit_label: str | None
+    confidence: float
+    evidence: list[str]
+
+
 class CellRegionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     start_cell: str

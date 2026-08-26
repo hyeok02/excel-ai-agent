@@ -4,6 +4,7 @@ from app.api.workbook_models.dependencies import DependencySummaryResponse
 from app.api.workbook_models.details import (
     CellRegionResponse,
     ChartSummaryResponse,
+    ColumnSchemaResponse,
     TableSummaryResponse,
 )
 from app.api.workbook_models.semantic import (
@@ -33,6 +34,7 @@ class SheetSummaryResponse(BaseModel):
     formulas: list[FormulaAnalysisResponse]
     region_count: int
     regions: list[CellRegionResponse]
+    column_schemas: list[ColumnSchemaResponse]
     analysis_inclusion: AnalysisInclusionResponse
     sheet_classification: SheetClassificationResponse
     tables: list[TableSummaryResponse]

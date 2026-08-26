@@ -31,6 +31,20 @@ class HeaderPathSummary:
 
 
 @dataclass(frozen=True)
+class ColumnSchemaSummary:
+    column: str
+    source_range: str
+    header_path: list[str]
+    display_name: str
+    standard_field: str
+    data_type: str
+    unit_type: str
+    unit_label: str | None
+    confidence: float
+    evidence: list[str]
+
+
+@dataclass(frozen=True)
 class RegionSummary:
     start_cell: str
     end_cell: str
