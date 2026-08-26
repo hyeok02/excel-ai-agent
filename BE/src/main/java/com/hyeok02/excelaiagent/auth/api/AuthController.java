@@ -70,7 +70,7 @@ public class AuthController {
 	public ResponseEntity<CurrentUserResponse> currentUser(Authentication authentication) {
 		if (authentication == null || !authentication.isAuthenticated()
 				|| "anonymousUser".equals(authentication.getPrincipal())) {
-			return ResponseEntity.status(401).build();
+			return ResponseEntity.noContent().build();
 		}
 		AppUser user = authentication.getPrincipal() instanceof OidcUser oidcUser
 				? userAccountService.requireByEmail(oidcUser.getEmail())

@@ -40,6 +40,12 @@ class AuthControllerTests {
 	}
 
 	@Test
+	void reportsEmptyCurrentUserWithoutLogin() throws Exception {
+		mockMvc.perform(get("/api/v1/auth/me"))
+				.andExpect(status().isNoContent());
+	}
+
+	@Test
 	void logsInWithBootstrapAdminAccount() throws Exception {
 		MockHttpSession session = login("admin", "admin1234");
 
