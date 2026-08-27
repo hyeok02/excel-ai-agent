@@ -25,14 +25,27 @@ def test_returns_workbook_summary() -> None:
     assert sales["sheet_classification"]["role"] == "output"
     assert sales["sheet_classification"]["importance"] in {"high", "critical"}
     assert sales["sheet_classification"]["reasons"]
+    assert sales["sheet_classification"]["provenance"]["analyzer"] == (
+        "sheet_role_classifier"
+    )
+    assert sales["analysis_inclusion"]["provenance"]["evidence"][0]["kind"] == (
+        "sheet"
+    )
     assert sales["formula_count"] == 2
-    assert sales["formulas"][0] == {
+    assert {key: sales["formulas"][0][key] for key in (
+        "cell", "formula", "references", "cached_value", "role"
+    )} == {
         "cell": "D2",
         "formula": "=SUM(B2:C2)",
         "references": ["B2:C2"],
         "cached_value": None,
         "role": "calculation",
     }
+    provenance = sales["formulas"][0]["provenance"]
+    assert provenance["analyzer"] == "formula_parser"
+    assert provenance["method"] == "rule_based"
+    assert provenance["evidence"][0]["sheet_name"] == "매출현황"
+    assert provenance["evidence"][0]["reference"] == "D2"
     assert [region["semantic"]["role"] for region in sales["regions"]] == [
         "header",
         "data",
@@ -40,6 +53,7 @@ def test_returns_workbook_summary() -> None:
     assert sales["regions"][0]["semantic"]["reasons"][0]["code"] == (
         "header_style_transition"
     )
+    assert sales["regions"][0]["semantic"]["provenance"]["evidence"]
     formula_cell = sales["regions"][1]["preview_rows"][0][3]
     assert formula_cell["address"] == "D2"
     assert formula_cell["formula"] == "=SUM(B2:C2)"

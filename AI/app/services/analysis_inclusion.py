@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from app.services.provenance import Provenance
+
 
 class AnalysisDecision(str, Enum):
     INCLUDE = "include"
@@ -12,6 +14,7 @@ class AnalysisInclusion:
     decision: AnalysisDecision
     reason_code: str
     reason: str
+    provenance: Provenance | None = None
 
     def __post_init__(self) -> None:
         if not self.reason_code.strip():

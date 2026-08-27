@@ -26,7 +26,8 @@ public final class AnalysisWorkbookResult {
 	}
 
 	public record Formula(
-			String cell, String formula, List<String> references, Object cachedValue, String role) {
+			String cell, String formula, List<String> references, Object cachedValue,
+			String role, AnalysisProvenanceResult.Provenance provenance) {
 	}
 
 	public record Region(
@@ -43,7 +44,8 @@ public final class AnalysisWorkbookResult {
 	public record ColumnSchema(
 			String column, String sourceRange, List<String> headerPath, String displayName,
 			String standardField, String dataType, String unitType, String unitLabel,
-			double confidence, List<String> evidence) {
+			double confidence, List<String> evidence,
+			AnalysisProvenanceResult.Provenance provenance) {
 	}
 
 	public record Cell(

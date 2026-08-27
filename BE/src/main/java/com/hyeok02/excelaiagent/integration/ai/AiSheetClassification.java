@@ -4,13 +4,21 @@ import java.util.List;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.hyeok02.excelaiagent.integration.ai.model.AiProvenance;
 
 public record AiSheetClassification(
 		SheetRole role,
 		SheetImportance importance,
 		double confidence,
 		@JsonProperty("importance_score") int importanceScore,
-		List<AiSheetRoleReason> reasons) {
+		List<AiSheetRoleReason> reasons,
+		AiProvenance provenance) {
+
+	public AiSheetClassification(
+			SheetRole role, SheetImportance importance, double confidence,
+			int importanceScore, List<AiSheetRoleReason> reasons) {
+		this(role, importance, confidence, importanceScore, reasons, null);
+	}
 
 	public AiSheetClassification {
 		Objects.requireNonNull(role, "시트 역할은 필수입니다.");

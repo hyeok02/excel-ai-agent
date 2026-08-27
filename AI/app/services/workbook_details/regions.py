@@ -1,7 +1,15 @@
+from dataclasses import replace
+
 from openpyxl.utils import range_boundaries
 from openpyxl.worksheet.worksheet import Worksheet
 
 from app.services.region_detector import CellRegion
+from app.services.provenance import (
+    build_provenance,
+    evidence_from_reasons,
+    evidence_from_reference,
+)
+from app.services.semantic_models import SemanticClassification
 from app.services.workbook_details.cell_values import intersecting_merged_ranges
 from app.services.workbook_details.headers import header_paths, region_title
 from app.services.workbook_details.models import RegionSummary
@@ -26,6 +34,7 @@ def summarize_regions(
             max_column, min_column + REGION_PREVIEW_COLUMNS - 1
         )
         semantic_role = region.semantic.role if region.semantic else None
+        semantic = _semantic_with_provenance(worksheet.title, region)
         summaries.append(
             RegionSummary(
                 start_cell=region.start_cell,
@@ -59,7 +68,31 @@ def summarize_regions(
                 is_truncated=(
                     preview_max_row < max_row or preview_max_column < max_column
                 ),
-                semantic=region.semantic,
+                semantic=semantic,
             )
         )
     return summaries
+
+
+def _semantic_with_provenance(
+    sheet_name: str, region: CellRegion
+) -> SemanticClassification | None:
+    if region.semantic is None:
+        return None
+    evidence = evidence_from_reasons(sheet_name, region.semantic.reasons)
+    if not evidence:
+        evidence = (
+            evidence_from_reference(
+                sheet_name,
+                f"{region.start_cell}:{region.end_cell}",
+                f"{region.semantic.role.value} 역할로 분류된 셀 영역",
+            ),
+        )
+    return replace(
+        region.semantic,
+        provenance=build_provenance(
+            "region_semantic_classifier",
+            region.semantic.confidence,
+            evidence,
+        ),
+    )

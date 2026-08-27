@@ -1,1 +1,204 @@
-{"filename":"sales.xlsx","sheet_count":1,"total_sheet_count":2,"excluded_sheet_count":1,"excluded_sheets":[{"name":"__snlofficequeries","state":"visible","analysis_inclusion":{"decision":"exclude","reason_code":"addin_cache_worksheet","reason":"애드인 캐시 시트"},"sheet_classification":{"role":"system","importance":"low","confidence":0.99,"importance_score":0,"reasons":[]}}],"sheets":[{"name":"Sales","rows":3,"columns":4,"formula_count":1,"table_count":0,"chart_count":1,"analysis_inclusion":{"decision":"include","reason_code":"business_worksheet","reason":"사용자 업무 시트"},"sheet_classification":{"role":"output","importance":"high","confidence":0.88,"importance_score":60,"reasons":[]},"column_schemas":[{"column":"B","source_range":"A1:D3","header_path":["매출액"],"display_name":"매출액","standard_field":"revenue","data_type":"number","unit_type":"currency","unit_label":"KRW","confidence":0.93,"evidence":["헤더 의미어 일치","통화 표시 형식"]}],"formulas":[{"cell":"D2","formula":"=SUM(B2:C2)","references":["B2:C2"],"cached_value":15,"role":"calculation"}],"region_count":1,"regions":[{"start_cell":"A1","end_cell":"D3","cell_count":12,"row_count":3,"column_count":4,"merged_ranges":[],"header_paths":[],"preview_rows":[[{"address":"A1","value":"상품","formula":null,"bold":true,"merged":false,"semantic":{"role":"header","confidence":0.86,"reasons":[]}}]],"is_truncated":false,"analysis_inclusion":{"decision":"include","reason_code":"populated_business_region","reason":"값이 존재하는 업무 영역"},"semantic":{"role":"data","confidence":0.91,"reasons":[]}}],"tables":[],"charts":[{"title":"월별 매출","chart_type":"BarChart","anchor_cell":"F2","series_count":1,"series":[{"title":"1월","categories_reference":"Sales!A2:A3","values_reference":"Sales!B2:B3","category_samples":["노트북","모니터"],"value_samples":[10,5]}],"is_truncated":false}]}],"dependency_summary":{"node_count":1,"edge_count":1,"formula_node_count":1,"cross_sheet_edge_count":0,"named_reference_count":0,"external_reference_count":0,"cluster_count":1,"clusters":[],"cycle_count":1,"cyclic_node_count":1,"cycles":[{"id":"cycle-1","node_count":1,"edge_count":1,"sheet_names":["Sales"],"nodes":[{"id":"Sales!D2","label":"Sales!D2","sheet":"Sales","cell":"D2","kind":"formula","formula":"=D2+1"}],"edges":[],"is_truncated":false}]}}
+{
+  "filename": "sales.xlsx",
+  "sheet_count": 1,
+  "total_sheet_count": 2,
+  "excluded_sheet_count": 1,
+  "excluded_sheets": [
+    {
+      "name": "__snlofficequeries",
+      "state": "visible",
+      "analysis_inclusion": {
+        "decision": "exclude",
+        "reason_code": "addin_cache_worksheet",
+        "reason": "애드인 캐시 시트"
+      },
+      "sheet_classification": {
+        "role": "system",
+        "importance": "low",
+        "confidence": 0.99,
+        "importance_score": 0,
+        "reasons": []
+      }
+    }
+  ],
+  "sheets": [
+    {
+      "name": "Sales",
+      "rows": 3,
+      "columns": 4,
+      "formula_count": 1,
+      "table_count": 0,
+      "chart_count": 1,
+      "analysis_inclusion": {
+        "decision": "include",
+        "reason_code": "business_worksheet",
+        "reason": "사용자 업무 시트"
+      },
+      "sheet_classification": {
+        "role": "output",
+        "importance": "high",
+        "confidence": 0.88,
+        "importance_score": 60,
+        "reasons": []
+      },
+      "column_schemas": [
+        {
+          "column": "B",
+          "source_range": "A1:D3",
+          "header_path": [
+            "매출액"
+          ],
+          "display_name": "매출액",
+          "standard_field": "revenue",
+          "data_type": "number",
+          "unit_type": "currency",
+          "unit_label": "KRW",
+          "confidence": 0.93,
+          "evidence": [
+            "헤더 의미어 일치",
+            "통화 표시 형식"
+          ],
+          "provenance": {
+            "analyzer": "column_schema_analyzer",
+            "method": "rule_based",
+            "confidence": 0.93,
+            "evidence": [
+              {
+                "kind": "range",
+                "sheet_name": "Sales",
+                "reference": "A1:D3",
+                "description": "열 의미를 판단한 원본 표 범위",
+                "value": null,
+                "formula": null
+              }
+            ]
+          }
+        }
+      ],
+      "formulas": [
+        {
+          "cell": "D2",
+          "formula": "=SUM(B2:C2)",
+          "references": [
+            "B2:C2"
+          ],
+          "cached_value": 15,
+          "role": "calculation",
+          "provenance": {
+            "analyzer": "formula_parser",
+            "method": "rule_based",
+            "confidence": 1.0,
+            "evidence": [
+              {
+                "kind": "formula",
+                "sheet_name": "Sales",
+                "reference": "D2",
+                "description": "워크북에서 직접 추출한 원본 수식",
+                "value": 15,
+                "formula": "=SUM(B2:C2)"
+              }
+            ]
+          }
+        }
+      ],
+      "region_count": 1,
+      "regions": [
+        {
+          "start_cell": "A1",
+          "end_cell": "D3",
+          "cell_count": 12,
+          "row_count": 3,
+          "column_count": 4,
+          "merged_ranges": [],
+          "header_paths": [],
+          "preview_rows": [
+            [
+              {
+                "address": "A1",
+                "value": "상품",
+                "formula": null,
+                "bold": true,
+                "merged": false,
+                "semantic": {
+                  "role": "header",
+                  "confidence": 0.86,
+                  "reasons": []
+                }
+              }
+            ]
+          ],
+          "is_truncated": false,
+          "analysis_inclusion": {
+            "decision": "include",
+            "reason_code": "populated_business_region",
+            "reason": "값이 존재하는 업무 영역"
+          },
+          "semantic": {
+            "role": "data",
+            "confidence": 0.91,
+            "reasons": []
+          }
+        }
+      ],
+      "tables": [],
+      "charts": [
+        {
+          "title": "월별 매출",
+          "chart_type": "BarChart",
+          "anchor_cell": "F2",
+          "series_count": 1,
+          "series": [
+            {
+              "title": "1월",
+              "categories_reference": "Sales!A2:A3",
+              "values_reference": "Sales!B2:B3",
+              "category_samples": [
+                "노트북",
+                "모니터"
+              ],
+              "value_samples": [
+                10,
+                5
+              ]
+            }
+          ],
+          "is_truncated": false
+        }
+      ]
+    }
+  ],
+  "dependency_summary": {
+    "node_count": 1,
+    "edge_count": 1,
+    "formula_node_count": 1,
+    "cross_sheet_edge_count": 0,
+    "named_reference_count": 0,
+    "external_reference_count": 0,
+    "cluster_count": 1,
+    "clusters": [],
+    "cycle_count": 1,
+    "cyclic_node_count": 1,
+    "cycles": [
+      {
+        "id": "cycle-1",
+        "node_count": 1,
+        "edge_count": 1,
+        "sheet_names": [
+          "Sales"
+        ],
+        "nodes": [
+          {
+            "id": "Sales!D2",
+            "label": "Sales!D2",
+            "sheet": "Sales",
+            "cell": "D2",
+            "kind": "formula",
+            "formula": "=D2+1"
+          }
+        ],
+        "edges": [],
+        "is_truncated": false
+      }
+    ]
+  }
+}

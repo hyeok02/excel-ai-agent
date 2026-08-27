@@ -11,6 +11,10 @@ from app.services.workbook_details import (
     summarize_tables,
 )
 from app.services.workbook_parsing.models import ExcludedSheetSummary, SheetSummary
+from app.services.workbook_parsing.provenance import (
+    with_classification_provenance,
+    with_inclusion_provenance,
+)
 
 
 def build_sheet_summaries(
@@ -23,8 +27,12 @@ def build_sheet_summaries(
     sheets: list[SheetSummary] = []
     excluded: list[ExcludedSheetSummary] = []
     for worksheet in workbook.worksheets:
-        inclusion = inclusions_by_sheet[worksheet.title]
-        classification = classifications_by_sheet[worksheet.title]
+        inclusion = with_inclusion_provenance(
+            worksheet.title, inclusions_by_sheet[worksheet.title]
+        )
+        classification = with_classification_provenance(
+            worksheet.title, classifications_by_sheet[worksheet.title]
+        )
         if inclusion.decision is AnalysisDecision.EXCLUDE:
             excluded.append(
                 ExcludedSheetSummary(

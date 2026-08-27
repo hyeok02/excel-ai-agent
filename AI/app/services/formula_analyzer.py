@@ -1,8 +1,14 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from openpyxl.formula.tokenizer import Tokenizer, TokenizerError
 from openpyxl.worksheet.worksheet import Worksheet
+
+from app.services.provenance import (
+    Provenance,
+    build_provenance,
+    evidence_from_reference,
+)
 
 CELL_REFERENCE_PATTERN = re.compile(
     r"^(?:(?:'[^']*(?:''[^']*)*'|[^'!]+)!)?"
@@ -19,6 +25,7 @@ class FormulaAnalysis:
     references: list[str]
     cached_value: str | int | float | bool | None = None
     role: str = "calculation"
+    provenance: Provenance | None = field(default=None, compare=False)
 
 
 def analyze_formulas(
@@ -31,17 +38,31 @@ def analyze_formulas(
         if cell.data_type != "f" or not isinstance(cell.value, str):
             continue
 
+        cached_value = (
+            _supported_value(value_worksheet[cell.coordinate].value)
+            if value_worksheet is not None
+            else None
+        )
         formulas.append(
             FormulaAnalysis(
                 cell=cell.coordinate,
                 formula=cell.value,
                 references=_extract_references(cell.value),
-                cached_value=(
-                    _supported_value(value_worksheet[cell.coordinate].value)
-                    if value_worksheet is not None
-                    else None
-                ),
+                cached_value=cached_value,
                 role=_classify_formula(cell.value),
+                provenance=build_provenance(
+                    "formula_parser",
+                    1.0,
+                    (
+                        evidence_from_reference(
+                            worksheet.title,
+                            cell.coordinate,
+                            "워크북에서 직접 추출한 원본 수식",
+                            value=cached_value,
+                            formula=cell.value,
+                        ),
+                    ),
+                ),
             )
         )
 

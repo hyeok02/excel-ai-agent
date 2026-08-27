@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
+from app.services.provenance import Provenance
+
 
 class SemanticRole(StrEnum):
     TITLE = "title"
@@ -45,6 +47,7 @@ class SemanticClassification:
     role: SemanticRole
     confidence: float
     reasons: tuple[SemanticReason, ...] = ()
+    provenance: Provenance | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.role, SemanticRole):

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://excel-ai-agent.local/contracts/analysis-provenance.schema.json",
+  "title": "Analysis Provenance",
+  "type": "object",
+  "required": ["analyzer", "method", "confidence", "evidence"],
+  "properties": {
+    "analyzer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "method": {
+      "enum": ["rule_based", "dependency_graph", "llm"]
+    },
+    "confidence": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "required": [
+        "kind",
+        "sheet_name",
+        "reference",
+        "description",
+        "value",
+        "formula"
+      ],
+      "properties": {
+        "kind": {
+          "enum": ["cell", "range", "formula", "sheet", "metadata"]
+        },
+        "sheet_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": ["string", "number", "boolean", "null"]
+        },
+        "formula": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -8,11 +8,11 @@ from openpyxl.utils import (
 from openpyxl.worksheet.worksheet import Worksheet
 
 from app.services.region_detector import CellRegion
+from app.services.provenance import build_provenance, evidence_from_reference
 from app.services.semantic_models import SemanticRole
 from app.services.workbook_details.models import ColumnSchemaSummary, RegionSummary
 from app.services.workbook_details.standard_fields import classify_standard_field
 from app.services.workbook_details.unit_detection import infer_data_type, infer_unit
-
 DATA_ROLES = {
     SemanticRole.DATA,
     SemanticRole.FORMULA,
@@ -55,6 +55,7 @@ def build_column_schemas(
         unit_type, unit_label, unit_confidence, unit_evidence = infer_unit(
             source.labels, values, formats, field
         )
+        descriptions = field_evidence + unit_evidence
         schemas.append(
             ColumnSchemaSummary(
                 column=get_column_letter(source.column),
@@ -66,7 +67,18 @@ def build_column_schemas(
                 unit_type=unit_type,
                 unit_label=unit_label,
                 confidence=round((field_confidence + unit_confidence) / 2, 2),
-                evidence=field_evidence + unit_evidence,
+                evidence=descriptions,
+                provenance=build_provenance(
+                    "column_schema_analyzer",
+                    round((field_confidence + unit_confidence) / 2, 2),
+                    (
+                        evidence_from_reference(
+                            worksheet.title,
+                            source.source_range,
+                            "; ".join(descriptions) or "열 값과 표시 형식 분석",
+                        ),
+                    ),
+                ),
             )
         )
     return schemas

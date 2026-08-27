@@ -2,11 +2,18 @@ package com.hyeok02.excelaiagent.integration.ai;
 
 import java.util.List;
 import java.util.Objects;
+import com.hyeok02.excelaiagent.integration.ai.model.AiProvenance;
 
 public record AiSemanticClassification(
 		SemanticRole role,
 		double confidence,
-		List<AiSemanticReason> reasons) {
+		List<AiSemanticReason> reasons,
+		AiProvenance provenance) {
+
+	public AiSemanticClassification(
+			SemanticRole role, double confidence, List<AiSemanticReason> reasons) {
+		this(role, confidence, reasons, null);
+	}
 
 	public AiSemanticClassification {
 		Objects.requireNonNull(role, "의미 역할은 필수입니다.");

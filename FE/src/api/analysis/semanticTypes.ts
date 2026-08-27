@@ -1,3 +1,5 @@
+import type { AnalysisProvenance } from '@/api/analysis/evidenceTypes'
+
 export const SEMANTIC_ROLES = [
   'title',
   'description',
@@ -31,6 +33,7 @@ export interface SemanticClassification {
   role: SemanticRole
   confidence: number
   reasons: SemanticReason[]
+  provenance?: AnalysisProvenance | null
 }
 
 export const ANALYSIS_DECISIONS = ['include', 'exclude'] as const
@@ -40,6 +43,7 @@ export interface AnalysisInclusion {
   decision: AnalysisDecision
   reasonCode: string
   reason: string
+  provenance?: AnalysisProvenance | null
 }
 
 export const SHEET_ROLES = [
@@ -66,4 +70,5 @@ export interface SheetClassification {
   confidence: number
   importanceScore: number
   reasons: SheetRoleReason[]
+  provenance?: AnalysisProvenance | null
 }

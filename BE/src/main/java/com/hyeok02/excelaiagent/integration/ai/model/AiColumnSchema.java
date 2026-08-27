@@ -13,5 +13,14 @@ public record AiColumnSchema(
 		@JsonProperty("unit_type") String unitType,
 		@JsonProperty("unit_label") String unitLabel,
 		double confidence,
-		List<String> evidence) {
+		List<String> evidence,
+		AiProvenance provenance) {
+	public AiColumnSchema(
+			String column, String sourceRange, List<String> headerPath,
+			String displayName, String standardField, String dataType,
+			String unitType, String unitLabel, double confidence,
+			List<String> evidence) {
+		this(column, sourceRange, headerPath, displayName, standardField,
+				dataType, unitType, unitLabel, confidence, evidence, null);
+	}
 }
