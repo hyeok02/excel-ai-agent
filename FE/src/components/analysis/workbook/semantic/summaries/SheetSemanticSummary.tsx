@@ -53,7 +53,7 @@ const SheetSemanticSummary = ({ sheet }: { sheet: SheetResult }) => {
               analysisInclusion={analysisInclusion}
               confidence={classification.confidence}
               reasons={classification.reasons}
-              title={`시트 역할 판단 · 중요도 점수 ${classification.importanceScore}`}
+              title={`시트 역할 판단 · 구조상 중심도 점수 ${classification.importanceScore}`}
             />
           </div>
         </details>
