@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
+from app.services.provenance import Provenance
+
 
 class SheetRole(StrEnum):
     INPUT = "input"
@@ -39,6 +41,7 @@ class SheetClassification:
     confidence: float
     importance_score: int
     reasons: tuple[SheetRoleReason, ...] = ()
+    provenance: Provenance | None = None
 
     def __post_init__(self) -> None:
         if not 0 <= self.confidence <= 1:

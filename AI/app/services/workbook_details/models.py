@@ -6,6 +6,7 @@ from app.services.analysis_inclusion import (
     INCLUDED_POPULATED_REGION,
 )
 from app.services.semantic_models import SemanticClassification
+from app.services.provenance import Provenance
 
 CellValue: TypeAlias = str | int | float | bool | None
 
@@ -42,6 +43,7 @@ class ColumnSchemaSummary:
     unit_label: str | None
     confidence: float
     evidence: list[str]
+    provenance: Provenance | None = None
 
 
 @dataclass(frozen=True)

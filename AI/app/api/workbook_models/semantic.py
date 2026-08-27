@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict
 from app.services.analysis_inclusion import AnalysisDecision
 from app.services.semantic_models import SemanticRole
 from app.services.sheet_classifier import SheetImportance, SheetRole
+from app.api.workbook_models.provenance import ProvenanceResponse
 
 
 class SemanticReasonResponse(BaseModel):
@@ -17,6 +18,7 @@ class SemanticClassificationResponse(BaseModel):
     role: SemanticRole
     confidence: float
     reasons: list[SemanticReasonResponse]
+    provenance: ProvenanceResponse | None = None
 
 
 class AnalysisInclusionResponse(BaseModel):
@@ -24,6 +26,7 @@ class AnalysisInclusionResponse(BaseModel):
     decision: AnalysisDecision
     reason_code: str
     reason: str
+    provenance: ProvenanceResponse | None = None
 
 
 class SheetRoleReasonResponse(BaseModel):
@@ -40,3 +43,4 @@ class SheetClassificationResponse(BaseModel):
     confidence: float
     importance_score: int
     reasons: list[SheetRoleReasonResponse]
+    provenance: ProvenanceResponse | None = None

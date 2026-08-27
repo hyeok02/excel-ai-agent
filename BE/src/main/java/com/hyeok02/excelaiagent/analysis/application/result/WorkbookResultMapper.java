@@ -54,7 +54,8 @@ final class WorkbookResultMapper {
 	private static AnalysisWorkbookResult.Formula map(AiFormulaAnalysis formula) {
 		return new AnalysisWorkbookResult.Formula(
 				formula.cell(), formula.formula(), formula.references(),
-				formula.cachedValue(), formula.role());
+				formula.cachedValue(), formula.role(),
+				ProvenanceResultMapper.map(formula.provenance()));
 	}
 
 	private static AnalysisWorkbookResult.Region map(AiCellRegion region) {
@@ -77,7 +78,8 @@ final class WorkbookResultMapper {
 		return new AnalysisWorkbookResult.ColumnSchema(
 				column.column(), column.sourceRange(), SemanticResultMapper.safe(column.headerPath()),
 				column.displayName(), column.standardField(), column.dataType(), column.unitType(),
-				column.unitLabel(), column.confidence(), SemanticResultMapper.safe(column.evidence()));
+				column.unitLabel(), column.confidence(), SemanticResultMapper.safe(column.evidence()),
+				ProvenanceResultMapper.map(column.provenance()));
 	}
 
 	private static AnalysisWorkbookResult.Cell map(AiCellSnapshot cell) {

@@ -11,6 +11,7 @@ from app.api.workbook_models.semantic import (
     AnalysisInclusionResponse,
     SheetClassificationResponse,
 )
+from app.api.workbook_models.provenance import ProvenanceResponse
 from app.services.insight_generator import WorkbookInsightReport
 
 
@@ -21,6 +22,7 @@ class FormulaAnalysisResponse(BaseModel):
     references: list[str]
     cached_value: str | int | float | bool | None
     role: str
+    provenance: ProvenanceResponse | None = None
 
 
 class SheetSummaryResponse(BaseModel):

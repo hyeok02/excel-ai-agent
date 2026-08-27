@@ -11,7 +11,9 @@ final class AnalysisWorkbookFixture {
 	static AiWorkbookSummary summary() {
 		AiSheetSummary sheet = new AiSheetSummary(
 				"Sales", 3, 4, 1, 0, 1,
-				List.of(new AiFormulaAnalysis("D2", "=SUM(B2:C2)", List.of("B2:C2"))),
+				List.of(new AiFormulaAnalysis(
+						"D2", "=SUM(B2:C2)", List.of("B2:C2"), 15, "calculation",
+						provenance("formula_parser", "formula", "D2", "=SUM(B2:C2)"))),
 				1, List.of(region()),
 				List.of(new AiTableSummary("SalesTable", "SalesTable", "A1:D3",
 						List.of("상품", "1월", "2월", "합계"), 3, 4, List.of(), false)),
@@ -23,7 +25,8 @@ final class AnalysisWorkbookFixture {
 				List.of(new AiColumnSchema(
 						"B", "A1:D3", List.of("매출액"), "매출액", "revenue",
 						"number", "currency", "KRW", 0.93,
-						List.of("헤더 의미어 일치", "통화 표시 형식"))));
+						List.of("헤더 의미어 일치", "통화 표시 형식"),
+						provenance("column_schema_analyzer", "range", "A1:D3", null))));
 		AiExcludedSheetSummary excluded = new AiExcludedSheetSummary(
 				"__snlofficequeries", "visible",
 				new AiAnalysisInclusion(AnalysisDecision.EXCLUDE, "addin_cache_worksheet", "애드인 캐시 시트"),
@@ -79,5 +82,12 @@ final class AnalysisWorkbookFixture {
 				List.of(new AiDependencyEdge("Sales!D2", "Sales!D2", "D2", false)), false);
 		return new AiDependencySummary(2, 1, 1, 0, 0, 0, 1,
 				List.of(cluster), 1, 1, List.of(cycle));
+	}
+
+	private static AiProvenance provenance(
+			String analyzer, String kind, String reference, String formula) {
+		AiAnalysisEvidence evidence = new AiAnalysisEvidence(
+				kind, "Sales", reference, "테스트 원본 근거", 15, formula);
+		return new AiProvenance(analyzer, "rule_based", 0.93, List.of(evidence));
 	}
 }

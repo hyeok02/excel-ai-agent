@@ -49,6 +49,7 @@ def test_serializes_semantic_classification_with_wire_values() -> None:
                 "evidence_cells": ["매출!A1"],
             }
         ],
+        "provenance": None,
     }
 
 

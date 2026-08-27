@@ -4,6 +4,7 @@ from app.api.workbook_models.semantic import (
     AnalysisInclusionResponse,
     SemanticClassificationResponse,
 )
+from app.api.workbook_models.provenance import ProvenanceResponse
 
 
 class CellSnapshotResponse(BaseModel):
@@ -38,6 +39,7 @@ class ColumnSchemaResponse(BaseModel):
     unit_label: str | None
     confidence: float
     evidence: list[str]
+    provenance: ProvenanceResponse | None = None
 
 
 class CellRegionResponse(BaseModel):

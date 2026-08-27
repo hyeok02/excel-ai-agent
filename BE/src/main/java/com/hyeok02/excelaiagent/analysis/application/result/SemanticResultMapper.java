@@ -16,7 +16,8 @@ final class SemanticResultMapper {
 			return null;
 		}
 		return new AnalysisSemanticResult.Inclusion(
-				inclusion.decision().value(), inclusion.reasonCode(), inclusion.reason());
+				inclusion.decision().value(), inclusion.reasonCode(), inclusion.reason(),
+				ProvenanceResultMapper.map(inclusion.provenance()));
 	}
 
 	static AnalysisSemanticResult.SheetClassification map(AiSheetClassification classification) {
@@ -26,7 +27,8 @@ final class SemanticResultMapper {
 		return new AnalysisSemanticResult.SheetClassification(
 				classification.role().value(), classification.importance().value(),
 				classification.confidence(), classification.importanceScore(),
-				safe(classification.reasons()).stream().map(SemanticResultMapper::map).toList());
+				safe(classification.reasons()).stream().map(SemanticResultMapper::map).toList(),
+				ProvenanceResultMapper.map(classification.provenance()));
 	}
 
 	static AnalysisSemanticResult.Semantic map(AiSemanticClassification semantic) {
@@ -35,7 +37,8 @@ final class SemanticResultMapper {
 		}
 		return new AnalysisSemanticResult.Semantic(
 				semantic.role().value(), semantic.confidence(),
-				safe(semantic.reasons()).stream().map(SemanticResultMapper::map).toList());
+				safe(semantic.reasons()).stream().map(SemanticResultMapper::map).toList(),
+				ProvenanceResultMapper.map(semantic.provenance()));
 	}
 
 	private static AnalysisSemanticResult.Reason map(AiSheetRoleReason reason) {

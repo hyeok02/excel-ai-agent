@@ -1,4 +1,5 @@
 import type { DependencyGraphResult } from '@/api/analysis/dependencyTypes'
+import type { AnalysisProvenance } from '@/api/analysis/evidenceTypes'
 import type {
   AnalysisInclusion,
   SemanticClassification,
@@ -13,6 +14,7 @@ export interface FormulaResult {
   references: string[]
   cachedValue: CellValue
   role: 'calculation' | 'lookup' | 'presentation' | 'external'
+  provenance?: AnalysisProvenance | null
 }
 
 export interface CellResult {
@@ -44,6 +46,7 @@ export interface ColumnSchemaResult {
   unitLabel: string | null
   confidence: number
   evidence: string[]
+  provenance?: AnalysisProvenance | null
 }
 
 export interface RegionResult {
