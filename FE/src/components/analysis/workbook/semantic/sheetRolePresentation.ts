@@ -43,8 +43,8 @@ export const SHEET_ROLE_PRESENTATION = {
 } as const satisfies Record<SemanticSheetRole, RolePresentation>
 
 export const SHEET_IMPORTANCE_PRESENTATION = {
-  low: { label: '낮은 중요도', className: 'bg-slate-100 text-slate-600' },
-  medium: { label: '보통 중요도', className: 'bg-blue-50 text-blue-700' },
-  high: { label: '높은 중요도', className: 'bg-amber-50 text-amber-700' },
-  critical: { label: '핵심 시트', className: 'bg-red-50 text-red-700' },
+  low: { label: '구조상 중심도 · 낮음', className: 'bg-slate-100 text-slate-600' },
+  medium: { label: '구조상 중심도 · 보통', className: 'bg-blue-50 text-blue-700' },
+  high: { label: '구조상 중심도 · 높음', className: 'bg-amber-50 text-amber-700' },
+  critical: { label: '구조상 중심도 · 핵심', className: 'bg-red-50 text-red-700' },
 } as const satisfies Record<SemanticSheetImportance, { label: string; className: string }>
