@@ -85,12 +85,15 @@ final class AnalysisWorkbookFixture {
 	}
 
 	private static AiFormulaRiskSummary formulaRisks() {
+		AiFormulaRiskImpact impact = new AiFormulaRiskImpact(
+				2, 1, List.of("Dashboard"), 2, 62, "high");
 		AiFormulaRiskFinding finding = new AiFormulaRiskFinding(
 				"external_reference", "warning", "Sales", "D2",
 				"외부 파일의 값을 참조합니다.", "='[Budget.xlsx]Plan'!C3",
-				"[Budget.xlsx]Plan!C3", null,
-				provenance("formula_risk_detector", "formula", "D2", "='[Budget.xlsx]Plan'!C3"));
-		return new AiFormulaRiskSummary(1, 0, 1, 0, 0, 1, 0, List.of(finding));
+				"[Budget.xlsx]Plan!C3", null, null,
+				provenance("formula_risk_detector", "formula", "D2", "='[Budget.xlsx]Plan'!C3"),
+				impact);
+		return new AiFormulaRiskSummary(1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, List.of(finding));
 	}
 
 	private static AiProvenance provenance(

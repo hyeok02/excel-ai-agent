@@ -50,6 +50,7 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
         formula_risks = detect_formula_risks(
             workbook.sheetnames,
             [(sheet.name, sheet.formulas) for sheet in sheets],
+            workbook.worksheets,
         )
     finally:
         workbook.close()

@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import type { FormulaRiskSummaryResult } from '@/api/analysis'
 import FormulaRiskFindingCard from '@/components/analysis/result/formula-risk/FormulaRiskFindingCard'
+import FormulaRiskOverview from '@/components/analysis/result/formula-risk/FormulaRiskOverview'
 
 interface FormulaRiskSectionProps {
   summary: FormulaRiskSummaryResult
@@ -31,16 +32,16 @@ const FormulaRiskSection = ({ summary }: FormulaRiskSectionProps) => {
   }
 
   return (
-    <section className="mt-6 overflow-hidden rounded-3xl border border-amber-200 bg-amber-50/30">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-amber-100 p-5">
+    <section className="mt-6 overflow-hidden rounded-3xl border border-blue-200/80 bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/70 shadow-[0_18px_50px_-38px_rgba(37,99,235,0.45)]">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-blue-100 bg-white/45 p-5">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-amber-100 text-amber-700">
+          <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 text-brand-700 ring-1 ring-blue-200/80">
             <ShieldAlert aria-hidden="true" size={19} />
           </span>
           <div>
-            <h3 className="font-extrabold text-slate-950">수식 위험 점검</h3>
+            <h3 className="font-extrabold text-slate-950">수식 오류·영향 점검</h3>
             <p className="mt-1 text-sm text-slate-600">
-              계산 오류 또는 유지보수 문제로 이어질 수 있는 수식 {summary.totalCount}건입니다.
+              주변과 다른 수식과 직접 입력된 값을 찾고, 결과가 어디까지 영향을 받는지 계산했습니다.
             </p>
           </div>
         </div>
@@ -51,14 +52,16 @@ const FormulaRiskSection = ({ summary }: FormulaRiskSectionProps) => {
             </span>
           )}
           {summary.warningCount > 0 && (
-            <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-700">
+            <span className="rounded-full bg-blue-100 px-3 py-1.5 text-blue-700 ring-1 ring-blue-200/70">
               주의 {summary.warningCount}
             </span>
           )}
         </div>
       </header>
 
-      <div className="grid gap-3 p-5 lg:grid-cols-2">
+      <FormulaRiskOverview summary={summary} />
+
+      <div className="grid items-start gap-3 p-5 lg:grid-cols-2">
         {findings.map((finding, index) => (
           <FormulaRiskFindingCard
             finding={finding}
@@ -69,7 +72,7 @@ const FormulaRiskSection = ({ summary }: FormulaRiskSectionProps) => {
 
       {summary.findings.length > VISIBLE_FINDINGS && (
         <button
-          className="w-full border-t border-amber-100 px-5 py-3 text-sm font-extrabold text-brand-700 hover:bg-white/60"
+          className="w-full border-t border-blue-100 bg-white/35 px-5 py-3 text-sm font-extrabold text-brand-700 transition hover:bg-blue-50/70"
           onClick={() => setExpanded((value) => !value)}
           type="button"
         >

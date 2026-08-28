@@ -14,6 +14,10 @@ public final class AnalysisFormulaRiskResult {
 			int missingSheetCount,
 			int externalReferenceCount,
 			int dynamicFunctionCount,
+			int patternMismatchCount,
+			int hardcodedValueCount,
+			int highRiskCount,
+			int criticalRiskCount,
 			List<Finding> findings) {
 	}
 
@@ -26,6 +30,17 @@ public final class AnalysisFormulaRiskResult {
 			String formula,
 			String reference,
 			String functionName,
-			AnalysisProvenanceResult.Provenance provenance) {
+			Object observedValue,
+			AnalysisProvenanceResult.Provenance provenance,
+			Impact impact) {
+	}
+
+	public record Impact(
+			int affectedFormulaCount,
+			int affectedSheetCount,
+			List<String> affectedSheets,
+			int maxDepth,
+			int riskScore,
+			String riskLevel) {
 	}
 }

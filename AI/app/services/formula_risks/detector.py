@@ -3,22 +3,22 @@ from collections.abc import Iterable
 from openpyxl.formula.tokenizer import Tokenizer, TokenizerError
 
 from app.services.formula_analyzer import FormulaAnalysis
-from app.services.formula_risks.models import FormulaRiskFinding, FormulaRiskSummary
-from app.services.provenance import build_provenance, evidence_from_reference
+from app.services.formula_risks.finding_factory import build_formula_finding
+from app.services.formula_risks.models import FormulaRiskFinding
 
 DYNAMIC_FUNCTIONS = {"INDIRECT", "OFFSET"}
 
 
-def detect_formula_risks(
+def detect_reference_risks(
     sheet_names: Iterable[str],
     formulas_by_sheet: Iterable[tuple[str, list[FormulaAnalysis]]],
-) -> FormulaRiskSummary:
+) -> list[FormulaRiskFinding]:
     known_sheets = {name.casefold() for name in sheet_names}
     findings: list[FormulaRiskFinding] = []
     for sheet_name, formulas in formulas_by_sheet:
         for item in formulas:
             findings.extend(_detect_formula(sheet_name, item, known_sheets))
-    return FormulaRiskSummary.from_findings(findings)
+    return findings
 
 
 def _detect_formula(
@@ -27,7 +27,7 @@ def _detect_formula(
     findings: list[FormulaRiskFinding] = []
     if "#REF!" in item.formula.upper():
         findings.append(
-            _finding(
+            build_formula_finding(
                 "broken_reference",
                 "error",
                 sheet_name,
@@ -64,7 +64,7 @@ def _detect_formula(
             if key not in seen:
                 seen.add(key)
                 findings.append(
-                    _finding(
+                    build_formula_finding(
                         "missing_sheet",
                         "error",
                         sheet_name,
@@ -88,7 +88,7 @@ def _referenced_sheet(reference: str) -> str | None:
 def _dynamic_finding(
     sheet_name: str, item: FormulaAnalysis, function_name: str
 ) -> FormulaRiskFinding:
-    return _finding(
+    return build_formula_finding(
         "dynamic_function",
         "warning",
         sheet_name,
@@ -101,46 +101,11 @@ def _dynamic_finding(
 def _external_finding(
     sheet_name: str, item: FormulaAnalysis, reference: str
 ) -> FormulaRiskFinding:
-    return _finding(
+    return build_formula_finding(
         "external_reference",
         "warning",
         sheet_name,
         item,
         "다른 Excel 파일을 참조해 파일 이동이나 권한 변경 시 계산이 깨질 수 있습니다.",
         reference=reference,
-    )
-
-
-def _finding(
-    kind: str,
-    severity: str,
-    sheet_name: str,
-    item: FormulaAnalysis,
-    message: str,
-    *,
-    reference: str | None = None,
-    function_name: str | None = None,
-) -> FormulaRiskFinding:
-    provenance = build_provenance(
-        "formula_risk_detector",
-        1.0,
-        (
-            evidence_from_reference(
-                sheet_name,
-                item.cell,
-                "위험 판정에 사용한 원본 수식",
-                formula=item.formula,
-            ),
-        ),
-    )
-    return FormulaRiskFinding(
-        kind,
-        severity,
-        sheet_name,
-        item.cell,
-        message,
-        item.formula,
-        reference,
-        function_name,
-        provenance,
     )
