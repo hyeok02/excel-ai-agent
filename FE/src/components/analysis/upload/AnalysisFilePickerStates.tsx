@@ -1,7 +1,9 @@
-import { FileSpreadsheet, LoaderCircle, X } from 'lucide-react'
+import { CheckCircle2, FileSpreadsheet, LoaderCircle, X } from 'lucide-react'
 import type { ChangeEvent } from 'react'
 
+import type { AnalysisViewStatus } from '@/hooks/analysis/useWorkbookAnalysis'
 import { formatBytes } from '@/utils/analysis/analysisFile'
+import { cn } from '@/utils/cn'
 
 interface SelectedFileProps {
   file: File
@@ -9,6 +11,7 @@ interface SelectedFileProps {
   onClearFile: () => void
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void
   onStartAnalysis: () => void
+  status: AnalysisViewStatus
 }
 
 export const SelectedFile = ({
@@ -17,6 +20,7 @@ export const SelectedFile = ({
   onClearFile,
   onFileChange,
   onStartAnalysis,
+  status,
 }: SelectedFileProps) => (
   <div className="flex max-w-xl flex-col items-center text-center">
     <span className="grid size-16 place-items-center rounded-2xl border border-brand-100 bg-white text-brand-700 shadow-[0_10px_25px_rgb(37_99_235/12%)]">
@@ -52,8 +56,13 @@ export const SelectedFile = ({
         <X aria-hidden="true" size={18} />
       </button>
       <button
-        className="button-primary inline-flex w-28 disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={isPending}
+        className={cn(
+          'inline-flex min-w-28 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition',
+          status === 'success'
+            ? 'cursor-default bg-emerald-500 text-white shadow-[0_8px_20px_rgb(16_185_129/22%)]'
+            : 'button-primary',
+        )}
+        disabled={isPending || status === 'success'}
         onClick={onStartAnalysis}
         type="button"
       >
@@ -61,6 +70,11 @@ export const SelectedFile = ({
           <>
             <LoaderCircle aria-hidden="true" className="mr-2 animate-spin" size={16} />
             분석 중
+          </>
+        ) : status === 'success' ? (
+          <>
+            <CheckCircle2 aria-hidden="true" className="mr-2" size={16} />
+            분석 완료
           </>
         ) : (
           '분석 시작'

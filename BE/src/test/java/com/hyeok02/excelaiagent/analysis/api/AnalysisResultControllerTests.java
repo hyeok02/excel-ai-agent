@@ -38,7 +38,12 @@ class AnalysisResultControllerTests extends AnalysisControllerTestSupport {
 				.andExpect(jsonPath("$.workbook.sheets[0].charts[0].series[0].valueSamples[0]").value(10))
 				.andExpect(jsonPath("$.workbook.dependencyGraph.cycleCount").value(1))
 				.andExpect(jsonPath("$.workbook.dependencyGraph.clusters[0].edges[0].target")
-						.value("Sales!D2"));
+						.value("Sales!D2"))
+				.andExpect(jsonPath("$.workbook.formulaRiskSummary.totalCount").value(1))
+				.andExpect(jsonPath("$.workbook.formulaRiskSummary.findings[0].kind")
+						.value("external_reference"))
+				.andExpect(jsonPath("$.workbook.formulaRiskSummary.findings[0].provenance.evidence[0].sheetName")
+						.value("Sales"));
 	}
 
 	@Test

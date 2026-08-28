@@ -6,6 +6,7 @@ from app.services.analysis_inclusion import (
 )
 from app.services.dependency_analyzer import DependencySummary
 from app.services.formula_analyzer import FormulaAnalysis
+from app.services.formula_risks import FormulaRiskSummary
 from app.services.sheet_classifier import SheetClassification
 from app.services.workbook_details import (
     ChartSummary,
@@ -51,4 +52,7 @@ class WorkbookSummary:
     excluded_sheets: list[ExcludedSheetSummary] = field(default_factory=list)
     dependency_summary: DependencySummary = field(
         default_factory=DependencySummary.empty
+    )
+    formula_risk_summary: FormulaRiskSummary = field(
+        default_factory=FormulaRiskSummary.empty
     )

@@ -1,6 +1,8 @@
 from dataclasses import asdict
 
 from app.services.analysis_strategy import AnalysisProfile, STANDARD_PROFILE
+from app.services.insights.business_facts import build_business_facts
+from app.services.insights.content_outline import build_content_outline
 from app.services.insights.samples import (
     MAX_REFERENCES_PER_FORMULA,
     select_formula_samples,
@@ -14,7 +16,11 @@ def build_workbook_context(
     summary: WorkbookSummary,
     profile: AnalysisProfile = STANDARD_PROFILE,
 ) -> dict[str, object]:
-    sheets = [_sheet_context(sheet, profile) for sheet in summary.sheets[:profile.max_sheets]]
+    selected_sheets = sorted(summary.sheets, key=_sheet_priority, reverse=True)
+    sheets = [
+        _sheet_context(sheet, profile)
+        for sheet in selected_sheets[: profile.max_sheets]
+    ]
     dependencies = summary.dependency_summary
     return {
         "filename": summary.filename,
@@ -55,6 +61,19 @@ def _sheet_context(sheet: object, profile: AnalysisProfile) -> dict[str, object]
     column_schemas = sheet_data.pop("column_schemas")
     tables = sheet_data.pop("tables")
     charts = sheet_data.pop("charts")
+    sheet_data["content_outline"] = build_content_outline(
+        sheet_data, regions, column_schemas, tables, charts
+    )
+    classification = sheet_data.get("sheet_classification") or {}
+    role = classification.get("role") if isinstance(classification, dict) else None
+    record_limit = min(12, max(4, profile.max_regions_per_sheet * 2))
+    if role in {"documentation", "system"} or (
+        role == "calculation" and not column_schemas
+    ):
+        record_limit = 0
+    sheet_data["business_facts"] = build_business_facts(
+        str(sheet_data["name"]), regions, column_schemas, record_limit
+    )
     selected_formulas = select_formula_samples(formulas, profile.max_formulas_per_sheet)
     sheet_data["formula_samples"] = [
         {
@@ -96,3 +115,21 @@ def _sheet_context(sheet: object, profile: AnalysisProfile) -> dict[str, object]
         for chart in charts[:profile.max_charts_per_sheet]
     ]
     return sheet_data
+
+
+def _sheet_priority(sheet: object) -> tuple[int, int, int]:
+    classification = getattr(sheet, "sheet_classification", None)
+    role = str(getattr(classification, "role", ""))
+    importance = str(getattr(classification, "importance", ""))
+    role_score = {
+        "output": 5,
+        "input": 4,
+        "calculation": 3,
+        "documentation": 1,
+        "system": 0,
+    }.get(role, 2)
+    importance_score = {"critical": 4, "high": 3, "medium": 2, "low": 1}.get(
+        importance, 0
+    )
+    has_schema = int(bool(getattr(sheet, "column_schemas", [])))
+    return role_score, has_schema, importance_score

@@ -9,7 +9,8 @@ public final class AnalysisWorkbookResult {
 	public record Workbook(
 			String filename, int sheetCount, int totalSheetCount, int excludedSheetCount,
 			List<ExcludedSheet> excludedSheets, List<Sheet> sheets,
-			AnalysisDependencyResult.Graph dependencyGraph) {
+			AnalysisDependencyResult.Graph dependencyGraph,
+			AnalysisFormulaRiskResult.Summary formulaRiskSummary) {
 	}
 
 	public record ExcludedSheet(

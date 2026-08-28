@@ -30,9 +30,7 @@ const ColumnSchemaCard = ({ column, sheetName }: ColumnSchemaCardProps) => {
         <p className="text-[10px] font-extrabold text-brand-600">열 {column.column}</p>
         <span
           className={`rounded-md px-2 py-1 text-[10px] font-bold ${
-            needsReview
-              ? 'bg-amber-50 text-amber-700'
-              : 'bg-emerald-50 text-emerald-700'
+            needsReview ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
           }`}
         >
           {needsReview ? '검토 필요' : '분류 완료'}
@@ -40,7 +38,10 @@ const ColumnSchemaCard = ({ column, sheetName }: ColumnSchemaCardProps) => {
       </div>
 
       <div className="mt-2 flex min-w-0 items-center gap-2">
-        <p className="truncate text-xs font-extrabold text-slate-800" title={column.displayName}>
+        <p
+          className="truncate text-xs font-extrabold text-slate-800"
+          title={column.displayName}
+        >
           {column.displayName}
         </p>
         <ArrowRight aria-hidden="true" className="shrink-0 text-slate-300" size={13} />

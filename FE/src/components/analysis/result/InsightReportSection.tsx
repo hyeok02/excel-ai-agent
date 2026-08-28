@@ -12,10 +12,10 @@ interface InsightReportSectionProps {
 }
 
 const CATEGORY_LABELS: Record<InsightCategory, string> = {
-  summary: '요약',
-  structure: '구조',
-  formula: '수식',
-  risk: '위험',
+  summary: '파일 내용',
+  structure: '시트 내용',
+  formula: '계산 방식',
+  risk: '확인 필요',
 }
 
 const SEVERITY_CONFIG: Record<
@@ -23,7 +23,7 @@ const SEVERITY_CONFIG: Record<
   { label: string; className: string; icon: typeof Info }
 > = {
   info: {
-    label: '참고',
+    label: '현황',
     className: 'bg-brand-50 text-brand-700',
     icon: Info,
   },
@@ -45,10 +45,12 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
       <div className="border-b border-brand-100/70 p-5 md:p-6">
         <div className="flex items-center gap-2 text-brand-700">
           <Sparkles aria-hidden="true" size={18} />
-          <span className="text-xs font-extrabold tracking-[0.12em]">AI INSIGHT</span>
+          <span className="text-xs font-extrabold tracking-[0.12em]">
+            CONTENT INSIGHT
+          </span>
         </div>
         <h3 className="mt-2 text-lg font-extrabold tracking-tight text-slate-950">
-          워크북 분석 인사이트
+          핵심 현황과 변화
         </h3>
         <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
           {report.overview}
@@ -66,15 +68,17 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
               key={`${insight.title}-${index}`}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold',
-                    severity.className,
-                  )}
-                >
-                  <SeverityIcon aria-hidden="true" size={13} />
-                  {severity.label}
-                </span>
+                {insight.severity !== 'info' && (
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold',
+                      severity.className,
+                    )}
+                  >
+                    <SeverityIcon aria-hidden="true" size={13} />
+                    {severity.label}
+                  </span>
+                )}
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
                   {CATEGORY_LABELS[insight.category]}
                 </span>
@@ -88,11 +92,13 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
               </p>
 
               <div className="mt-4">
-                <p className="text-xs font-extrabold text-slate-500">분석 근거</p>
+                <p className="text-xs font-extrabold text-slate-500">
+                  내용을 확인한 위치
+                </p>
                 <ul className="mt-2 space-y-1.5">
                   {insight.evidence.map((evidence, evidenceIndex) => (
                     <li
-                      className="break-all rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600"
+                      className="break-words rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600"
                       key={`${evidence}-${evidenceIndex}`}
                     >
                       {evidence}

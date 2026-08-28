@@ -15,7 +15,9 @@ from app.services.insights.models import (
     InsightGenerationError,
     WorkbookInsightReport,
 )
-from app.services.insights.prompts import SYSTEM_PROMPT, build_user_prompt
+from app.services.insights.context import build_workbook_context
+from app.services.insights.prompts import SYSTEM_PROMPT, build_user_prompt_from_context
+from app.services.insights.quality import ensure_business_report
 from app.services.workbook_parser import WorkbookSummary
 
 
@@ -78,13 +80,19 @@ class LangChainInsightGenerator:
     ) -> WorkbookInsightReport:
         profile = select_analysis_profile(summary, depth)
         try:
+            context = build_workbook_context(summary, profile)
             result = await self._build_model(profile).ainvoke(
                 [
                     SystemMessage(content=SYSTEM_PROMPT),
-                    HumanMessage(content=build_user_prompt(summary, profile)),
+                    HumanMessage(
+                        content=build_user_prompt_from_context(
+                            context, profile.max_insights
+                        )
+                    ),
                 ]
             )
-            return WorkbookInsightReport.model_validate(result)
+            report = WorkbookInsightReport.model_validate(result)
+            return ensure_business_report(report, context)
         except Exception as exception:
             raise InsightGenerationError(
                 "AI 인사이트를 생성하지 못했습니다."

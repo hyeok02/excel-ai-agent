@@ -4,6 +4,7 @@ import type { AnalysisMode, AnalysisResultDetails, WorkbookResult } from '@/api/
 import AgentReadySection from '@/components/analysis/result/AgentReadySection'
 import AnalysisExportActions from '@/components/analysis/result/AnalysisExportActions'
 import DependencyMapSection from '@/components/analysis/result/DependencyMapSection'
+import FormulaRiskSection from '@/components/analysis/result/formula-risk/FormulaRiskSection'
 import InsightReportSection from '@/components/analysis/result/InsightReportSection'
 import WorkbookExplorer from '@/components/analysis/workbook/explorer/WorkbookExplorer'
 import WorkbookSemanticOverview from '@/components/analysis/workbook/semantic/summaries/WorkbookSemanticOverview'
@@ -30,7 +31,7 @@ const MODE_PRESENTATION = {
     completion: '규칙 기반 분석 완료',
   },
   LLM: {
-    completion: 'LLM 인사이트 분석 완료',
+    completion: '파일 내용 및 인사이트 분석 완료',
   },
 } as const
 
@@ -84,18 +85,27 @@ const AnalysisResultSection = ({ mode, result }: AnalysisResultSectionProps) => 
         ))}
       </div>
 
+      {mode === 'LLM' && result.insightReport && (
+        <InsightReportSection report={result.insightReport} />
+      )}
+
       <WorkbookSemanticOverview
         excludedSheets={workbook.excludedSheets ?? []}
         sheets={workbook.sheets}
       />
 
-      {mode === 'LLM' && result.insightReport && (
-        <InsightReportSection report={result.insightReport} />
+      {workbook.formulaRiskSummary && (
+        <FormulaRiskSection summary={workbook.formulaRiskSummary} />
       )}
 
-      {workbook.dependencyGraph && workbook.dependencyGraph.nodeCount > 0 && (
-        <DependencyMapSection graph={workbook.dependencyGraph} mode={mode} />
-      )}
+      {mode === 'BFS' &&
+        workbook.dependencyGraph &&
+        workbook.dependencyGraph.nodeCount > 0 && (
+          <DependencyMapSection
+            graph={workbook.dependencyGraph}
+            key={`${result.analysisId}-${mode}`}
+          />
+        )}
 
       {mode === 'BFS' &&
         (!workbook.dependencyGraph || workbook.dependencyGraph.nodeCount === 0) && (
