@@ -62,7 +62,7 @@ const AnalysisOptions = ({
 
     <fieldset
       className={cn(
-        'ml-auto flex items-center gap-3 border-l border-slate-200 pl-4 transition-opacity',
+        'ml-auto flex items-center gap-3 pl-4 transition-opacity',
         mode !== 'LLM' && 'opacity-40',
       )}
       title={mode === 'LLM' ? undefined : 'LLM 직접 분석에서 사용할 수 있어요.'}
