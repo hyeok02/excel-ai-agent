@@ -1,5 +1,6 @@
 import type { DependencyGraphResult } from '@/api/analysis/dependencyTypes'
 import type { AnalysisProvenance } from '@/api/analysis/evidenceTypes'
+import type { FormulaRiskSummaryResult } from '@/api/analysis/formulaRiskTypes'
 import type {
   AnalysisInclusion,
   SemanticClassification,
@@ -124,4 +125,5 @@ export interface WorkbookResult {
   excludedSheets: ExcludedSheetResult[]
   sheets: SheetResult[]
   dependencyGraph?: DependencyGraphResult | null
+  formulaRiskSummary?: FormulaRiskSummaryResult | null
 }

@@ -1,7 +1,7 @@
 import { Calculator, ExternalLink, Search, Sigma, Type } from 'lucide-react'
 
 import type { FormulaResult } from '@/api/analysis'
-import OriginalLocationButton from '@/components/analysis/workbook/details/OriginalLocationButton'
+import FormulaDetailItem from '@/components/analysis/workbook/details/FormulaDetailItem'
 
 interface SheetFormulaDetailsProps {
   formulas: FormulaResult[]
@@ -30,12 +30,6 @@ const roleDetails = {
     icon: ExternalLink,
   },
 } as const
-
-const formatValue = (value: FormulaResult['cachedValue']) => {
-  if (value === null || value === '') return null
-  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
-  return String(value)
-}
 
 const SheetFormulaDetails = ({ formulas, sheetName }: SheetFormulaDetailsProps) => {
   const roleCounts = Object.keys(roleDetails).map((role) => ({
@@ -90,38 +84,13 @@ const SheetFormulaDetails = ({ formulas, sheetName }: SheetFormulaDetailsProps) 
             <div className="max-h-[30rem] space-y-2 overflow-auto border-t border-slate-100 p-3">
               {formulas.slice(0, 40).map((formula) => {
                 const role = formula.role ?? 'calculation'
-                const result = formatValue(formula.cachedValue)
                 return (
-                  <div className="rounded-xl bg-slate-50 p-3 text-xs" key={formula.cell}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-md bg-brand-50 px-2 py-1 font-extrabold text-brand-700">
-                          {formula.cell}
-                        </span>
-                        <span className="rounded-md bg-white px-2 py-1 font-bold text-slate-500">
-                          {roleDetails[role].label}
-                        </span>
-                      </div>
-                      <OriginalLocationButton
-                        location={formula.cell}
-                        sheetName={sheetName}
-                      />
-                    </div>
-                    {result !== null && (
-                      <p className="mt-2 font-semibold text-slate-700">
-                        저장된 계산 결과 <b className="text-brand-700">{result}</b>
-                      </p>
-                    )}
-                    <code className="mt-2 block break-all leading-5 text-slate-600">
-                      {formula.formula}
-                    </code>
-                    <p className="mt-2 break-all text-slate-400">
-                      참조 셀:{' '}
-                      {formula.references.length > 0
-                        ? formula.references.join(', ')
-                        : '없음'}
-                    </p>
-                  </div>
+                  <FormulaDetailItem
+                    formula={formula}
+                    key={formula.cell}
+                    roleLabel={roleDetails[role].label}
+                    sheetName={sheetName}
+                  />
                 )
               })}
               {formulas.length > 40 && (

@@ -10,6 +10,7 @@ import type {
 import apiClient from '@/utils/apiClient'
 
 export * from '@/api/analysis/dependencyTypes'
+export * from '@/api/analysis/formulaRiskTypes'
 export * from '@/api/analysis/insightTypes'
 export * from '@/api/analysis/jobTypes'
 export * from '@/api/analysis/semanticTypes'

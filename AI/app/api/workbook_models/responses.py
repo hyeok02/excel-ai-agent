@@ -25,6 +25,31 @@ class FormulaAnalysisResponse(BaseModel):
     provenance: ProvenanceResponse | None = None
 
 
+class FormulaRiskFindingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    kind: str
+    severity: str
+    sheet_name: str
+    cell: str
+    message: str
+    formula: str
+    reference: str | None = None
+    function_name: str | None = None
+    provenance: ProvenanceResponse | None = None
+
+
+class FormulaRiskSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    total_count: int
+    error_count: int
+    warning_count: int
+    broken_reference_count: int
+    missing_sheet_count: int
+    external_reference_count: int
+    dynamic_function_count: int
+    findings: list[FormulaRiskFindingResponse]
+
+
 class SheetSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     name: str
@@ -60,6 +85,7 @@ class WorkbookSummaryResponse(BaseModel):
     excluded_sheet_count: int
     excluded_sheets: list[ExcludedSheetSummaryResponse]
     dependency_summary: DependencySummaryResponse
+    formula_risk_summary: FormulaRiskSummaryResponse
 
 
 class WorkbookInsightsResponse(BaseModel):

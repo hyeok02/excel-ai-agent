@@ -5,8 +5,7 @@ export type ColumnSchemaView = 'important' | 'review' | 'all'
 export const isClassifiedColumn = (column: ColumnSchemaResult) =>
   column.standardField !== 'unknown'
 
-export const hasDetectedUnit = (column: ColumnSchemaResult) =>
-  column.unitType !== 'none'
+export const hasDetectedUnit = (column: ColumnSchemaResult) => column.unitType !== 'none'
 
 export const needsColumnReview = (column: ColumnSchemaResult) =>
   !isClassifiedColumn(column) || column.confidence < 0.65
@@ -24,10 +23,7 @@ export const prioritizeColumns = (columns: ColumnSchemaResult[]) =>
     return rightScore - leftScore
   })
 
-export const columnsForView = (
-  columns: ColumnSchemaResult[],
-  view: ColumnSchemaView,
-) => {
+export const columnsForView = (columns: ColumnSchemaResult[], view: ColumnSchemaView) => {
   if (view === 'review') return columns.filter(needsColumnReview)
   if (view === 'all') return columns
 

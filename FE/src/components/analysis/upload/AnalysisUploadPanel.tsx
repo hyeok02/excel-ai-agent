@@ -3,6 +3,7 @@ import { TriangleAlert } from 'lucide-react'
 import type { AnalysisDepth, AnalysisMode } from '@/api/analysis'
 import AnalysisFileDropZone from '@/components/analysis/upload/AnalysisFileDropZone'
 import AnalysisOptions from '@/components/analysis/upload/AnalysisOptions'
+import type { AnalysisViewStatus } from '@/hooks/analysis/useWorkbookAnalysis'
 
 interface AnalysisUploadPanelProps {
   depth: AnalysisDepth
@@ -15,6 +16,7 @@ interface AnalysisUploadPanelProps {
   onSelectFile: (file: File) => void
   onStartAnalysis: () => void
   selectedFile: File | null
+  status: AnalysisViewStatus
 }
 
 const AnalysisUploadPanel = ({
@@ -28,6 +30,7 @@ const AnalysisUploadPanel = ({
   onSelectFile,
   onStartAnalysis,
   selectedFile,
+  status,
 }: AnalysisUploadPanelProps) => (
   <article className="panel p-5 md:p-7">
     <div>
@@ -52,6 +55,7 @@ const AnalysisUploadPanel = ({
       onSelectFile={onSelectFile}
       onStartAnalysis={onStartAnalysis}
       selectedFile={selectedFile}
+      status={status}
     />
 
     {errorMessage && (

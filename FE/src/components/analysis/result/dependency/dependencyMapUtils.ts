@@ -119,8 +119,3 @@ export const groupRelationships = (
     }))
     .sort((left, right) => right.sourceCount - left.sourceCount)
 }
-
-export const shortLocation = (label: string, sharedSheet?: string) => {
-  if (!sharedSheet || !label.startsWith(`${sharedSheet}!`)) return label
-  return label.slice(sharedSheet.length + 1)
-}

@@ -9,7 +9,7 @@ const formatCellValue = (cell: CellResult) => {
   if (cell.formula && cell.cachedValue != null && cell.cachedValue !== '') {
     return String(cell.cachedValue)
   }
-  if (cell.formula) return cell.formula
+  if (cell.formula) return '수식 셀'
   if (cell.value == null || cell.value === '') return '빈 셀'
   if (typeof cell.value === 'boolean') return cell.value ? 'TRUE' : 'FALSE'
   return String(cell.value)

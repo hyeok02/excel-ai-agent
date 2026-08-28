@@ -7,6 +7,7 @@ import { useWorkbookAnalysis } from '@/hooks/analysis/useWorkbookAnalysis'
 
 const AnalysisPage = () => {
   const {
+    activeStep,
     analysisResult,
     analysisResultMode,
     changeDepth,
@@ -17,6 +18,7 @@ const AnalysisPage = () => {
     feedback,
     isPending,
     mode,
+    processingStatus,
     selectFile,
     selectedFile,
     startAnalysis,
@@ -41,9 +43,14 @@ const AnalysisPage = () => {
           onSelectFile={selectFile}
           onStartAnalysis={startAnalysis}
           selectedFile={selectedFile}
+          status={status}
         />
         <aside>
-          <AnalysisFlowPanel />
+          <AnalysisFlowPanel
+            activeStep={activeStep}
+            processingStatus={processingStatus}
+            status={status}
+          />
         </aside>
       </section>
 

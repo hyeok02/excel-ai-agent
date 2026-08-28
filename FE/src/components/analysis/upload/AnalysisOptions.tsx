@@ -22,53 +22,75 @@ const AnalysisOptions = ({
   onDepthChange,
   onModeChange,
 }: AnalysisOptionsProps) => (
-  <div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 p-2">
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="mr-2 pl-2 text-sm font-bold text-slate-700">분석 모드</span>
-      <button
-        className={cn('mode-button', mode === 'BFS' && 'mode-button-active')}
-        disabled={isPending}
-        onClick={() => onModeChange('BFS')}
-        type="button"
-      >
-        BFS 군집화
-      </button>
-      <button
-        className={cn('mode-button', mode === 'LLM' && 'mode-button-active')}
-        disabled={isPending}
-        onClick={() => onModeChange('LLM')}
-        type="button"
-      >
-        LLM 직접 분석
-      </button>
-    </div>
+  <div className="mt-7 flex flex-wrap items-center gap-3 rounded-2xl bg-slate-50 p-2.5">
+    <fieldset className="flex min-w-0 flex-1 items-center gap-3">
+      <legend className="sr-only">분석 방식</legend>
+      <div className="shrink-0 pl-1">
+        <p className="text-xs font-extrabold text-slate-500">분석 방식</p>
+      </div>
+      <div className="inline-flex min-w-0 items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-100">
+        <button
+          aria-pressed={mode === 'BFS'}
+          className={cn(
+            'rounded-lg px-4 py-2 text-xs font-bold transition',
+            mode === 'BFS'
+              ? 'bg-brand-50 text-brand-700'
+              : 'text-slate-500 hover:text-slate-700',
+          )}
+          disabled={isPending}
+          onClick={() => onModeChange('BFS')}
+          type="button"
+        >
+          BFS 군집화
+        </button>
+        <button
+          aria-pressed={mode === 'LLM'}
+          className={cn(
+            'rounded-lg px-4 py-2 text-xs font-bold transition',
+            mode === 'LLM'
+              ? 'bg-brand-50 text-brand-700'
+              : 'text-slate-500 hover:text-slate-700',
+          )}
+          disabled={isPending}
+          onClick={() => onModeChange('LLM')}
+          type="button"
+        >
+          LLM 직접 분석
+        </button>
+      </div>
+    </fieldset>
 
-    <div
+    <fieldset
       className={cn(
-        'flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-100 bg-white p-1 transition-opacity',
+        'ml-auto flex items-center gap-3 border-l border-slate-200 pl-4 transition-opacity',
         mode !== 'LLM' && 'opacity-40',
       )}
       title={mode === 'LLM' ? undefined : 'LLM 직접 분석에서 사용할 수 있어요.'}
     >
-      <span className="px-2 text-xs font-bold text-slate-500">LLM 분석 깊이</span>
-      {DEPTH_OPTIONS.map(([value, label]) => (
-        <button
-          aria-pressed={mode === 'LLM' && depth === value}
-          className={cn(
-            'rounded-lg px-3 py-2 text-xs font-bold transition',
-            mode === 'LLM' && depth === value
-              ? 'bg-brand-50 text-brand-700 shadow-sm'
-              : 'text-slate-500',
-          )}
-          disabled={isPending || mode !== 'LLM'}
-          key={value}
-          onClick={() => onDepthChange(value)}
-          type="button"
-        >
-          {label}
-        </button>
-      ))}
-    </div>
+      <legend className="sr-only">분석 깊이</legend>
+      <div className="shrink-0">
+        <p className="text-xs font-extrabold text-slate-500">분석 깊이</p>
+      </div>
+      <div className="inline-flex items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-100">
+        {DEPTH_OPTIONS.map(([value, label]) => (
+          <button
+            aria-pressed={mode === 'LLM' && depth === value}
+            className={cn(
+              'rounded-lg px-3 py-2 text-xs font-bold transition',
+              mode === 'LLM' && depth === value
+                ? 'bg-brand-50 text-brand-700'
+                : 'text-slate-500 hover:text-slate-700',
+            )}
+            disabled={isPending || mode !== 'LLM'}
+            key={value}
+            onClick={() => onDepthChange(value)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </fieldset>
   </div>
 )
 

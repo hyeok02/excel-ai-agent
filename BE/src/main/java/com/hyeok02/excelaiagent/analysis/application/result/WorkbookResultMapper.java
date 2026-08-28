@@ -27,7 +27,8 @@ final class WorkbookResultMapper {
 						.map(WorkbookResultMapper::map).toList(),
 				SemanticResultMapper.safe(workbook.sheets()).stream()
 						.map(WorkbookResultMapper::map).toList(),
-				DependencyResultMapper.map(workbook.dependencySummary()));
+				DependencyResultMapper.map(workbook.dependencySummary()),
+				FormulaRiskResultMapper.map(workbook.formulaRiskSummary()));
 	}
 
 	private static AnalysisWorkbookResult.ExcludedSheet map(AiExcludedSheetSummary sheet) {

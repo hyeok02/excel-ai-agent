@@ -32,7 +32,7 @@ final class AnalysisWorkbookFixture {
 				new AiAnalysisInclusion(AnalysisDecision.EXCLUDE, "addin_cache_worksheet", "애드인 캐시 시트"),
 				classification(SheetRole.SYSTEM, SheetImportance.LOW, 0));
 		return new AiWorkbookSummary("sales.xlsx", 1, List.of(sheet), 2, 1,
-				List.of(excluded), dependency());
+				List.of(excluded), dependency(), formulaRisks());
 	}
 
 	static AiWorkbookInsights insights() {
@@ -82,6 +82,15 @@ final class AnalysisWorkbookFixture {
 				List.of(new AiDependencyEdge("Sales!D2", "Sales!D2", "D2", false)), false);
 		return new AiDependencySummary(2, 1, 1, 0, 0, 0, 1,
 				List.of(cluster), 1, 1, List.of(cycle));
+	}
+
+	private static AiFormulaRiskSummary formulaRisks() {
+		AiFormulaRiskFinding finding = new AiFormulaRiskFinding(
+				"external_reference", "warning", "Sales", "D2",
+				"외부 파일의 값을 참조합니다.", "='[Budget.xlsx]Plan'!C3",
+				"[Budget.xlsx]Plan!C3", null,
+				provenance("formula_risk_detector", "formula", "D2", "='[Budget.xlsx]Plan'!C3"));
+		return new AiFormulaRiskSummary(1, 0, 1, 0, 0, 1, 0, List.of(finding));
 	}
 
 	private static AiProvenance provenance(

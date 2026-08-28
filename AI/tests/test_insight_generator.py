@@ -1,5 +1,6 @@
 from app.services.insight_generator import (
     MAX_FORMULAS_PER_SHEET,
+    build_user_prompt,
     build_workbook_context,
 )
 from app.services.formula_analyzer import FormulaAnalysis
@@ -60,7 +61,7 @@ def test_deduplicates_formula_patterns_for_llm_prompt() -> None:
     ]
 
 
-def test_excludes_cell_previews_from_llm_prompt_context() -> None:
+def test_selects_business_values_without_sending_full_previews() -> None:
     summary = WorkbookSummary(
         filename="preview.xlsx",
         sheet_count=1,
@@ -90,7 +91,7 @@ def test_excludes_cell_previews_from_llm_prompt_context() -> None:
                             [
                                 CellSnapshot(
                                     address="A1",
-                                    value="LLM에 전송하면 안 되는 원본 미리보기",
+                                    value="Riot Games, Inc.",
                                     formula=None,
                                 )
                             ]
@@ -110,3 +111,38 @@ def test_excludes_cell_previews_from_llm_prompt_context() -> None:
     assert region["header_paths"] == [{"column": "A", "labels": ["부서"]}]
     assert region["analysis_inclusion"]["decision"] == "include"
     assert "preview_rows" not in region
+    facts = context["sheets"][0]["business_facts"]
+    assert facts["selected_records"] == [
+        {
+            "location": "데이터!A1",
+            "region": "매출 현황",
+            "values": [
+                {
+                    "cell": "A1",
+                    "label": None,
+                    "value": "Riot Games, Inc.",
+                    "number_format": None,
+                }
+            ],
+        }
+    ]
+    assert facts["selection_note"] == "원본 전체가 아닌 핵심 값 행만 선별한 결과"
+    assert context["sheets"][0]["content_outline"] == {
+        "sheet_role": None,
+        "role_reasons": [],
+        "region_titles": ["매출 현황"],
+        "header_labels": ["부서"],
+        "columns": [],
+        "table_headers": [],
+        "chart_titles": [],
+    }
+
+
+def test_prompt_prioritizes_workbook_subject_over_technical_counts() -> None:
+    summary = WorkbookSummary(filename="매출.xlsx", sheet_count=0, sheets=[])
+
+    prompt = build_user_prompt(summary)
+
+    assert "분석 대상의 현재 상태" in prompt
+    assert "대상·출처·시점·수치·비교" in prompt
+    assert "데이터 목록 설명은 금지" in prompt

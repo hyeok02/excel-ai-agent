@@ -4,6 +4,7 @@ import {
   EmptyFilePicker,
   SelectedFile,
 } from '@/components/analysis/upload/AnalysisFilePickerStates'
+import type { AnalysisViewStatus } from '@/hooks/analysis/useWorkbookAnalysis'
 import { cn } from '@/utils/cn'
 
 interface AnalysisFileDropZoneProps {
@@ -12,6 +13,7 @@ interface AnalysisFileDropZoneProps {
   onSelectFile: (file: File) => void
   onStartAnalysis: () => void
   selectedFile: File | null
+  status: AnalysisViewStatus
 }
 
 const AnalysisFileDropZone = ({
@@ -20,6 +22,7 @@ const AnalysisFileDropZone = ({
   onSelectFile,
   onStartAnalysis,
   selectedFile,
+  status,
 }: AnalysisFileDropZoneProps) => {
   const [isDragging, setIsDragging] = useState(false)
 
@@ -62,6 +65,7 @@ const AnalysisFileDropZone = ({
           onClearFile={onClearFile}
           onFileChange={handleFileChange}
           onStartAnalysis={onStartAnalysis}
+          status={status}
         />
       ) : (
         <EmptyFilePicker isPending={isPending} onFileChange={handleFileChange} />

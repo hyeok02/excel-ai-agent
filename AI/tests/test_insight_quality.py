@@ -1,0 +1,73 @@
+from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
+from app.services.insights.quality import ensure_business_report
+
+
+def _generic_report() -> WorkbookInsightReport:
+    return WorkbookInsightReport(
+        overview="이 파일은 기업 인력 정보를 담고 있습니다.",
+        insights=[
+            WorkbookInsight(
+                title="시트 내용",
+                description="이 시트에는 직원 수 관련 항목이 포함되어 있습니다.",
+                category="structure",
+                severity="info",
+                evidence=["인력 시트"],
+            )
+        ],
+    )
+
+
+def test_replaces_generic_report_with_concrete_business_change() -> None:
+    context = {
+        "sheets": [
+            {
+                "business_facts": {
+                    "selected_records": [
+                        {
+                            "values": [
+                                {"value": "Focus Co. ►"},
+                                {"value": "Riot Games, Inc."},
+                            ]
+                        }
+                    ],
+                    "numeric_changes": [
+                        {
+                            "metric": "Total Employees",
+                            "earliest_period": "2023-09-01T00:00:00",
+                            "earliest_value": 6101,
+                            "latest_period": "2025-06-01T00:00:00",
+                            "latest_value": 5417,
+                            "change": -684,
+                            "change_rate_percent": -11.21,
+                            "evidence": ["인력!E115:L115", "인력!E108:L108"],
+                        }
+                    ],
+                }
+            }
+        ]
+    }
+
+    result = ensure_business_report(_generic_report(), context)
+
+    assert "Riot Games, Inc." in result.overview
+    assert "6,101" in result.overview
+    assert "5,417" in result.overview
+    assert result.insights[0].evidence == ["인력!E115:L115", "인력!E108:L108"]
+
+
+def test_keeps_concrete_llm_report() -> None:
+    report = WorkbookInsightReport(
+        overview="Riot Games 직원 수는 6,101명에서 5,417명으로 감소했습니다.",
+        insights=[
+            WorkbookInsight(
+                title="직원 수 감소",
+                description="2023년 대비 2025년 직원 수가 684명 감소했습니다.",
+                category="summary",
+                severity="info",
+                evidence=["인력!E108:L115"],
+            )
+        ],
+    )
+    context = {"sheets": [{"business_facts": {"numeric_changes": [{}]}}]}
+
+    assert ensure_business_report(report, context) is report

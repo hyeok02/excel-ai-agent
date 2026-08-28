@@ -42,9 +42,7 @@ const SheetColumnSchema = ({ columns, sheetName }: SheetColumnSchemaProps) => {
             <Columns3 aria-hidden="true" size={16} />
           </span>
           <div>
-            <h4 className="text-xs font-extrabold text-slate-800">
-              열 의미와 단위
-            </h4>
+            <h4 className="text-xs font-extrabold text-slate-800">열 의미와 단위</h4>
             <p className="mt-1 text-[11px] text-slate-400">
               Excel의 열 이름을 업무 의미로 정리하고 값의 유형과 단위를 확인했어요.
             </p>
@@ -61,10 +59,17 @@ const SheetColumnSchema = ({ columns, sheetName }: SheetColumnSchemaProps) => {
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
         <p className="text-[10px] font-bold text-slate-500">
-          {view === 'important' ? '주요 의미별 대표 열' : view === 'review' ? '검토가 필요한 열' : '전체 열'}
+          {view === 'important'
+            ? '주요 의미별 대표 열'
+            : view === 'review'
+              ? '검토가 필요한 열'
+              : '전체 열'}
         </p>
         <div className="flex rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold">
-          <ViewButton active={view === 'important'} onClick={() => changeView('important')}>
+          <ViewButton
+            active={view === 'important'}
+            onClick={() => changeView('important')}
+          >
             주요 {importantCount}
           </ViewButton>
           <ViewButton active={view === 'review'} onClick={() => changeView('review')}>

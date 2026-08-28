@@ -7,6 +7,7 @@ from openpyxl.utils.exceptions import InvalidFileException
 
 from app.services.dependency_analyzer import analyze_dependencies
 from app.services.formula_analyzer import analyze_formulas
+from app.services.formula_risks import detect_formula_risks
 from app.services.sheet_classifier import classify_sheets
 from app.services.workbook_parsing.models import (
     ExcludedSheetSummary,
@@ -46,6 +47,10 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
             inclusions,
             classifications,
         )
+        formula_risks = detect_formula_risks(
+            workbook.sheetnames,
+            [(sheet.name, sheet.formulas) for sheet in sheets],
+        )
     finally:
         workbook.close()
         value_workbook.close()
@@ -60,6 +65,7 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
         excluded_sheet_count=len(excluded),
         excluded_sheets=excluded,
         dependency_summary=dependencies,
+        formula_risk_summary=formula_risks,
     )
 
 
