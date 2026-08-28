@@ -5,11 +5,12 @@ import { compactFormula, summarizeFormula } from '@/utils/analysis/formulaSummar
 
 interface FormulaDisclosureProps {
   formula: string
+  label?: string
 }
 
 const MAX_VISIBLE_FORMULA_LENGTH = 160
 
-const FormulaDisclosure = ({ formula }: FormulaDisclosureProps) => {
+const FormulaDisclosure = ({ formula, label = 'Excel 수식 원문' }: FormulaDisclosureProps) => {
   const [copied, setCopied] = useState(false)
   const summary = summarizeFormula(formula)
   const compactedFormula = compactFormula(formula)
@@ -19,7 +20,7 @@ const FormulaDisclosure = ({ formula }: FormulaDisclosureProps) => {
     return (
       <details className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-[11px] font-bold text-slate-500 marker:hidden">
-          <span>기술 상세 · 축약 수식</span>
+          <span>기술 상세 · {label === 'Excel 수식 원문' ? '축약 수식' : label}</span>
           <span className="shrink-0 font-semibold text-slate-400">보기</span>
         </summary>
         <div className="border-t border-slate-200 bg-slate-50 p-3">
@@ -50,7 +51,7 @@ const FormulaDisclosure = ({ formula }: FormulaDisclosureProps) => {
   return (
     <details className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-[11px] font-bold text-slate-500 marker:hidden">
-        <span>기술 상세 · Excel 수식 원문</span>
+        <span>기술 상세 · {label}</span>
         <span className="shrink-0 font-semibold text-slate-400">보기</span>
       </summary>
       <div className="border-t border-slate-200 bg-slate-950 p-3">

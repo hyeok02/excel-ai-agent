@@ -25,6 +25,16 @@ class FormulaAnalysisResponse(BaseModel):
     provenance: ProvenanceResponse | None = None
 
 
+class FormulaRiskImpactResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    affected_formula_count: int
+    affected_sheet_count: int
+    affected_sheets: list[str]
+    max_depth: int
+    risk_score: int
+    risk_level: str
+
+
 class FormulaRiskFindingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     kind: str
@@ -35,7 +45,9 @@ class FormulaRiskFindingResponse(BaseModel):
     formula: str
     reference: str | None = None
     function_name: str | None = None
+    observed_value: str | int | float | bool | None = None
     provenance: ProvenanceResponse | None = None
+    impact: FormulaRiskImpactResponse | None = None
 
 
 class FormulaRiskSummaryResponse(BaseModel):
@@ -47,6 +59,10 @@ class FormulaRiskSummaryResponse(BaseModel):
     missing_sheet_count: int
     external_reference_count: int
     dynamic_function_count: int
+    pattern_mismatch_count: int
+    hardcoded_value_count: int
+    high_risk_count: int
+    critical_risk_count: int
     findings: list[FormulaRiskFindingResponse]
 
 

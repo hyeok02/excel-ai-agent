@@ -11,5 +11,7 @@ public record AiFormulaRiskFinding(
 		String formula,
 		String reference,
 		@JsonProperty("function_name") String functionName,
-		AiProvenance provenance) {
+		@JsonProperty("observed_value") Object observedValue,
+		AiProvenance provenance,
+		AiFormulaRiskImpact impact) {
 }

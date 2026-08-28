@@ -4,6 +4,16 @@ from app.services.provenance import Provenance
 
 
 @dataclass(frozen=True)
+class FormulaRiskImpact:
+    affected_formula_count: int
+    affected_sheet_count: int
+    affected_sheets: list[str]
+    max_depth: int
+    risk_score: int
+    risk_level: str
+
+
+@dataclass(frozen=True)
 class FormulaRiskFinding:
     kind: str
     severity: str
@@ -13,7 +23,9 @@ class FormulaRiskFinding:
     formula: str
     reference: str | None = None
     function_name: str | None = None
+    observed_value: str | int | float | bool | None = None
     provenance: Provenance | None = None
+    impact: FormulaRiskImpact | None = None
 
 
 @dataclass(frozen=True)
@@ -25,11 +37,15 @@ class FormulaRiskSummary:
     missing_sheet_count: int
     external_reference_count: int
     dynamic_function_count: int
+    pattern_mismatch_count: int
+    hardcoded_value_count: int
+    high_risk_count: int
+    critical_risk_count: int
     findings: list[FormulaRiskFinding]
 
     @classmethod
     def empty(cls) -> "FormulaRiskSummary":
-        return cls(0, 0, 0, 0, 0, 0, 0, [])
+        return cls(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [])
 
     @classmethod
     def from_findings(
@@ -49,5 +65,23 @@ class FormulaRiskSummary:
             dynamic_function_count=sum(
                 item.kind == "dynamic_function" for item in findings
             ),
-            findings=findings,
+            pattern_mismatch_count=sum(
+                item.kind == "formula_pattern_mismatch" for item in findings
+            ),
+            hardcoded_value_count=sum(
+                item.kind == "hardcoded_value" for item in findings
+            ),
+            high_risk_count=sum(
+                item.impact is not None and item.impact.risk_level == "high"
+                for item in findings
+            ),
+            critical_risk_count=sum(
+                item.impact is not None and item.impact.risk_level == "critical"
+                for item in findings
+            ),
+            findings=sorted(
+                findings,
+                key=lambda item: item.impact.risk_score if item.impact else 0,
+                reverse=True,
+            ),
         )

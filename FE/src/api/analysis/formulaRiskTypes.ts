@@ -5,8 +5,20 @@ export type FormulaRiskKind =
   | 'missing_sheet'
   | 'external_reference'
   | 'dynamic_function'
+  | 'formula_pattern_mismatch'
+  | 'hardcoded_value'
 
 export type FormulaRiskSeverity = 'error' | 'warning'
+export type FormulaRiskLevel = 'low' | 'medium' | 'high' | 'critical'
+
+export interface FormulaRiskImpactResult {
+  affectedFormulaCount: number
+  affectedSheetCount: number
+  affectedSheets: string[]
+  maxDepth: number
+  riskScore: number
+  riskLevel: FormulaRiskLevel
+}
 
 export interface FormulaRiskFindingResult {
   kind: FormulaRiskKind
@@ -17,7 +29,9 @@ export interface FormulaRiskFindingResult {
   formula: string
   reference: string | null
   functionName: string | null
+  observedValue?: string | number | boolean | null
   provenance?: AnalysisProvenance | null
+  impact?: FormulaRiskImpactResult | null
 }
 
 export interface FormulaRiskSummaryResult {
@@ -28,5 +42,9 @@ export interface FormulaRiskSummaryResult {
   missingSheetCount: number
   externalReferenceCount: number
   dynamicFunctionCount: number
+  patternMismatchCount: number
+  hardcodedValueCount: number
+  highRiskCount: number
+  criticalRiskCount: number
   findings: FormulaRiskFindingResult[]
 }
