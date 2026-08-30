@@ -13,8 +13,9 @@ python -m pip install -e ".[dev]"
 cp .env.example .env
 ```
 
-Set `OPENAI_API_KEY` in `AI/.env` before calling the insight API. The default
-model is `gpt-5-mini` and can be changed with `OPENAI_MODEL`.
+Set `OPENAI_API_KEY` in `AI/.env` before calling the insight or Agent Planner API.
+The Planner model defaults to `gpt-4.1-mini` and can be changed with
+`OPENAI_PLANNER_MODEL`.
 
 ## Run
 
@@ -31,6 +32,12 @@ The service runs at `http://localhost:8000`.
   `POST /api/v1/workbooks/summary`
 - LLM-based structured workbook insights:
   `POST /api/v1/workbooks/insights`
+- Registered Agent Tool metadata: `GET /api/v1/agent/tools`
+- Structured Agent execution plan from a user intent and workbook:
+  `POST /api/v1/agent/plans`
+  - multipart fields: `intent`, `file`
+  - returns the objective, user value, expected deliverable, evidence requirements,
+    success criteria, and ordered Tool steps without executing them
 - Swagger UI: `GET /docs`
 
 ## Test
