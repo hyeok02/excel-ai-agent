@@ -16,6 +16,7 @@ def test_default_registry_exposes_existing_analysis_capabilities() -> None:
     registry = create_default_tool_registry()
 
     assert [metadata.name for metadata in registry.list_metadata()] == [
+        "search_workbook_data",
         "inspect_semantic_structure",
         "trace_formula_dependencies",
         "detect_circular_references",

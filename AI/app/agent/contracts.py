@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from app.services.provenance import AnalysisEvidence
 from app.services.workbook_parsing.models import WorkbookSummary
+
+if TYPE_CHECKING:
+    from app.agent.query.index import WorkbookDataIndex
 
 ToolArguments = Mapping[str, Any]
 
@@ -37,6 +42,7 @@ class AgentToolMetadata:
 @dataclass(frozen=True)
 class AgentToolContext:
     workbook: WorkbookSummary
+    data_index: WorkbookDataIndex | None = None
 
 
 @dataclass(frozen=True)

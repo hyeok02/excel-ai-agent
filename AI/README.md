@@ -13,9 +13,10 @@ python -m pip install -e ".[dev]"
 cp .env.example .env
 ```
 
-Set `OPENAI_API_KEY` in `AI/.env` before calling the insight or Agent Planner API.
+Set `OPENAI_API_KEY` in `AI/.env` before calling the insight, Agent Planner, or
+workbook Q&A API.
 The Planner model defaults to `gpt-4.1-mini` and can be changed with
-`OPENAI_PLANNER_MODEL`.
+`OPENAI_PLANNER_MODEL`. The Q&A model can be changed with `OPENAI_QA_MODEL`.
 
 ## Run
 
@@ -47,6 +48,11 @@ The service runs at `http://localhost:8000`.
 - Generate fact, verified cause, impact, recommendation, evidence, and confidence
   from an Agent execution: `POST /api/v1/agent/insights`
   - returns verified, review-needed, and blocked counts without hiding useful partial results
+- Ask a natural-language question about one workbook:
+  `POST /api/v1/workbooks/questions`
+  - multipart fields: `question`, `file`
+  - selects registered Agent Tools from the question and returns an answer only when
+    the cited sheet and cell evidence exists in the executed Tool results
 - Swagger UI: `GET /docs`
 
 ## Test

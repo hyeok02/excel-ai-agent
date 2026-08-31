@@ -7,6 +7,7 @@ import com.hyeok02.excelaiagent.analysis.application.AnalysisDetails;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisResultDetails;
+import com.hyeok02.excelaiagent.analysis.application.WorkbookQuestionService;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +15,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
+import com.hyeok02.excelaiagent.integration.ai.AiWorkbookQuestion;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -33,9 +37,13 @@ import org.springframework.web.multipart.MultipartFile;
 public class AnalysisController {
 
 	private final AnalysisSubmissionService analysisSubmissionService;
+	private final WorkbookQuestionService workbookQuestionService;
 
-	public AnalysisController(AnalysisSubmissionService analysisSubmissionService) {
+	public AnalysisController(
+			AnalysisSubmissionService analysisSubmissionService,
+			WorkbookQuestionService workbookQuestionService) {
 		this.analysisSubmissionService = analysisSubmissionService;
+		this.workbookQuestionService = workbookQuestionService;
 	}
 
 	@PostMapping
@@ -71,6 +79,14 @@ public class AnalysisController {
 	@Operation(summary = "분석 작업 결과 조회")
 	public AnalysisResultDetails getResult(@PathVariable UUID analysisId) {
 		return analysisSubmissionService.getResult(analysisId);
+	}
+
+	@PostMapping("/{analysisId}/questions")
+	@Operation(summary = "분석한 Excel에 근거 기반 질문")
+	public AiWorkbookQuestion askQuestion(
+			@PathVariable UUID analysisId,
+			@Valid @RequestBody WorkbookQuestionRequest request) {
+		return workbookQuestionService.ask(analysisId, request.question());
 	}
 
 	@DeleteMapping("/{analysisId}")

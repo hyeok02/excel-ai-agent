@@ -4,12 +4,14 @@ from app.agent.tools import (
     FormulaDependencyTool,
     FormulaRiskTool,
     SemanticStructureTool,
+    WorkbookDataSearchTool,
 )
 
 
 def create_default_tool_registry() -> AgentToolRegistry:
     return AgentToolRegistry(
         (
+            WorkbookDataSearchTool(),
             SemanticStructureTool(),
             FormulaDependencyTool(),
             CircularReferenceTool(),

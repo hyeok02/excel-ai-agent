@@ -6,6 +6,7 @@ import AnalysisExportActions from '@/components/analysis/result/AnalysisExportAc
 import DependencyMapSection from '@/components/analysis/result/DependencyMapSection'
 import FormulaRiskSection from '@/components/analysis/result/formula-risk/FormulaRiskSection'
 import InsightReportSection from '@/components/analysis/result/InsightReportSection'
+import WorkbookQuestionSection from '@/components/analysis/result/questions/WorkbookQuestionSection'
 import WorkbookExplorer from '@/components/analysis/workbook/explorer/WorkbookExplorer'
 import WorkbookSemanticOverview from '@/components/analysis/workbook/semantic/summaries/WorkbookSemanticOverview'
 
@@ -88,6 +89,8 @@ const AnalysisResultSection = ({ mode, result }: AnalysisResultSectionProps) => 
       {mode === 'LLM' && result.insightReport && (
         <InsightReportSection report={result.insightReport} />
       )}
+
+      <WorkbookQuestionSection analysisId={result.analysisId} />
 
       <WorkbookSemanticOverview
         excludedSheets={workbook.excludedSheets ?? []}
