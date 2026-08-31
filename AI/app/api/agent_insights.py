@@ -7,8 +7,9 @@ from app.agent.insights import AgentInsightGenerator, LangChainAgentInsightGener
 from app.services.insights.models import (
     InsightConfigurationError,
     InsightGenerationError,
-    WorkbookInsightReport,
+    ValidatedWorkbookInsightReport,
 )
+from app.services.insights.validator import validate_agent_insights
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 
@@ -23,13 +24,14 @@ def get_agent_insight_generator() -> AgentInsightGenerator:
         ) from exception
 
 
-@router.post("/insights", response_model=WorkbookInsightReport)
+@router.post("/insights", response_model=ValidatedWorkbookInsightReport)
 async def generate_agent_insights(
     execution: AgentExecution,
     generator: Annotated[AgentInsightGenerator, Depends(get_agent_insight_generator)],
-) -> WorkbookInsightReport:
+) -> ValidatedWorkbookInsightReport:
     try:
-        return await generator.generate(execution)
+        report = await generator.generate(execution)
+        return validate_agent_insights(report, execution)
     except InsightGenerationError as exception:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

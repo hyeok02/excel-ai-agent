@@ -4,6 +4,8 @@ from app.services.insights.models import (
     InsightConfigurationError,
     InsightGenerationError,
     InsightGenerator,
+    ValidatedWorkbookInsight,
+    ValidatedWorkbookInsightReport,
     WorkbookInsight,
     WorkbookInsightReport,
 )
@@ -19,6 +21,8 @@ __all__ = [
     "SYSTEM_PROMPT",
     "WorkbookInsight",
     "WorkbookInsightReport",
+    "ValidatedWorkbookInsight",
+    "ValidatedWorkbookInsightReport",
     "build_user_prompt",
     "build_workbook_context",
     "load_dotenv",

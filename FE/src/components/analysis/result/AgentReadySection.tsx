@@ -18,7 +18,7 @@ const AgentReadySection = ({ hasInsightReport }: AgentReadySectionProps) => {
       step: '02',
       title: hasInsightReport ? 'AI 검토 완료' : 'AI Agent 연결 가능',
       description: hasInsightReport
-        ? '구조화된 근거를 바탕으로 AI가 요약, 위험 요소와 검토 권고를 생성했어요.'
+        ? 'AI가 만든 주장과 원본 셀 근거를 대조해 검증된 결과만 표시했어요.'
         : '내보낸 구조화 결과를 사내 질의응답·검토·보고서 Agent의 입력으로 사용할 수 있어요.',
     },
     {

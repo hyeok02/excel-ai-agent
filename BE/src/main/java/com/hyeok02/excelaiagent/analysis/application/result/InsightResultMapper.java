@@ -1,5 +1,7 @@
 package com.hyeok02.excelaiagent.analysis.application.result;
 
+import java.util.List;
+
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 
 final class InsightResultMapper {
@@ -13,7 +15,8 @@ final class InsightResultMapper {
 		return new AnalysisInsightResult.Report(
 				report.overview(),
 				report.insights().stream().map(InsightResultMapper::mapInsight).toList(),
-				report.limitations());
+				report.limitations(),
+				mapValidation(report.validation()));
 	}
 
 	private static AnalysisInsightResult.Insight mapInsight(AiWorkbookInsights.Insight insight) {
@@ -21,14 +24,33 @@ final class InsightResultMapper {
 		String impact = hasText(insight.impact())
 				? insight.impact()
 				: "과거 분석 결과에는 영향 정보가 제공되지 않았습니다.";
-		double confidence = insight.confidence() == null ? 0.0 : insight.confidence();
+		Double confidence = normalizeConfidence(insight.confidence());
 		return new AnalysisInsightResult.Insight(
 				insight.title(), fact, insight.cause(), impact,
 				insight.category(), insight.severity(), insight.evidence(),
-				insight.recommendation(), confidence);
+				insight.recommendation(), confidence, insight.validationStatus(),
+				insight.validationReasons() == null ? List.of() : insight.validationReasons());
+	}
+
+	private static AnalysisInsightResult.Validation mapValidation(AiWorkbookInsights.Validation validation) {
+		if (validation == null) {
+			return null;
+		}
+		return new AnalysisInsightResult.Validation(
+				validation.generatedCount(), validation.verifiedCount(),
+				validation.limitedCount(), validation.blockedCount(),
+				validation.notices() == null ? List.of() : validation.notices());
 	}
 
 	private static boolean hasText(String value) {
 		return value != null && !value.isBlank();
+	}
+
+	private static Double normalizeConfidence(Double confidence) {
+		if (confidence == null || !Double.isFinite(confidence)
+				|| confidence < 0 || confidence > 1) {
+			return null;
+		}
+		return confidence;
 	}
 }

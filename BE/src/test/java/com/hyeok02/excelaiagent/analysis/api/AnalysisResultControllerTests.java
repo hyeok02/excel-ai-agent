@@ -61,7 +61,11 @@ class AnalysisResultControllerTests extends AnalysisControllerTestSupport {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.insightReport.overview").value("수식 구조를 검토했습니다."))
 				.andExpect(jsonPath("$.insightReport.insights[0].category").value("formula"))
-				.andExpect(jsonPath("$.insightReport.insights[0].evidence[0]").value("Sales!D2"));
+				.andExpect(jsonPath("$.insightReport.insights[0].evidence[0]").value("Sales!D2"))
+				.andExpect(jsonPath("$.insightReport.insights[0].validationStatus")
+						.value("verified"))
+				.andExpect(jsonPath("$.insightReport.validation.verifiedCount").value(1))
+				.andExpect(jsonPath("$.insightReport.validation.blockedCount").value(0));
 	}
 
 	@Test

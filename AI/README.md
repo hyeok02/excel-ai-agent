@@ -34,6 +34,8 @@ The service runs at `http://localhost:8000`.
   `POST /api/v1/workbooks/insights`
   - each insight returns fact, verified cause or null, business impact,
     recommendation, source evidence, and confidence
+  - deterministic validation verifies exact matches, keeps partial matches visible
+    for user review, and removes only results with missing content or evidence
 - Registered Agent Tool metadata: `GET /api/v1/agent/tools`
 - Structured Agent execution plan from a user intent and workbook:
   `POST /api/v1/agent/plans`
@@ -44,6 +46,7 @@ The service runs at `http://localhost:8000`.
   Tool output, and source evidence: `POST /api/v1/agent/executions`
 - Generate fact, verified cause, impact, recommendation, evidence, and confidence
   from an Agent execution: `POST /api/v1/agent/insights`
+  - returns verified, review-needed, and blocked counts without hiding useful partial results
 - Swagger UI: `GET /docs`
 
 ## Test

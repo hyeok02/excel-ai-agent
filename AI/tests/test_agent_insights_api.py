@@ -46,3 +46,11 @@ def test_returns_structured_insights_from_agent_execution() -> None:
     assert insight["impact"]
     assert insight["evidence"] == ["Sales!D2"]
     assert insight["confidence"] == 0.96
+    assert insight["validation_status"] == "verified"
+    assert response.json()["validation"] == {
+        "generated_count": 1,
+        "verified_count": 1,
+        "limited_count": 0,
+        "blocked_count": 0,
+        "notices": [],
+    }

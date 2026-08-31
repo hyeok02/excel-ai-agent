@@ -27,7 +27,7 @@ def test_returns_structured_workbook_insights() -> None:
     assert response.status_code == 200
     assert generator.requested_depth == AnalysisDepth.PRECISE
     assert response.json()["report"] == {
-        "overview": "2개 시트로 구성된 워크북입니다.",
+        "overview": "매출현황 시트에 합계 수식이 있습니다.",
         "insights": [
             {
                 "title": "수식 검토 필요",
@@ -39,9 +39,18 @@ def test_returns_structured_workbook_insights() -> None:
                 "evidence": ["매출현황!D2 = SUM(B2:C2)"],
                 "recommendation": "합계 범위를 확인하세요.",
                 "confidence": 0.95,
+                "validation_status": "verified",
+                "validation_reasons": [],
             }
         ],
         "limitations": ["실제 셀 값의 의미는 분석하지 않았습니다."],
+        "validation": {
+            "generated_count": 1,
+            "verified_count": 1,
+            "limited_count": 0,
+            "blocked_count": 0,
+            "notices": [],
+        },
     }
 
 

@@ -12,7 +12,7 @@ from app.api.workbook_models.semantic import (
     SheetClassificationResponse,
 )
 from app.api.workbook_models.provenance import ProvenanceResponse
-from app.services.insight_generator import WorkbookInsightReport
+from app.services.insights.models import ValidatedWorkbookInsightReport
 
 
 class FormulaAnalysisResponse(BaseModel):
@@ -106,4 +106,4 @@ class WorkbookSummaryResponse(BaseModel):
 
 class WorkbookInsightsResponse(BaseModel):
     workbook: WorkbookSummaryResponse
-    report: WorkbookInsightReport
+    report: ValidatedWorkbookInsightReport
