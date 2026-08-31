@@ -3,11 +3,14 @@ export type InsightSeverity = 'info' | 'warning' | 'critical'
 
 export interface InsightResult {
   title: string
-  description: string
+  fact: string
+  cause: string | null
+  impact: string
   category: InsightCategory
   severity: InsightSeverity
   evidence: string[]
   recommendation: string | null
+  confidence: number
 }
 
 export interface InsightReportResult {

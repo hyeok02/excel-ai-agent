@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.agent.planning.models import AgentExecutionPlan
+from app.agent.planning.models import AgentExecutionPlan, StepFailurePolicy
 
 
 class AgentPlanArgumentDraft(BaseModel):
@@ -24,6 +24,7 @@ class AgentPlanStepDraft(BaseModel):
     expected_output: str = Field(min_length=5, max_length=300)
     evidence_required: list[str] = Field(min_length=1, max_length=5)
     depends_on: list[str] = Field(max_length=7)
+    on_failure: StepFailurePolicy
 
     @model_validator(mode="after")
     def validate_unique_arguments(self) -> "AgentPlanStepDraft":

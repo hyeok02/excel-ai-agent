@@ -16,7 +16,7 @@ def ensure_business_report(
         _change_insight(target, change) for change in changes[:4]
     ]
     insights = insights[:5]
-    overview = " ".join(insight.description for insight in insights[:2])
+    overview = " ".join(insight.fact for insight in insights[:2])
     return WorkbookInsightReport(
         overview=overview,
         insights=insights,
@@ -28,7 +28,7 @@ def ensure_business_report(
 
 def _is_concrete(report: WorkbookInsightReport) -> bool:
     text = " ".join(
-        [report.overview, *(insight.description for insight in report.insights)]
+        [report.overview, *(insight.fact for insight in report.insights)]
     )
     evidence = [item for insight in report.insights for item in insight.evidence]
     return len(re.findall(r"\d[\d,.]*", text)) >= 2 and any(
@@ -69,9 +69,7 @@ def _focus_target(context: dict[str, object]) -> str | None:
     return None
 
 
-def _current_insight(
-    target: str, context: dict[str, object]
-) -> WorkbookInsight | None:
+def _current_insight(target: str, context: dict[str, object]) -> WorkbookInsight | None:
     for sheet in context.get("sheets", []):
         records = sheet.get("business_facts", {}).get("selected_records", [])
         for record in records:
@@ -85,11 +83,14 @@ def _current_insight(
             )
             return WorkbookInsight(
                 title=f"요약 표 최신 직원 수 {_display_number(headcount)}명",
-                description=f"{target}의 요약 표 기준 최신 직원 수는 {_display_number(headcount)}명{tenure_text}입니다.",
+                fact=f"{target}의 요약 표 기준 최신 직원 수는 {_display_number(headcount)}명{tenure_text}입니다.",
+                cause=None,
+                impact="인력 규모를 판단할 때 요약 표의 최신 기준값으로 사용할 수 있습니다.",
                 category="summary",
                 severity="info",
                 evidence=[str(record["location"])],
                 recommendation=None,
+                confidence=0.98,
             )
     return None
 
@@ -105,14 +106,20 @@ def _change_insight(
     metric = _metric_label(str(change["metric"]))
     return WorkbookInsight(
         title=f"{metric} {rate:g}% {direction}",
-        description=(
+        fact=(
             f"{target}의 월별 추이에서 {metric} 지표는 {_period(change['earliest_period'])} {old}에서 "
             f"{_period(change['latest_period'])} {new}로 {delta}({rate:g}%) {direction}했습니다."
+        ),
+        cause=None,
+        impact=(
+            f"기간 시작점 수치를 최신 규모로 사용하면 {delta}의 차이가 발생하므로 "
+            "최신 기간 값을 기준으로 비교해야 합니다."
         ),
         category="summary",
         severity="info",
         evidence=[str(item) for item in change["evidence"]],
         recommendation=None,
+        confidence=0.99,
     )
 
 

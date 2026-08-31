@@ -7,6 +7,14 @@ from app.agent.contracts import (
     ToolCategory,
 )
 from app.agent.defaults import create_default_tool_registry
+from app.agent.execution import (
+    AgentExecution,
+    AgentExecutionStatus,
+    AgentStepError,
+    AgentStepExecution,
+    AgentStepStatus,
+    AgentToolExecutor,
+)
 from app.agent.planning import (
     AgentExecutionPlan,
     AgentPlanner,
@@ -14,6 +22,7 @@ from app.agent.planning import (
     LangChainAgentPlanner,
     PlanGenerationError,
     PlannerConfigurationError,
+    StepFailurePolicy,
 )
 from app.agent.registry import AgentToolRegistry, ToolNotFoundError
 
@@ -24,12 +33,19 @@ __all__ = [
     "AgentToolRegistry",
     "AgentToolResult",
     "AgentExecutionPlan",
+    "AgentExecution",
+    "AgentExecutionStatus",
     "AgentPlanner",
     "AgentPlanStep",
+    "AgentStepError",
+    "AgentStepExecution",
+    "AgentStepStatus",
+    "AgentToolExecutor",
     "InvalidToolArgumentsError",
     "LangChainAgentPlanner",
     "PlanGenerationError",
     "PlannerConfigurationError",
+    "StepFailurePolicy",
     "ToolCategory",
     "ToolNotFoundError",
     "create_default_tool_registry",

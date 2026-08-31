@@ -4,6 +4,7 @@ from app.agent.planning.models import (
     AgentPlanStep,
     PlanGenerationError,
     PlannerConfigurationError,
+    StepFailurePolicy,
 )
 from app.agent.planning.planner import AgentPlanner, LangChainAgentPlanner
 from app.agent.planning.validation import ensure_executable_plan
@@ -15,6 +16,7 @@ __all__ = [
     "LangChainAgentPlanner",
     "PlanGenerationError",
     "PlannerConfigurationError",
+    "StepFailurePolicy",
     "build_planning_context",
     "ensure_executable_plan",
 ]

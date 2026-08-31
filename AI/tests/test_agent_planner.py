@@ -24,6 +24,7 @@ def _result() -> dict[str, object]:
                 "expected_output": "검토 대상 시트와 영역의 우선순위",
                 "evidence_required": ["시트 역할 판단 근거", "포함·제외 사유"],
                 "depends_on": [],
+                "on_failure": "stop",
             }
         ],
         "success_criteria": ["결과에 시트와 영역 근거가 포함되어야 합니다."],

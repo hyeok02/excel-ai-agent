@@ -24,6 +24,8 @@ class AiWorkbookInsightClientTests extends AiServiceClientTestSupport {
 		assertThat(response.workbook().filename()).isEqualTo("sales.xlsx");
 		assertThat(response.report().insights()).singleElement().satisfies(insight -> {
 			assertThat(insight.category()).isEqualTo("formula");
+			assertThat(insight.fact()).contains("Sales 시트");
+			assertThat(insight.confidence()).isEqualTo(0.95);
 			assertThat(insight.evidence()).containsExactly("Sales!D2");
 		});
 		server.verify();

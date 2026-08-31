@@ -1,4 +1,11 @@
-import { AlertTriangle, CircleAlert, Info, Lightbulb, Sparkles } from 'lucide-react'
+import {
+  AlertTriangle,
+  CircleAlert,
+  Info,
+  Lightbulb,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react'
 
 import type {
   InsightCategory,
@@ -15,7 +22,7 @@ const CATEGORY_LABELS: Record<InsightCategory, string> = {
   summary: '파일 내용',
   structure: '시트 내용',
   formula: '계산 방식',
-  risk: '확인 필요',
+  risk: '위험 분석',
 }
 
 const SEVERITY_CONFIG: Record<
@@ -82,14 +89,35 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
                   {CATEGORY_LABELS[insight.category]}
                 </span>
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                  <ShieldCheck aria-hidden="true" size={13} />
+                  신뢰도 {Math.round(insight.confidence * 100)}%
+                </span>
               </div>
 
               <h4 className="mt-4 text-base font-extrabold text-slate-900">
                 {insight.title}
               </h4>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                {insight.description}
-              </p>
+              <div className="mt-3 rounded-xl bg-slate-50 p-3">
+                <p className="text-xs font-extrabold text-slate-500">확인된 사실</p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">{insight.fact}</p>
+              </div>
+
+              {insight.cause && (
+                <div className="mt-3 rounded-xl border border-slate-200 p-3">
+                  <p className="text-xs font-extrabold text-slate-500">확인된 원인</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {insight.cause}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-3 rounded-xl bg-amber-50/70 p-3">
+                <p className="text-xs font-extrabold text-amber-700">업무 영향</p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">
+                  {insight.impact}
+                </p>
+              </div>
 
               <div className="mt-4">
                 <p className="text-xs font-extrabold text-slate-500">

@@ -18,10 +18,21 @@ public record AiWorkbookInsights(
 
 	public record Insight(
 			String title,
-			String description,
+			String fact,
+			String cause,
+			String impact,
 			String category,
 			String severity,
 			List<String> evidence,
-			String recommendation) {
+			String recommendation,
+			Double confidence,
+			String description) {
+		public Insight(
+				String title, String fact, String cause, String impact,
+				String category, String severity, List<String> evidence,
+				String recommendation, Double confidence) {
+			this(title, fact, cause, impact, category, severity,
+					evidence, recommendation, confidence, null);
+		}
 	}
 }

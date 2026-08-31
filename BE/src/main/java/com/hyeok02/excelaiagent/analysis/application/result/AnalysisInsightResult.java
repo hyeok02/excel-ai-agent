@@ -10,7 +10,8 @@ public final class AnalysisInsightResult {
 	}
 
 	public record Insight(
-			String title, String description, String category, String severity,
-			List<String> evidence, String recommendation) {
+			String title, String fact, String cause, String impact,
+			String category, String severity, List<String> evidence,
+			String recommendation, double confidence) {
 	}
 }

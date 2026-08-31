@@ -39,8 +39,9 @@ final class AnalysisWorkbookFixture {
 		return new AiWorkbookInsights(summary(), new AiWorkbookInsights.InsightReport(
 				"수식 구조를 검토했습니다.",
 				List.of(new AiWorkbookInsights.Insight(
-						"수식 참조 확인", "Sales 시트의 수식 참조를 확인해야 합니다.",
-						"formula", "warning", List.of("Sales!D2"), "참조 범위를 검토하세요.")),
+						"수식 참조 확인", "Sales!D2는 B2:C2 합계를 계산합니다.", null,
+						"합계 결과는 B2:C2 값에 직접 영향을 받습니다.", "formula", "warning",
+						List.of("Sales!D2"), "참조 범위를 검토하세요.", 0.96)),
 				List.of("실제 셀 값은 분석하지 않았습니다.")));
 	}
 

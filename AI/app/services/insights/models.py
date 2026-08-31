@@ -8,14 +8,23 @@ from app.services.workbook_parser import WorkbookSummary
 
 class WorkbookInsight(BaseModel):
     title: str = Field(description="워크북 또는 주요 시트의 업무 내용을 나타내는 짧은 제목")
-    description: str = Field(
+    fact: str = Field(
         description="대상, 기준 시점, 실제 수치와 비교를 포함한 의사결정용 사실"
     )
+    cause: str | None = Field(
+        default=None, description="근거로 직접 확인된 원인. 확인할 수 없으면 null"
+    )
+    impact: str = Field(description="확인된 사실이 업무 판단이나 검토 범위에 미치는 영향")
     category: Literal["summary", "structure", "formula", "risk"]
     severity: Literal["info", "warning", "critical"]
     evidence: list[str] = Field(min_length=1)
     recommendation: str | None = Field(
         default=None, description="확인된 위험에 대한 구체적 조치. 일반론이면 null"
+    )
+    confidence: float = Field(
+        ge=0,
+        le=1,
+        description="제시한 사실과 영향이 제공된 근거로 뒷받침되는 정도",
     )
 
 

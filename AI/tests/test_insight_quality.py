@@ -8,10 +8,13 @@ def _generic_report() -> WorkbookInsightReport:
         insights=[
             WorkbookInsight(
                 title="시트 내용",
-                description="이 시트에는 직원 수 관련 항목이 포함되어 있습니다.",
+                fact="이 시트에는 직원 수 관련 항목이 포함되어 있습니다.",
+                cause=None,
+                impact="직원 수 관련 지표를 확인할 수 있습니다.",
                 category="structure",
                 severity="info",
                 evidence=["인력 시트"],
+                confidence=0.5,
             )
         ],
     )
@@ -61,10 +64,13 @@ def test_keeps_concrete_llm_report() -> None:
         insights=[
             WorkbookInsight(
                 title="직원 수 감소",
-                description="2023년 대비 2025년 직원 수가 684명 감소했습니다.",
+                fact="2023년 대비 2025년 직원 수가 684명 감소했습니다.",
+                cause=None,
+                impact="최신 인력 규모가 이전보다 작습니다.",
                 category="summary",
                 severity="info",
                 evidence=["인력!E108:L115"],
+                confidence=0.98,
             )
         ],
     )

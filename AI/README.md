@@ -32,12 +32,18 @@ The service runs at `http://localhost:8000`.
   `POST /api/v1/workbooks/summary`
 - LLM-based structured workbook insights:
   `POST /api/v1/workbooks/insights`
+  - each insight returns fact, verified cause or null, business impact,
+    recommendation, source evidence, and confidence
 - Registered Agent Tool metadata: `GET /api/v1/agent/tools`
 - Structured Agent execution plan from a user intent and workbook:
   `POST /api/v1/agent/plans`
   - multipart fields: `intent`, `file`
   - returns the objective, user value, expected deliverable, evidence requirements,
     success criteria, and ordered Tool steps without executing them
+- Execute a structured plan and return per-step success, failure, skipped state,
+  Tool output, and source evidence: `POST /api/v1/agent/executions`
+- Generate fact, verified cause, impact, recommendation, evidence, and confidence
+  from an Agent execution: `POST /api/v1/agent/insights`
 - Swagger UI: `GET /docs`
 
 ## Test
