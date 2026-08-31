@@ -9,6 +9,13 @@ import type {
   CompletedAnalysis,
 } from '@/api/analysis/jobTypes'
 import type { WorkbookQuestionAnswer } from '@/api/analysis/questionTypes'
+export {
+  approveWorkbookWriteback,
+  downloadWorkbookWriteback,
+  getWorkbookWritebacks,
+  proposeWorkbookWriteback,
+  rejectWorkbookWriteback,
+} from '@/api/analysis/writebackApi'
 import apiClient from '@/utils/apiClient'
 
 export * from '@/api/analysis/dependencyTypes'
@@ -18,6 +25,7 @@ export * from '@/api/analysis/jobTypes'
 export * from '@/api/analysis/questionTypes'
 export * from '@/api/analysis/semanticTypes'
 export * from '@/api/analysis/workbookTypes'
+export * from '@/api/analysis/writebackTypes'
 
 export const submitAnalysis = async (
   file: File,

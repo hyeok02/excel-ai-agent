@@ -7,6 +7,7 @@ import DependencyMapSection from '@/components/analysis/result/DependencyMapSect
 import FormulaRiskSection from '@/components/analysis/result/formula-risk/FormulaRiskSection'
 import InsightReportSection from '@/components/analysis/result/InsightReportSection'
 import WorkbookQuestionSection from '@/components/analysis/result/questions/WorkbookQuestionSection'
+import WorkbookWritebackSection from '@/components/analysis/result/writeback/WorkbookWritebackSection'
 import WorkbookExplorer from '@/components/analysis/workbook/explorer/WorkbookExplorer'
 import WorkbookSemanticOverview from '@/components/analysis/workbook/semantic/summaries/WorkbookSemanticOverview'
 
@@ -91,6 +92,8 @@ const AnalysisResultSection = ({ mode, result }: AnalysisResultSectionProps) => 
       )}
 
       <WorkbookQuestionSection analysisId={result.analysisId} />
+
+      <WorkbookWritebackSection analysisId={result.analysisId} />
 
       <WorkbookSemanticOverview
         excludedSheets={workbook.excludedSheets ?? []}

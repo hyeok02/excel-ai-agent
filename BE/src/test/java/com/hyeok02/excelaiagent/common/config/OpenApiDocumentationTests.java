@@ -31,7 +31,10 @@ class OpenApiDocumentationTests {
 				.andExpect(jsonPath("$.paths['/api/v1/analyses']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}/result']").exists())
-				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}/questions']").exists());
+				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}/questions']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}/writebacks']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}/writebacks/{writebackId}/approve']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/analyses/{analysisId}/writebacks/{writebackId}/download']").exists());
 	}
 
 	@Test

@@ -12,6 +12,10 @@ public interface AnalysisFileStorage {
 
 	Resource load(UUID analysisId, String extension);
 
+	void storeWriteback(UUID analysisId, UUID writebackId, String extension, byte[] content);
+
+	Resource loadWriteback(UUID analysisId, UUID writebackId, String extension);
+
 	void delete(UUID analysisId);
 
 	int deleteOlderThan(Instant cutoff);
