@@ -13,6 +13,7 @@ import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceExceptio
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
+import com.hyeok02.excelaiagent.integration.ai.NamedResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -58,7 +59,8 @@ public class AnalysisJobProcessor {
 			analysisJobRepository.saveAndFlush(analysisJob);
 
 			Resource file = analysisFileStorage.load(analysisId, analysisJob.getFileExtension());
-			AiWorkbookInsights workbookAnalysis = analyzeWorkbook(file, analysisJob.getMode(), depth);
+			Resource namedFile = new NamedResource(file, analysisJob.getOriginalFilename());
+			AiWorkbookInsights workbookAnalysis = analyzeWorkbook(namedFile, analysisJob.getMode(), depth);
 			AnalysisResult analysisResult = AnalysisResult.completed(
 					analysisId,
 					serializeResult(workbookAnalysis),
@@ -72,7 +74,10 @@ public class AnalysisJobProcessor {
 		}
 	}
 
-	private AiWorkbookInsights analyzeWorkbook(Resource file, AnalysisMode mode, AnalysisDepth depth) {
+	private AiWorkbookInsights analyzeWorkbook(
+			Resource file,
+			AnalysisMode mode,
+			AnalysisDepth depth) {
 		if (mode == AnalysisMode.LLM) {
 			return aiServiceClient.generateWorkbookInsights(file, depth);
 		}

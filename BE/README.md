@@ -55,5 +55,9 @@ curl http://localhost:8080/actuator/health
 - XLSX/XLSM 업로드를 위한 50MB multipart 제한
 - 공통 검증/업로드 오류 응답
 - Python AI 서비스 연결용 환경 설정
+- 비동기 Excel 분석 작업, 결과 이력 및 원본 파일 보관
+- `POST /api/v1/analyses/{analysisId}/questions` 단일 Excel 근거 기반 Q&A
+  - 요청: `{ "question": "자연어 질문" }`
+  - 응답: 답변, 신뢰도, 선택된 Agent Tool, 원본 시트·셀 근거, 분석 한계
 
-파일 업로드, 분석 Job, 결과 이력, 저장소, Python 호출은 다음 단계에서 구현합니다.
+Q&A는 기존 분석 ID에 보관된 원본 Excel을 다시 사용하므로 파일을 재업로드하지 않습니다.

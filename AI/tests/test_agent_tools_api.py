@@ -14,6 +14,7 @@ def test_lists_registered_agent_tools_for_future_planner() -> None:
 
     assert response.status_code == 200
     assert [tool["name"] for tool in response.json()] == [
+        "search_workbook_data",
         "inspect_semantic_structure",
         "trace_formula_dependencies",
         "detect_circular_references",
@@ -67,7 +68,7 @@ def test_creates_structured_agent_plan_without_executing_tools() -> None:
     assert response.status_code == 200
     assert planner.intent == "깨진 수식이 있는지 알려줘"
     assert planner.filename == "sales.xlsx"
-    assert len(planner.tool_names) == 4
+    assert len(planner.tool_names) == 5
     assert response.json()["steps"][0]["tool_name"] == "assess_formula_risks"
     assert "원본 탐색 전에" in response.json()["user_value"]
 

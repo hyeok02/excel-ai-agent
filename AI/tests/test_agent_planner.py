@@ -68,6 +68,7 @@ def test_planning_context_exposes_only_registered_tools_and_workbook_overview() 
 
     assert context["workbook"]["filename"] == "finance.xlsx"
     assert [tool["name"] for tool in context["available_tools"]] == [
+        "search_workbook_data",
         "inspect_semantic_structure",
         "trace_formula_dependencies",
         "detect_circular_references",

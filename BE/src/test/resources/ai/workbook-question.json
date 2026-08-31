@@ -1,0 +1,19 @@
+{
+  "question": "노트북의 1월 값은 얼마야?",
+  "answer": "노트북의 1월 값은 10입니다.",
+  "status": "answered",
+  "confidence": 0.94,
+  "selected_tools": ["search_workbook_data"],
+  "evidence": [
+    {
+      "kind": "cell",
+      "sheet_name": "매출현황",
+      "reference": "B2",
+      "description": "질문과 관련해 원본 Excel에서 조회한 셀",
+      "value": 10,
+      "formula": null,
+      "label": "10"
+    }
+  ],
+  "limitations": []
+}
