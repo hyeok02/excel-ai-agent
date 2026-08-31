@@ -31,11 +31,14 @@ def test_returns_structured_workbook_insights() -> None:
         "insights": [
             {
                 "title": "수식 검토 필요",
-                "description": "매출현황 시트에 합계 수식이 있습니다.",
+                "fact": "매출현황 시트에 합계 수식이 있습니다.",
+                "cause": None,
+                "impact": "합계 값은 B열과 C열 참조 범위에 의존합니다.",
                 "category": "formula",
                 "severity": "info",
                 "evidence": ["매출현황!D2 = SUM(B2:C2)"],
                 "recommendation": "합계 범위를 확인하세요.",
+                "confidence": 0.95,
             }
         ],
         "limitations": ["실제 셀 값의 의미는 분석하지 않았습니다."],

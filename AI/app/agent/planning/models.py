@@ -1,9 +1,15 @@
+from enum import StrEnum
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field, model_validator
 
 from app.agent.contracts import AgentToolMetadata
 from app.services.workbook_parsing.models import WorkbookSummary
+
+
+class StepFailurePolicy(StrEnum):
+    STOP = "stop"
+    CONTINUE = "continue"
 
 
 class AgentPlanStep(BaseModel):
@@ -22,6 +28,7 @@ class AgentPlanStep(BaseModel):
     )
     evidence_required: list[str] = Field(min_length=1, max_length=5)
     depends_on: list[str] = Field(default_factory=list, max_length=7)
+    on_failure: StepFailurePolicy = StepFailurePolicy.STOP
 
 
 class AgentExecutionPlan(BaseModel):
