@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
@@ -38,6 +39,31 @@ class WorkbookInsightReport(BaseModel):
         description="현재 상태, 기간 변화, 구성, 거래와 위험에 관한 구체적 사실",
     )
     limitations: list[str] = Field(default_factory=list)
+
+
+class InsightValidationStatus(StrEnum):
+    VERIFIED = "verified"
+    LIMITED = "limited"
+
+
+class ValidatedWorkbookInsight(WorkbookInsight):
+    validation_status: InsightValidationStatus
+    validation_reasons: list[str] = Field(default_factory=list)
+
+
+class InsightValidationSummary(BaseModel):
+    generated_count: int = Field(ge=0)
+    verified_count: int = Field(ge=0)
+    limited_count: int = Field(ge=0)
+    blocked_count: int = Field(ge=0)
+    notices: list[str] = Field(default_factory=list)
+
+
+class ValidatedWorkbookInsightReport(BaseModel):
+    overview: str
+    insights: list[ValidatedWorkbookInsight]
+    limitations: list[str] = Field(default_factory=list)
+    validation: InsightValidationSummary
 
 
 class InsightConfigurationError(RuntimeError):

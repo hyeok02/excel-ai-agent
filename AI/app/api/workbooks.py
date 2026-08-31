@@ -7,7 +7,7 @@ from app.api.workbook_models import (
     WorkbookInsightsResponse,
     WorkbookSummaryResponse,
 )
-from app.services.analysis_strategy import AnalysisDepth
+from app.services.analysis_strategy import AnalysisDepth, select_analysis_profile
 from app.services.insight_generator import (
     InsightConfigurationError,
     InsightGenerationError,
@@ -15,6 +15,8 @@ from app.services.insight_generator import (
     LangChainInsightGenerator,
 )
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
+from app.services.insights.context import build_workbook_context
+from app.services.insights.validator import validate_workbook_insights
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
@@ -75,9 +77,13 @@ async def generate_workbook_insights(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exception),
         ) from exception
+    profile = select_analysis_profile(summary, depth)
+    validated_report = validate_workbook_insights(
+        report, build_workbook_context(summary, profile)
+    )
     return WorkbookInsightsResponse(
         workbook=WorkbookSummaryResponse.model_validate(summary),
-        report=report,
+        report=validated_report,
     )
 
 

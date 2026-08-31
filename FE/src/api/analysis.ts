@@ -1,3 +1,4 @@
+import { normalizeInsightReport } from '@/api/analysis/insightTypes'
 import type {
   AnalysisDepth,
   AnalysisDetails,
@@ -34,7 +35,10 @@ export const getAnalysisResult = async (analysisId: string) => {
   const { data } = await apiClient.get<AnalysisResultDetails>(
     `/api/v1/analyses/${analysisId}/result`,
   )
-  return data
+  return {
+    ...data,
+    insightReport: normalizeInsightReport(data.insightReport),
+  }
 }
 
 export const getAnalysisDetails = async (analysisId: string) => {

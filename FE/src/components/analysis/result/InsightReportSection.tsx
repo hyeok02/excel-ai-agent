@@ -1,49 +1,10 @@
-import {
-  AlertTriangle,
-  CircleAlert,
-  Info,
-  Lightbulb,
-  ShieldCheck,
-  Sparkles,
-} from 'lucide-react'
+import { AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react'
 
-import type {
-  InsightCategory,
-  InsightReportResult,
-  InsightSeverity,
-} from '@/api/analysis'
-import { cn } from '@/utils/cn'
+import type { InsightReportResult } from '@/api/analysis'
+import InsightCard from '@/components/analysis/result/InsightCard'
 
 interface InsightReportSectionProps {
   report: InsightReportResult
-}
-
-const CATEGORY_LABELS: Record<InsightCategory, string> = {
-  summary: '파일 내용',
-  structure: '시트 내용',
-  formula: '계산 방식',
-  risk: '위험 분석',
-}
-
-const SEVERITY_CONFIG: Record<
-  InsightSeverity,
-  { label: string; className: string; icon: typeof Info }
-> = {
-  info: {
-    label: '현황',
-    className: 'bg-brand-50 text-brand-700',
-    icon: Info,
-  },
-  warning: {
-    label: '확인 필요',
-    className: 'bg-amber-50 text-amber-700',
-    icon: AlertTriangle,
-  },
-  critical: {
-    label: '우선 검토',
-    className: 'bg-red-50 text-red-700',
-    icon: CircleAlert,
-  },
 }
 
 const InsightReportSection = ({ report }: InsightReportSectionProps) => {
@@ -62,95 +23,40 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
         <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
           {report.overview}
         </p>
+        {report.hasIncompleteData && (
+          <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+            <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0" size={16} />
+            <p>
+              일부 상세 내용이 저장되지 않았습니다. AI와 백엔드 서비스를 최신 코드로
+              재시작한 뒤 같은 파일을 다시 분석해 주세요.
+            </p>
+          </div>
+        )}
       </div>
 
+      {report.validation && (
+        <div className="grid gap-3 border-b border-brand-100/70 p-5 sm:grid-cols-3 md:p-6">
+          <ValidationMetric label="검증 통과" value={report.validation.verifiedCount} />
+          <ValidationMetric label="근거 확인 필요" value={report.validation.limitedCount} />
+          <ValidationMetric label="내용 누락 제외" value={report.validation.blockedCount} />
+        </div>
+      )}
+
       <div className="grid gap-3 p-5 md:p-6 lg:grid-cols-2">
-        {report.insights.map((insight, index) => {
-          const severity = SEVERITY_CONFIG[insight.severity]
-          const SeverityIcon = severity.icon
-
-          return (
-            <article
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-              key={`${insight.title}-${index}`}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {insight.severity !== 'info' && (
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold',
-                      severity.className,
-                    )}
-                  >
-                    <SeverityIcon aria-hidden="true" size={13} />
-                    {severity.label}
-                  </span>
-                )}
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
-                  {CATEGORY_LABELS[insight.category]}
-                </span>
-                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                  <ShieldCheck aria-hidden="true" size={13} />
-                  신뢰도 {Math.round(insight.confidence * 100)}%
-                </span>
-              </div>
-
-              <h4 className="mt-4 text-base font-extrabold text-slate-900">
-                {insight.title}
-              </h4>
-              <div className="mt-3 rounded-xl bg-slate-50 p-3">
-                <p className="text-xs font-extrabold text-slate-500">확인된 사실</p>
-                <p className="mt-1 text-sm leading-6 text-slate-700">{insight.fact}</p>
-              </div>
-
-              {insight.cause && (
-                <div className="mt-3 rounded-xl border border-slate-200 p-3">
-                  <p className="text-xs font-extrabold text-slate-500">확인된 원인</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">
-                    {insight.cause}
-                  </p>
-                </div>
-              )}
-
-              <div className="mt-3 rounded-xl bg-amber-50/70 p-3">
-                <p className="text-xs font-extrabold text-amber-700">업무 영향</p>
-                <p className="mt-1 text-sm leading-6 text-slate-700">
-                  {insight.impact}
-                </p>
-              </div>
-
-              <div className="mt-4">
-                <p className="text-xs font-extrabold text-slate-500">
-                  내용을 확인한 위치
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {insight.evidence.map((evidence, evidenceIndex) => (
-                    <li
-                      className="break-words rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600"
-                      key={`${evidence}-${evidenceIndex}`}
-                    >
-                      {evidence}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {insight.recommendation && (
-                <div className="mt-4 flex items-start gap-2 rounded-xl bg-brand-50/70 p-3 text-sm leading-6 text-slate-700">
-                  <Lightbulb
-                    aria-hidden="true"
-                    className="mt-1 shrink-0 text-brand-600"
-                    size={15}
-                  />
-                  <p>
-                    <strong className="mr-1 text-xs text-brand-700">권고</strong>
-                    {insight.recommendation}
-                  </p>
-                </div>
-              )}
-            </article>
-          )
-        })}
+        {report.insights.map((insight, index) => (
+          <InsightCard insight={insight} key={`${insight.title}-${index}`} />
+        ))}
+        {report.insights.length === 0 && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 lg:col-span-2">
+            <p className="text-sm font-extrabold text-amber-900">
+              근거 검증을 통과한 인사이트가 없습니다
+            </p>
+            <p className="mt-1 text-sm leading-6 text-amber-800">
+              근거가 확인되지 않은 주장은 표시하지 않았습니다. 아래 분석 한계와 원본
+              위치를 확인해 주세요.
+            </p>
+          </div>
+        )}
       </div>
 
       {report.limitations.length > 0 && (
@@ -169,5 +75,15 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
     </section>
   )
 }
+
+const ValidationMetric = ({ label, value }: { label: string; value: number }) => (
+  <div className="rounded-xl bg-white/80 px-4 py-3 text-sm shadow-sm">
+    <p className="text-xs font-bold text-slate-500">{label}</p>
+    <p className="mt-1 flex items-center gap-1.5 text-lg font-extrabold text-slate-900">
+      <ShieldCheck aria-hidden="true" className="text-brand-600" size={16} />
+      {value}건
+    </p>
+  </div>
+)
 
 export default InsightReportSection
