@@ -8,6 +8,8 @@ import com.hyeok02.excelaiagent.BackendApplication;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
+import com.hyeok02.excelaiagent.integration.ai.AiWritebackClient;
+import com.hyeok02.excelaiagent.writeback.domain.WorkbookWritebackRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,12 +28,15 @@ abstract class AnalysisControllerTestSupport {
 	@Autowired protected MockMvc mockMvc;
 	@Autowired protected AnalysisJobRepository analysisJobRepository;
 	@Autowired protected AnalysisResultRepository analysisResultRepository;
+	@Autowired protected WorkbookWritebackRepository workbookWritebackRepository;
 	@MockitoBean protected AiServiceClient aiServiceClient;
+	@MockitoBean protected AiWritebackClient aiWritebackClient;
 
 	@BeforeEach
 	void prepare() {
+		workbookWritebackRepository.deleteAll();
 		analysisJobRepository.deleteAll();
-		reset(aiServiceClient);
+		reset(aiServiceClient, aiWritebackClient);
 		when(aiServiceClient.summarizeWorkbook(any(Resource.class)))
 				.thenReturn(AnalysisWorkbookFixture.summary());
 		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any()))
