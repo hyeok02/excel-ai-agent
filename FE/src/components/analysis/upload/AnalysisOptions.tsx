@@ -41,7 +41,7 @@ const AnalysisOptions = ({
           onClick={() => onModeChange('BFS')}
           type="button"
         >
-          BFS 군집화
+          수식 관계 분석
         </button>
         <button
           aria-pressed={mode === 'LLM'}
@@ -55,7 +55,7 @@ const AnalysisOptions = ({
           onClick={() => onModeChange('LLM')}
           type="button"
         >
-          LLM 직접 분석
+          AI 정밀 분석
         </button>
       </div>
     </fieldset>
@@ -65,7 +65,7 @@ const AnalysisOptions = ({
         'ml-auto flex items-center gap-3 pl-4 transition-opacity',
         mode !== 'LLM' && 'opacity-40',
       )}
-      title={mode === 'LLM' ? undefined : 'LLM 직접 분석에서 사용할 수 있어요.'}
+      title={mode === 'LLM' ? undefined : 'AI 정밀 분석에서 사용할 수 있어요.'}
     >
       <legend className="sr-only">분석 깊이</legend>
       <div className="shrink-0">

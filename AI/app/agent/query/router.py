@@ -3,6 +3,7 @@ from app.agent.planning.models import (
     AgentPlanStep,
     StepFailurePolicy,
 )
+from app.agent.query.workbook_summary_rows import is_workbook_summary_question
 
 STRUCTURE_WORDS = ("시트", "구조", "영역", "입력", "출력", "설명", "중요")
 DEPENDENCY_WORDS = ("수식", "계산", "참조", "영향", "연결")
@@ -15,7 +16,7 @@ def build_question_plan(question: str) -> AgentExecutionPlan:
     selections: list[tuple[str, str, dict[str, object]]] = [
         ("원본 데이터 검색", "search_workbook_data", {"query": question, "row_limit": 24})
     ]
-    if _contains(normalized, STRUCTURE_WORDS):
+    if _contains(normalized, STRUCTURE_WORDS) or is_workbook_summary_question(question):
         selections.append(("시트 의미 구조 확인", "inspect_semantic_structure", {}))
     if _contains(normalized, DEPENDENCY_WORDS):
         selections.append(("수식 참조 관계 추적", "trace_formula_dependencies", {"cluster_limit": 8}))

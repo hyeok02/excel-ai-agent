@@ -6,6 +6,7 @@ def report(
     evidence: str = "Sales!A1:B2",
     fact: str = "Sales 값은 100에서 80으로 20 감소했습니다.",
     cause: str | None = None,
+    impact: str = "최신 값 80을 기준으로 판단해야 합니다.",
 ) -> WorkbookInsightReport:
     return WorkbookInsightReport(
         overview="Sales 변화 요약",
@@ -14,7 +15,7 @@ def report(
                 title="매출 변화",
                 fact=fact,
                 cause=cause,
-                impact="최신 값 80을 기준으로 판단해야 합니다.",
+                impact=impact,
                 category="summary",
                 severity="info",
                 evidence=[evidence],
@@ -80,6 +81,36 @@ def test_keeps_unmatched_numeric_claim_for_user_review() -> None:
 
     assert result.validation.limited_count == 1
     assert result.insights[0].fact.endswith("999로 변경됐습니다.")
+    assert result.insights[0].confidence == 0.8
+
+
+def test_verifies_dates_and_rounded_change_rate_numerically() -> None:
+    trend_context = context()
+    trend_context["sheets"][0]["business_facts"]["numeric_changes"] = [
+        {
+            "earliest_period": "2023-09-30",
+            "earliest_value": 6101,
+            "latest_period": "2025-06-30",
+            "latest_value": 5417,
+            "change": -684,
+            "change_rate_percent": -11.21,
+            "evidence": ["Sales!A1:B2"],
+        }
+    ]
+    result = validate_workbook_insights(
+        report(
+            fact=(
+                "2023년 9월 6,101명에서 2025년 6월 5,417명으로 "
+                "684명, 11.2% 감소했습니다."
+            ),
+            impact="최신 값 5,417명을 기준으로 판단해야 합니다.",
+        ),
+        trend_context,
+    )
+
+    insight = result.insights[0]
+    assert insight.validation_status == "verified"
+    assert insight.confidence == 0.95
 
 
 def test_blocks_only_insight_without_required_content() -> None:
@@ -97,4 +128,4 @@ def test_removes_cause_without_direct_formula_or_metadata_evidence() -> None:
     insight = result.insights[0]
     assert insight.cause is None
     assert insight.validation_status == "limited"
-    assert insight.confidence == 0.79
+    assert insight.confidence == 0.85

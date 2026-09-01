@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from langchain_openai import ChatOpenAI
 from app.agent.query.models import QuestionAnswerDraft
 from app.agent.query.prompts import SYSTEM_PROMPT, build_question_prompt
 from app.services.insights.models import InsightConfigurationError, InsightGenerationError
+
+logger = logging.getLogger(__name__)
 
 
 class LangChainQuestionAnswerGenerator:
@@ -30,7 +33,9 @@ class LangChainQuestionAnswerGenerator:
             raise InsightConfigurationError(
                 "OPENAI_TIMEOUT_SECONDS는 숫자여야 합니다."
             ) from exception
-        return cls(api_key, os.getenv("OPENAI_QA_MODEL", "gpt-4.1-mini"), timeout)
+        return cls(
+            api_key, os.getenv("OPENAI_QA_MODEL", "gpt-4.1-2025-04-14"), timeout
+        )
 
     def _build_model(self):
         return ChatOpenAI(
@@ -53,4 +58,5 @@ class LangChainQuestionAnswerGenerator:
             )
             return QuestionAnswerDraft.model_validate(result)
         except Exception as exception:
+            logger.exception("Excel Q&A 모델 응답 생성 실패")
             raise InsightGenerationError("Excel 질문에 대한 답변을 생성하지 못했습니다.") from exception

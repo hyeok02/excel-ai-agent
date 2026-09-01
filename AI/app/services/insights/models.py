@@ -15,7 +15,10 @@ class WorkbookInsight(BaseModel):
     cause: str | None = Field(
         default=None, description="근거로 직접 확인된 원인. 확인할 수 없으면 null"
     )
-    impact: str = Field(description="확인된 사실이 업무 판단이나 검토 범위에 미치는 영향")
+    impact: str | None = Field(
+        default=None,
+        description="근거에서 직접 이어지는 짧은 검토 포인트. 확인할 수 없으면 null",
+    )
     category: Literal["summary", "structure", "formula", "risk"]
     severity: Literal["info", "warning", "critical"]
     evidence: list[str] = Field(min_length=1)

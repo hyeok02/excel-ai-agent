@@ -14,7 +14,7 @@ export interface InsightResult {
   title: string
   fact: string
   cause: string | null
-  impact: string
+  impact: string | null
   category: InsightCategory
   severity: InsightSeverity
   evidence: string[]
@@ -79,7 +79,7 @@ const normalizeValidation = (value: unknown): InsightValidationSummary | null =>
 const normalizeInsight = (value: unknown, index: number): InsightResult => {
   const insight = isRecord(value) ? value : {}
   const fact = readText(insight.fact) ?? readText(insight.description) ?? ''
-  const impact = readText(insight.impact) ?? ''
+  const impact = readText(insight.impact)
 
   return {
     title: readText(insight.title) ?? `인사이트 ${index + 1}`,
@@ -91,7 +91,7 @@ const normalizeInsight = (value: unknown, index: number): InsightResult => {
     evidence: readTextList(insight.evidence),
     recommendation: readText(insight.recommendation),
     confidence: readConfidence(insight.confidence),
-    isIncomplete: !fact || !impact,
+    isIncomplete: !fact || readTextList(insight.evidence).length === 0,
     validationStatus: readValidationStatus(insight.validationStatus),
     validationReasons: readTextList(insight.validationReasons),
   }

@@ -21,9 +21,7 @@ final class InsightResultMapper {
 
 	private static AnalysisInsightResult.Insight mapInsight(AiWorkbookInsights.Insight insight) {
 		String fact = hasText(insight.fact()) ? insight.fact() : insight.description();
-		String impact = hasText(insight.impact())
-				? insight.impact()
-				: "과거 분석 결과에는 영향 정보가 제공되지 않았습니다.";
+		String impact = hasText(insight.impact()) ? insight.impact() : null;
 		Double confidence = normalizeConfidence(insight.confidence());
 		return new AnalysisInsightResult.Insight(
 				insight.title(), fact, insight.cause(), impact,

@@ -27,11 +27,10 @@ const SheetTableDetails = ({ tables, sheetName }: SheetTableDetailsProps) => {
       </div>
 
       <div className="mt-3 space-y-3">
-        {tables.map((table, index) => (
+        {tables.map((table) => (
           <details
             className="rounded-xl bg-slate-50/80"
             key={`${table.name}-${table.reference}`}
-            open={index === 0}
           >
             <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 marker:hidden">
               <div>

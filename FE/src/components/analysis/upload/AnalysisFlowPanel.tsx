@@ -61,9 +61,7 @@ const AnalysisFlowPanel = ({
     <article className="panel flex h-full flex-col overflow-hidden p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-slate-400">
-            ANALYSIS FLOW
-          </p>
+          <p className="text-xs font-bold tracking-[0.12em] text-slate-400">분석 단계</p>
           <h2 className="mt-2 text-base font-extrabold text-slate-950">분석 진행 과정</h2>
         </div>
         <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-extrabold text-brand-700">

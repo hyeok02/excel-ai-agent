@@ -1,6 +1,6 @@
 import { Lightbulb } from 'lucide-react'
 
-import type { InsightResult } from '@/api/analysis'
+import type { InsightResult } from '@/api/analysis/insightTypes'
 import { cn } from '@/utils/cn'
 
 const InsightCardBody = ({ insight }: { insight: InsightResult }) => (
@@ -10,11 +10,7 @@ const InsightCardBody = ({ insight }: { insight: InsightResult }) => (
       text={insight.fact || '확인된 사실의 상세 내용이 저장되지 않았습니다.'}
     />
     {insight.cause && <Detail bordered label="확인된 원인" text={insight.cause} />}
-    <Detail
-      impact
-      label="업무 영향"
-      text={insight.impact || '업무 영향의 상세 내용이 저장되지 않았습니다.'}
-    />
+    {insight.impact && <Detail impact label="검토 포인트" text={insight.impact} />}
     <div className="mt-4">
       <p className="text-xs font-extrabold text-slate-500">내용을 확인한 위치</p>
       <ul className="mt-2 space-y-1.5">

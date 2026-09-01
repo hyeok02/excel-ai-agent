@@ -40,7 +40,7 @@ const RegionSemanticSummary = ({ region }: RegionSemanticSummaryProps) => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-extrabold tracking-[0.14em] text-slate-400">
-            REGION SEMANTICS
+            영역 의미 분석
           </p>
           <p className="mt-1 text-xs font-semibold leading-5 text-slate-700">
             {presentation.description}

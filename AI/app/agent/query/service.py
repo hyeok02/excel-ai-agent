@@ -1,5 +1,6 @@
 from app.agent.contracts import AgentToolContext
 from app.agent.execution import AgentExecution, AgentStepStatus, AgentToolExecutor
+from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
 from app.agent.query.models import (
     QuestionAnswer,
@@ -8,8 +9,11 @@ from app.agent.query.models import (
     QuestionAnswerGenerator,
     QuestionAnswerStatus,
 )
+from app.agent.query.numeric_support import supported_answer_numbers
+from app.agent.query.question_validation import unclear_draft_answer, vague_question_answer
 from app.agent.query.router import build_question_plan
 from app.agent.registry import AgentToolRegistry
+from app.services.insights.numeric_validation import unmatched_numbers
 from app.services.workbook_parsing.models import WorkbookSummary
 
 
@@ -27,34 +31,18 @@ class WorkbookQuestionService:
     async def answer(
         self, question: str, summary: WorkbookSummary, data_index: WorkbookDataIndex
     ) -> QuestionAnswer:
+        if clarification := vague_question_answer(question):
+            return clarification
         plan = build_question_plan(question)
         execution = self._executor.execute(
             plan, AgentToolContext(summary, data_index), self._registry
         )
         draft = await self._generator.generate(
-            question, summary.filename, _execution_context(execution)
+            question, summary.filename, execution_context(execution)
         )
+        if clarification := unclear_draft_answer(question, draft):
+            return clarification
         return _validate_answer(question, draft, execution, data_index.truncated)
-
-
-def _execution_context(execution: AgentExecution) -> dict[str, object]:
-    return {
-        "status": execution.status,
-        "summary": execution.summary,
-        "steps": [
-            {
-                "tool_name": step.tool_name,
-                "status": step.status,
-                "summary": step.result.summary if step.result else None,
-                "data": step.result.data if step.result else None,
-                "evidence": [item.model_dump(mode="json") for item in step.result.evidence]
-                if step.result
-                else [],
-            }
-            for step in execution.steps
-        ],
-    }
-
 
 def _validate_answer(
     question: str,
@@ -84,12 +72,26 @@ def _validate_answer(
             evidence=[],
             limitations=_unique(limitations or ["질문과 직접 연결되는 셀 근거가 없습니다."]),
         )
-    limited = bool(unknown or failed or index_truncated)
+    supported = supported_answer_numbers(question, matched, execution)
+    unsupported_numbers = unmatched_numbers(draft.answer, supported)
+    if unsupported_numbers:
+        limitations.append("답변의 일부 수치를 인용한 셀에서 확인하지 못했습니다.")
+        return QuestionAnswer(
+            question=question,
+            answer="답변의 수치를 원본 셀과 대조하지 못해 결과를 표시하지 않았습니다.",
+            status=QuestionAnswerStatus.INSUFFICIENT_EVIDENCE,
+            confidence=0,
+            selected_tools=[step.tool_name for step in execution.steps],
+            evidence=[_present(item) for item in matched],
+            limitations=_unique(limitations),
+        )
+    verification_limited = bool(unknown or failed)
+    limited = bool(verification_limited or index_truncated)
     return QuestionAnswer(
         question=question,
         answer=draft.answer,
         status=QuestionAnswerStatus.LIMITED if limited else QuestionAnswerStatus.ANSWERED,
-        confidence=min(draft.confidence, 0.7) if limited else draft.confidence,
+        confidence=min(draft.confidence, 0.7) if verification_limited else draft.confidence,
         selected_tools=[step.tool_name for step in execution.steps],
         evidence=[_present(item) for item in matched],
         limitations=_unique(limitations),
@@ -103,8 +105,15 @@ def _available_evidence(execution: AgentExecution) -> dict[str, object]:
             continue
         for item in step.result.evidence:
             if item.reference:
-                available[_normalize_reference(f"{item.sheet_name}!{item.reference}")] = item
+                key = _normalize_reference(f"{item.sheet_name}!{item.reference}")
+                current = available.get(key)
+                if current is None or _evidence_quality(item) > _evidence_quality(current):
+                    available[key] = item
     return available
+
+
+def _evidence_quality(item: object) -> int:
+    return 2 * int(getattr(item, "value", None) is not None) + int(bool(getattr(item, "formula", None)))
 
 
 def _normalize_reference(reference: str) -> str:

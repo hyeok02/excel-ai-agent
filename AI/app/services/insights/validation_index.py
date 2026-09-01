@@ -1,9 +1,12 @@
 import json
 import re
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 
 from app.agent.execution.models import AgentExecution, AgentStepStatus
+from app.services.insights.numeric_validation import numbers
+from app.services.insights.reference_values import index_reference_numbers
 from app.services.provenance import EvidenceKind
 
 REFERENCE_PATTERN = re.compile(
@@ -11,19 +14,18 @@ REFERENCE_PATTERN = re.compile(
     r"(?::\$?([A-Z]{1,3})\$?(\d+))?"
 )
 CELL_RANGE_PATTERN = re.compile(r"^\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?$")
-NUMBER_PATTERN = re.compile(r"(?<![\w])-?\d[\d,]*(?:\.\d+)?")
 
 
 @dataclass
 class EvidenceIndex:
     references: set[str] = field(default_factory=set)
     cause_references: set[str] = field(default_factory=set)
-    numbers: set[str] = field(default_factory=set)
+    reference_numbers: dict[str, set[Decimal]] = field(default_factory=dict)
     limitations: list[str] = field(default_factory=list)
 
 
 def workbook_evidence_index(context: dict[str, object]) -> EvidenceIndex:
-    index = EvidenceIndex(numbers=numbers(json.dumps(context, ensure_ascii=False)))
+    index = EvidenceIndex()
     for sheet in context.get("sheets", []):
         _index_workbook_sheet(index, sheet)
     if int(context.get("omitted_sheet_count", 0)) > 0:
@@ -32,7 +34,7 @@ def workbook_evidence_index(context: dict[str, object]) -> EvidenceIndex:
 
 
 def agent_evidence_index(execution: AgentExecution) -> EvidenceIndex:
-    index = EvidenceIndex(numbers=numbers(execution.model_dump_json()))
+    index = EvidenceIndex()
     for step in execution.steps:
         if step.status is not AgentStepStatus.SUCCEEDED or not step.result:
             continue
@@ -44,6 +46,7 @@ def agent_evidence_index(execution: AgentExecution) -> EvidenceIndex:
             )
             if reference:
                 index.references.add(reference)
+                _add_reference_numbers(index, reference, evidence.value)
                 if evidence.kind in {EvidenceKind.FORMULA, EvidenceKind.METADATA}:
                     index.cause_references.add(reference)
     if execution.failed_step_count or execution.skipped_step_count:
@@ -57,6 +60,9 @@ def _index_workbook_sheet(index: EvidenceIndex, sheet: Any) -> None:
     sheet_name = str(sheet.get("name", ""))
     index.references.update(
         extract_references(json.dumps(sheet, ensure_ascii=False, default=str))
+    )
+    index_reference_numbers(
+        index, sheet, sheet_name, extract_references, normalize_reference
     )
     for formula in sheet.get("formula_samples", []):
         cell = formula.get("cell") if isinstance(formula, dict) else None
@@ -85,6 +91,12 @@ def _walk_items(value: Any):
             yield from _walk_items(item)
 
 
+def _add_reference_numbers(index: EvidenceIndex, reference: str, value: Any) -> None:
+    if value is None:
+        return
+    index.reference_numbers.setdefault(reference, set()).update(numbers(str(value)))
+
+
 def extract_references(value: str) -> set[str]:
     return {
         normalized
@@ -103,10 +115,3 @@ def _normalize_match(match: re.Match[str]) -> str:
     start = f"{match.group(3)}{match.group(4)}"
     end = f":{match.group(5)}{match.group(6)}" if match.group(5) else ""
     return f"{sheet}!{start}{end}".casefold()
-
-
-def numbers(value: str) -> set[str]:
-    return {
-        match.group(0).replace(",", "").lstrip("-")
-        for match in NUMBER_PATTERN.finditer(value)
-    }

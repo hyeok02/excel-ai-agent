@@ -36,7 +36,7 @@ public class AnalysisExceptionHandler {
 	public ResponseEntity<ApiError> handleAiServiceUnavailable(
 			AiServiceUnavailableException exception, HttpServletRequest request) {
 		return error(HttpStatus.SERVICE_UNAVAILABLE, "AI_SERVICE_UNAVAILABLE",
-				"AI Service에 연결할 수 없습니다.", request);
+				"AI 응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.", request);
 	}
 
 	@ExceptionHandler(AnalysisResultNotReadyException.class)

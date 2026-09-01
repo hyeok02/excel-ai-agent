@@ -14,14 +14,17 @@ client = TestClient(app)
 
 
 class StubQuestionGenerator:
-    def __init__(self, evidence: list[str] | None = None) -> None:
+    def __init__(
+        self, evidence: list[str] | None = None, answer: str = "노트북의 1월 값은 10입니다."
+    ) -> None:
         self.evidence = evidence or ["매출현황!B2"]
+        self.answer = answer
         self.context: dict[str, object] = {}
 
     async def generate(self, question, filename, execution_context) -> QuestionAnswerDraft:
         self.context = execution_context
         return QuestionAnswerDraft(
-            answer="노트북의 1월 값은 10입니다.",
+            answer=self.answer,
             evidence=self.evidence,
             confidence=0.94,
             limitations=[],
@@ -49,6 +52,7 @@ def test_answers_question_with_verified_source_cell() -> None:
     assert body["evidence"][0]["reference"] == "B2"
     assert body["evidence"][0]["value"] == 10
     assert generator.context["steps"][0]["tool_name"] == "search_workbook_data"
+    assert "rows" not in generator.context["steps"][0]["data"]
 
 
 def test_blocks_answer_when_model_cites_unknown_cell() -> None:
@@ -67,6 +71,24 @@ def test_blocks_answer_when_model_cites_unknown_cell() -> None:
     assert response.json()["status"] == "insufficient_evidence"
     assert response.json()["evidence"] == []
     assert response.json()["confidence"] == 0
+
+
+def test_blocks_answer_when_number_does_not_match_cited_cell() -> None:
+    generator = StubQuestionGenerator(answer="노트북의 1월 값은 999입니다.")
+    app.dependency_overrides[get_question_answer_generator] = lambda: generator
+    try:
+        response = client.post(
+            "/api/v1/workbooks/questions",
+            data={"question": "노트북의 1월 값은 얼마야?"},
+            files=upload("sales.xlsx", create_workbook_file()),
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "insufficient_evidence"
+    assert response.json()["confidence"] == 0
+    assert "999" not in response.json()["answer"]
 
 
 def test_data_search_tool_returns_question_related_rows_and_cells() -> None:

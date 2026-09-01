@@ -75,7 +75,7 @@ class WorkbookWritebackControllerTests extends AnalysisControllerTestSupport {
 
 	private AiWritebackProposal proposal(boolean blocked) {
 		List<AiWritebackProposal.Change> changes = blocked ? List.of() : List.of(
-				new AiWritebackProposal.Change("매출현황", "B2", 12, "정정", 10));
+				new AiWritebackProposal.Change("매출현황", "B2", 12, "정정", 10, List.of()));
 		return new AiWritebackProposal("B2 수정", blocked ? "blocked" : "ready",
 				"변경 제안", changes, blocked ? List.of("수식 셀") : List.of(), List.of());
 	}

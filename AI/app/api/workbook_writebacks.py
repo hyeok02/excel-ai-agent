@@ -40,7 +40,7 @@ async def propose_writeback(
     try:
         return await WorkbookWritebackProposalService(generator).propose(instruction, index)
     except InsightGenerationError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
+        raise HTTPException(status_code=502, detail=str(exception)) from exception
 
 
 @router.post("/writebacks/apply")

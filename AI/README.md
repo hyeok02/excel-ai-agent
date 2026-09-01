@@ -16,8 +16,9 @@ cp .env.example .env
 Set `OPENAI_API_KEY` in `AI/.env` before calling the insight, Agent Planner, or
 workbook Q&A API.
 The Planner model defaults to `gpt-4.1-mini` and can be changed with
-`OPENAI_PLANNER_MODEL`. The Q&A model can be changed with `OPENAI_QA_MODEL`, and
-the approval-based Excel update proposal model with `OPENAI_WRITEBACK_MODEL`.
+`OPENAI_PLANNER_MODEL`. Q&A and approval-based Excel update proposals default to
+the pinned `gpt-4.1-2025-04-14` snapshot and can be changed with
+`OPENAI_QA_MODEL` and `OPENAI_WRITEBACK_MODEL`.
 
 ## Run
 

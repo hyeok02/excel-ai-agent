@@ -1,6 +1,10 @@
-import { AlertTriangle, CheckCircle2, CircleAlert, Info, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CircleAlert, Info, ShieldCheck } from 'lucide-react'
 
-import type { InsightCategory, InsightResult, InsightSeverity } from '@/api/analysis'
+import type {
+  InsightCategory,
+  InsightResult,
+  InsightSeverity,
+} from '@/api/analysis/insightTypes'
 import InsightCardBody from '@/components/analysis/result/InsightCardBody'
 import { cn } from '@/utils/cn'
 
@@ -54,31 +58,26 @@ const InsightCard = ({ insight }: InsightCardProps) => {
         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
           {CATEGORY_LABELS[insight.category]}
         </span>
-        {insight.validationStatus && (
-          <span
-            className={cn(
-              'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold',
-              isVerified
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-amber-50 text-amber-700',
-            )}
-          >
-            <CheckCircle2 aria-hidden="true" size={13} />
-            {isVerified ? '근거 검증됨' : '근거 확인 필요'}
-          </span>
-        )}
         <span
           className={cn(
             'ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold',
             insight.confidence === null
               ? 'bg-slate-100 text-slate-500'
-              : 'bg-emerald-50 text-emerald-700',
+              : isVerified
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-amber-50 text-amber-700',
           )}
         >
-          <ShieldCheck aria-hidden="true" size={13} />
+          {isVerified ? (
+            <ShieldCheck aria-hidden="true" size={13} />
+          ) : (
+            <CircleAlert aria-hidden="true" size={13} />
+          )}
           {insight.confidence === null
-            ? '신뢰도 정보 없음'
-            : `신뢰도 ${Math.round(insight.confidence * 100)}%`}
+            ? '근거 정보 없음'
+            : isVerified
+              ? `근거 일치 ${Math.round(insight.confidence * 100)}%`
+              : '근거 확인 필요'}
         </span>
       </div>
 

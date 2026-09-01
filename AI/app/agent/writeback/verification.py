@@ -6,7 +6,6 @@ from openpyxl import load_workbook
 
 from app.agent.writeback.models import VerificationCheck
 
-
 def workbook_fingerprint(content: bytes, keep_vba: bool) -> dict[str, object]:
     workbook = load_workbook(BytesIO(content), data_only=False, keep_vba=keep_vba)
     try:
@@ -19,19 +18,38 @@ def workbook_fingerprint(content: bytes, keep_vba: bool) -> dict[str, object]:
     finally:
         workbook.close()
 
-
 def compare_fingerprints(before, after, changes) -> list[VerificationCheck]:
     targets = {(change.sheet_name, change.reference) for change in changes}
+    unchanged_formula_targets = {
+        target for target in targets if not _is_formula_change(changes, target)
+    }
+    formulas_preserved = all(
+        before["formulas"].get(target) == after["formulas"].get(target)
+        for target in unchanged_formula_targets
+    ) and all(
+        before["formulas"].get(target) == after["formulas"].get(target)
+        for target in set(before["formulas"]) | set(after["formulas"])
+        if target not in targets
+    )
+    formulas_applied = all(
+        after["formulas"].get((change.sheet_name, change.reference)) == change.new_value
+        for change in changes
+        if _is_formula_value(change.new_value)
+    )
     unchanged_styles = all(
-        before["styles"].get(target) == after["styles"].get(target) for target in targets
+        before["styles"].get(target, 0) == after["styles"].get(target, 0)
+        for target in targets
     )
     return [
         _check("sheet_structure", before["sheets"] == after["sheets"], "시트 구성 보존"),
-        _check("formulas", before["formulas"] == after["formulas"], "전체 수식 보존"),
+        _check(
+            "formulas",
+            formulas_preserved and formulas_applied,
+            "승인 대상 외 수식 보존 및 승인 수식 반영",
+        ),
         _check("merged_cells", before["merged"] == after["merged"], "병합 영역 보존"),
         _check("styles", unchanged_styles, "변경 셀 서식 보존"),
     ]
-
 
 def package_checks(
     before: bytes, after: bytes, changed_paths: set[str]
@@ -50,8 +68,8 @@ def package_checks(
         _check("package_structure", original_names == modified_names, "파일 구성 요소 보존"),
         _check("unchanged_parts", parts_preserved, "변경 시트 외 원본 부품 보존"),
         _check("excel_extensions", features_preserved, "유효성·확장 기능 보존"),
+        _check("recalculation", _recalculation_requested(after), "Excel 실행 시 수식 재계산"),
     ]
-
 
 def vba_digest(content: bytes) -> str | None:
     try:
@@ -61,14 +79,12 @@ def vba_digest(content: bytes) -> str | None:
     except Exception:
         return None
 
-
 def add_macro_check(checks, before: bytes, after: bytes, keep_vba: bool) -> None:
     if not keep_vba:
         checks.append(_check("macros", True, "매크로가 없는 .xlsx 파일"))
         return
     original, modified = vba_digest(before), vba_digest(after)
     checks.append(_check("macros", original == modified, "VBA 프로젝트 보존"))
-
 
 def _formulas(workbook) -> dict[tuple[str, str], str]:
     return {
@@ -79,13 +95,11 @@ def _formulas(workbook) -> dict[tuple[str, str], str]:
         if isinstance(cell.value, str) and cell.value.startswith("=")
     }
 
-
 def _merged(workbook) -> dict[str, tuple[str, ...]]:
     return {
         sheet.title: tuple(sorted(str(item) for item in sheet.merged_cells.ranges))
         for sheet in workbook.worksheets
     }
-
 
 def _styles(workbook) -> dict[tuple[str, str], int]:
     return {
@@ -93,12 +107,24 @@ def _styles(workbook) -> dict[tuple[str, str], int]:
         for sheet in workbook.worksheets
         for row in sheet.iter_rows()
         for cell in row
-        if cell.value is not None
+        if cell.value is not None or cell.has_style
     }
 
 
 def _check(name: str, passed: bool, detail: str) -> VerificationCheck:
     return VerificationCheck(name=name, passed=passed, detail=detail)
+
+
+def _is_formula_value(value: object) -> bool:
+    return isinstance(value, str) and value.lstrip().startswith("=")
+
+
+def _is_formula_change(changes, target: tuple[str, str]) -> bool:
+    return any(
+        (change.sheet_name, change.reference) == target
+        and _is_formula_value(change.new_value)
+        for change in changes
+    )
 
 
 def _features(content: bytes) -> tuple[bytes, ...]:
@@ -107,5 +133,18 @@ def _features(content: bytes) -> tuple[bytes, ...]:
         for tag in (b"dataValidations", b"conditionalFormatting", b"extLst")
         for match in __import__("re").finditer(
             rb"<" + tag + rb"\b.*?</" + tag + rb">", content, __import__("re").DOTALL
+        )
+    )
+
+
+def _recalculation_requested(content: bytes) -> bool:
+    with ZipFile(BytesIO(content)) as archive:
+        workbook = archive.read("xl/workbook.xml")
+    return all(
+        attribute in workbook
+        for attribute in (
+            b'calcMode="auto"',
+            b'fullCalcOnLoad="1"',
+            b'forceFullCalc="1"',
         )
     )

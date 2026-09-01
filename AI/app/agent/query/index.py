@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from datetime import date, datetime
 from io import BytesIO
 
 from openpyxl import load_workbook
 
+from app.agent.query.cell_values import formula_text, safe_indexed_value
 from app.services.provenance import AnalysisEvidence, EvidenceKind
 
 MAX_INDEXED_CELLS = 50_000
@@ -16,6 +16,7 @@ class IndexedCell:
     address: str
     value: str | int | float | bool | None
     formula: str | None
+    value_type: str = "text"
 
     @property
     def reference(self) -> str:
@@ -92,15 +93,16 @@ def _indexed_cells(sheet_name: str, formula_row: tuple, value_row: tuple) -> lis
         cached = value_cell.value
         if raw is None and cached is None:
             continue
-        formula = str(raw) if isinstance(raw, str) and raw.startswith("=") else None
+        formula = formula_text(raw)
         value = cached if formula else raw
-        cells.append(IndexedCell(sheet_name, formula_cell.coordinate, _safe_value(value), formula))
+        safe_value, value_type = safe_indexed_value(value, formula)
+        cells.append(
+            IndexedCell(
+                sheet_name,
+                formula_cell.coordinate,
+                safe_value,
+                formula,
+                value_type,
+            )
+        )
     return cells
-
-
-def _safe_value(value: object) -> str | int | float | bool | None:
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    if isinstance(value, (date, datetime)):
-        return value.isoformat()
-    return str(value)
