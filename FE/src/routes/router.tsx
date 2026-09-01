@@ -1,18 +1,31 @@
+import { type ReactNode, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 
 import AdminRoute from '@/components/auth/guards/AdminRoute'
 import ProtectedRoute from '@/components/auth/guards/ProtectedRoute'
 import { ROUTES } from '@/constants/navigation'
 import RootLayout from '@/layouts/RootLayout'
-import UserManagementPage from '@/pages/admin/users/UserManagementPage'
-import AnalysisPage from '@/pages/analysis/AnalysisPage'
-import AuthCallbackPage from '@/pages/auth/callback/AuthCallbackPage'
-import LoginPage from '@/pages/auth/login/LoginPage'
-import DashboardPage from '@/pages/dashboard/DashboardPage'
-import NewsCollectionPage from '@/pages/news-collection/NewsCollectionPage'
-import NotFoundPage from '@/pages/not-found/NotFoundPage'
-import PersonNewsPage from '@/pages/person-news/PersonNewsPage'
-import PublicMonitorPage from '@/pages/public-monitor/PublicMonitorPage'
+import {
+  AnalysisPage,
+  AuthCallbackPage,
+  DashboardPage,
+  LoginPage,
+  NewsCollectionPage,
+  NotFoundPage,
+  PersonNewsPage,
+  PublicMonitorPage,
+  UserManagementPage,
+} from '@/routes/LazyPages'
+
+const page = (content: ReactNode) => (
+  <Suspense
+    fallback={
+      <p className="p-6 text-sm font-semibold text-slate-500">화면 불러오는 중…</p>
+    }
+  >
+    {content}
+  </Suspense>
+)
 
 const router = createBrowserRouter([
   {
@@ -23,24 +36,20 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: ROUTES.publicMonitor.slice(1), element: <PublicMonitorPage /> },
-      { path: ROUTES.personNews.slice(1), element: <PersonNewsPage /> },
-      { path: ROUTES.newsCollection.slice(1), element: <NewsCollectionPage /> },
-      { path: ROUTES.excelAnalysis.slice(1), element: <AnalysisPage /> },
+      { index: true, element: page(<DashboardPage />) },
+      { path: ROUTES.publicMonitor.slice(1), element: page(<PublicMonitorPage />) },
+      { path: ROUTES.personNews.slice(1), element: page(<PersonNewsPage />) },
+      { path: ROUTES.newsCollection.slice(1), element: page(<NewsCollectionPage />) },
+      { path: ROUTES.excelAnalysis.slice(1), element: page(<AnalysisPage />) },
       {
         path: ROUTES.userManagement.slice(1),
-        element: (
-          <AdminRoute>
-            <UserManagementPage />
-          </AdminRoute>
-        ),
+        element: <AdminRoute>{page(<UserManagementPage />)}</AdminRoute>,
       },
-      { path: '*', element: <NotFoundPage /> },
+      { path: '*', element: page(<NotFoundPage />) },
     ],
   },
-  { path: ROUTES.login, element: <LoginPage /> },
-  { path: ROUTES.authCallback, element: <AuthCallbackPage /> },
+  { path: ROUTES.login, element: page(<LoginPage />) },
+  { path: ROUTES.authCallback, element: page(<AuthCallbackPage />) },
 ])
 
 export default router

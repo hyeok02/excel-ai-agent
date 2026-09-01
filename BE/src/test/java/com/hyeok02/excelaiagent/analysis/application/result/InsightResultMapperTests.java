@@ -3,6 +3,7 @@ package com.hyeok02.excelaiagent.analysis.application.result;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +19,7 @@ class InsightResultMapperTests {
 		AnalysisInsightResult.Insight result = InsightResultMapper.map(report).insights().getFirst();
 
 		assertThat(result.fact()).isEqualTo("기존 description 형식의 사실입니다.");
-		assertThat(result.impact()).contains("과거 분석 결과");
+		assertThat(result.impact()).isNull();
 		assertThat(result.confidence()).isNull();
 	}
 

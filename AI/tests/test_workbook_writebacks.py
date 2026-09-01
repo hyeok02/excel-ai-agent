@@ -8,12 +8,14 @@ from openpyxl import load_workbook
 from app.agent.writeback.models import WritebackChangeDraft, WritebackProposalDraft
 from app.api.workbook_writebacks import get_writeback_generator
 from app.main import app
+from app.services.insights.models import InsightGenerationError
 from tests.support.workbook_api_fixtures import create_workbook_file, upload
 
 
 class StubWritebackGenerator:
-    def __init__(self, reference: str = "B2") -> None:
+    def __init__(self, reference: str = "B2", new_value=12) -> None:
         self.reference = reference
+        self.new_value = new_value
 
     async def generate(self, instruction, filename, context):
         return WritebackProposalDraft(
@@ -22,7 +24,7 @@ class StubWritebackGenerator:
                 WritebackChangeDraft(
                     sheet_name="매출현황",
                     reference=self.reference,
-                    new_value=12,
+                    new_value=self.new_value,
                     reason="사용자가 정정 값을 명시했습니다.",
                 )
             ],
@@ -42,6 +44,26 @@ def test_proposal_returns_verified_old_and_new_values() -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
     assert response.json()["changes"][0]["old_value"] == 10
+    assert response.json()["changes"][0]["context_cells"]
+
+
+def test_proposal_returns_bad_gateway_when_model_generation_fails() -> None:
+    class FailingWritebackGenerator:
+        async def generate(self, instruction, filename, context):
+            raise InsightGenerationError("Excel 변경 제안을 생성하지 못했습니다.")
+
+    app.dependency_overrides[get_writeback_generator] = FailingWritebackGenerator
+    try:
+        response = TestClient(app).post(
+            "/api/v1/workbooks/writeback-proposals",
+            data={"instruction": "매출현황 B2를 12로 수정해줘"},
+            files=upload("sales.xlsx", create_workbook_file()),
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Excel 변경 제안을 생성하지 못했습니다."
 
 
 def test_formula_target_is_blocked() -> None:
@@ -88,5 +110,6 @@ def test_apply_returns_verified_copy_and_preserves_formula_and_style() -> None:
         after.close()
     assert manifest["verified"] is True
     assert {item["name"] for item in manifest["checks"]} >= {
-        "formulas", "styles", "unchanged_parts", "excel_extensions", "macros"
+        "formulas", "styles", "unchanged_parts", "excel_extensions", "macros",
+        "recalculation",
     }

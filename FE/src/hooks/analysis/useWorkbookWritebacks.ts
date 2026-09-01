@@ -12,15 +12,20 @@ import { getErrorMessage } from '@/utils/apiClient'
 export const useWorkbookWritebacks = (analysisId: string) => {
   const queryClient = useQueryClient()
   const key = ['workbook-writebacks', analysisId]
-  const history = useQuery({ queryKey: key, queryFn: () => getWorkbookWritebacks(analysisId) })
+  const history = useQuery({
+    queryKey: key,
+    queryFn: () => getWorkbookWritebacks(analysisId),
+  })
   const refresh = () => queryClient.invalidateQueries({ queryKey: key })
 
   const proposal = useMutation({
-    mutationFn: (instruction: string) => proposeWorkbookWriteback(analysisId, instruction),
+    mutationFn: (instruction: string) =>
+      proposeWorkbookWriteback(analysisId, instruction),
     onSuccess: refresh,
   })
   const approval = useMutation({
-    mutationFn: (writebackId: string) => approveWorkbookWriteback(analysisId, writebackId),
+    mutationFn: (writebackId: string) =>
+      approveWorkbookWriteback(analysisId, writebackId),
     onSuccess: refresh,
   })
   const rejection = useMutation({
@@ -28,7 +33,8 @@ export const useWorkbookWritebacks = (analysisId: string) => {
     onSuccess: refresh,
   })
   const download = useMutation({
-    mutationFn: (writebackId: string) => downloadWorkbookWriteback(analysisId, writebackId),
+    mutationFn: (writebackId: string) =>
+      downloadWorkbookWriteback(analysisId, writebackId),
     onSuccess: ({ blob, filename }) => {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -39,13 +45,48 @@ export const useWorkbookWritebacks = (analysisId: string) => {
     },
   })
 
-  const error = proposal.error ?? approval.error ?? rejection.error ?? download.error ?? history.error
+  const resetMutationMessages = () => {
+    proposal.reset()
+    approval.reset()
+    rejection.reset()
+    download.reset()
+  }
+
+  const propose = async (instruction: string) => {
+    resetMutationMessages()
+    return proposal.mutateAsync(instruction)
+  }
+
+  const approve = async (writebackId: string) => {
+    resetMutationMessages()
+    return approval.mutateAsync(writebackId)
+  }
+
+  const reject = async (writebackId: string) => {
+    resetMutationMessages()
+    return rejection.mutateAsync(writebackId)
+  }
+
+  const downloadFile = (writebackId: string) => {
+    resetMutationMessages()
+    download.mutate(writebackId)
+  }
+
+  const error =
+    proposal.error ?? approval.error ?? rejection.error ?? download.error ?? history.error
+  const pendingAction: 'approve' | 'reject' | 'download' | null = approval.isPending
+    ? 'approve'
+    : rejection.isPending
+      ? 'reject'
+      : download.isPending
+        ? 'download'
+        : null
   return {
     items: history.data ?? [],
-    propose: proposal.mutateAsync,
-    approve: approval.mutateAsync,
-    reject: rejection.mutateAsync,
-    download: download.mutate,
+    propose,
+    approve,
+    reject,
+    download: downloadFile,
     isLoading: history.isLoading,
     isProposing: proposal.isPending,
     pendingId: approval.isPending
@@ -55,6 +96,11 @@ export const useWorkbookWritebacks = (analysisId: string) => {
         : download.isPending
           ? download.variables
           : null,
+    pendingAction,
+    downloadNotice:
+      download.isSuccess && download.variables
+        ? { writebackId: download.variables, filename: download.data.filename }
+        : null,
     errorMessage: error ? getErrorMessage(error) : null,
   }
 }

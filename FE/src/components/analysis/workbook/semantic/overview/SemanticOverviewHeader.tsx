@@ -9,7 +9,7 @@ const SemanticOverviewHeader = () => (
         <div className="flex items-center gap-2 text-blue-100">
           <Network aria-hidden="true" size={18} />
           <span className="text-xs font-extrabold tracking-[0.16em]">
-            RULE-BASED SEMANTIC ANALYSIS
+            규칙 기반 구조 분석
           </span>
         </div>
         <h3 className="mt-2 text-lg font-extrabold md:text-xl">워크북 의미 구조 분석</h3>

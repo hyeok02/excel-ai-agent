@@ -1,4 +1,4 @@
-import { CornerDownLeft, LoaderCircle, Send } from 'lucide-react'
+import { CircleAlert, CornerDownLeft, LoaderCircle, Send } from 'lucide-react'
 import { useState } from 'react'
 
 const SUGGESTIONS = [
@@ -10,9 +10,16 @@ const SUGGESTIONS = [
 interface QuestionComposerProps {
   isPending: boolean
   onAsk: (question: string) => boolean
+  onValidationClear: () => void
+  validationMessage: string | null
 }
 
-const QuestionComposer = ({ isPending, onAsk }: QuestionComposerProps) => {
+const QuestionComposer = ({
+  isPending,
+  onAsk,
+  onValidationClear,
+  validationMessage,
+}: QuestionComposerProps) => {
   const [question, setQuestion] = useState('')
   const submit = (value = question) => {
     if (onAsk(value)) setQuestion('')
@@ -26,9 +33,16 @@ const QuestionComposer = ({ isPending, onAsk }: QuestionComposerProps) => {
           className="min-h-20 w-full resize-none bg-transparent px-3 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
           disabled={isPending}
           maxLength={1000}
-          onChange={(event) => setQuestion(event.target.value)}
+          onChange={(event) => {
+            setQuestion(event.target.value)
+            onValidationClear()
+          }}
           onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
               event.preventDefault()
               submit()
             }
@@ -46,11 +60,24 @@ const QuestionComposer = ({ isPending, onAsk }: QuestionComposerProps) => {
             onClick={() => submit()}
             type="button"
           >
-            {isPending ? <LoaderCircle className="animate-spin" size={15} /> : <Send size={15} />}
+            {isPending ? (
+              <LoaderCircle className="animate-spin" size={15} />
+            ) : (
+              <Send size={15} />
+            )}
             {isPending ? '근거 확인 중' : '질문하기'}
           </button>
         </div>
       </div>
+      {validationMessage && (
+        <div
+          className="mt-3 flex items-start gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+          role="alert"
+        >
+          <CircleAlert className="mt-1 shrink-0" aria-hidden="true" size={16} />
+          {validationMessage}
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         {SUGGESTIONS.map((suggestion) => (
           <button

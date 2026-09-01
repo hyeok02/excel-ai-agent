@@ -38,7 +38,9 @@ const AgentReadySection = ({ hasInsightReport }: AgentReadySectionProps) => {
         <div>
           <div className="flex items-center gap-2 text-brand-700">
             <Sparkles aria-hidden="true" size={17} />
-            <p className="text-xs font-extrabold tracking-[0.16em]">AGENT READY DATA</p>
+            <p className="text-xs font-extrabold tracking-[0.16em]">
+              다음 작업 준비 완료
+            </p>
           </div>
           <h2 className="mt-2 text-xl font-extrabold tracking-tight text-slate-950">
             분석 결과를 다음 업무에 연결할 수 있어요
@@ -49,7 +51,7 @@ const AgentReadySection = ({ hasInsightReport }: AgentReadySectionProps) => {
           </p>
         </div>
         <span className="rounded-full border border-brand-200 bg-white/80 px-3 py-1.5 text-xs font-extrabold text-brand-700 shadow-sm backdrop-blur">
-          NEXT WORKFLOW READY
+          후속 작업 준비 완료
         </span>
       </div>
 

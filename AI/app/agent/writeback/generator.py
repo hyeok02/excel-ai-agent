@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from langchain_openai import ChatOpenAI
 from app.agent.writeback.models import WritebackProposalDraft
 from app.agent.writeback.prompts import SYSTEM_PROMPT, build_writeback_prompt
 from app.services.insights.models import InsightConfigurationError, InsightGenerationError
+
+logger = logging.getLogger(__name__)
 
 
 class LangChainWritebackGenerator:
@@ -30,7 +33,11 @@ class LangChainWritebackGenerator:
             raise InsightConfigurationError(
                 "OPENAI_TIMEOUT_SECONDS는 숫자여야 합니다."
             ) from exception
-        return cls(api_key, os.getenv("OPENAI_WRITEBACK_MODEL", "gpt-4.1-mini"), timeout)
+        return cls(
+            api_key,
+            os.getenv("OPENAI_WRITEBACK_MODEL", "gpt-4.1-2025-04-14"),
+            timeout,
+        )
 
     def _model_with_schema(self):
         return ChatOpenAI(
@@ -55,4 +62,5 @@ class LangChainWritebackGenerator:
             )
             return WritebackProposalDraft.model_validate(result)
         except Exception as exception:
+            logger.exception("Excel Write-back 모델 응답 생성 실패")
             raise InsightGenerationError("Excel 변경 제안을 생성하지 못했습니다.") from exception

@@ -10,7 +10,10 @@ interface FormulaDisclosureProps {
 
 const MAX_VISIBLE_FORMULA_LENGTH = 160
 
-const FormulaDisclosure = ({ formula, label = 'Excel 수식 원문' }: FormulaDisclosureProps) => {
+const FormulaDisclosure = ({
+  formula,
+  label = 'Excel 수식 원문',
+}: FormulaDisclosureProps) => {
   const [copied, setCopied] = useState(false)
   const summary = summarizeFormula(formula)
   const compactedFormula = compactFormula(formula)
@@ -57,7 +60,7 @@ const FormulaDisclosure = ({ formula, label = 'Excel 수식 원문' }: FormulaDi
       <div className="border-t border-slate-200 bg-slate-950 p-3">
         <div className="mb-2 flex items-center justify-between gap-3">
           <span className="text-[10px] font-bold tracking-wide text-slate-400">
-            EXCEL FORMULA
+            Excel 수식 원문
           </span>
           <button
             className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-[10px] font-bold text-slate-200 hover:bg-white/15"

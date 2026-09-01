@@ -12,13 +12,38 @@ const TOOL_LABELS: Record<string, string> = {
 }
 
 const STATUS = {
-  answered: { label: '근거 확인', icon: CheckCircle2, style: 'bg-emerald-50 text-emerald-700' },
-  limited: { label: '일부 범위 확인', icon: CircleAlert, style: 'bg-amber-50 text-amber-700' },
-  insufficient_evidence: { label: '근거 부족', icon: ShieldQuestion, style: 'bg-slate-100 text-slate-600' },
+  answered: {
+    label: '근거 확인',
+    icon: CheckCircle2,
+    style: 'bg-emerald-50 text-emerald-700',
+  },
+  limited: {
+    label: '일부 근거 확인',
+    icon: CircleAlert,
+    style: 'bg-amber-50 text-amber-700',
+  },
+  insufficient_evidence: {
+    label: '근거 부족',
+    icon: ShieldQuestion,
+    style: 'bg-slate-100 text-slate-600',
+  },
 } as const
 
 const QuestionAnswerCard = ({ answer }: { answer: WorkbookQuestionAnswer }) => {
-  const presentation = STATUS[answer.status]
+  const hasScopeLimit = answer.limitations.some((message) =>
+    message.includes('검색 범위에서 제외'),
+  )
+  const hasVerificationIssue = answer.limitations.some(
+    (message) => message.includes('Tool 근거') || message.includes('Tool 실행'),
+  )
+  const scopeOnly = answer.status === 'limited' && hasScopeLimit && !hasVerificationIssue
+  const presentation = scopeOnly
+    ? {
+        label: '핵심 근거 확인',
+        icon: CheckCircle2,
+        style: 'bg-emerald-50 text-emerald-700',
+      }
+    : STATUS[answer.status]
   const StatusIcon = presentation.icon
   return (
     <article className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
@@ -29,23 +54,35 @@ const QuestionAnswerCard = ({ answer }: { answer: WorkbookQuestionAnswer }) => {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${presentation.style}`}>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${presentation.style}`}
+            >
               <StatusIcon aria-hidden="true" size={13} /> {presentation.label}
             </span>
-            <span className="text-xs font-bold text-slate-400">
-              신뢰도 {Math.round(answer.confidence * 100)}%
-            </span>
+            {answer.confidence > 0 && (
+              <span className="text-xs font-bold text-slate-400">
+                핵심 근거 일치 {Math.round(answer.confidence * 100)}%
+              </span>
+            )}
+            {hasScopeLimit && (
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                일부 범위 제외
+              </span>
+            )}
           </div>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
             {answer.answer}
           </p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {answer.selectedTools.map((tool) => (
-              <span className="rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200" key={tool}>
-                {TOOL_LABELS[tool] ?? tool}
-              </span>
-            ))}
-          </div>
+          {answer.selectedTools.length > 0 && (
+            <details className="mt-3 text-xs text-slate-400">
+              <summary className="cursor-pointer font-bold">확인 방법 보기</summary>
+              <p className="mt-1">
+                {answer.selectedTools
+                  .map((tool) => TOOL_LABELS[tool] ?? tool)
+                  .join(' · ')}
+              </p>
+            </details>
+          )}
         </div>
       </div>
       <QuestionEvidenceList evidence={answer.evidence} />

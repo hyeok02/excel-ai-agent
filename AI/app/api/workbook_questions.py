@@ -45,5 +45,5 @@ async def ask_workbook_question(
         )
     except InsightGenerationError as exception:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exception)
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exception)
         ) from exception

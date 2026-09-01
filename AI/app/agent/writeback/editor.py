@@ -1,5 +1,6 @@
 from io import BytesIO
 from pathlib import Path
+import re
 
 from openpyxl import load_workbook
 from openpyxl.cell.cell import MergedCell
@@ -21,8 +22,8 @@ class UnsafeWritebackError(ValueError):
 def apply_writeback(
     filename: str, content: bytes, changes: list[WritebackChange]
 ) -> tuple[bytes, WritebackManifest]:
-    if not changes or len(changes) > 10:
-        raise UnsafeWritebackError("한 번에 1~10개의 검증된 변경만 적용할 수 있습니다.")
+    if not changes or len(changes) > 50:
+        raise UnsafeWritebackError("한 번에 1~50개의 검증된 변경만 적용할 수 있습니다.")
     keep_vba = Path(filename).suffix.lower() == ".xlsm"
     before = workbook_fingerprint(content, keep_vba)
     workbook = load_workbook(BytesIO(content), data_only=False, keep_vba=keep_vba)
@@ -60,12 +61,18 @@ def _validate_changes(workbook, changes: list[WritebackChange]) -> None:
         cell = workbook[change.sheet_name][change.reference]
         if isinstance(cell, MergedCell):
             raise UnsafeWritebackError("병합 영역의 시작 셀만 수정할 수 있습니다.")
-        if isinstance(cell.value, str) and cell.value.startswith("="):
-            raise UnsafeWritebackError("수식 셀은 수정할 수 없습니다.")
-        if cell.value != change.old_value:
+        old_formula = isinstance(cell.value, str) and cell.value.startswith("=")
+        new_formula = _formula(change.new_value)
+        if old_formula and new_formula is None:
+            raise UnsafeWritebackError("기존 수식은 승인된 새 수식으로만 변경할 수 있습니다.")
+        if _comparable(cell.value, change.value_type) != _comparable(
+            change.old_value, change.value_type
+        ):
             raise UnsafeWritebackError("승인한 기존 값과 현재 원본 값이 다릅니다.")
-        if isinstance(change.new_value, str) and change.new_value.lstrip().startswith("="):
-            raise UnsafeWritebackError("새 수식 입력은 허용하지 않습니다.")
+        if new_formula and _unsafe_formula(new_formula):
+            raise UnsafeWritebackError("외부 연결이나 실행 기능이 포함된 수식은 허용하지 않습니다.")
+        if new_formula and len(new_formula) > 8192:
+            raise UnsafeWritebackError("Excel 수식 최대 길이를 초과했습니다.")
         if isinstance(change.new_value, str) and len(change.new_value) > 32_767:
             raise UnsafeWritebackError("Excel 셀의 최대 문자열 길이를 초과했습니다.")
 
@@ -74,9 +81,34 @@ def _verify_values(content, changes, keep_vba) -> VerificationCheck:
     workbook = load_workbook(BytesIO(content), data_only=False, keep_vba=keep_vba)
     try:
         passed = all(
-            workbook[item.sheet_name][item.reference].value == item.new_value
+            _comparable(
+                workbook[item.sheet_name][item.reference].value, item.value_type
+            )
+            == _comparable(item.new_value, item.value_type)
             for item in changes
         )
     finally:
         workbook.close()
     return VerificationCheck(name="changed_values", passed=passed, detail="승인한 값 반영")
+
+
+def _formula(value: object) -> str | None:
+    return value.strip() if isinstance(value, str) and value.lstrip().startswith("=") else None
+
+
+def _unsafe_formula(formula: str) -> bool:
+    return bool(
+        re.search(
+            r"(?:\[|https?://|\\\\|\||\b(?:WEBSERVICE|HYPERLINK|RTD|CALL|REGISTER\.ID|EXEC)\s*\()",
+            formula,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _comparable(value: object, value_type: str | None = None) -> object:
+    if value_type == "date" and hasattr(value, "date"):
+        return value.date().isoformat()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value

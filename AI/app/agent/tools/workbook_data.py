@@ -7,6 +7,10 @@ from app.agent.contracts import (
     ToolCategory,
 )
 from app.agent.query.index import IndexedRow
+from app.agent.query.workbook_summary_rows import (
+    is_workbook_summary_question,
+    select_workbook_summary_rows,
+)
 from app.agent.tools.helpers import arguments_or_empty, bounded_integer, optional_string
 from app.agent.tools.workbook_comparisons import build_time_series_comparison
 from app.agent.tools.workbook_headers import (
@@ -42,19 +46,37 @@ class WorkbookDataSearchTool:
         if query is None:
             raise InvalidToolArgumentsError("query는 필수입니다.")
         limit = bounded_integer(values, "row_limit", 24, 40)
-        rows = _search_rows(context.data_index.rows, query, limit)
+        summary_question = is_workbook_summary_question(query)
+        rows = (
+            select_workbook_summary_rows(
+                context.data_index.rows, context.workbook.sheets, limit
+            )
+            if summary_question
+            else _search_rows(context.data_index.rows, query, limit)
+        )
         headers = build_header_context(context.data_index.rows, rows)
-        evidence = tuple(
+        comparison = build_time_series_comparison(rows, headers, query)
+        all_evidence = [
             evidence_with_header(row, cell, headers) for row in rows for cell in row.cells
-        )[:600]
+        ]
+        priority = _comparison_reference_order(comparison)
+        evidence = tuple(
+            sorted(
+                all_evidence,
+                key=lambda item: priority.get(
+                    f"{item.sheet_name}!{item.reference}", len(priority)
+                ),
+            )[:600]
+        )
         return AgentToolResult(
             tool_name=self.metadata.name,
             summary=f"질문과 관련된 원본 행 {len(rows)}개를 조회했습니다.",
             data={
                 "query": query,
+                "workbook_summary_query": summary_question,
                 "returned_row_count": len(rows),
                 "index_truncated": context.data_index.truncated,
-                "time_series_comparison": build_time_series_comparison(rows, headers, query),
+                "time_series_comparison": comparison,
                 "rows": [_row_payload(row, headers) for row in rows],
             },
             evidence=evidence,
@@ -87,6 +109,28 @@ def _search_rows(rows: tuple[IndexedRow, ...], query: str, limit: int) -> list[I
         if len(selected) >= limit:
             break
     return [rows[index] for index in ordered[:limit]]
+
+
+def _comparison_reference_order(
+    comparison: dict[str, object] | None,
+) -> dict[str, int]:
+    if not comparison:
+        return {}
+    references = {}
+    groups = (comparison.get("largest_absolute_changes"), comparison.get("metrics"))
+    for metrics in groups:
+        if not isinstance(metrics, list):
+            continue
+        for metric in metrics:
+            if not isinstance(metric, dict):
+                continue
+            for key in ("start_reference", "end_reference"):
+                reference = metric.get(key)
+                if isinstance(reference, str) and reference not in references:
+                    references[reference] = len(references)
+    return references
+
+
 def _row_payload(row: IndexedRow, headers: HeaderContext) -> dict[str, object]:
     return {
         "sheet_name": row.sheet_name,

@@ -2,6 +2,7 @@ import type { CellResult } from '@/api/analysis'
 import { SemanticRoleBadge } from '@/components/analysis/workbook/semantic/components/ClassificationBadges'
 
 interface CellPreviewTableProps {
+  compact?: boolean
   rows: CellResult[][]
 }
 
@@ -10,13 +11,22 @@ const formatCellValue = (cell: CellResult) => {
     return String(cell.cachedValue)
   }
   if (cell.formula) return '수식 셀'
-  if (cell.value == null || cell.value === '') return '빈 셀'
+  if (cell.value == null || cell.value === '') return ''
   if (typeof cell.value === 'boolean') return cell.value ? 'TRUE' : 'FALSE'
   return String(cell.value)
 }
 
-const CellPreviewTable = ({ rows }: CellPreviewTableProps) => {
-  if (rows.length === 0) {
+const CellPreviewTable = ({ compact = false, rows }: CellPreviewTableProps) => {
+  const visibleRows = rows
+    .map((row) =>
+      row.filter(
+        (cell) =>
+          cell.formula || (cell.value != null && String(cell.value).trim() !== ''),
+      ),
+    )
+    .filter((row) => row.length > 0)
+
+  if (visibleRows.length === 0) {
     return (
       <p className="rounded-xl bg-slate-50 p-4 text-xs text-slate-400">
         표시할 셀 미리보기가 없습니다.
@@ -28,7 +38,7 @@ const CellPreviewTable = ({ rows }: CellPreviewTableProps) => {
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
       <table className="min-w-full border-collapse text-left text-xs">
         <tbody>
-          {rows.map((row, rowIndex) => (
+          {visibleRows.map((row, rowIndex) => (
             <tr className="border-b border-slate-100 last:border-0" key={rowIndex}>
               {row.map((cell) => (
                 <td
@@ -46,21 +56,25 @@ const CellPreviewTable = ({ rows }: CellPreviewTableProps) => {
                   >
                     {formatCellValue(cell)}
                   </code>
-                  <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-bold text-slate-400">
-                    {cell.semantic && (
-                      <SemanticRoleBadge compact role={cell.semantic.role} />
-                    )}
-                    {cell.formula && !cell.semantic && (
-                      <span className="text-brand-600">수식</span>
-                    )}
-                    {cell.formula && cell.cachedValue != null && (
-                      <span>계산 결과 표시</span>
-                    )}
-                    {cell.merged && <span>병합</span>}
-                    {cell.numberFormat && cell.numberFormat !== 'General' && (
-                      <span>{cell.numberFormat}</span>
-                    )}
-                  </span>
+                  {(!compact || cell.formula) && (
+                    <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-bold text-slate-400">
+                      {!compact && cell.semantic && (
+                        <SemanticRoleBadge compact role={cell.semantic.role} />
+                      )}
+                      {cell.formula && (compact || !cell.semantic) && (
+                        <span className="text-brand-600">수식</span>
+                      )}
+                      {!compact && cell.formula && cell.cachedValue != null && (
+                        <span>계산 결과 표시</span>
+                      )}
+                      {!compact && cell.merged && <span>병합</span>}
+                      {!compact &&
+                        cell.numberFormat &&
+                        cell.numberFormat !== 'General' && (
+                          <span>{cell.numberFormat}</span>
+                        )}
+                    </span>
+                  )}
                 </td>
               ))}
             </tr>

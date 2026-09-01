@@ -39,6 +39,8 @@ const SheetRegionDetails = ({ regions, sheetName }: SheetRegionDetailsProps) => 
     : prioritizedRegions.slice(0, INITIAL_REGION_COUNT)
   const hiddenRegionCount = Math.max(0, regions.length - INITIAL_REGION_COUNT)
 
+  if (regions.length === 0) return null
+
   return (
     <section className="rounded-2xl bg-slate-50/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -55,78 +57,69 @@ const SheetRegionDetails = ({ regions, sheetName }: SheetRegionDetailsProps) => 
         )}
       </div>
 
-      {regions.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {visibleRegions.map(({ region, originalIndex }, visibleIndex) => (
-            <details
-              className="group rounded-xl border border-slate-200 bg-white"
-              key={`${region.startCell}-${region.endCell}-${originalIndex}`}
-              open={visibleIndex === 0}
-            >
-              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 marker:hidden">
-                <div className="min-w-0">
-                  <span className="font-bold text-slate-700">
-                    {region.title || `데이터 영역 ${originalIndex + 1}`}
+      <div className="mt-3 space-y-2">
+        {visibleRegions.map(({ region, originalIndex }) => (
+          <details
+            className="group rounded-xl border border-slate-200 bg-white"
+            key={`${region.startCell}-${region.endCell}-${originalIndex}`}
+          >
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 marker:hidden">
+              <div className="min-w-0">
+                <span className="font-bold text-slate-700">
+                  {region.title || `데이터 영역 ${originalIndex + 1}`}
+                </span>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  {region.startCell}:{region.endCell} · {regionSizeLabel(region)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <RegionSemanticBadges region={region} />
+                <ChevronDown
+                  aria-hidden="true"
+                  className="text-slate-300 transition-transform group-open:rotate-180"
+                  size={16}
+                />
+              </div>
+            </summary>
+            <div className="border-t border-slate-100 p-3">
+              <RegionSemanticSummary region={region} />
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <OriginalLocationButton
+                  location={`${region.startCell}:${region.endCell}`}
+                  sheetName={sheetName}
+                />
+                {(region.mergedRanges ?? []).length > 0 && (
+                  <span className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-700">
+                    병합 셀 {region.mergedRanges.length}개
                   </span>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    {region.startCell}:{region.endCell} · {regionSizeLabel(region)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RegionSemanticBadges region={region} />
-                  <ChevronDown
-                    aria-hidden="true"
-                    className="text-slate-300 transition-transform group-open:rotate-180"
-                    size={16}
-                  />
-                </div>
-              </summary>
-              <div className="border-t border-slate-100 p-3">
-                <RegionSemanticSummary region={region} />
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <OriginalLocationButton
-                    location={`${region.startCell}:${region.endCell}`}
-                    sheetName={sheetName}
-                  />
-                  {(region.mergedRanges ?? []).length > 0 && (
-                    <span className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-700">
-                      병합 셀 {region.mergedRanges.length}개
-                    </span>
-                  )}
-                </div>
-
-                <HeaderPathList paths={region.headerPaths ?? []} />
-                <CellPreviewTable rows={region.previewRows ?? []} />
-                {region.truncated && (
-                  <p className="mt-2 text-[11px] text-slate-400">
-                    큰 영역은 앞쪽 8행 × 8열만 표시합니다.
-                  </p>
                 )}
               </div>
-            </details>
-          ))}
-          {hiddenRegionCount > 0 && (
-            <button
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-xs font-bold text-slate-500 transition hover:border-brand-300 hover:text-brand-700"
-              onClick={() => setShowAll((current) => !current)}
-              type="button"
-            >
-              {showAll
-                ? '주요 영역만 보기'
-                : `나머지 ${hiddenRegionCount}개 영역 펼쳐보기`}
-              <ChevronDown
-                aria-hidden="true"
-                className={`transition-transform ${showAll ? 'rotate-180' : ''}`}
-                size={15}
-              />
-            </button>
-          )}
-        </div>
-      ) : (
-        <p className="mt-3 rounded-xl bg-white p-4 text-xs text-slate-400">
-          탐지된 데이터 영역이 없습니다.
-        </p>
-      )}
+
+              <HeaderPathList paths={region.headerPaths ?? []} />
+              <CellPreviewTable rows={region.previewRows ?? []} />
+              {region.truncated && (
+                <p className="mt-2 text-[11px] text-slate-400">
+                  큰 영역은 앞쪽 8행 × 8열만 표시합니다.
+                </p>
+              )}
+            </div>
+          </details>
+        ))}
+        {hiddenRegionCount > 0 && (
+          <button
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-xs font-bold text-slate-500 transition hover:border-brand-300 hover:text-brand-700"
+            onClick={() => setShowAll((current) => !current)}
+            type="button"
+          >
+            {showAll ? '주요 영역만 보기' : `나머지 ${hiddenRegionCount}개 영역 펼쳐보기`}
+            <ChevronDown
+              aria-hidden="true"
+              className={`transition-transform ${showAll ? 'rotate-180' : ''}`}
+              size={15}
+            />
+          </button>
+        )}
+      </div>
     </section>
   )
 }

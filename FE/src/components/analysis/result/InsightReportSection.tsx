@@ -13,9 +13,7 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
       <div className="border-b border-brand-100/70 p-5 md:p-6">
         <div className="flex items-center gap-2 text-brand-700">
           <Sparkles aria-hidden="true" size={18} />
-          <span className="text-xs font-extrabold tracking-[0.12em]">
-            CONTENT INSIGHT
-          </span>
+          <span className="text-xs font-extrabold tracking-[0.12em]">핵심 인사이트</span>
         </div>
         <h3 className="mt-2 text-lg font-extrabold tracking-tight text-slate-950">
           핵심 현황과 변화
@@ -35,10 +33,17 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
       </div>
 
       {report.validation && (
-        <div className="grid gap-3 border-b border-brand-100/70 p-5 sm:grid-cols-3 md:p-6">
-          <ValidationMetric label="검증 통과" value={report.validation.verifiedCount} />
-          <ValidationMetric label="근거 확인 필요" value={report.validation.limitedCount} />
-          <ValidationMetric label="내용 누락 제외" value={report.validation.blockedCount} />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-brand-100/70 px-5 py-3 text-xs font-bold text-slate-500 md:px-6">
+          <span className="inline-flex items-center gap-1.5 text-emerald-700">
+            <ShieldCheck aria-hidden="true" size={15} /> 원본 근거 확인{' '}
+            {report.validation.verifiedCount}건
+          </span>
+          {report.validation.limitedCount > 0 && (
+            <span>추가 확인 {report.validation.limitedCount}건</span>
+          )}
+          {report.validation.blockedCount > 0 && (
+            <span>표시 제외 {report.validation.blockedCount}건</span>
+          )}
         </div>
       )}
 
@@ -75,15 +80,5 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
     </section>
   )
 }
-
-const ValidationMetric = ({ label, value }: { label: string; value: number }) => (
-  <div className="rounded-xl bg-white/80 px-4 py-3 text-sm shadow-sm">
-    <p className="text-xs font-bold text-slate-500">{label}</p>
-    <p className="mt-1 flex items-center gap-1.5 text-lg font-extrabold text-slate-900">
-      <ShieldCheck aria-hidden="true" className="text-brand-600" size={16} />
-      {value}건
-    </p>
-  </div>
-)
 
 export default InsightReportSection

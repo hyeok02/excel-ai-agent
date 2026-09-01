@@ -7,11 +7,12 @@ from app.services.insights.models import (
     WorkbookInsight,
     WorkbookInsightReport,
 )
+from app.services.insights.numeric_validation import unmatched_numbers
+from app.services.insights.reference_matching import resolve_references
 from app.services.insights.validation_index import (
     EvidenceIndex,
     agent_evidence_index,
     extract_references,
-    numbers,
     workbook_evidence_index,
 )
 
@@ -74,34 +75,64 @@ def _validate(
 def _validate_insight(
     insight: WorkbookInsight, index: EvidenceIndex
 ) -> ValidatedWorkbookInsight | None:
-    if not insight.fact.strip() or not insight.impact.strip() or not insight.evidence:
+    if not insight.fact.strip() or not insight.evidence:
         return None
     reasons: list[str] = []
+    confidence_penalty = 0.0
     cited_references = [extract_references(item) for item in insight.evidence]
     if any(not items for items in cited_references):
         reasons.append("일부 근거 위치를 자동으로 해석하지 못해 원본 위치 확인이 필요합니다.")
+        confidence_penalty += 0.15
     references = set().union(*cited_references)
-    if references - index.references:
-        reasons.append("일부 셀·범위가 분석 입력과 정확히 일치하지 않아 원본 확인이 필요합니다.")
-    claim_text = " ".join(
-        item for item in [insight.fact, insight.cause, insight.impact] if item
+    resolved_references, unmatched_references = resolve_references(
+        references, index.references
     )
-    if numbers(claim_text) - index.numbers:
+    if unmatched_references:
+        reasons.append("일부 셀·범위가 분석 입력과 정확히 일치하지 않아 원본 확인이 필요합니다.")
+        confidence_penalty += 0.25
+    claim_text = " ".join(item for item in [insight.fact, insight.cause] if item)
+    cited_numbers = set().union(
+        *(
+            index.reference_numbers.get(reference, set())
+            for reference in resolved_references
+        )
+    )
+    if unmatched_numbers(claim_text, cited_numbers):
         reasons.append("일부 수치 표현을 분석 입력에서 자동으로 대조하지 못했습니다.")
+        confidence_penalty += 0.15
     cause = insight.cause
-    if cause and not any(item in index.cause_references for item in references):
+    if cause and not (resolved_references & index.cause_references):
         cause = None
         reasons.append("원인을 직접 입증하는 수식·메타데이터 근거가 없어 원인 문장을 제외했습니다.")
+        confidence_penalty += 0.1
     status = (
         InsightValidationStatus.LIMITED
         if reasons or insight.confidence < 0.7
         else InsightValidationStatus.VERIFIED
     )
-    confidence = min(insight.confidence, 0.79) if reasons else insight.confidence
+    confidence = round(max(0.0, insight.confidence - confidence_penalty), 2)
+    impact = _review_point(insight.impact)
     return ValidatedWorkbookInsight(
-        **insight.model_dump(exclude={"cause", "confidence"}),
+        **insight.model_dump(exclude={"cause", "impact", "confidence"}),
         cause=cause,
+        impact=impact,
         confidence=confidence,
         validation_status=status,
         validation_reasons=reasons,
     )
+
+
+def _review_point(value: str | None) -> str | None:
+    if not value or not value.strip():
+        return None
+    normalized = value.casefold()
+    speculative = (
+        "가능성을 시사",
+        "등을 시사",
+        "외부 위탁",
+        "이직 증가",
+        "역량의 변화",
+        "사업 확장",
+        "전략적",
+    )
+    return None if any(term in normalized for term in speculative) else value.strip()

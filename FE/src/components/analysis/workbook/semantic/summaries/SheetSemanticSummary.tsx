@@ -28,7 +28,7 @@ const SheetSemanticSummary = ({ sheet }: { sheet: SheetResult }) => {
             </span>
             <div>
               <p className="text-[10px] font-extrabold tracking-[0.14em] text-slate-400">
-                SHEET SEMANTICS
+                시트 의미 분석
               </p>
               <p className="mt-1 text-sm font-extrabold text-slate-800">
                 {presentation.description}

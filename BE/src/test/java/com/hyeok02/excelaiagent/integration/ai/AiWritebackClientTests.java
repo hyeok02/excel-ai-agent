@@ -42,9 +42,11 @@ class AiWritebackClientTests {
 				.andExpect(method(POST))
 				.andExpect(content().string(containsString("sheet_name")))
 				.andExpect(content().string(containsString("old_value")))
+				.andExpect(content().string(containsString("value_type")))
 				.andRespond(withSuccess(archive(), MediaType.APPLICATION_OCTET_STREAM));
 		AiWritebackProposal.Change change = new AiWritebackProposal.Change(
-				"매출현황", "B2", 12, "정정", 10);
+				"매출현황", "B2", 12, "정정", 10, List.of(),
+				"value", "number", List.of("매출현황!D2"), "medium");
 
 		AiWritebackPackage result = client.apply(workbook().getResource(), List.of(change));
 
@@ -59,7 +61,8 @@ class AiWritebackClientTests {
 		String response = """
 				{"instruction":"B2 수정","status":"ready","summary":"변경 제안",
 				"changes":[{"sheet_name":"매출현황","reference":"B2","old_value":10,
-				"new_value":12,"reason":"정정"}],"risks":[],"limitations":[]}
+				"new_value":12,"reason":"정정","context_cells":[{"reference":"A2",
+				"value":"노트북"}]}],"risks":[],"limitations":[]}
 				""";
 		server.expect(requestTo("http://localhost:8000/api/v1/workbooks/writeback-proposals"))
 				.andExpect(method(POST))
@@ -73,6 +76,8 @@ class AiWritebackClientTests {
 		assertThat(proposal.changes()).singleElement().satisfies(change -> {
 			assertThat(change.sheetName()).isEqualTo("매출현황");
 			assertThat(change.oldValue()).isEqualTo(10);
+			assertThat(change.contextCells()).singleElement()
+					.satisfies(cell -> assertThat(cell.reference()).isEqualTo("A2"));
 		});
 		server.verify();
 	}

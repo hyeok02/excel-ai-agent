@@ -9,8 +9,16 @@ export interface WritebackChange {
   sheetName: string
   reference: string
   oldValue: string | number | boolean | null
-  newValue: string | number | boolean
+  newValue: string | number | boolean | null
   reason: string
+  changeType?: 'value' | 'clear' | 'formula'
+  valueType?: 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'blank' | 'formula'
+  affectedCells?: string[]
+  riskLevel?: 'low' | 'medium' | 'high'
+  contextCells?: Array<{
+    reference: string
+    value: string | number | boolean | null
+  }>
 }
 
 export interface WritebackProposal {

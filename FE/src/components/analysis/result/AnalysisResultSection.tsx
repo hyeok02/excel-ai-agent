@@ -1,6 +1,7 @@
 import { CalendarClock, CheckCircle2, Network } from 'lucide-react'
 
 import type { AnalysisMode, AnalysisResultDetails, WorkbookResult } from '@/api/analysis'
+import AdvancedAnalysisSection from '@/components/analysis/result/AdvancedAnalysisSection'
 import AgentReadySection from '@/components/analysis/result/AgentReadySection'
 import AnalysisExportActions from '@/components/analysis/result/AnalysisExportActions'
 import DependencyMapSection from '@/components/analysis/result/DependencyMapSection'
@@ -91,44 +92,57 @@ const AnalysisResultSection = ({ mode, result }: AnalysisResultSectionProps) => 
         <InsightReportSection report={result.insightReport} />
       )}
 
-      <WorkbookQuestionSection analysisId={result.analysisId} />
+      {mode === 'BFS' && (
+        <>
+          {workbook.dependencyGraph && workbook.dependencyGraph.nodeCount > 0 ? (
+            <DependencyMapSection
+              graph={workbook.dependencyGraph}
+              key={`${result.analysisId}-${mode}`}
+            />
+          ) : (
+            <section className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 px-5 py-8 text-center">
+              <Network aria-hidden="true" className="mx-auto text-slate-400" size={24} />
+              <h3 className="mt-3 text-base font-extrabold text-slate-900">
+                연결된 수식 군집이 없습니다
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                셀 간 참조 관계가 없거나 각 수식이 독립적으로 구성된 워크북이에요.
+              </p>
+            </section>
+          )}
 
-      <WorkbookWritebackSection analysisId={result.analysisId} />
+          {workbook.formulaRiskSummary && (
+            <FormulaRiskSection summary={workbook.formulaRiskSummary} />
+          )}
 
-      <WorkbookSemanticOverview
-        excludedSheets={workbook.excludedSheets ?? []}
-        sheets={workbook.sheets}
-      />
-
-      {workbook.formulaRiskSummary && (
-        <FormulaRiskSection summary={workbook.formulaRiskSummary} />
+          <WorkbookSemanticOverview
+            excludedSheets={workbook.excludedSheets ?? []}
+            sheets={workbook.sheets}
+          />
+          <WorkbookExplorer sheets={workbook.sheets} />
+        </>
       )}
 
-      {mode === 'BFS' &&
-        workbook.dependencyGraph &&
-        workbook.dependencyGraph.nodeCount > 0 && (
-          <DependencyMapSection
-            graph={workbook.dependencyGraph}
-            key={`${result.analysisId}-${mode}`}
-          />
-        )}
+      {mode === 'LLM' && (
+        <>
+          <WorkbookQuestionSection analysisId={result.analysisId} />
+          <WorkbookWritebackSection analysisId={result.analysisId} />
+          <AdvancedAnalysisSection>
+            <WorkbookSemanticOverview
+              excludedSheets={workbook.excludedSheets ?? []}
+              sheets={workbook.sheets}
+            />
 
-      {mode === 'BFS' &&
-        (!workbook.dependencyGraph || workbook.dependencyGraph.nodeCount === 0) && (
-          <section className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 px-5 py-8 text-center">
-            <Network aria-hidden="true" className="mx-auto text-slate-400" size={24} />
-            <h3 className="mt-3 text-base font-extrabold text-slate-900">
-              연결된 수식 군집이 없습니다
-            </h3>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              셀 간 참조 관계가 없거나 각 수식이 독립적으로 구성된 워크북이에요.
-            </p>
-          </section>
-        )}
+            {workbook.formulaRiskSummary && (
+              <FormulaRiskSection summary={workbook.formulaRiskSummary} />
+            )}
 
-      <WorkbookExplorer sheets={workbook.sheets} />
+            <WorkbookExplorer sheets={workbook.sheets} />
+          </AdvancedAnalysisSection>
 
-      <AgentReadySection hasInsightReport={result.insightReport !== null} />
+          <AgentReadySection hasInsightReport={result.insightReport !== null} />
+        </>
+      )}
     </section>
   )
 }
