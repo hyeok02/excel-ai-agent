@@ -2,6 +2,8 @@ import { normalizeInsightReport } from '@/api/analysis/insightTypes'
 import type {
   AnalysisDepth,
   AnalysisDetails,
+  AnalysisHistoryPage,
+  AnalysisHistoryQuery,
   AnalysisMode,
   AnalysisResultDetails,
   AnalysisStatus,
@@ -39,6 +41,13 @@ export const getAnalysisDetails = async (analysisId: string) => {
   return data
 }
 
+export const getAnalysisHistory = async (query: AnalysisHistoryQuery = {}) => {
+  const { data } = await apiClient.get<AnalysisHistoryPage>('/api/v1/analyses', {
+    params: query,
+  })
+  return data
+}
+
 const waitForAnalysis = async (
   analysisId: string,
   onStatusChange?: (status: AnalysisStatus) => void,
@@ -67,11 +76,28 @@ export const analyzeWorkbook = async (
   mode: AnalysisMode,
   depth: AnalysisDepth,
   onStatusChange?: (status: AnalysisStatus) => void,
+  onSubmitted?: (submission: AnalysisSubmission) => void,
 ): Promise<CompletedAnalysis> => {
   const submission = await submitAnalysis(file, mode, depth)
+  onSubmitted?.(submission)
   onStatusChange?.(submission.status)
   await waitForAnalysis(submission.analysisId, onStatusChange)
   const result = await getAnalysisResult(submission.analysisId)
+
+  return { submission, result }
+}
+
+/** 이미 접수된 분석을 이어받는다. 진행 중이면 완료될 때까지 기다린다. */
+export const resumeAnalysis = async (
+  analysisId: string,
+  onStatusChange?: (status: AnalysisStatus) => void,
+): Promise<CompletedAnalysis> => {
+  const submission = await getAnalysisDetails(analysisId)
+  onStatusChange?.(submission.status)
+  if (submission.status !== 'COMPLETED') {
+    await waitForAnalysis(analysisId, onStatusChange)
+  }
+  const result = await getAnalysisResult(analysisId)
 
   return { submission, result }
 }

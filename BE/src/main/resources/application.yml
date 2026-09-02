@@ -63,7 +63,7 @@ app:
     async-enabled: ${ANALYSIS_ASYNC_ENABLED:true}
   storage:
     upload-dir: ${UPLOAD_DIR:./uploads}
-    retention: ${UPLOAD_RETENTION:1d}
+    retention: ${UPLOAD_RETENTION:7d}
     cleanup-interval: ${UPLOAD_CLEANUP_INTERVAL:1h}
     cleanup-initial-delay: ${UPLOAD_CLEANUP_INITIAL_DELAY:1m}
   ai-service:

@@ -1,10 +1,9 @@
-import { useMutation } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
-import { type AnalysisDepth, type AnalysisMode, analyzeWorkbook } from '@/api/analysis'
+import type { AnalysisDepth, AnalysisMode } from '@/api/analysis'
 import { useAnalysisProgress } from '@/hooks/analysis/useAnalysisProgress'
+import { useAnalysisRun } from '@/hooks/analysis/useAnalysisRun'
 import { validateAnalysisFile } from '@/utils/analysis/analysisFile'
-import { getErrorMessage } from '@/utils/apiClient'
 
 export type AnalysisFeedback = 'success' | 'error'
 export type AnalysisViewStatus = 'idle' | 'pending' | 'success' | 'error'
@@ -23,17 +22,7 @@ export const useWorkbookAnalysis = () => {
   const [clientError, setClientError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<AnalysisFeedback | null>(null)
   const progress = useAnalysisProgress()
-
-  const analysisMutation = useMutation({
-    mutationFn: ({
-      file,
-      analysisMode,
-      analysisDepth,
-    }: {
-      file: File
-      analysisMode: AnalysisMode
-      analysisDepth: AnalysisDepth
-    }) => analyzeWorkbook(file, analysisMode, analysisDepth, progress.updateStatus),
+  const run = useAnalysisRun(progress, {
     onError: () => setFeedback('error'),
     onSuccess: () => setFeedback('success'),
   })
@@ -47,19 +36,25 @@ export const useWorkbookAnalysis = () => {
     return () => window.clearTimeout(timeoutId)
   }, [feedback])
 
-  const status: AnalysisViewStatus = analysisMutation.isPending
+  const status: AnalysisViewStatus = run.isPending
     ? 'pending'
-    : analysisMutation.isSuccess
+    : run.completed
       ? 'success'
-      : analysisMutation.isError
+      : run.isError
         ? 'error'
         : 'idle'
+
+  const resetView = (hasSelectedFile: boolean) => {
+    setClientError(null)
+    setFeedback(null)
+    progress.reset(hasSelectedFile)
+    run.reset()
+  }
 
   const selectFile = (file: File) => {
     const validationMessage = validateAnalysisFile(file)
 
-    analysisMutation.reset()
-    progress.reset(Boolean(validationMessage ? null : file))
+    resetView(!validationMessage)
     setClientError(validationMessage)
     setSelectedFile(validationMessage ? null : file)
     setFeedback(validationMessage ? 'error' : null)
@@ -75,59 +70,43 @@ export const useWorkbookAnalysis = () => {
     setClientError(null)
     setFeedback(null)
     progress.begin()
-    analysisMutation.mutate({
-      file: selectedFile,
-      analysisMode: mode,
-      analysisDepth: depth,
-    })
-  }
-
-  const clearFile = () => {
-    setSelectedFile(null)
-    setClientError(null)
-    setFeedback(null)
-    progress.reset(false)
-    analysisMutation.reset()
+    run.start(selectedFile, mode, depth)
   }
 
   const changeMode = (nextMode: AnalysisMode) => {
-    if (nextMode === mode) {
-      return
-    }
-
+    if (nextMode === mode) return
     setMode(nextMode)
-    setClientError(null)
-    setFeedback(null)
-    analysisMutation.reset()
-    progress.reset(Boolean(selectedFile))
+    resetView(Boolean(selectedFile))
   }
 
   const changeDepth = (nextDepth: AnalysisDepth) => {
-    if (nextDepth === depth) {
-      return
-    }
-
+    if (nextDepth === depth) return
     setDepth(nextDepth)
-    setClientError(null)
-    setFeedback(null)
-    analysisMutation.reset()
-    progress.reset(Boolean(selectedFile))
+    resetView(Boolean(selectedFile))
   }
 
   return {
+    activeAnalysisId: run.analysisId,
     activeStep: progress.activeStep,
-    analysisResult: analysisMutation.data?.result ?? null,
-    analysisResultMode: analysisMutation.data?.submission.mode ?? null,
+    analysisResult: run.completed?.result ?? null,
+    analysisResultMode: run.completed?.submission.mode ?? null,
     changeDepth,
     changeMode,
-    clearFile,
+    clearFile: () => {
+      setSelectedFile(null)
+      resetView(false)
+    },
     depth,
-    errorMessage:
-      clientError ??
-      (analysisMutation.isError ? getErrorMessage(analysisMutation.error) : null),
+    errorMessage: clientError ?? run.errorMessage,
     feedback,
-    isPending: analysisMutation.isPending,
+    isPending: run.isPending,
     mode,
+    openAnalysis: (nextAnalysisId: string) => {
+      setSelectedFile(null)
+      setClientError(null)
+      setFeedback(null)
+      run.open(nextAnalysisId)
+    },
     processingStatus: progress.processingStatus,
     selectFile,
     selectedFile,
