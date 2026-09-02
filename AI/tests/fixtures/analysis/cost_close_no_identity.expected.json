@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "workbook": "cost_close_no_identity.xlsx",
+  "subject": null,
+  "subject_reason": "'이름표 | 값' 두 칸 행이 없는 표라 분석 대상 이름을 만들어내면 안 된다",
+  "numeric_changes": [
+    {
+      "metric": "재료비",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 4200.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 4980.0,
+      "change": 780.0,
+      "change_rate_percent": 18.57
+    },
+    {
+      "metric": "가공비",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 1800.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 1580.0,
+      "change": -220.0,
+      "change_rate_percent": -12.22
+    },
+    {
+      "metric": "총원가",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 6000.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 6560.0,
+      "change": 560.0,
+      "change_rate_percent": 9.33
+    }
+  ],
+  "review_points": [
+    {
+      "impact": "가공비 항목의 산정 기준을 다시 확인해야 합니다.",
+      "verdict": "keep",
+      "reason": "워크북에 실제로 있는 항목명을 가리킨다"
+    },
+    {
+      "impact": "협력사 납품 지연 가능성을 시사합니다.",
+      "verdict": "drop",
+      "reason": "파일 어디에도 없는 사정을 끌어온 추측이다"
+    },
+    {
+      "impact": "총원가가 987654까지 늘어날 수 있습니다.",
+      "verdict": "drop",
+      "reason": "근거에서 확인되지 않는 수치를 말한다"
+    }
+  ],
+  "questions": [
+    {"question": "재료비", "verdict": "specific", "reason": "워크북 헤더에 있는 단어"},
+    {"question": "협력사", "verdict": "clarify", "reason": "워크북에 없는 업종 명사"},
+    {"question": "B5 값은?", "verdict": "specific", "reason": "셀 주소를 직접 가리킴"},
+    {"question": "요약", "verdict": "specific", "reason": "무엇을 묻는지 나타내는 표현"}
+  ]
+}

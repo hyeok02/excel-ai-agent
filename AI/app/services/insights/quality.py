@@ -8,10 +8,10 @@ from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
 def ensure_business_report(
     report: WorkbookInsightReport, context: dict[str, object]
 ) -> WorkbookInsightReport:
-    changes = _changes(context)
+    changes = metric_changes(context)
     if not changes or _is_concrete(report):
         return report
-    subject = _subject(context)
+    subject = subject_name(context)
     insights = [_change_insight(subject, change) for change in changes[:5]]
     return WorkbookInsightReport(
         overview=" ".join(insight.fact for insight in insights[:2]),
@@ -32,7 +32,7 @@ def _is_concrete(report: WorkbookInsightReport) -> bool:
     )
 
 
-def _changes(context: dict[str, object]) -> list[dict[str, object]]:
+def metric_changes(context: dict[str, object]) -> list[dict[str, object]]:
     results: dict[str, dict[str, object]] = {}
     for sheet in context.get("sheets", []):
         facts = sheet.get("business_facts", {})
@@ -50,7 +50,7 @@ def _changes(context: dict[str, object]) -> list[dict[str, object]]:
     )
 
 
-def _subject(context: dict[str, object]) -> str | None:
+def subject_name(context: dict[str, object]) -> str | None:
     """'이름표 | 값' 두 칸으로 적힌 분석 대상 이름을 행의 모양으로만 찾는다.
 
     특정 워크북의 머리글 문구에 의존하지 않으므로 업종이 다른 파일에서도

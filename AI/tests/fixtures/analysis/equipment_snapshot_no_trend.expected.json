@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "workbook": "equipment_snapshot_no_trend.xlsx",
+  "subject": "2공장 압출 1호기",
+  "subject_reason": "'설비명 | 2공장 압출 1호기' 두 칸 행이 대상을 가리킨다",
+  "numeric_changes": [],
+  "numeric_changes_reason": "기간 열이 없는 스냅샷이라 변화 지표를 만들어내면 안 된다",
+  "review_points": [
+    {
+      "impact": "진동 측정값을 기준값과 함께 확인해야 합니다.",
+      "verdict": "keep",
+      "reason": "워크북에 있는 점검 항목과 열 이름을 가리킨다"
+    },
+    {
+      "impact": "노후화로 교체 주기를 앞당겨야 할 수 있습니다.",
+      "verdict": "drop",
+      "reason": "파일로 확인할 수 없는 추측이다"
+    },
+    {
+      "impact": "측정값이 987654에 도달했습니다.",
+      "verdict": "drop",
+      "reason": "근거에서 확인되지 않는 수치를 말한다"
+    }
+  ],
+  "questions": [
+    {"question": "베어링 온도", "verdict": "specific", "reason": "워크북에 있는 점검 항목"},
+    {"question": "협력사", "verdict": "clarify", "reason": "워크북에 없는 업종 명사"},
+    {"question": "C7 값은?", "verdict": "specific", "reason": "셀 주소를 직접 가리킴"},
+    {"question": "비교", "verdict": "specific", "reason": "무엇을 묻는지 나타내는 표현"}
+  ]
+}
