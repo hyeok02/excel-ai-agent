@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
 
+from app.services.insights.fact_trends import is_plain_text
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
 
 
@@ -10,15 +11,10 @@ def ensure_business_report(
     changes = _changes(context)
     if not changes or _is_concrete(report):
         return report
-    target = _focus_target(context) or "분석 대상"
-    current = _current_insight(target, context)
-    insights = ([current] if current else []) + [
-        _change_insight(target, change) for change in changes[:4]
-    ]
-    insights = insights[:5]
-    overview = " ".join(insight.fact for insight in insights[:2])
+    subject = _subject(context)
+    insights = [_change_insight(subject, change) for change in changes[:5]]
     return WorkbookInsightReport(
-        overview=overview,
+        overview=" ".join(insight.fact for insight in insights[:2]),
         insights=insights,
         limitations=[
             "변화의 원인은 파일 안의 수치만으로 확인할 수 없어 단정하지 않았습니다."
@@ -49,65 +45,43 @@ def _changes(context: dict[str, object]) -> list[dict[str, object]]:
                 results[metric] = change
     return sorted(
         results.values(),
-        key=lambda item: (
-            _metric_priority(str(item.get("metric"))),
-            abs(float(item.get("change_rate_percent", 0))),
-        ),
+        key=lambda item: abs(float(item.get("change_rate_percent", 0))),
         reverse=True,
     )
 
 
-def _focus_target(context: dict[str, object]) -> str | None:
+def _subject(context: dict[str, object]) -> str | None:
+    """'이름표 | 값' 두 칸으로 적힌 분석 대상 이름을 행의 모양으로만 찾는다.
+
+    특정 워크북의 머리글 문구에 의존하지 않으므로 업종이 다른 파일에서도
+    같은 규칙으로 동작한다. 해당하는 행이 없으면 대상을 붙이지 않는다.
+    """
     for sheet in context.get("sheets", []):
         records = sheet.get("business_facts", {}).get("selected_records", [])
         for record in records:
             values = record.get("values", [])
-            for index, value in enumerate(values[:-1]):
-                label = str(value.get("value", "")).strip().casefold()
-                if label.startswith("focus co") and "company" not in label:
-                    return str(values[index + 1].get("value"))
-    return None
-
-
-def _current_insight(target: str, context: dict[str, object]) -> WorkbookInsight | None:
-    for sheet in context.get("sheets", []):
-        records = sheet.get("business_facts", {}).get("selected_records", [])
-        for record in records:
-            values = {str(item.get("label")): item.get("value") for item in record["values"]}
-            headcount = values.get("Headcount (Latest)")
-            tenure = values.get("Average Tenure (Latest)")
-            if not isinstance(headcount, (int, float)):
+            if len(values) != 2:
                 continue
-            tenure_text = (
-                f", 평균 근속은 {_display_number(tenure)}년" if isinstance(tenure, (int, float)) else ""
-            )
-            return WorkbookInsight(
-                title=f"요약 표 최신 직원 수 {_display_number(headcount)}명",
-                fact=f"{target}의 요약 표 기준 최신 직원 수는 {_display_number(headcount)}명{tenure_text}입니다.",
-                cause=None,
-                impact="인력 규모를 판단할 때 요약 표의 최신 기준값으로 사용할 수 있습니다.",
-                category="summary",
-                severity="info",
-                evidence=[str(record["location"])],
-                recommendation=None,
-                confidence=0.98,
-            )
+            label, name = (item.get("value") for item in values)
+            if is_plain_text(label) and is_plain_text(name):
+                return str(name).strip()
     return None
 
 
 def _change_insight(
-    target: str, change: dict[str, object]
+    subject: str | None, change: dict[str, object]
 ) -> WorkbookInsight:
     old = _display_number(change["earliest_value"])
     new = _display_number(change["latest_value"])
     delta = _display_number(abs(float(change["change"])))
     rate = abs(float(change["change_rate_percent"]))
     direction = "감소" if float(change["change"]) < 0 else "증가"
-    metric = _metric_label(str(change["metric"]))
+    metric = str(change["metric"])
+    owner = f"{subject}의 " if subject else ""
     return WorkbookInsight(
         title=f"{metric} {rate:g}% {direction}",
         fact=(
-            f"{target}의 월별 추이에서 {metric} 지표는 {_period(change['earliest_period'])} {old}에서 "
+            f"{owner}{metric} 지표는 {_period(change['earliest_period'])} {old}에서 "
             f"{_period(change['latest_period'])} {new}로 {delta}({rate:g}%) {direction}했습니다."
         ),
         cause=None,
@@ -133,18 +107,3 @@ def _period(value: object) -> str:
         return datetime.fromisoformat(str(value)).strftime("%Y년 %m월")
     except ValueError:
         return str(value)
-
-
-def _metric_priority(metric: str) -> int:
-    normalized = metric.casefold()
-    return 3 if "total employee" in normalized or "headcount" in normalized else 1
-
-
-def _metric_label(metric: str) -> str:
-    return {
-        "Total Employees": "전체 직원 수",
-        "General & Administrative": "일반·관리 부문 인원",
-        "Legal": "법무 부문 인원",
-        "Analyst": "애널리스트 인원",
-        "Finance": "재무 부문 인원",
-    }.get(metric, metric)

@@ -9,6 +9,7 @@ from app.services.insights.models import (
 )
 from app.services.insights.numeric_validation import unmatched_numbers
 from app.services.insights.reference_matching import resolve_references
+from app.services.insights.review_points import grounded_review_point
 from app.services.insights.validation_index import (
     EvidenceIndex,
     agent_evidence_index,
@@ -111,7 +112,9 @@ def _validate_insight(
         else InsightValidationStatus.VERIFIED
     )
     confidence = round(max(0.0, insight.confidence - confidence_penalty), 2)
-    impact = _review_point(insight.impact)
+    impact = grounded_review_point(
+        insight.impact, [*insight.evidence, *index.evidence_text], cited_numbers
+    )
     return ValidatedWorkbookInsight(
         **insight.model_dump(exclude={"cause", "impact", "confidence"}),
         cause=cause,
@@ -121,18 +124,3 @@ def _validate_insight(
         validation_reasons=reasons,
     )
 
-
-def _review_point(value: str | None) -> str | None:
-    if not value or not value.strip():
-        return None
-    normalized = value.casefold()
-    speculative = (
-        "가능성을 시사",
-        "등을 시사",
-        "외부 위탁",
-        "이직 증가",
-        "역량의 변화",
-        "사업 확장",
-        "전략적",
-    )
-    return None if any(term in normalized for term in speculative) else value.strip()

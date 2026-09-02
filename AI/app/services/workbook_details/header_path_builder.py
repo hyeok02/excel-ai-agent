@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
@@ -38,4 +39,3 @@ def normalize_path(labels: Iterable[str | None]) -> list[str]:
         if normalized and (not path or path[-1] != normalized):
             path.append(normalized)
     return path
-from collections.abc import Iterable

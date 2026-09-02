@@ -58,3 +58,19 @@ def test_unclear_model_draft_discards_workbook_facts_and_evidence() -> None:
     assert "질문이 구체적이지 않아" in answer.answer
     assert answer.evidence == []
     assert answer.confidence == 0
+
+
+def _sales_index():
+    from app.agent.query import build_workbook_data_index
+
+    return build_workbook_data_index("sales.xlsx", create_workbook_file())
+
+
+def test_accepts_a_term_that_only_the_uploaded_workbook_defines() -> None:
+    """용어집에 없던 단어라도 워크북 안에 있으면 구체적인 질문으로 본다."""
+    assert vague_question_answer("노트북", _sales_index()) is None
+
+
+def test_rejects_a_business_term_absent_from_the_uploaded_workbook() -> None:
+    """반대로 워크북에 없는 업종 명사는 통과시키지 않는다."""
+    assert vague_question_answer("투자", _sales_index()) is not None

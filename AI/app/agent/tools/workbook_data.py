@@ -19,7 +19,7 @@ from app.agent.tools.workbook_headers import (
     evidence_with_header,
     header_for,
 )
-from app.agent.tools.workbook_search_terms import relevance, search_terms
+from app.agent.query.search_terms import relevance, search_terms
 PRECEDING_ROW_COUNT = 3
 FOLLOWING_ROW_COUNT = 8
 

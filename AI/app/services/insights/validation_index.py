@@ -21,6 +21,7 @@ class EvidenceIndex:
     references: set[str] = field(default_factory=set)
     cause_references: set[str] = field(default_factory=set)
     reference_numbers: dict[str, set[Decimal]] = field(default_factory=dict)
+    evidence_text: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
 
 
@@ -47,6 +48,11 @@ def agent_evidence_index(execution: AgentExecution) -> EvidenceIndex:
             if reference:
                 index.references.add(reference)
                 _add_reference_numbers(index, reference, evidence.value)
+                index.evidence_text.extend(
+                    str(item)
+                    for item in (evidence.description, evidence.formula, evidence.value)
+                    if item
+                )
                 if evidence.kind in {EvidenceKind.FORMULA, EvidenceKind.METADATA}:
                     index.cause_references.add(reference)
     if execution.failed_step_count or execution.skipped_step_count:
@@ -58,9 +64,9 @@ def _index_workbook_sheet(index: EvidenceIndex, sheet: Any) -> None:
     if not isinstance(sheet, dict):
         return
     sheet_name = str(sheet.get("name", ""))
-    index.references.update(
-        extract_references(json.dumps(sheet, ensure_ascii=False, default=str))
-    )
+    serialized = json.dumps(sheet, ensure_ascii=False, default=str)
+    index.references.update(extract_references(serialized))
+    index.evidence_text.append(serialized)
     index_reference_numbers(
         index, sheet, sheet_name, extract_references, normalize_reference
     )

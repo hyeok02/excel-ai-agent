@@ -1,4 +1,8 @@
+import re
 from datetime import datetime
+
+MAX_TEXT_LENGTH = 120
+NUMERIC_PATTERN = re.compile(r"-?[\d,]+(?:\.\d+)?%?")
 
 
 def numeric_changes(records: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -48,3 +52,13 @@ def _numbers_by_label(record: dict[str, object]) -> dict[str, float]:
         for value in record["values"][1:]
         if value.get("label") and isinstance(value["value"], (int, float))
     }
+
+
+def is_plain_text(value: object) -> bool:
+    """수치도 날짜도 아닌, 이름표로 쓸 수 있는 짧은 문자열인지 판단한다."""
+    text = str(value).strip()
+    if not text or len(text) > MAX_TEXT_LENGTH:
+        return False
+    if NUMERIC_PATTERN.fullmatch(text):
+        return False
+    return date_value(text) is None

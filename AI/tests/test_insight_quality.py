@@ -77,3 +77,41 @@ def test_keeps_concrete_llm_report() -> None:
     context = {"sheets": [{"business_facts": {"numeric_changes": [{}]}}]}
 
     assert ensure_business_report(report, context) is report
+
+
+def test_builds_concrete_report_for_a_workbook_from_another_domain() -> None:
+    """인사 워크북 전용 컬럼명 없이도 같은 규칙으로 동작해야 한다."""
+    context = {
+        "sheets": [
+            {
+                "business_facts": {
+                    "selected_records": [
+                        {
+                            "values": [
+                                {"value": "설비 라인"},
+                                {"value": "2공장 압출 라인"},
+                            ]
+                        }
+                    ],
+                    "numeric_changes": [
+                        {
+                            "metric": "월간 불량률",
+                            "earliest_period": "2025-01-01T00:00:00",
+                            "earliest_value": 2.4,
+                            "latest_period": "2025-06-01T00:00:00",
+                            "latest_value": 3.6,
+                            "change": 1.2,
+                            "change_rate_percent": 50.0,
+                            "evidence": ["품질!C4:H4"],
+                        }
+                    ],
+                }
+            }
+        ]
+    }
+
+    result = ensure_business_report(_generic_report(), context)
+
+    assert "2공장 압출 라인" in result.overview
+    assert "월간 불량률" in result.overview
+    assert result.insights[0].evidence == ["품질!C4:H4"]

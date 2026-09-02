@@ -118,3 +118,20 @@ def test_excludes_header_and_internal_code_rows() -> None:
             ],
         }
     ]
+
+
+def test_finds_identity_row_without_workbook_specific_headers() -> None:
+    """'Focus Co.' 같은 특정 문구가 없어도 이름표-값 행을 찾아야 한다."""
+    regions = [
+        {
+            "title": "설비 개요",
+            "semantic": {"role": "description"},
+            "preview_rows": [
+                [_cell("A1", "설비 라인"), _cell("B1", "2공장 압출 라인")]
+            ],
+        }
+    ]
+
+    result = build_business_facts("설비", regions, [], max_records=1)
+
+    assert result["selected_records"][0]["location"] == "설비!A1:B1"
