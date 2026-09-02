@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "workbook": "yield_report_english_only.xlsx",
+  "subject": "Extrusion Line B",
+  "subject_reason": "'Line | Extrusion Line B' 두 칸 행이 대상을 가리킨다",
+  "numeric_changes": [
+    {
+      "metric": "Defects",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 240.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 189.0,
+      "change": -51.0,
+      "change_rate_percent": -21.25
+    },
+    {
+      "metric": "Output",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 12000.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 13500.0,
+      "change": 1500.0,
+      "change_rate_percent": 12.5
+    },
+    {
+      "metric": "Yield Rate",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 98.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 98.6,
+      "change": 0.6,
+      "change_rate_percent": 0.61
+    }
+  ],
+  "review_points": [
+    {
+      "impact": "Defects should be reviewed against the recorded output.",
+      "verdict": "keep",
+      "reason": "워크북에 실제로 있는 열 이름을 가리킨다"
+    },
+    {
+      "impact": "Supplier onboarding delays may explain this movement.",
+      "verdict": "drop",
+      "reason": "파일 어디에도 없는 사정을 끌어온 추측이다"
+    },
+    {
+      "impact": "Output may reach 987654 units next quarter.",
+      "verdict": "drop",
+      "reason": "근거에서 확인되지 않는 수치를 말한다"
+    }
+  ],
+  "questions": [
+    {"question": "Defects", "verdict": "specific", "reason": "워크북 헤더에 있는 단어"},
+    {"question": "supplier", "verdict": "clarify", "reason": "워크북에 없는 업종 명사"},
+    {"question": "C7", "verdict": "specific", "reason": "셀 주소를 직접 가리킴"},
+    {"question": "summary", "verdict": "specific", "reason": "무엇을 묻는지 나타내는 영어 표현"}
+  ]
+}

@@ -113,3 +113,34 @@ def test_removes_review_point_that_leaves_the_workbook_in_any_domain() -> None:
 
     assert result.insights[0].impact is None
     assert result.insights[0].validation_status == "verified"
+
+
+def test_treats_digits_inside_a_workbook_name_as_part_of_the_name() -> None:
+    """'2공장'의 2를 근거 없는 수치로 오해하면 정상 문장이 통째로 버려진다."""
+    plant_context = context()
+    plant_context["sheets"][0]["business_facts"]["selected_records"] = [
+        {
+            "location": "Sales!A1:B2",
+            "values": [{"cell": "A1", "value": "2공장 압출 라인"}],
+        }
+    ]
+
+    result = validate_workbook_insights(
+        report(
+            fact="2공장 압출 라인의 값은 100에서 80으로 20 감소했습니다.",
+            impact="2공장 압출 라인의 최근 값을 함께 확인해야 합니다.",
+        ),
+        plant_context,
+    )
+
+    insight = result.insights[0]
+    assert insight.validation_status == "verified"
+    assert insight.impact is not None
+
+
+def test_still_flags_a_number_that_is_not_a_workbook_name() -> None:
+    result = validate_workbook_insights(
+        report(fact="Sales 값이 987654로 늘었습니다."), context()
+    )
+
+    assert result.insights[0].validation_status == "limited"

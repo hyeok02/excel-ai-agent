@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "workbook": "cost_close_no_identity.xlsx",
+      "expectation": "cost_close_no_identity.expected.json",
+      "coverage": [
+        "no_identity_row",
+        "single_sheet_time_series",
+        "unit_note_row",
+        "korean_only"
+      ]
+    },
+    {
+      "workbook": "equipment_snapshot_no_trend.xlsx",
+      "expectation": "equipment_snapshot_no_trend.expected.json",
+      "coverage": [
+        "identity_row",
+        "no_time_series",
+        "measurement_versus_threshold",
+        "korean_only"
+      ]
+    },
+    {
+      "workbook": "yield_report_english_only.xlsx",
+      "expectation": "yield_report_english_only.expected.json",
+      "coverage": [
+        "english_only",
+        "identity_row",
+        "derived_rate_column",
+        "single_sheet_time_series"
+      ]
+    },
+    {
+      "workbook": "energy_mixed_layout.xlsx",
+      "expectation": "energy_mixed_layout.expected.json",
+      "coverage": [
+        "merged_title",
+        "repeated_header_row",
+        "subtotal_row_inside_table",
+        "documentation_sheet",
+        "no_identity_row"
+      ]
+    }
+  ]
+}

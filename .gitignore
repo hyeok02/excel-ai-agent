@@ -40,3 +40,4 @@ logs/
 *.xlsx
 *.xlsm
 !AI/tests/fixtures/semantic/*.xlsx
+!AI/tests/fixtures/analysis/*.xlsx

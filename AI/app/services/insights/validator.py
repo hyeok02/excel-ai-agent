@@ -9,7 +9,11 @@ from app.services.insights.models import (
 )
 from app.services.insights.numeric_validation import unmatched_numbers
 from app.services.insights.reference_matching import resolve_references
-from app.services.insights.review_points import grounded_review_point
+from app.services.insights.review_points import (
+    grounded_review_point,
+    grounded_tokens,
+    mask_known_names,
+)
 from app.services.insights.validation_index import (
     EvidenceIndex,
     agent_evidence_index,
@@ -91,7 +95,10 @@ def _validate_insight(
     if unmatched_references:
         reasons.append("일부 셀·범위가 분석 입력과 정확히 일치하지 않아 원본 확인이 필요합니다.")
         confidence_penalty += 0.25
-    claim_text = " ".join(item for item in [insight.fact, insight.cause] if item)
+    grounded = grounded_tokens([*insight.evidence, *index.evidence_text])
+    claim_text = mask_known_names(
+        " ".join(item for item in [insight.fact, insight.cause] if item), grounded
+    )
     cited_numbers = set().union(
         *(
             index.reference_numbers.get(reference, set())
@@ -112,9 +119,7 @@ def _validate_insight(
         else InsightValidationStatus.VERIFIED
     )
     confidence = round(max(0.0, insight.confidence - confidence_penalty), 2)
-    impact = grounded_review_point(
-        insight.impact, [*insight.evidence, *index.evidence_text], cited_numbers
-    )
+    impact = grounded_review_point(insight.impact, grounded, cited_numbers)
     return ValidatedWorkbookInsight(
         **insight.model_dump(exclude={"cause", "impact", "confidence"}),
         cause=cause,

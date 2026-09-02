@@ -31,6 +31,7 @@ class FixtureRegressionResult:
 @dataclass(frozen=True)
 class SemanticRegressionReport:
     results: tuple[FixtureRegressionResult, ...]
+    title: str = "Excel 의미 분석 회귀 테스트"
 
     @property
     def passed(self) -> bool:
@@ -46,7 +47,7 @@ class SemanticRegressionReport:
 
     def failure_message(self) -> str:
         lines = [
-            "Excel 의미 분석 회귀 테스트 실패",
+            f"{self.title} 실패",
             f"통과 {self.passed_count}개 / 실패 {self.failed_count}개",
         ]
         for result in self.results:

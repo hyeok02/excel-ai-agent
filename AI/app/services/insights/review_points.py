@@ -4,13 +4,37 @@ from decimal import Decimal
 from app.services.insights.numeric_validation import numbers, unmatched_numbers
 
 TOKEN_PATTERN = re.compile(
-    r"[A-Za-z]{1,3}\d+|[A-Za-z]+|[가-힣]{2,}|\d[\d,]*(?:\.\d+)?"
+    r"\d+[가-힣]+|[A-Za-z]{1,3}\d+|[A-Za-z]+|[가-힣]{2,}|\d[\d,]*(?:\.\d+)?"
 )
 COLUMN_PATTERN = re.compile(r"^([A-Za-z]{1,3})\d+$")
+NAME_PATTERN = re.compile(r"^(\d+)([가-힣]+)$")
+NAME_IN_TEXT_PATTERN = re.compile(r"\d+[가-힣]+")
+
+
+def grounded_tokens(grounded_terms: list[str]) -> set[str]:
+    """근거와 워크북 어휘에서 대조에 쓸 토큰을 모은다."""
+    return {token for item in grounded_terms for token in _tokens(item)}
+
+
+def mask_known_names(text: str, grounded: set[str]) -> str:
+    """'2공장', '1호기'처럼 워크북에 있는 이름 속 숫자를 수치 주장에서 뺀다.
+
+    제조·설비 데이터에서 이름에 숫자가 붙는 것은 흔한 일이라, 그 숫자를
+    근거 없는 수치로 오해하면 정상적인 문장이 통째로 버려진다.
+    """
+    names = {token for token in grounded if NAME_PATTERN.match(token)}
+    if not names:
+        return text
+    return NAME_IN_TEXT_PATTERN.sub(
+        lambda match: " "
+        if any(match.group(0).casefold().startswith(name) for name in names)
+        else match.group(0),
+        text,
+    )
 
 
 def grounded_review_point(
-    value: str | None, grounded_terms: list[str], cited_numbers: set[Decimal]
+    value: str | None, grounded: set[str], cited_numbers: set[Decimal]
 ) -> str | None:
     """인용한 근거에 실제로 등장하는 것만 가리키는 검토 포인트를 남긴다.
 
@@ -23,12 +47,12 @@ def grounded_review_point(
     text = (value or "").strip()
     if not text:
         return None
-    if unmatched_numbers(text, cited_numbers):
+    masked = mask_known_names(text, grounded)
+    if unmatched_numbers(masked, cited_numbers):
         return None
-    if numbers(text):
+    if numbers(masked):
         return text
-    cited = {token for item in grounded_terms for token in _tokens(item)}
-    return text if _tokens(text) & cited else None
+    return text if _tokens(text) & grounded else None
 
 
 def _tokens(text: str) -> set[str]:
@@ -37,4 +61,6 @@ def _tokens(text: str) -> set[str]:
         tokens.add(raw.casefold())
         if match := COLUMN_PATTERN.match(raw):
             tokens.add(match.group(1).casefold())
+        if match := NAME_PATTERN.match(raw):
+            tokens.add(match.group(2).casefold())
     return tokens
