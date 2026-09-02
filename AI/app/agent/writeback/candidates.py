@@ -1,7 +1,7 @@
 import re
 
 from app.agent.query.index import IndexedCell, WorkbookDataIndex
-from app.agent.tools.workbook_search_terms import relevance, search_terms
+from app.agent.query.search_terms import relevance, search_terms
 
 MAX_CANDIDATE_CELLS = 240
 

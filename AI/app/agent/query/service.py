@@ -31,7 +31,7 @@ class WorkbookQuestionService:
     async def answer(
         self, question: str, summary: WorkbookSummary, data_index: WorkbookDataIndex
     ) -> QuestionAnswer:
-        if clarification := vague_question_answer(question):
+        if clarification := vague_question_answer(question, data_index):
             return clarification
         plan = build_question_plan(question)
         execution = self._executor.execute(

@@ -95,3 +95,21 @@ def test_wrong_adjacent_range_cannot_borrow_missing_cell_value() -> None:
     )
 
     assert result.insights[0].validation_status == "limited"
+
+
+def test_keeps_review_point_anchored_to_a_cited_number() -> None:
+    anchored = "최신 값 80을 기준으로 후속 비교를 맞춰야 합니다."
+
+    result = validate_workbook_insights(report(impact=anchored), context())
+
+    assert result.insights[0].impact == anchored
+
+
+def test_removes_review_point_that_leaves_the_workbook_in_any_domain() -> None:
+    """업종별 표현 목록이 아니라 근거 연결 여부로 판단하는지 확인한다."""
+    result = validate_workbook_insights(
+        report(impact="설비 노후화로 공정 재편이 필요할 수 있습니다."), context()
+    )
+
+    assert result.insights[0].impact is None
+    assert result.insights[0].validation_status == "verified"

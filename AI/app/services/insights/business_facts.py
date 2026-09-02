@@ -6,7 +6,11 @@ from app.services.insights.fact_labels import (
     is_technical_row,
     resolve_fact_label,
 )
-from app.services.insights.fact_trends import date_value, numeric_changes
+from app.services.insights.fact_trends import (
+    date_value,
+    is_plain_text,
+    numeric_changes,
+)
 
 MAX_VALUES_PER_ROW = 10
 
@@ -95,12 +99,14 @@ def _record_score(values: list[dict[str, object]], role: str | None) -> int:
 
 
 def _identity_score(values: list[dict[str, object]]) -> int:
-    text = " ".join(str(value["value"]).casefold() for value in values)
-    if "focus co" in text or "분석 대상" in text:
-        return 2
-    if "company name" in text or "기업명" in text:
-        return 1
-    return 0
+    """'이름표 | 값' 두 칸으로 대상을 적어 둔 행을 행의 모양으로 찾는다.
+
+    특정 워크북의 머리글 문구를 찾지 않으므로 업종이 달라도 동일하게 동작한다.
+    """
+    if len(values) != 2:
+        return 0
+    label, name = (value["value"] for value in values)
+    return 2 if is_plain_text(label) and is_plain_text(name) else 0
 
 
 def _semantic_role(region: dict[str, Any]) -> str | None:
