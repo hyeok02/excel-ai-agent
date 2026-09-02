@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 
 MAX_TEXT_LENGTH = 120
+MAX_IDENTITY_CELLS = 3
 NUMERIC_PATTERN = re.compile(r"-?[\d,]+(?:\.\d+)?%?")
 
 
@@ -62,3 +63,18 @@ def is_plain_text(value: object) -> bool:
     if NUMERIC_PATTERN.fullmatch(text):
         return False
     return date_value(text) is None
+
+
+def is_identity_row(values: list[dict[str, object]]) -> bool:
+    """'이름표 … 값' 형태로 대상을 적어 둔 행인지 행의 모양으로 판단한다.
+
+    표 안의 데이터 셀에는 열 이름이 붙는다. 따라서 열 이름이 붙지 않은
+    짧은 평문 행만 식별 행으로 보고, 마지막 칸을 대상 이름으로 읽는다.
+    안내 문구가 앞에 붙어 세 칸이 되는 배치가 실제 워크북에서 흔하므로
+    두 칸으로 제한하지 않는다.
+    """
+    if not 2 <= len(values) <= MAX_IDENTITY_CELLS:
+        return False
+    if any(value.get("label") for value in values):
+        return False
+    return all(is_plain_text(value.get("value")) for value in values)

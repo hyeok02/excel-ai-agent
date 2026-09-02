@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 
-from app.services.insights.fact_trends import is_plain_text
+from app.services.insights.fact_trends import is_identity_row
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
 
 
@@ -60,11 +60,8 @@ def subject_name(context: dict[str, object]) -> str | None:
         records = sheet.get("business_facts", {}).get("selected_records", [])
         for record in records:
             values = record.get("values", [])
-            if len(values) != 2:
-                continue
-            label, name = (item.get("value") for item in values)
-            if is_plain_text(label) and is_plain_text(name):
-                return str(name).strip()
+            if is_identity_row(values):
+                return str(values[-1]["value"]).strip()
     return None
 
 
