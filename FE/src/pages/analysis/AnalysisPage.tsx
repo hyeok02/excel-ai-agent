@@ -29,9 +29,11 @@ const AnalysisPage = () => {
   return (
     <div className="space-y-7">
       <AnalysisFeedback feedback={feedback} />
-      <AnalysisHeader status={status} statusText={statusText} />
+      <div className="page-reveal">
+        <AnalysisHeader status={status} statusText={statusText} />
+      </div>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <section className="page-reveal page-reveal-delay-1 grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <AnalysisUploadPanel
           errorMessage={errorMessage}
           depth={depth}

@@ -1,27 +1,19 @@
-import SummaryCards from '@/components/common/SummaryCards'
+import WorkspaceOverviewPage from '@/components/workspace/WorkspaceOverviewPage'
+
+const SUMMARY_ITEMS = [
+  { label: '활성 소스', value: '0', helper: '등록된 기관 게시판' },
+  { label: '최근 감지', value: '0', helper: '신규 게시물' },
+  { label: '경고', value: '0', helper: '확인이 필요한 항목' },
+]
 
 const PublicMonitorPage = () => {
   return (
-    <div className="space-y-6">
-      <section className="panel flex flex-wrap items-start justify-between gap-4 p-6 md:p-8">
-        <div>
-          <p className="eyebrow">PUBLIC INSTITUTION MONITOR</p>
-          <h1 className="page-title">공공기관 모니터</h1>
-          <p className="page-description">
-            등록한 공공기관 게시판을 주기적으로 확인하고, 신규 게시물을 수집·요약하는
-            화면입니다.
-          </p>
-        </div>
-      </section>
-
-      <SummaryCards
-        items={[
-          { label: '활성 소스', value: '0', helper: '등록된 기관 게시판' },
-          { label: '최근 감지', value: '0', helper: '신규 게시물' },
-          { label: '경고', value: '0', helper: '확인이 필요한 항목' },
-        ]}
-      />
-
+    <WorkspaceOverviewPage
+      description="등록한 공공기관 게시판을 주기적으로 확인하고, 신규 게시물을 수집·요약하는 화면입니다."
+      eyebrow="PUBLIC INSTITUTION MONITOR"
+      summaryItems={SUMMARY_ITEMS}
+      title="공공기관 모니터"
+    >
       <section className="panel overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
           <div>
@@ -54,7 +46,7 @@ const PublicMonitorPage = () => {
           </table>
         </div>
       </section>
-    </div>
+    </WorkspaceOverviewPage>
   )
 }
 

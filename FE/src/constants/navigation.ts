@@ -11,8 +11,8 @@ export const ROUTES = {
 
 export const DASHBOARD_NAVIGATION_ITEM = {
   to: ROUTES.dashboard,
-  label: '대시보드',
-  description: '공통 운영 현황',
+  label: '홈',
+  description: '업무 시작 화면',
 } as const
 
 export const BUSINESS_NAVIGATION_ITEMS = [

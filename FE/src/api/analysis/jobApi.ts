@@ -8,24 +8,7 @@ import type {
   AnalysisSubmission,
   CompletedAnalysis,
 } from '@/api/analysis/jobTypes'
-import type { WorkbookQuestionAnswer } from '@/api/analysis/questionTypes'
-export {
-  approveWorkbookWriteback,
-  downloadWorkbookWriteback,
-  getWorkbookWritebacks,
-  proposeWorkbookWriteback,
-  rejectWorkbookWriteback,
-} from '@/api/analysis/writebackApi'
 import apiClient from '@/utils/apiClient'
-
-export * from '@/api/analysis/dependencyTypes'
-export * from '@/api/analysis/formulaRiskTypes'
-export * from '@/api/analysis/insightTypes'
-export * from '@/api/analysis/jobTypes'
-export * from '@/api/analysis/questionTypes'
-export * from '@/api/analysis/semanticTypes'
-export * from '@/api/analysis/workbookTypes'
-export * from '@/api/analysis/writebackTypes'
 
 export const submitAnalysis = async (
   file: File,
@@ -91,15 +74,4 @@ export const analyzeWorkbook = async (
   const result = await getAnalysisResult(submission.analysisId)
 
   return { submission, result }
-}
-
-export const askWorkbookQuestion = async (
-  analysisId: string,
-  question: string,
-): Promise<WorkbookQuestionAnswer> => {
-  const { data } = await apiClient.post<WorkbookQuestionAnswer>(
-    `/api/v1/analyses/${analysisId}/questions`,
-    { question },
-  )
-  return data
 }

@@ -1,6 +1,7 @@
 import { ChevronDown, FileSpreadsheet } from 'lucide-react'
 
 import type { SheetResult } from '@/api/analysis'
+import ResponsiveCardColumns from '@/components/analysis/common/ResponsiveCardColumns'
 import SheetChartDetails from '@/components/analysis/workbook/details/SheetChartDetails'
 import SheetFormulaDetails from '@/components/analysis/workbook/details/SheetFormulaDetails'
 import SheetRegionDetails from '@/components/analysis/workbook/details/SheetRegionDetails'
@@ -31,6 +32,28 @@ const SheetResultCard = ({ sheet }: SheetResultCardProps) => {
     tables.length > 0 ||
     charts.length > 0 ||
     columns.length > 0
+  const detailSections = [
+    {
+      key: 'regions',
+      visible: regions.length > 0,
+      content: <SheetRegionDetails regions={regions} sheetName={sheet.name} />,
+    },
+    {
+      key: 'formulas',
+      visible: formulas.length > 0,
+      content: <SheetFormulaDetails formulas={formulas} sheetName={sheet.name} />,
+    },
+    {
+      key: 'tables',
+      visible: tables.length > 0,
+      content: <SheetTableDetails tables={tables} sheetName={sheet.name} />,
+    },
+    {
+      key: 'charts',
+      visible: charts.length > 0,
+      content: <SheetChartDetails charts={charts} sheetName={sheet.name} />,
+    },
+  ].filter(({ visible }) => visible)
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -82,24 +105,13 @@ const SheetResultCard = ({ sheet }: SheetResultCardProps) => {
               sheetName={sheet.name}
             />
 
-            <div className="space-y-4 p-5">
-              {(regions.length > 0 || formulas.length > 0) && (
-                <div
-                  className={`grid gap-4 ${regions.length > 0 && formulas.length > 0 ? 'xl:grid-cols-2' : ''}`}
-                >
-                  <SheetRegionDetails regions={regions} sheetName={sheet.name} />
-                  <SheetFormulaDetails formulas={formulas} sheetName={sheet.name} />
-                </div>
-              )}
-              {(tables.length > 0 || charts.length > 0) && (
-                <div
-                  className={`grid gap-4 ${tables.length > 0 && charts.length > 0 ? 'xl:grid-cols-2' : ''}`}
-                >
-                  <SheetTableDetails tables={tables} sheetName={sheet.name} />
-                  <SheetChartDetails charts={charts} sheetName={sheet.name} />
-                </div>
-              )}
-            </div>
+            <ResponsiveCardColumns
+              breakpoint="xl"
+              className="p-5"
+              getKey={({ key }) => key}
+              items={detailSections}
+              renderItem={({ content }) => content}
+            />
           </div>
         </details>
       )}

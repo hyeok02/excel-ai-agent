@@ -1,27 +1,19 @@
-import SummaryCards from '@/components/common/SummaryCards'
+import WorkspaceOverviewPage from '@/components/workspace/WorkspaceOverviewPage'
+
+const SUMMARY_ITEMS = [
+  { label: '활성 키워드', value: '0', helper: '자동 수집 주제' },
+  { label: '오늘 수집', value: '0', helper: '수집된 기사 수' },
+  { label: '발송 성공', value: '0', helper: '최근 텔레그램 발송' },
+]
 
 const NewsCollectionPage = () => {
   return (
-    <div className="space-y-6">
-      <section className="panel flex flex-wrap items-start justify-between gap-4 p-6 md:p-8">
-        <div>
-          <p className="eyebrow">NEWS COLLECTION</p>
-          <h1 className="page-title">뉴스 수집</h1>
-          <p className="page-description">
-            검색 키워드별 뉴스 수집 현황과 수집 기사, 텔레그램 발송 이력을 확인하는
-            화면입니다.
-          </p>
-        </div>
-      </section>
-
-      <SummaryCards
-        items={[
-          { label: '활성 키워드', value: '0', helper: '자동 수집 주제' },
-          { label: '오늘 수집', value: '0', helper: '수집된 기사 수' },
-          { label: '발송 성공', value: '0', helper: '최근 텔레그램 발송' },
-        ]}
-      />
-
+    <WorkspaceOverviewPage
+      description="검색 키워드별 뉴스 수집 현황과 수집 기사, 텔레그램 발송 이력을 확인하는 화면입니다."
+      eyebrow="NEWS COLLECTION"
+      summaryItems={SUMMARY_ITEMS}
+      title="뉴스 수집"
+    >
       <section className="grid gap-6 xl:grid-cols-[20rem_1fr]">
         <article className="panel p-5">
           <div className="flex items-center justify-between">
@@ -58,7 +50,7 @@ const NewsCollectionPage = () => {
           </div>
         </article>
       </section>
-    </div>
+    </WorkspaceOverviewPage>
   )
 }
 

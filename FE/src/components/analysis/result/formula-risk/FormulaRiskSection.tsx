@@ -2,6 +2,7 @@ import { CheckCircle2, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 
 import type { FormulaRiskSummaryResult } from '@/api/analysis'
+import ResponsiveCardColumns from '@/components/analysis/common/ResponsiveCardColumns'
 import FormulaRiskFindingCard from '@/components/analysis/result/formula-risk/FormulaRiskFindingCard'
 import FormulaRiskOverview from '@/components/analysis/result/formula-risk/FormulaRiskOverview'
 
@@ -14,7 +15,9 @@ const VISIBLE_FINDINGS = 3
 const FormulaRiskSection = ({ summary }: FormulaRiskSectionProps) => {
   const [expanded, setExpanded] = useState(false)
   const hasRisks = summary.totalCount > 0
-  const findings = expanded ? summary.findings : summary.findings.slice(0, VISIBLE_FINDINGS)
+  const findings = expanded
+    ? summary.findings
+    : summary.findings.slice(0, VISIBLE_FINDINGS)
   const hiddenCount = summary.findings.length - findings.length
 
   if (!hasRisks) {
@@ -41,7 +44,8 @@ const FormulaRiskSection = ({ summary }: FormulaRiskSectionProps) => {
           <div>
             <h3 className="font-extrabold text-slate-950">수식 오류·영향 점검</h3>
             <p className="mt-1 text-sm text-slate-600">
-              주변과 다른 수식과 직접 입력된 값을 찾고, 결과가 어디까지 영향을 받는지 계산했습니다.
+              주변과 다른 수식과 직접 입력된 값을 찾고, 결과가 어디까지 영향을 받는지
+              계산했습니다.
             </p>
           </div>
         </div>
@@ -61,14 +65,14 @@ const FormulaRiskSection = ({ summary }: FormulaRiskSectionProps) => {
 
       <FormulaRiskOverview summary={summary} />
 
-      <div className="grid items-start gap-3 p-5 lg:grid-cols-2">
-        {findings.map((finding, index) => (
-          <FormulaRiskFindingCard
-            finding={finding}
-            key={`${finding.sheetName}-${finding.cell}-${finding.kind}-${index}`}
-          />
-        ))}
-      </div>
+      <ResponsiveCardColumns
+        className="p-5"
+        getKey={(finding, index) =>
+          `${finding.sheetName}-${finding.cell}-${finding.kind}-${index}`
+        }
+        items={findings}
+        renderItem={(finding) => <FormulaRiskFindingCard finding={finding} />}
+      />
 
       {summary.findings.length > VISIBLE_FINDINGS && (
         <button

@@ -33,7 +33,9 @@ const FormulaRiskFindingCard = ({ finding }: FormulaRiskFindingCardProps) => {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h4 className="font-extrabold text-slate-900">{presentation.label}</h4>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className={`rounded-lg px-2 py-1 text-[11px] font-extrabold ${level.className}`}>
+              <span
+                className={`rounded-lg px-2 py-1 text-[11px] font-extrabold ${level.className}`}
+              >
                 {level.label}
               </span>
               <span className="rounded-lg bg-slate-100 px-2 py-1 font-mono text-[11px] font-bold text-slate-600">
@@ -45,7 +47,8 @@ const FormulaRiskFindingCard = ({ finding }: FormulaRiskFindingCardProps) => {
           <p className="mt-2 text-xs font-bold text-slate-700">{presentation.action}</p>
           {isHardcoded && finding.observedValue != null && (
             <p className="mt-2 text-xs text-slate-600">
-              현재 입력값 <strong className="text-slate-900">{String(finding.observedValue)}</strong>
+              현재 입력값{' '}
+              <strong className="text-slate-900">{String(finding.observedValue)}</strong>
             </p>
           )}
           <FormulaRiskImpact impact={finding.impact} />
