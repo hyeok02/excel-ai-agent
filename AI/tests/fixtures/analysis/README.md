@@ -15,6 +15,7 @@
 | `equipment_snapshot_no_trend.xlsx` | 기간별 추이가 항상 존재한다 |
 | `yield_report_english_only.xlsx` | 워크북에 한국어가 섞여 있다 |
 | `energy_mixed_layout.xlsx` | 헤더는 한 번만 나오고 소계는 표 끝에 있다 |
+| `analytics_template_identity_row.xlsx` | 대상 이름 행은 두 칸이고, 표 안의 텍스트 쌍과 헷갈리지 않는다 |
 
 워크북은 `build_fixtures.py`로 재생성합니다. 바이너리 `.xlsx`만 커밋하면
 리뷰에서 내용을 확인할 수 없기 때문입니다.

@@ -99,11 +99,40 @@ def build_energy_mixed_layout() -> Workbook:
     return workbook
 
 
+def build_analytics_template() -> Workbook:
+    """안내 문구가 앞에 붙은 세 칸 식별 행과, 표 안의 이름표처럼 보이는 행.
+
+    실제 분석 템플릿에서 흔한 배치다. 대상 이름은 표 바깥 안내 행에서
+    읽어야 하고, 표 안의 텍스트 쌍은 대상으로 삼으면 안 된다.
+    """
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "분석"
+    _title(sheet, "설비 인력 분석")
+    sheet["B6"] = "1단계: 분석 대상 선택"
+    sheet["C6"] = "대상 \u25ba"
+    sheet["D6"] = "한빛제강 주식회사"
+    sheet["A8"], sheet["B8"], sheet["C8"], sheet["D8"] = "기간", "생산인원", "품질인원", "합계"
+    production = (320, 318, 325, 331, 340, 352)
+    quality = (45, 44, 44, 42, 41, 39)
+    for index, (month, made, checked) in enumerate(zip(MONTHS, production, quality)):
+        row = 9 + index
+        sheet[f"A{row}"] = month
+        sheet[f"B{row}"] = made
+        sheet[f"C{row}"] = checked
+        sheet[f"D{row}"] = made + checked
+    sheet["F8"], sheet["G8"] = "이직자수", "증가율(%)"
+    sheet["F9"], sheet["G9"] = 12, 3.1
+    sheet["F10"], sheet["G10"] = "부서", "직무"
+    return workbook
+
+
 BUILDERS = {
     "cost_close_no_identity.xlsx": build_cost_close_no_identity,
     "equipment_snapshot_no_trend.xlsx": build_equipment_snapshot,
     "yield_report_english_only.xlsx": build_yield_report_english,
     "energy_mixed_layout.xlsx": build_energy_mixed_layout,
+    "analytics_template_identity_row.xlsx": build_analytics_template,
 }
 
 

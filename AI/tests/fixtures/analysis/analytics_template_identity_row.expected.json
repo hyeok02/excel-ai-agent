@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "workbook": "analytics_template_identity_row.xlsx",
+  "subject": "한빛제강 주식회사",
+  "subject_reason": "안내 문구가 앞에 붙어 세 칸이 된 표 바깥 행에서 마지막 칸을 대상으로 읽어야 한다",
+  "numeric_changes": [
+    {
+      "metric": "품질인원",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 45.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 39.0,
+      "change": -6.0,
+      "change_rate_percent": -13.33
+    },
+    {
+      "metric": "생산인원",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 320.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 352.0,
+      "change": 32.0,
+      "change_rate_percent": 10.0
+    },
+    {
+      "metric": "합계",
+      "earliest_period": "2025-01-01",
+      "earliest_value": 365.0,
+      "latest_period": "2025-06-01",
+      "latest_value": 391.0,
+      "change": 26.0,
+      "change_rate_percent": 7.12
+    }
+  ],
+  "review_points": [
+    {
+      "impact": "품질인원 항목의 산정 기준을 다시 확인해야 합니다.",
+      "verdict": "keep",
+      "reason": "워크북에 실제로 있는 항목명을 가리킨다"
+    },
+    {
+      "impact": "협력사 납품 지연 가능성을 시사합니다.",
+      "verdict": "drop",
+      "reason": "파일 어디에도 없는 사정을 끌어온 추측이다"
+    },
+    {
+      "impact": "합계가 987654까지 늘어날 수 있습니다.",
+      "verdict": "drop",
+      "reason": "근거에서 확인되지 않는 수치를 말한다"
+    }
+  ],
+  "questions": [
+    {"question": "생산인원", "verdict": "specific", "reason": "워크북 헤더에 있는 단어"},
+    {"question": "협력사", "verdict": "clarify", "reason": "워크북에 없는 업종 명사"},
+    {"question": "B9 값은?", "verdict": "specific", "reason": "셀 주소를 직접 가리킴"},
+    {"question": "비교", "verdict": "specific", "reason": "무엇을 묻는지 나타내는 표현"}
+  ]
+}

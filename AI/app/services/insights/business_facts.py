@@ -8,7 +8,7 @@ from app.services.insights.fact_labels import (
 )
 from app.services.insights.fact_trends import (
     date_value,
-    is_plain_text,
+    is_identity_row,
     numeric_changes,
 )
 
@@ -99,14 +99,8 @@ def _record_score(values: list[dict[str, object]], role: str | None) -> int:
 
 
 def _identity_score(values: list[dict[str, object]]) -> int:
-    """'이름표 | 값' 두 칸으로 대상을 적어 둔 행을 행의 모양으로 찾는다.
-
-    특정 워크북의 머리글 문구를 찾지 않으므로 업종이 달라도 동일하게 동작한다.
-    """
-    if len(values) != 2:
-        return 0
-    label, name = (value["value"] for value in values)
-    return 2 if is_plain_text(label) and is_plain_text(name) else 0
+    """대상을 적어 둔 식별 행을 행의 모양으로 찾는다."""
+    return 2 if is_identity_row(values) else 0
 
 
 def _semantic_role(region: dict[str, Any]) -> str | None:

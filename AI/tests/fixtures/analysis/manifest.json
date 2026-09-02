@@ -41,6 +41,16 @@
         "documentation_sheet",
         "no_identity_row"
       ]
+    },
+    {
+      "workbook": "analytics_template_identity_row.xlsx",
+      "expectation": "analytics_template_identity_row.expected.json",
+      "coverage": [
+        "three_cell_identity_row",
+        "guidance_text_before_target",
+        "label_pair_inside_table",
+        "korean_only"
+      ]
     }
   ]
 }
