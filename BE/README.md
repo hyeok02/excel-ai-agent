@@ -26,7 +26,7 @@ curl http://localhost:8080/actuator/health
 | `MAX_FILE_SIZE` | `50MB` | 단일 업로드 파일 제한 |
 | `MAX_REQUEST_SIZE` | `50MB` | 전체 multipart 요청 제한 |
 | `UPLOAD_DIR` | `./uploads` | 분석 원본 파일 저장 경로 |
-| `UPLOAD_RETENTION` | `1d` | 업로드 원본 파일 보존 기간 |
+| `UPLOAD_RETENTION` | `7d` | 업로드 원본 파일 보존 기간. 이 기간이 지나면 예전 분석에 질문하거나 수정할 수 없습니다 |
 | `UPLOAD_CLEANUP_INTERVAL` | `1h` | 만료 파일 정리 주기 |
 | `UPLOAD_CLEANUP_INITIAL_DELAY` | `1m` | 서버 시작 후 첫 정리까지의 대기 시간 |
 | `ANALYSIS_ASYNC_ENABLED` | `true` | 분석 작업 비동기 실행 여부 |

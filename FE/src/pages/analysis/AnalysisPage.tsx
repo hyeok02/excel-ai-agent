@@ -1,12 +1,16 @@
+import { useState } from 'react'
+
 import AnalysisFeedback from '@/components/analysis/common/AnalysisFeedback'
 import AnalysisHeader from '@/components/analysis/common/AnalysisHeader'
 import AnalysisResultSection from '@/components/analysis/result/AnalysisResultSection'
 import AnalysisFlowPanel from '@/components/analysis/upload/AnalysisFlowPanel'
+import AnalysisHistoryDialog from '@/components/analysis/upload/AnalysisHistoryDialog'
 import AnalysisUploadPanel from '@/components/analysis/upload/AnalysisUploadPanel'
 import { useWorkbookAnalysis } from '@/hooks/analysis/useWorkbookAnalysis'
 
 const AnalysisPage = () => {
   const {
+    activeAnalysisId,
     activeStep,
     analysisResult,
     analysisResultMode,
@@ -18,6 +22,7 @@ const AnalysisPage = () => {
     feedback,
     isPending,
     mode,
+    openAnalysis,
     processingStatus,
     selectFile,
     selectedFile,
@@ -25,6 +30,7 @@ const AnalysisPage = () => {
     status,
     statusText,
   } = useWorkbookAnalysis()
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
   return (
     <div className="space-y-7">
@@ -44,6 +50,7 @@ const AnalysisPage = () => {
           onModeChange={changeMode}
           onSelectFile={selectFile}
           onStartAnalysis={startAnalysis}
+          onOpenHistory={() => setIsHistoryOpen(true)}
           selectedFile={selectedFile}
           status={status}
         />
@@ -58,6 +65,17 @@ const AnalysisPage = () => {
 
       {analysisResult && analysisResultMode && (
         <AnalysisResultSection mode={analysisResultMode} result={analysisResult} />
+      )}
+
+      {isHistoryOpen && (
+        <AnalysisHistoryDialog
+          activeAnalysisId={activeAnalysisId}
+          onClose={() => setIsHistoryOpen(false)}
+          onOpen={(analysisId) => {
+            openAnalysis(analysisId)
+            setIsHistoryOpen(false)
+          }}
+        />
       )}
     </div>
   )

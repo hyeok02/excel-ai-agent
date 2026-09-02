@@ -19,6 +19,22 @@ export interface AnalysisDetails extends AnalysisSubmission {
   updatedAt: string
 }
 
+export interface AnalysisHistoryPage {
+  content: AnalysisDetails[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  hasNext: boolean
+}
+
+export interface AnalysisHistoryQuery {
+  filename?: string
+  mode?: AnalysisMode
+  page?: number
+  size?: number
+}
+
 export interface AnalysisResultDetails {
   analysisId: string
   createdAt: string
