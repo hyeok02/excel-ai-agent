@@ -22,7 +22,8 @@ export const FORMULA_RISK_PRESENTATION: Record<
   },
   formula_pattern_mismatch: {
     label: '반복 수식 패턴 이상',
-    action: '같은 행·열의 주변 수식과 달라 복사 또는 수정 과정의 오류인지 확인해야 합니다.',
+    action:
+      '같은 행·열의 주변 수식과 달라 복사 또는 수정 과정의 오류인지 확인해야 합니다.',
   },
   hardcoded_value: {
     label: '수식 대신 직접 입력된 값',

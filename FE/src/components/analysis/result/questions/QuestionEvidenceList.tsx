@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, FileSearch } from 'lucide-react'
 import { useState } from 'react'
 
 import type { WorkbookQuestionEvidence } from '@/api/analysis'
+import ResponsiveCardColumns from '@/components/analysis/common/ResponsiveCardColumns'
 import QuestionEvidenceCard from '@/components/analysis/result/questions/QuestionEvidenceCard'
 
 const INITIAL_EVIDENCE_COUNT = 4
@@ -22,25 +23,25 @@ const QuestionEvidenceList = ({ evidence }: { evidence: WorkbookQuestionEvidence
       <p className="flex items-center gap-2 text-xs font-extrabold text-slate-500">
         <FileSearch aria-hidden="true" size={15} /> 답변을 확인한 원본 위치
       </p>
-      <div className="mt-2 grid items-start gap-2 md:grid-cols-2">
-        {visibleEvidence.map((item, index) => {
+      <ResponsiveCardColumns
+        breakpoint="md"
+        className="mt-2"
+        density="compact"
+        getKey={evidenceKey}
+        items={visibleEvidence}
+        renderItem={(item) => {
           const key = evidenceKey(item)
-          const rowStart = Math.floor(index / 2) * 2
-          const rowKeys = visibleEvidence.slice(rowStart, rowStart + 2).map(evidenceKey)
-          const rowHasExpandedFormula = rowKeys.includes(expandedFormulaKey ?? '')
           return (
             <QuestionEvidenceCard
-              alignHeight={!rowHasExpandedFormula}
               expanded={expandedFormulaKey === key}
               item={item}
-              key={key}
               onFormulaToggle={() =>
                 setExpandedFormulaKey((current) => (current === key ? null : key))
               }
             />
           )
-        })}
-      </div>
+        }}
+      />
       {hiddenCount > 0 && (
         <div className="mt-3 flex justify-center">
           <button

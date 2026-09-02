@@ -12,7 +12,9 @@ export const proposeWorkbookWriteback = async (
   analysisId: string,
   instruction: string,
 ) => {
-  const { data } = await apiClient.post<WorkbookWriteback>(base(analysisId), { instruction })
+  const { data } = await apiClient.post<WorkbookWriteback>(base(analysisId), {
+    instruction,
+  })
   return data
 }
 

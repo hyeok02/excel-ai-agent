@@ -1,9 +1,4 @@
-export type WritebackStatus =
-  | 'PROPOSED'
-  | 'BLOCKED'
-  | 'APPLIED'
-  | 'REJECTED'
-  | 'FAILED'
+export type WritebackStatus = 'PROPOSED' | 'BLOCKED' | 'APPLIED' | 'REJECTED' | 'FAILED'
 
 export interface WritebackChange {
   sheetName: string

@@ -17,11 +17,7 @@ const formatValue = (value: FormulaResult['cachedValue']) => {
   return String(value)
 }
 
-const FormulaDetailItem = ({
-  formula,
-  roleLabel,
-  sheetName,
-}: FormulaDetailItemProps) => {
+const FormulaDetailItem = ({ formula, roleLabel, sheetName }: FormulaDetailItemProps) => {
   const result = formatValue(formula.cachedValue)
   const references = formula.references.slice(0, MAX_VISIBLE_REFERENCE_COUNT)
   const remainingCount = formula.references.length - references.length

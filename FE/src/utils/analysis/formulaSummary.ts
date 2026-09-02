@@ -46,8 +46,7 @@ const findSumRange = (formula: string) => {
   return `${match[1].toUpperCase()}${match[2]}:${match[3].toUpperCase()}${match[4]}`
 }
 
-const CONCATENATED_REFERENCES =
-  /(?:\$?[A-Z]{1,3}\$?\d+\s*&\s*){2,}\$?[A-Z]{1,3}\$?\d+/gi
+const CONCATENATED_REFERENCES = /(?:\$?[A-Z]{1,3}\$?\d+\s*&\s*){2,}\$?[A-Z]{1,3}\$?\d+/gi
 
 const compactReferenceChain = (chain: string): string | null => {
   const references = [...chain.matchAll(/\$?([A-Z]{1,3})\$?(\d+)/gi)].map(

@@ -1,7 +1,4 @@
-export type WorkbookQuestionStatus =
-  | 'answered'
-  | 'limited'
-  | 'insufficient_evidence'
+export type WorkbookQuestionStatus = 'answered' | 'limited' | 'insufficient_evidence'
 
 export interface WorkbookQuestionEvidence {
   kind: string

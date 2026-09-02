@@ -34,10 +34,17 @@ const MODULE_SUMMARIES = [
   },
 ]
 
+const MODULE_REVEAL_DELAYS = [
+  'home-reveal-delay-2',
+  'home-reveal-delay-3',
+  'home-reveal-delay-4',
+  'home-reveal-delay-5',
+] as const
+
 const DashboardPage = () => {
   return (
     <div className="space-y-8">
-      <section className="dashboard-hero">
+      <section className="dashboard-hero home-reveal">
         <div className="relative z-10 max-w-3xl">
           <span className="hero-badge">YUN'S AI DECISION WORKSPACE</span>
           <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-[-0.045em] text-white md:text-[2.7rem]">
@@ -54,7 +61,7 @@ const DashboardPage = () => {
       </section>
 
       <section>
-        <div className="mb-4 flex items-end justify-between gap-4">
+        <div className="home-reveal home-reveal-delay-1 mb-4 flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow">WORKSPACE</p>
             <h2 className="mt-2 text-xl font-extrabold tracking-tight text-slate-950">
@@ -64,7 +71,7 @@ const DashboardPage = () => {
           <p className="hidden text-sm text-slate-400 sm:block">4개의 AI 업무 모듈</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {MODULE_SUMMARIES.map((module) => {
+          {MODULE_SUMMARIES.map((module, index) => {
             const navigationItem = BUSINESS_NAVIGATION_ITEMS.find(
               (item) => item.id === module.id,
             )
@@ -89,9 +96,14 @@ const DashboardPage = () => {
             )
 
             return navigationItem ? (
-              <Link className="module-card" key={module.id} to={navigationItem.to}>
-                {content}
-              </Link>
+              <div
+                className={`home-reveal ${MODULE_REVEAL_DELAYS[index]}`}
+                key={module.id}
+              >
+                <Link className="module-card block h-full" to={navigationItem.to}>
+                  {content}
+                </Link>
+              </div>
             ) : null
           })}
         </div>

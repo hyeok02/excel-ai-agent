@@ -5,14 +5,12 @@ import type { WorkbookQuestionEvidence } from '@/api/analysis'
 import OriginalLocationButton from '@/components/analysis/workbook/details/OriginalLocationButton'
 
 interface QuestionEvidenceCardProps {
-  alignHeight: boolean
   expanded: boolean
   item: WorkbookQuestionEvidence
   onFormulaToggle: () => void
 }
 
 const QuestionEvidenceCard = ({
-  alignHeight,
   expanded,
   item,
   onFormulaToggle,
@@ -20,9 +18,7 @@ const QuestionEvidenceCard = ({
   const formulaId = useId()
 
   return (
-    <div
-      className={`${alignHeight ? 'h-full' : 'self-start'} rounded-2xl border border-slate-200 bg-white p-3`}
-    >
+    <div className="rounded-2xl border border-slate-200 bg-white p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-extrabold text-brand-700">

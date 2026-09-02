@@ -11,7 +11,7 @@ const NotFoundPage = () => {
           페이지를 찾을 수 없습니다.
         </h1>
         <Link className="button-primary mt-6 inline-flex" to={ROUTES.dashboard}>
-          대시보드로 돌아가기
+          홈으로 돌아가기
         </Link>
       </div>
     </div>

@@ -1,27 +1,19 @@
-import SummaryCards from '@/components/common/SummaryCards'
+import WorkspaceOverviewPage from '@/components/workspace/WorkspaceOverviewPage'
+
+const SUMMARY_ITEMS = [
+  { label: '등록 인물', value: '0', helper: '추적 대상 전체' },
+  { label: '신규 기사', value: '0', helper: '최근 수집 결과' },
+  { label: '텔레그램 발송', value: '0', helper: '활성 수신 대상' },
+]
 
 const PersonNewsPage = () => {
   return (
-    <div className="space-y-6">
-      <section className="panel flex flex-wrap items-start justify-between gap-4 p-6 md:p-8">
-        <div>
-          <p className="eyebrow">PEOPLE NEWS TRACKING</p>
-          <h1 className="page-title">인물 뉴스 추적</h1>
-          <p className="page-description">
-            추적 대상 인물의 최신 기사를 수집하고 LLM 종합 판단, 감성 톤, 근거 기사와 분석
-            이력을 확인하는 화면입니다.
-          </p>
-        </div>
-      </section>
-
-      <SummaryCards
-        items={[
-          { label: '등록 인물', value: '0', helper: '추적 대상 전체' },
-          { label: '신규 기사', value: '0', helper: '최근 수집 결과' },
-          { label: '텔레그램 발송', value: '0', helper: '활성 수신 대상' },
-        ]}
-      />
-
+    <WorkspaceOverviewPage
+      description="추적 대상 인물의 최신 기사를 수집하고 LLM 종합 판단, 감성 톤, 근거 기사와 분석 이력을 확인하는 화면입니다."
+      eyebrow="PEOPLE NEWS TRACKING"
+      summaryItems={SUMMARY_ITEMS}
+      title="인물 뉴스 추적"
+    >
       <section className="grid gap-6 xl:grid-cols-[20rem_1fr]">
         <article className="panel p-5">
           <div className="flex items-center justify-between">
@@ -56,7 +48,7 @@ const PersonNewsPage = () => {
           </div>
         </article>
       </section>
-    </div>
+    </WorkspaceOverviewPage>
   )
 }
 

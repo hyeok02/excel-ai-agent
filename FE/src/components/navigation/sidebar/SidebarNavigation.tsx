@@ -1,7 +1,7 @@
 import {
   Building2,
   FileSpreadsheet,
-  LayoutDashboard,
+  House,
   Newspaper,
   UserRoundSearch,
   UsersRound,
@@ -49,7 +49,7 @@ const SidebarNavigation = ({ onNavigate }: SidebarNavigationProps) => {
         onClick={onNavigate}
         to={DASHBOARD_NAVIGATION_ITEM.to}
       >
-        <LayoutDashboard aria-hidden="true" size={19} strokeWidth={1.9} />
+        <House aria-hidden="true" size={19} strokeWidth={1.9} />
         <span>{DASHBOARD_NAVIGATION_ITEM.label}</span>
       </NavLink>
 

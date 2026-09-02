@@ -46,6 +46,7 @@ class AiServiceHealthControllerTests {
 		mockMvc.perform(get("/api/v1/health/ai-service"))
 				.andExpect(status().isServiceUnavailable())
 				.andExpect(jsonPath("$.code").value("AI_SERVICE_UNAVAILABLE"))
-				.andExpect(jsonPath("$.message").value("AI Service에 연결할 수 없습니다."));
+				.andExpect(jsonPath("$.message")
+						.value("AI 응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요."));
 	}
 }
