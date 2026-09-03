@@ -94,6 +94,9 @@ export const resumeAnalysis = async (
 ): Promise<CompletedAnalysis> => {
   const submission = await getAnalysisDetails(analysisId)
   onStatusChange?.(submission.status)
+  if (submission.status === 'FAILED') {
+    throw new Error('이 분석은 처리에 실패하여 결과를 열 수 없습니다.')
+  }
   if (submission.status !== 'COMPLETED') {
     await waitForAnalysis(analysisId, onStatusChange)
   }

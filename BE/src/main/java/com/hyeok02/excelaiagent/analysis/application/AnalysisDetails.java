@@ -13,6 +13,7 @@ public record AnalysisDetails(
 		String originalFilename,
 		String fileExtension,
 		long sizeBytes,
+		boolean sourceAvailable,
 		Instant createdAt,
 		Instant updatedAt) {
 }

@@ -1,11 +1,10 @@
 package com.hyeok02.excelaiagent.analysis.application;
 
 import java.util.UUID;
+
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
-import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResult;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
-import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceException;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
@@ -17,25 +16,26 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AnalysisResultReader {
-	private final AnalysisJobRepository jobRepository;
 	private final AnalysisResultRepository resultRepository;
 	private final ObjectMapper objectMapper;
+	private final AnalysisAccessService accessService;
 
-	public AnalysisResultReader(AnalysisJobRepository jobRepository,
-			AnalysisResultRepository resultRepository, ObjectMapper objectMapper) {
-		this.jobRepository = jobRepository;
+	public AnalysisResultReader(
+			AnalysisResultRepository resultRepository, ObjectMapper objectMapper,
+			AnalysisAccessService accessService) {
 		this.resultRepository = resultRepository;
 		this.objectMapper = objectMapper;
+		this.accessService = accessService;
 	}
 
 	@Transactional(readOnly = true)
-	public AnalysisResultDetails getResult(UUID analysisId) {
-		AnalysisJob job = jobRepository.findById(analysisId)
-				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
+	public AnalysisResultDetails getResult(UUID analysisId, String ownerUsername) {
+		AnalysisJob job = accessService.requireOwned(analysisId, ownerUsername);
 		AnalysisResult result = resultRepository.findById(analysisId)
 				.orElseThrow(() -> new AnalysisResultNotReadyException(analysisId, job.getStatus()));
 		return AnalysisResultDetails.from(
-				analysisId, result.getCreatedAt(), deserialize(result.getResultJson()));
+				analysisId, result.getCreatedAt(), deserialize(result.getResultJson()),
+				accessService.sourceAvailable(job));
 	}
 
 	private AiWorkbookInsights deserialize(String json) {

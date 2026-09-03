@@ -1,11 +1,14 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
 import java.util.UUID;
+import com.jayway.jsonpath.JsonPath;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import org.junit.jupiter.api.Test;
@@ -81,8 +84,43 @@ class AnalysisHistoryControllerTests extends AnalysisControllerTestSupport {
 				.andExpect(jsonPath("$.code").value("INVALID_ANALYSIS_MODE"));
 	}
 
+	@Test
+	void returnsOnlyTheSignedInUsersAnalysisHistory() throws Exception {
+		AnalysisJob mine = analysisJobRepository.save(job(
+				"mine.xlsx", AnalysisMode.BFS, "alice", Instant.now()));
+		analysisJobRepository.save(job(
+				"other.xlsx", AnalysisMode.LLM, "bob", Instant.now().minusSeconds(1)));
+
+		mockMvc.perform(get("/api/v1/analyses").with(user("alice")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements").value(1))
+				.andExpect(jsonPath("$.content[0].analysisId")
+						.value(mine.getAnalysisId().toString()))
+				.andExpect(jsonPath("$.content[0].originalFilename").value("mine.xlsx"));
+	}
+
+	@Test
+	void marksHistoryWhenTheOriginalFileHasExpired() throws Exception {
+		String body = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(excel("expired.xlsx")).param("mode", "BFS"))
+				.andReturn().getResponse().getContentAsString();
+		String id = JsonPath.read(body, "$.analysisId");
+		analysisFileStorage.delete(UUID.fromString(id));
+
+		mockMvc.perform(get("/api/v1/analyses"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content[0].analysisId").value(id))
+				.andExpect(jsonPath("$.content[0].sourceAvailable").value(false));
+	}
+
 	private AnalysisJob job(String filename, AnalysisMode mode, Instant createdAt) {
+		return job(filename, mode, "system", createdAt);
+	}
+
+	private AnalysisJob job(
+			String filename, AnalysisMode mode, String ownerUsername, Instant createdAt) {
 		return AnalysisJob.queued(UUID.randomUUID(), mode, filename,
-				filename.endsWith("xlsm") ? "xlsm" : "xlsx", 100L, createdAt);
+				filename.endsWith("xlsm") ? "xlsm" : "xlsx", 100L,
+				ownerUsername, createdAt);
 	}
 }

@@ -2,6 +2,7 @@ package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -72,7 +73,8 @@ class AnalysisResultControllerTests extends AnalysisControllerTestSupport {
 	void returnsLegacyWorkbookSummaryResult() throws Exception {
 		UUID id = UUID.randomUUID();
 		Instant now = Instant.now();
-		analysisJobRepository.save(AnalysisJob.queued(id, AnalysisMode.BFS, "legacy.xlsx", "xlsx", 100L, now));
+		analysisJobRepository.save(AnalysisJob.queued(
+				id, AnalysisMode.BFS, "legacy.xlsx", "xlsx", 100L, "system", now));
 		analysisResultRepository.save(AnalysisResult.completed(id,
 				"{\"filename\":\"legacy.xlsx\",\"sheet_count\":1,\"sheets\":[]}", now));
 		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", id))
@@ -84,7 +86,8 @@ class AnalysisResultControllerTests extends AnalysisControllerTestSupport {
 	@Test
 	void returnsConflictWhenAnalysisResultIsNotReady() throws Exception {
 		AnalysisJob job = AnalysisJob.queued(
-				UUID.randomUUID(), AnalysisMode.BFS, "queued.xlsx", "xlsx", 100L, Instant.now());
+				UUID.randomUUID(), AnalysisMode.BFS, "queued.xlsx", "xlsx", 100L,
+				"system", Instant.now());
 		analysisJobRepository.save(job);
 		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", job.getAnalysisId()))
 				.andExpect(status().isConflict())
@@ -96,5 +99,32 @@ class AnalysisResultControllerTests extends AnalysisControllerTestSupport {
 		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", UUID.randomUUID()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("ANALYSIS_NOT_FOUND"));
+	}
+
+	@Test
+	void hidesAnotherUsersAnalysisResult() throws Exception {
+		String body = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(excel("private.xlsx")).param("mode", "BFS")
+					.with(user("alice")))
+				.andReturn().getResponse().getContentAsString();
+		String id = JsonPath.read(body, "$.analysisId");
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", id).with(user("bob")))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_NOT_FOUND"));
+	}
+
+	@Test
+	void keepsStoredResultAvailableAfterOriginalFileExpires() throws Exception {
+		String body = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(excel("expired.xlsx")).param("mode", "BFS"))
+				.andReturn().getResponse().getContentAsString();
+		String id = JsonPath.read(body, "$.analysisId");
+		analysisFileStorage.delete(UUID.fromString(id));
+
+		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", id))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.sourceAvailable").value(false))
+				.andExpect(jsonPath("$.analysisId").value(id));
 	}
 }

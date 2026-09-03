@@ -1,5 +1,6 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
+import java.security.Principal;
 import java.util.UUID;
 
 import com.hyeok02.excelaiagent.analysis.application.AnalysisHistoryPage;
@@ -52,8 +53,10 @@ public class AnalysisController {
 			@RequestPart("file") MultipartFile file,
 			@RequestParam("mode") AnalysisMode mode,
 			@Parameter(description = "LLM 분석 깊이: AUTO, FAST, PRECISE")
-			@RequestParam(defaultValue = "AUTO") AnalysisDepth depth) {
-		AnalysisSubmission response = analysisSubmissionService.submit(file, mode, depth);
+			@RequestParam(defaultValue = "AUTO") AnalysisDepth depth,
+			Principal principal) {
+		AnalysisSubmission response = analysisSubmissionService.submit(
+				file, mode, depth, actor(principal));
 		return ResponseEntity.accepted().body(response);
 	}
 
@@ -65,34 +68,42 @@ public class AnalysisController {
 			@Parameter(description = "원본 파일명 검색어")
 			@RequestParam(required = false) String filename,
 			@RequestParam(defaultValue = "0") @Min(0) int page,
-			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-		return analysisSubmissionService.getHistory(mode, filename, page, size);
+			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+			Principal principal) {
+		return analysisSubmissionService.getHistory(
+				actor(principal), mode, filename, page, size);
 	}
 
 	@GetMapping("/{analysisId}")
 	@Operation(summary = "분석 작업 상세 조회")
-	public AnalysisDetails getDetails(@PathVariable UUID analysisId) {
-		return analysisSubmissionService.getDetails(analysisId);
+	public AnalysisDetails getDetails(@PathVariable UUID analysisId, Principal principal) {
+		return analysisSubmissionService.getDetails(analysisId, actor(principal));
 	}
 
 	@GetMapping("/{analysisId}/result")
 	@Operation(summary = "분석 작업 결과 조회")
-	public AnalysisResultDetails getResult(@PathVariable UUID analysisId) {
-		return analysisSubmissionService.getResult(analysisId);
+	public AnalysisResultDetails getResult(@PathVariable UUID analysisId, Principal principal) {
+		return analysisSubmissionService.getResult(analysisId, actor(principal));
 	}
 
 	@PostMapping("/{analysisId}/questions")
 	@Operation(summary = "분석한 Excel에 근거 기반 질문")
 	public AiWorkbookQuestion askQuestion(
 			@PathVariable UUID analysisId,
-			@Valid @RequestBody WorkbookQuestionRequest request) {
-		return workbookQuestionService.ask(analysisId, request.question());
+			@Valid @RequestBody WorkbookQuestionRequest request,
+			Principal principal) {
+		return workbookQuestionService.ask(
+				analysisId, request.question(), actor(principal));
 	}
 
 	@DeleteMapping("/{analysisId}")
 	@Operation(summary = "분석 작업 삭제")
-	public ResponseEntity<Void> delete(@PathVariable UUID analysisId) {
-		analysisSubmissionService.delete(analysisId);
+	public ResponseEntity<Void> delete(@PathVariable UUID analysisId, Principal principal) {
+		analysisSubmissionService.delete(analysisId, actor(principal));
 		return ResponseEntity.noContent().build();
+	}
+
+	private String actor(Principal principal) {
+		return principal == null ? "system" : principal.getName();
 	}
 }

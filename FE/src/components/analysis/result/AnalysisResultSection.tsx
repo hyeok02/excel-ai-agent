@@ -39,8 +39,14 @@ const AnalysisResultSection = ({
 
       {mode === 'LLM' && (
         <>
-          <WorkbookQuestionSection analysisId={result.analysisId} />
-          <WorkbookWritebackSection analysisId={result.analysisId} />
+          <WorkbookQuestionSection
+            analysisId={result.analysisId}
+            sourceAvailable={result.sourceAvailable}
+          />
+          <WorkbookWritebackSection
+            analysisId={result.analysisId}
+            sourceAvailable={result.sourceAvailable}
+          />
           <AdvancedAnalysisSection>
             <WorkbookSemanticOverview
               excludedSheets={workbook.excludedSheets ?? []}

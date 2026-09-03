@@ -6,11 +6,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.UUID;
 
 import com.hyeok02.excelaiagent.integration.ai.AiWritebackManifest;
 import com.hyeok02.excelaiagent.integration.ai.AiWritebackPackage;
@@ -66,9 +68,39 @@ class WorkbookWritebackControllerTests extends AnalysisControllerTestSupport {
 				.andExpect(status().isConflict());
 	}
 
+	@Test
+	void returnsGoneForNewWritebackWhenTheOriginalFileHasExpired() throws Exception {
+		String analysisId = submitCompleted();
+		analysisFileStorage.delete(UUID.fromString(analysisId));
+
+		mockMvc.perform(post("/api/v1/analyses/{id}/writebacks", analysisId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"instruction\":\"B2를 12로 수정해줘\"}"))
+				.andExpect(status().isGone())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_SOURCE_UNAVAILABLE"));
+
+		mockMvc.perform(get("/api/v1/analyses/{id}/writebacks", analysisId))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void hidesAnotherUsersWritebackHistory() throws Exception {
+		String analysisId = submitCompleted("alice");
+
+		mockMvc.perform(get("/api/v1/analyses/{id}/writebacks", analysisId)
+					.with(user("bob")))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_NOT_FOUND"));
+	}
+
 	private String submitCompleted() throws Exception {
+		return submitCompleted("system");
+	}
+
+	private String submitCompleted(String username) throws Exception {
 		String body = mockMvc.perform(multipart("/api/v1/analyses")
-					.file(excel("sales.xlsx")).param("mode", "BFS"))
+					.file(excel("sales.xlsx")).param("mode", "BFS")
+					.with(user(username)))
 				.andReturn().getResponse().getContentAsString();
 		return JsonPath.read(body, "$.analysisId");
 	}

@@ -3,8 +3,10 @@ import { LoaderCircle, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { type AnalysisHistoryPage, getAnalysisHistory } from '@/api/analysis'
+import AnalysisHistoryError from '@/components/analysis/upload/AnalysisHistoryError'
 import AnalysisHistoryItem from '@/components/analysis/upload/AnalysisHistoryItem'
 import { HISTORY_PAGE_SIZE } from '@/components/analysis/upload/analysisHistoryPresentation'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 interface AnalysisHistoryDialogProps {
   activeAnalysisId: string | null
@@ -18,12 +20,7 @@ const AnalysisHistoryDialog = ({
   onOpen,
 }: AnalysisHistoryDialogProps) => {
   const [keyword, setKeyword] = useState('')
-  const [filename, setFilename] = useState('')
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => setFilename(keyword.trim()), 300)
-    return () => window.clearTimeout(timeoutId)
-  }, [keyword])
+  const filename = useDebouncedValue(keyword.trim(), 300)
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -33,19 +30,27 @@ const AnalysisHistoryDialog = ({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } =
-    useInfiniteQuery({
-      getNextPageParam: (last: AnalysisHistoryPage) =>
-        last.hasNext ? last.page + 1 : undefined,
-      initialPageParam: 0,
-      queryFn: ({ pageParam }) =>
-        getAnalysisHistory({
-          filename: filename || undefined,
-          page: pageParam,
-          size: HISTORY_PAGE_SIZE,
-        }),
-      queryKey: ['analysis-history', filename],
-    })
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetching,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteQuery({
+    getNextPageParam: (last: AnalysisHistoryPage) =>
+      last.hasNext ? last.page + 1 : undefined,
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      getAnalysisHistory({
+        filename: filename || undefined,
+        page: pageParam,
+        size: HISTORY_PAGE_SIZE,
+      }),
+    queryKey: ['analysis-history', filename],
+  })
 
   const items = data?.pages.flatMap((page) => page.content) ?? []
   const total = data?.pages[0]?.totalElements ?? 0
@@ -101,11 +106,16 @@ const AnalysisHistoryDialog = ({
           )}
         </label>
 
-        <p className="mt-3 text-[11px] text-slate-400">
-          {filename ? `'${filename}' 검색 결과 ${total}건` : `전체 ${total}건`}
-        </p>
+        {!isError && (
+          <p className="mt-3 text-[11px] text-slate-400">
+            {filename ? `'${filename}' 검색 결과 ${total}건` : `전체 ${total}건`}
+          </p>
+        )}
 
         <ul className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
+          {isError && (
+            <AnalysisHistoryError error={error} onRetry={() => void refetch()} />
+          )}
           {items.map((item) => (
             <li key={item.analysisId}>
               <AnalysisHistoryItem
@@ -115,7 +125,7 @@ const AnalysisHistoryDialog = ({
               />
             </li>
           ))}
-          {items.length === 0 && !isFetching && (
+          {items.length === 0 && !isFetching && !isError && (
             <li className="py-8 text-center text-xs text-slate-400">
               조건에 맞는 분석 기록이 없습니다.
             </li>

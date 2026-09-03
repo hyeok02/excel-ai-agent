@@ -8,6 +8,7 @@ const SUGGESTIONS = [
 ]
 
 interface QuestionComposerProps {
+  disabled?: boolean
   isPending: boolean
   onAsk: (question: string) => boolean
   onValidationClear: () => void
@@ -15,6 +16,7 @@ interface QuestionComposerProps {
 }
 
 const QuestionComposer = ({
+  disabled = false,
   isPending,
   onAsk,
   onValidationClear,
@@ -22,6 +24,7 @@ const QuestionComposer = ({
 }: QuestionComposerProps) => {
   const [question, setQuestion] = useState('')
   const submit = (value = question) => {
+    if (disabled) return
     if (onAsk(value)) setQuestion('')
   }
 
@@ -31,7 +34,7 @@ const QuestionComposer = ({
         <textarea
           aria-label="Excel에 질문"
           className="min-h-20 w-full resize-none bg-transparent px-3 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
-          disabled={isPending}
+          disabled={disabled || isPending}
           maxLength={1000}
           onChange={(event) => {
             setQuestion(event.target.value)
@@ -47,7 +50,11 @@ const QuestionComposer = ({
               submit()
             }
           }}
-          placeholder="예: 2024년 매출이 가장 높은 항목과 근거 셀을 알려줘"
+          placeholder={
+            disabled
+              ? '원본 파일 보관기간이 지나 질문할 수 없습니다.'
+              : '예: 2024년 매출이 가장 높은 항목과 근거 셀을 알려줘'
+          }
           value={question}
         />
         <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-2 pt-2">
@@ -56,7 +63,7 @@ const QuestionComposer = ({
           </span>
           <button
             className="ml-auto inline-flex h-9 items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-extrabold text-white hover:bg-brand-700 disabled:bg-slate-300"
-            disabled={isPending || question.trim().length < 2}
+            disabled={disabled || isPending || question.trim().length < 2}
             onClick={() => submit()}
             type="button"
           >
@@ -82,7 +89,7 @@ const QuestionComposer = ({
         {SUGGESTIONS.map((suggestion) => (
           <button
             className="rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100 disabled:opacity-50"
-            disabled={isPending}
+            disabled={disabled || isPending}
             key={suggestion}
             onClick={() => submit(suggestion)}
             type="button"

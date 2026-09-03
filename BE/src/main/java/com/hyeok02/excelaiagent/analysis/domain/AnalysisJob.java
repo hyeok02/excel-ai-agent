@@ -35,6 +35,9 @@ public class AnalysisJob {
 	@Column(name = "file_size_bytes", nullable = false)
 	private long fileSizeBytes;
 
+	@Column(name = "owner_username", length = 100)
+	private String ownerUsername;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
@@ -51,6 +54,7 @@ public class AnalysisJob {
 			String originalFilename,
 			String fileExtension,
 			long fileSizeBytes,
+			String ownerUsername,
 			Instant createdAt,
 			Instant updatedAt) {
 		this.analysisId = analysisId;
@@ -59,6 +63,7 @@ public class AnalysisJob {
 		this.originalFilename = originalFilename;
 		this.fileExtension = fileExtension;
 		this.fileSizeBytes = fileSizeBytes;
+		this.ownerUsername = ownerUsername;
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
 	}
@@ -69,6 +74,7 @@ public class AnalysisJob {
 			String originalFilename,
 			String fileExtension,
 			long fileSizeBytes,
+			String ownerUsername,
 			Instant now) {
 		return new AnalysisJob(
 				analysisId,
@@ -77,6 +83,7 @@ public class AnalysisJob {
 				originalFilename,
 				fileExtension,
 				fileSizeBytes,
+				ownerUsername,
 				now,
 				now);
 	}
@@ -124,6 +131,10 @@ public class AnalysisJob {
 
 	public long getFileSizeBytes() {
 		return fileSizeBytes;
+	}
+
+	public String getOwnerUsername() {
+		return ownerUsername;
 	}
 
 	public Instant getCreatedAt() {
