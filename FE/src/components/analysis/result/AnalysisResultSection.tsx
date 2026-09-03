@@ -12,16 +12,21 @@ import WorkbookExplorer from '@/components/analysis/workbook/explorer/WorkbookEx
 import WorkbookSemanticOverview from '@/components/analysis/workbook/semantic/summaries/WorkbookSemanticOverview'
 
 interface AnalysisResultSectionProps {
+  executedMode: AnalysisMode
   mode: AnalysisMode
   result: AnalysisResultDetails
 }
 
-const AnalysisResultSection = ({ mode, result }: AnalysisResultSectionProps) => {
+const AnalysisResultSection = ({
+  executedMode,
+  mode,
+  result,
+}: AnalysisResultSectionProps) => {
   const { workbook } = result
 
   return (
     <section className="panel p-5 md:p-7" aria-live="polite">
-      <AnalysisResultHeader mode={mode} result={result} />
+      <AnalysisResultHeader mode={executedMode} result={result} />
       <AnalysisResultSummary workbook={workbook} />
 
       {mode === 'LLM' && result.insightReport && (

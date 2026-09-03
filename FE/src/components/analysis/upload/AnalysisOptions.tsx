@@ -3,6 +3,7 @@ import { cn } from '@/utils/cn'
 
 interface AnalysisOptionsProps {
   depth: AnalysisDepth
+  insightsNeedReanalysis: boolean
   isPending: boolean
   mode: AnalysisMode
   onDepthChange: (depth: AnalysisDepth) => void
@@ -17,6 +18,7 @@ const DEPTH_OPTIONS = [
 
 const AnalysisOptions = ({
   depth,
+  insightsNeedReanalysis,
   isPending,
   mode,
   onDepthChange,
@@ -58,6 +60,11 @@ const AnalysisOptions = ({
           AI 정밀 분석
         </button>
       </div>
+      {insightsNeedReanalysis && (
+        <p className="min-w-0 text-xs text-slate-400">
+          수식 관계 분석으로 실행된 결과예요. AI 정밀 분석은 다시 분석해야 볼 수 있습니다.
+        </p>
+      )}
     </fieldset>
 
     <fieldset
