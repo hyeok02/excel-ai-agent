@@ -28,7 +28,8 @@ class AnalysisLifecycleControllerTests extends AnalysisControllerTestSupport {
 	@Test
 	void deletesAnalysisById() throws Exception {
 		AnalysisJob job = analysisJobRepository.save(AnalysisJob.queued(
-				UUID.randomUUID(), AnalysisMode.BFS, "sales.xlsx", "xlsx", 100L, Instant.now()));
+				UUID.randomUUID(), AnalysisMode.BFS, "sales.xlsx", "xlsx", 100L,
+				"system", Instant.now()));
 		mockMvc.perform(delete("/api/v1/analyses/{analysisId}", job.getAnalysisId()))
 				.andExpect(status().isNoContent());
 		mockMvc.perform(get("/api/v1/analyses/{analysisId}", job.getAnalysisId()))

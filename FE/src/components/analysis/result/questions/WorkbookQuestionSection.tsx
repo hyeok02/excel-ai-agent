@@ -4,7 +4,15 @@ import QuestionAnswerCard from '@/components/analysis/result/questions/QuestionA
 import QuestionComposer from '@/components/analysis/result/questions/QuestionComposer'
 import { useWorkbookQuestions } from '@/hooks/analysis/useWorkbookQuestions'
 
-const WorkbookQuestionSection = ({ analysisId }: { analysisId: string }) => {
+interface WorkbookQuestionSectionProps {
+  analysisId: string
+  sourceAvailable: boolean
+}
+
+const WorkbookQuestionSection = ({
+  analysisId,
+  sourceAvailable,
+}: WorkbookQuestionSectionProps) => {
   const questions = useWorkbookQuestions(analysisId)
   const latestAnswer = questions.answers.at(-1)
   const previousAnswers = questions.answers.slice(0, -1).reverse()
@@ -26,7 +34,20 @@ const WorkbookQuestionSection = ({ analysisId }: { analysisId: string }) => {
       </div>
 
       <div className="mt-5">
+        {!sourceAvailable && (
+          <div className="mb-4 flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+            <TriangleAlert className="mt-0.5 shrink-0" size={17} />
+            <div>
+              <p className="font-extrabold">원본 파일 보관기간이 만료되었습니다.</p>
+              <p className="mt-0.5 text-xs">
+                저장된 분석 결과는 계속 볼 수 있지만, 원본 셀이 필요한 질문은 사용할 수
+                없습니다.
+              </p>
+            </div>
+          </div>
+        )}
         <QuestionComposer
+          disabled={!sourceAvailable}
           isPending={questions.isPending}
           onAsk={questions.ask}
           onValidationClear={questions.clearValidation}

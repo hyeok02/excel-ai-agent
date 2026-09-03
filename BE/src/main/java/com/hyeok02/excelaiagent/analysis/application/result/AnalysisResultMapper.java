@@ -16,6 +16,7 @@ public final class AnalysisResultMapper {
 				analysisId,
 				createdAt,
 				WorkbookResultMapper.map(analysis.workbook()),
-				InsightResultMapper.map(analysis.report()));
+				InsightResultMapper.map(analysis.report()),
+				true);
 	}
 }

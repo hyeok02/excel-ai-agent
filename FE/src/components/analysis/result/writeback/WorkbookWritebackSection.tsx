@@ -5,7 +5,15 @@ import WritebackComposer from '@/components/analysis/result/writeback/WritebackC
 import WritebackProposalCard from '@/components/analysis/result/writeback/WritebackProposalCard'
 import { useWorkbookWritebacks } from '@/hooks/analysis/useWorkbookWritebacks'
 
-const WorkbookWritebackSection = ({ analysisId }: { analysisId: string }) => {
+interface WorkbookWritebackSectionProps {
+  analysisId: string
+  sourceAvailable: boolean
+}
+
+const WorkbookWritebackSection = ({
+  analysisId,
+  sourceAvailable,
+}: WorkbookWritebackSectionProps) => {
   const writebacks = useWorkbookWritebacks(analysisId)
   const [instruction, setInstruction] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -22,7 +30,7 @@ const WorkbookWritebackSection = ({ analysisId }: { analysisId: string }) => {
 
   const submit = async () => {
     const normalized = instruction.trim()
-    if (normalized.length < 2 || writebacks.isProposing) return
+    if (!sourceAvailable || normalized.length < 2 || writebacks.isProposing) return
     try {
       const result = await writebacks.propose(normalized)
       if (result.status !== 'BLOCKED') setInstruction('')
@@ -48,6 +56,7 @@ const WorkbookWritebackSection = ({ analysisId }: { analysisId: string }) => {
         : undefined
     return (
       <WritebackProposalCard
+        actionsDisabled={!sourceAvailable}
         downloadedFilename={downloadedFilename}
         item={item}
         key={`${item.writebackId}-${item.status}`}
@@ -88,7 +97,20 @@ const WorkbookWritebackSection = ({ analysisId }: { analysisId: string }) => {
           </p>
         </div>
       </div>
+      {!sourceAvailable && (
+        <div className="mt-4 flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+          <TriangleAlert className="mt-0.5 shrink-0" size={17} />
+          <div>
+            <p className="font-extrabold">원본 파일 보관기간이 만료되었습니다.</p>
+            <p className="mt-0.5 text-xs">
+              이전 변경 기록은 확인할 수 있지만 새 변경 제안, 승인 및 수정본 다운로드는
+              사용할 수 없습니다.
+            </p>
+          </div>
+        </div>
+      )}
       <WritebackComposer
+        disabled={!sourceAvailable}
         instruction={instruction}
         isPending={writebacks.isProposing}
         onChange={setInstruction}

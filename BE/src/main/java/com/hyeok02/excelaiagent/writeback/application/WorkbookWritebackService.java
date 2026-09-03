@@ -4,10 +4,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.hyeok02.excelaiagent.analysis.application.AnalysisAccessService;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
-import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisStatus;
-import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import com.hyeok02.excelaiagent.integration.ai.AiWritebackClient;
@@ -26,18 +25,18 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class WorkbookWritebackService {
-	private final AnalysisJobRepository jobRepository;
+	private final AnalysisAccessService accessService;
 	private final WorkbookWritebackRepository writebackRepository;
 	private final AnalysisFileStorage fileStorage;
 	private final AiWritebackClient aiClient;
 	private final WritebackJson json;
 
 	public WorkbookWritebackService(
-			AnalysisJobRepository jobRepository,
+			AnalysisAccessService accessService,
 			WorkbookWritebackRepository writebackRepository,
 			AnalysisFileStorage fileStorage, AiWritebackClient aiClient,
 			ObjectMapper objectMapper) {
-		this.jobRepository = jobRepository;
+		this.accessService = accessService;
 		this.writebackRepository = writebackRepository;
 		this.fileStorage = fileStorage;
 		this.aiClient = aiClient;
@@ -46,7 +45,7 @@ public class WorkbookWritebackService {
 
 	@Transactional
 	public WritebackView propose(UUID analysisId, String instruction, String actor) {
-		AnalysisJob job = completedJob(analysisId);
+		AnalysisJob job = completedJobWithSource(analysisId, actor);
 		AiWritebackProposal proposal = aiClient.propose(original(job), instruction.trim());
 		WorkbookWriteback item = WorkbookWriteback.proposed(
 				analysisId, instruction.trim(), json.proposal(proposal),
@@ -55,8 +54,8 @@ public class WorkbookWritebackService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<WritebackView> list(UUID analysisId) {
-		completedJob(analysisId);
+	public List<WritebackView> list(UUID analysisId, String ownerUsername) {
+		completedJob(analysisId, ownerUsername);
 		return writebackRepository.findByAnalysisIdOrderByCreatedAtDesc(analysisId)
 				.stream().map(item -> WritebackView.from(item, json)).toList();
 	}
@@ -66,7 +65,7 @@ public class WorkbookWritebackService {
 		if (!confirmed) {
 			throw new InvalidWritebackStateException("변경 전·후 값을 확인해야 승인할 수 있습니다.");
 		}
-		AnalysisJob job = completedJob(analysisId);
+		AnalysisJob job = completedJobWithSource(analysisId, actor);
 		WorkbookWriteback item = find(analysisId, writebackId);
 		requireProposed(item);
 		AiWritebackProposal proposal = json.proposal(item.getProposalJson());
@@ -78,7 +77,7 @@ public class WorkbookWritebackService {
 
 	@Transactional
 	public WritebackView reject(UUID analysisId, UUID writebackId, String actor) {
-		completedJob(analysisId);
+		completedJob(analysisId, actor);
 		WorkbookWriteback item = find(analysisId, writebackId);
 		requireProposed(item);
 		item.reject(actor, Instant.now());
@@ -86,8 +85,9 @@ public class WorkbookWritebackService {
 	}
 
 	@Transactional(readOnly = true)
-	public WritebackDownload download(UUID analysisId, UUID writebackId) {
-		AnalysisJob job = completedJob(analysisId);
+	public WritebackDownload download(
+			UUID analysisId, UUID writebackId, String ownerUsername) {
+		AnalysisJob job = completedJobWithSource(analysisId, ownerUsername);
 		WorkbookWriteback item = find(analysisId, writebackId);
 		if (item.getStatus() != WritebackStatus.APPLIED) {
 			throw new InvalidWritebackStateException("검증이 완료된 수정본만 다운로드할 수 있습니다.");
@@ -96,13 +96,16 @@ public class WorkbookWritebackService {
 		return new WritebackDownload(resource, modifiedName(job.getOriginalFilename()));
 	}
 
-	private AnalysisJob completedJob(UUID analysisId) {
-		AnalysisJob job = jobRepository.findById(analysisId)
-				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
+	private AnalysisJob completedJob(UUID analysisId, String ownerUsername) {
+		AnalysisJob job = accessService.requireOwned(analysisId, ownerUsername);
 		if (job.getStatus() != AnalysisStatus.COMPLETED) {
 			throw new AnalysisResultNotReadyException(analysisId, job.getStatus());
 		}
 		return job;
+	}
+
+	private AnalysisJob completedJobWithSource(UUID analysisId, String ownerUsername) {
+		return accessService.requireSourceAvailable(completedJob(analysisId, ownerUsername));
 	}
 
 	private WorkbookWriteback find(UUID analysisId, UUID id) {

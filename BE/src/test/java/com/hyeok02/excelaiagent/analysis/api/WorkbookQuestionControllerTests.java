@@ -55,7 +55,8 @@ class WorkbookQuestionControllerTests extends AnalysisControllerTestSupport {
 	@Test
 	void rejectsQuestionBeforeAnalysisCompletes() throws Exception {
 		AnalysisJob queued = AnalysisJob.queued(
-				UUID.randomUUID(), AnalysisMode.BFS, "queued.xlsx", "xlsx", 100, Instant.now());
+				UUID.randomUUID(), AnalysisMode.BFS, "queued.xlsx", "xlsx", 100,
+				"system", Instant.now());
 		analysisJobRepository.save(queued);
 
 		mockMvc.perform(post("/api/v1/analyses/{analysisId}/questions", queued.getAnalysisId())
@@ -63,6 +64,21 @@ class WorkbookQuestionControllerTests extends AnalysisControllerTestSupport {
 					.content("{\"question\":\"핵심 내용을 알려줘\"}"))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("ANALYSIS_RESULT_NOT_READY"));
+	}
+
+	@Test
+	void returnsGoneWhenOriginalFileHasExpired() throws Exception {
+		String submission = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(excel("expired.xlsx")).param("mode", "BFS"))
+				.andReturn().getResponse().getContentAsString();
+		String id = JsonPath.read(submission, "$.analysisId");
+		analysisFileStorage.delete(UUID.fromString(id));
+
+		mockMvc.perform(post("/api/v1/analyses/{analysisId}/questions", id)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"question\":\"핵심 내용을 알려줘\"}"))
+				.andExpect(status().isGone())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_SOURCE_UNAVAILABLE"));
 	}
 
 	private AiWorkbookQuestion answer() {

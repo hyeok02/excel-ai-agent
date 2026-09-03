@@ -45,11 +45,16 @@ public class LocalAnalysisFileStorage implements AnalysisFileStorage {
 	}
 	@Override
 	public Resource load(UUID analysisId, String extension) {
-		Path source = resolveAnalysisDirectory(analysisId).resolve("source." + extension).normalize();
+		Path source = sourcePath(analysisId, extension);
 		if (!source.startsWith(uploadRoot) || Files.notExists(source)) {
 			throw new AnalysisFileStorageException("저장된 업로드 파일을 찾지 못했습니다.", null);
 		}
 		return new FileSystemResource(source);
+	}
+
+	@Override
+	public boolean exists(UUID analysisId, String extension) {
+		return Files.isRegularFile(sourcePath(analysisId, extension), LinkOption.NOFOLLOW_LINKS);
 	}
 	@Override
 	public void storeWriteback(
@@ -114,6 +119,14 @@ public class LocalAnalysisFileStorage implements AnalysisFileStorage {
 			throw new AnalysisFileStorageException("안전하지 않은 저장 경로입니다.", null);
 		}
 		return analysisDirectory;
+	}
+
+	private Path sourcePath(UUID analysisId, String extension) {
+		Path source = resolveAnalysisDirectory(analysisId).resolve("source." + extension).normalize();
+		if (!source.startsWith(uploadRoot)) {
+			throw new AnalysisFileStorageException("안전하지 않은 저장 경로입니다.", null);
+		}
+		return source;
 	}
 
 	private boolean isAnalysisDirectory(Path path) {

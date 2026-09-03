@@ -42,8 +42,8 @@ public class WorkbookWritebackController {
 
 	@GetMapping
 	@Operation(summary = "Excel 변경 감사 이력 조회")
-	public List<WritebackView> list(@PathVariable UUID analysisId) {
-		return service.list(analysisId);
+	public List<WritebackView> list(@PathVariable UUID analysisId, Principal principal) {
+		return service.list(analysisId, actor(principal));
 	}
 
 	@PostMapping("/{writebackId}/approve")
@@ -66,8 +66,10 @@ public class WorkbookWritebackController {
 	@GetMapping("/{writebackId}/download")
 	@Operation(summary = "검증된 Excel 수정본 다운로드")
 	public ResponseEntity<?> download(
-			@PathVariable UUID analysisId, @PathVariable UUID writebackId) {
-		WritebackDownload download = service.download(analysisId, writebackId);
+			@PathVariable UUID analysisId, @PathVariable UUID writebackId,
+			Principal principal) {
+		WritebackDownload download = service.download(
+				analysisId, writebackId, actor(principal));
 		ContentDisposition disposition = ContentDisposition.attachment()
 				.filename(download.filename(), StandardCharsets.UTF_8).build();
 		return ResponseEntity.ok()

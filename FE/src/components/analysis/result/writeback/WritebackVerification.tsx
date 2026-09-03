@@ -3,6 +3,7 @@ import { CheckCircle2, Download, LoaderCircle, XCircle } from 'lucide-react'
 import type { WorkbookWriteback } from '@/api/analysis'
 
 interface Props {
+  actionsDisabled?: boolean
   item: WorkbookWriteback
   isDownloading: boolean
   downloadedFilename?: string
@@ -10,6 +11,7 @@ interface Props {
 }
 
 const WritebackVerification = ({
+  actionsDisabled = false,
   item,
   isDownloading,
   downloadedFilename,
@@ -50,7 +52,7 @@ const WritebackVerification = ({
       </p>
       <button
         className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-wait disabled:bg-emerald-300"
-        disabled={isDownloading}
+        disabled={actionsDisabled || isDownloading}
         onClick={onDownload}
         type="button"
       >

@@ -4,6 +4,7 @@ import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceException;
+import com.hyeok02.excelaiagent.analysis.error.AnalysisSourceUnavailableException;
 import com.hyeok02.excelaiagent.analysis.error.InvalidExcelFileException;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,6 +31,13 @@ public class AnalysisExceptionHandler {
 	public ResponseEntity<ApiError> handleAnalysisNotFound(
 			AnalysisNotFoundException exception, HttpServletRequest request) {
 		return error(HttpStatus.NOT_FOUND, "ANALYSIS_NOT_FOUND", exception.getMessage(), request);
+	}
+
+	@ExceptionHandler(AnalysisSourceUnavailableException.class)
+	public ResponseEntity<ApiError> handleAnalysisSourceUnavailable(
+			AnalysisSourceUnavailableException exception, HttpServletRequest request) {
+		return error(HttpStatus.GONE, "ANALYSIS_SOURCE_UNAVAILABLE",
+				exception.getMessage(), request);
 	}
 
 	@ExceptionHandler(AiServiceUnavailableException.class)

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.hyeok02.excelaiagent.BackendApplication;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
+import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
 import com.hyeok02.excelaiagent.integration.ai.AiWritebackClient;
 import com.hyeok02.excelaiagent.writeback.domain.WorkbookWritebackRepository;
@@ -28,6 +29,7 @@ abstract class AnalysisControllerTestSupport {
 	@Autowired protected MockMvc mockMvc;
 	@Autowired protected AnalysisJobRepository analysisJobRepository;
 	@Autowired protected AnalysisResultRepository analysisResultRepository;
+	@Autowired protected AnalysisFileStorage analysisFileStorage;
 	@Autowired protected WorkbookWritebackRepository workbookWritebackRepository;
 	@MockitoBean protected AiServiceClient aiServiceClient;
 	@MockitoBean protected AiWritebackClient aiWritebackClient;

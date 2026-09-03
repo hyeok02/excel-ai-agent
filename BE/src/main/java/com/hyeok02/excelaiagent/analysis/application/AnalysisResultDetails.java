@@ -12,10 +12,16 @@ public record AnalysisResultDetails(
 		UUID analysisId,
 		Instant createdAt,
 		AnalysisWorkbookResult.Workbook workbook,
-		AnalysisInsightResult.Report insightReport) {
+		AnalysisInsightResult.Report insightReport,
+		boolean sourceAvailable) {
 
 	public static AnalysisResultDetails from(
-			UUID analysisId, Instant createdAt, AiWorkbookInsights workbookAnalysis) {
-		return AnalysisResultMapper.map(analysisId, createdAt, workbookAnalysis);
+			UUID analysisId, Instant createdAt, AiWorkbookInsights workbookAnalysis,
+			boolean sourceAvailable) {
+		AnalysisResultDetails result = AnalysisResultMapper.map(
+				analysisId, createdAt, workbookAnalysis);
+		return new AnalysisResultDetails(
+				result.analysisId(), result.createdAt(), result.workbook(),
+				result.insightReport(), sourceAvailable);
 	}
 }

@@ -16,6 +16,7 @@ export interface AnalysisSubmission {
 
 export interface AnalysisDetails extends AnalysisSubmission {
   fileExtension: string
+  sourceAvailable: boolean
   updatedAt: string
 }
 
@@ -38,6 +39,7 @@ export interface AnalysisHistoryQuery {
 export interface AnalysisResultDetails {
   analysisId: string
   createdAt: string
+  sourceAvailable: boolean
   workbook: WorkbookResult
   insightReport: InsightReportResult | null
 }

@@ -3,10 +3,11 @@ import { useState } from 'react'
 
 import type { WorkbookWriteback } from '@/api/analysis'
 import WritebackChangeList from '@/components/analysis/result/writeback/WritebackChangeList'
-import { WRITEBACK_STATUS_PRESENTATION } from '@/components/analysis/result/writeback/writebackPresentation'
+import WritebackStatusBadge from '@/components/analysis/result/writeback/WritebackStatusBadge'
 import WritebackVerification from '@/components/analysis/result/writeback/WritebackVerification'
 
 interface Props {
+  actionsDisabled: boolean
   item: WorkbookWriteback
   pendingAction: 'approve' | 'reject' | 'download' | null
   downloadedFilename?: string
@@ -17,6 +18,7 @@ interface Props {
 }
 
 const WritebackProposalCard = ({
+  actionsDisabled,
   item,
   pendingAction,
   downloadedFilename,
@@ -29,8 +31,6 @@ const WritebackProposalCard = ({
   const proposed = item.status === 'PROPOSED'
   const blocked = item.status === 'BLOCKED'
   const failed = item.status === 'FAILED'
-  const isPending = pendingAction !== null
-  const status = WRITEBACK_STATUS_PRESENTATION[item.status]
 
   return (
     <article className="mt-5 rounded-3xl border border-slate-200 bg-slate-50/60 p-5">
@@ -41,9 +41,7 @@ const WritebackProposalCard = ({
             {item.proposal.summary}
           </h3>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${status.style}`}>
-          {status.label}
-        </span>
+        <WritebackStatusBadge status={item.status} />
       </div>
       {item.proposal.changes.length > 0 && (
         <WritebackChangeList changes={item.proposal.changes} />
@@ -78,6 +76,7 @@ const WritebackProposalCard = ({
             <input
               checked={confirmed}
               className="mt-0.5 h-4 w-4 accent-brand-600"
+              disabled={actionsDisabled}
               onChange={(event) => setConfirmed(event.target.checked)}
               type="checkbox"
             />
@@ -86,7 +85,7 @@ const WritebackProposalCard = ({
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={!confirmed || isPending}
+              disabled={actionsDisabled || !confirmed || pendingAction !== null}
               onClick={() => void onApprove().catch(() => undefined)}
               type="button"
             >
@@ -101,7 +100,7 @@ const WritebackProposalCard = ({
             </button>
             <button
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 disabled:opacity-40"
-              disabled={isPending}
+              disabled={actionsDisabled || pendingAction !== null}
               onClick={() => void onReject().catch(() => undefined)}
               type="button"
             >
@@ -124,6 +123,7 @@ const WritebackProposalCard = ({
           )}
           <button
             className="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-extrabold text-brand-700 transition hover:bg-brand-50"
+            disabled={actionsDisabled}
             onClick={onRetry}
             type="button"
           >
@@ -137,6 +137,7 @@ const WritebackProposalCard = ({
         </p>
       )}
       <WritebackVerification
+        actionsDisabled={actionsDisabled}
         downloadedFilename={downloadedFilename}
         isDownloading={pendingAction === 'download'}
         item={item}
