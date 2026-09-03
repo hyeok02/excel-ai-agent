@@ -17,6 +17,7 @@ const STATUS_TEXT: Record<AnalysisViewStatus, string> = {
 
 export const useWorkbookAnalysis = () => {
   const [mode, setMode] = useState<AnalysisMode>('BFS')
+  const [viewMode, setViewMode] = useState<AnalysisMode | null>(null)
   const [depth, setDepth] = useState<AnalysisDepth>('AUTO')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [clientError, setClientError] = useState<string | null>(null)
@@ -44,9 +45,15 @@ export const useWorkbookAnalysis = () => {
         ? 'error'
         : 'idle'
 
+  const executedMode = run.completed?.submission.mode ?? null
+  const canShowInsights = run.completed?.result.insightReport != null
+  // 결과가 있으면 선택한 방식이 '보기 방식'이 된다.
+  const displayMode = executedMode ? (viewMode ?? executedMode) : mode
+
   const resetView = (hasSelectedFile: boolean) => {
     setClientError(null)
     setFeedback(null)
+    setViewMode(null)
     progress.reset(hasSelectedFile)
     run.reset()
   }
@@ -74,7 +81,13 @@ export const useWorkbookAnalysis = () => {
   }
 
   const changeMode = (nextMode: AnalysisMode) => {
-    if (nextMode === mode) return
+    if (nextMode === displayMode) return
+    // 저장된 결과로 그릴 수 있으면 재분석 없이 보기만 바꾼다.
+    if (executedMode && (nextMode === 'BFS' || canShowInsights)) {
+      setViewMode(nextMode)
+      return
+    }
+    // 그릴 데이터가 없으면 그 방식으로 다시 분석할 수 있게 준비한다. 파일은 유지된다.
     setMode(nextMode)
     resetView(Boolean(selectedFile))
   }
@@ -89,7 +102,7 @@ export const useWorkbookAnalysis = () => {
     activeAnalysisId: run.analysisId,
     activeStep: progress.activeStep,
     analysisResult: run.completed?.result ?? null,
-    analysisResultMode: run.completed?.submission.mode ?? null,
+    analysisResultMode: executedMode,
     changeDepth,
     changeMode,
     clearFile: () => {
@@ -99,12 +112,14 @@ export const useWorkbookAnalysis = () => {
     depth,
     errorMessage: clientError ?? run.errorMessage,
     feedback,
+    insightsNeedReanalysis: Boolean(executedMode) && !canShowInsights,
     isPending: run.isPending,
-    mode,
+    mode: displayMode,
     openAnalysis: (nextAnalysisId: string) => {
       setSelectedFile(null)
       setClientError(null)
       setFeedback(null)
+      setViewMode(null)
       run.open(nextAnalysisId)
     },
     processingStatus: progress.processingStatus,

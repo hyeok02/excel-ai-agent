@@ -20,6 +20,7 @@ const AnalysisPage = () => {
     depth,
     errorMessage,
     feedback,
+    insightsNeedReanalysis,
     isPending,
     mode,
     openAnalysis,
@@ -43,6 +44,7 @@ const AnalysisPage = () => {
         <AnalysisUploadPanel
           errorMessage={errorMessage}
           depth={depth}
+          insightsNeedReanalysis={insightsNeedReanalysis}
           isPending={isPending}
           mode={mode}
           onClearFile={clearFile}
@@ -64,7 +66,12 @@ const AnalysisPage = () => {
       </section>
 
       {analysisResult && analysisResultMode && (
-        <AnalysisResultSection mode={analysisResultMode} result={analysisResult} />
+        <AnalysisResultSection
+          key={analysisResult.analysisId}
+          executedMode={analysisResultMode}
+          mode={mode}
+          result={analysisResult}
+        />
       )}
 
       {isHistoryOpen && (

@@ -8,6 +8,7 @@ import type { AnalysisViewStatus } from '@/hooks/analysis/useWorkbookAnalysis'
 interface AnalysisUploadPanelProps {
   depth: AnalysisDepth
   errorMessage: string | null
+  insightsNeedReanalysis: boolean
   isPending: boolean
   mode: AnalysisMode
   onClearFile: () => void
@@ -23,6 +24,7 @@ interface AnalysisUploadPanelProps {
 const AnalysisUploadPanel = ({
   depth,
   errorMessage,
+  insightsNeedReanalysis,
   isPending,
   mode,
   onClearFile,
@@ -55,6 +57,7 @@ const AnalysisUploadPanel = ({
 
     <AnalysisOptions
       depth={depth}
+      insightsNeedReanalysis={insightsNeedReanalysis}
       isPending={isPending}
       mode={mode}
       onDepthChange={onDepthChange}
