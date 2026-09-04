@@ -1,0 +1,33 @@
+FROM eclipse-temurin:21-jdk-noble AS build
+
+WORKDIR /workspace
+
+COPY BE/gradlew BE/settings.gradle BE/build.gradle ./
+COPY BE/gradle ./gradle
+RUN chmod +x gradlew
+
+COPY BE/src ./src
+RUN ./gradlew --no-daemon bootJar -x test
+
+FROM eclipse-temurin:21-jre-noble
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app \
+    && useradd --system --gid app --home-dir /app app \
+    && mkdir -p /data/uploads \
+    && chown -R app:app /app /data
+
+COPY --from=build --chown=app:app /workspace/build/libs/*.jar /app/app.jar
+
+USER app
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=45s --retries=5 \
+  CMD ["curl", "-fsS", "http://127.0.0.1:8080/actuator/health"]
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

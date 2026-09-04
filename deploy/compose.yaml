@@ -1,0 +1,85 @@
+name: excel-ai-agent
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  oracle:
+    image: gvenzl/oracle-xe:21-slim
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - oracle.env
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    shm_size: 1g
+    mem_limit: 3500m
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 20
+    networks:
+      - internal
+
+  ai:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.ai
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - ai.env
+    mem_limit: 1500m
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - backend.env
+    environment:
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65.0 -XX:+UseG1GC
+    volumes:
+      - uploads:/data/uploads
+    mem_limit: 2g
+    depends_on:
+      oracle:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "80:80"
+    mem_limit: 256m
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  oracle-data:
+  uploads:
+
+networks:
+  internal:
+    driver: bridge
