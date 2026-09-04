@@ -1,9 +1,16 @@
 name: excel-ai-agent
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
   oracle:
-    image: gvenzl/oracle-xe:21-slim-faststart
+    image: gvenzl/oracle-xe:21-slim
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - oracle.env
     volumes:
@@ -24,6 +31,7 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.ai
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - ai.env
     mem_limit: 1500m
@@ -35,6 +43,7 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.backend
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - backend.env
     environment:
@@ -57,6 +66,7 @@ services:
       args:
         VITE_API_BASE_URL: ""
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
     mem_limit: 256m

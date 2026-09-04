@@ -19,4 +19,7 @@
 **/outputs
 **/tmp
 **/uploads
+deploy/*.env
+*.key
 *.log
+*.pem
