@@ -36,14 +36,14 @@ def test_returns_structured_workbook_insights() -> None:
                 "impact": "합계 값은 B열과 C열 참조 범위에 의존합니다.",
                 "category": "formula",
                 "severity": "info",
-                "evidence": ["매출현황!D2 = SUM(B2:C2)"],
+                "evidence": ["매출현황!D2"],
                 "recommendation": "합계 범위를 확인하세요.",
                 "confidence": 0.95,
                 "validation_status": "verified",
                 "validation_reasons": [],
             }
         ],
-        "limitations": ["실제 셀 값의 의미는 분석하지 않았습니다."],
+        "limitations": [],
         "validation": {
             "generated_count": 1,
             "verified_count": 1,

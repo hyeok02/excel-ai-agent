@@ -2,12 +2,15 @@ import { AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react'
 
 import type { InsightReportResult } from '@/api/analysis'
 import InsightCard from '@/components/analysis/result/InsightCard'
+import { prepareInsightReportPresentation } from '@/components/analysis/result/insightReportPresentation'
 
 interface InsightReportSectionProps {
   report: InsightReportResult
 }
 
-const InsightReportSection = ({ report }: InsightReportSectionProps) => {
+const InsightReportSection = ({ report: source }: InsightReportSectionProps) => {
+  const { report, hasSuppressedInsights } = prepareInsightReportPresentation(source)
+
   return (
     <section className="mt-6 overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50/80 via-white to-white">
       <div className="border-b border-brand-100/70 p-5 md:p-6">
@@ -57,8 +60,9 @@ const InsightReportSection = ({ report }: InsightReportSectionProps) => {
               근거 검증을 통과한 인사이트가 없습니다
             </p>
             <p className="mt-1 text-sm leading-6 text-amber-800">
-              근거가 확인되지 않은 주장은 표시하지 않았습니다. 아래 분석 한계와 원본
-              위치를 확인해 주세요.
+              {hasSuppressedInsights
+                ? '저장된 결과의 근거를 확인할 수 없어 내용을 숨겼습니다. 해당 파일을 다시 업로드하여 분석해 주세요.'
+                : '근거가 확인되지 않은 주장은 표시하지 않았습니다. 아래 분석 한계와 원본 위치를 확인해 주세요.'}
             </p>
           </div>
         )}

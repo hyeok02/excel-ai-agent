@@ -57,35 +57,39 @@ def test_keeps_insight_when_reference_and_numeric_claims_are_grounded() -> None:
     assert result.insights[0].validation_status == "verified"
 
 
-def test_keeps_insight_with_unmatched_reference_for_user_review() -> None:
+def test_blocks_insight_with_unmatched_reference() -> None:
     result = validate_workbook_insights(report(evidence="Sales!Z99"), context())
 
-    assert len(result.insights) == 1
-    assert result.validation.limited_count == 1
-    assert result.validation.blocked_count == 0
-    assert result.insights[0].validation_status == "limited"
+    assert result.validation.blocked_count == 1
+    assert all("Sales!Z99" not in item.evidence for item in result.insights)
+    assert report().insights[0].fact not in result.overview
 
 
-def test_marks_multiple_citations_as_limited_when_one_is_unmatched() -> None:
+def test_blocks_multiple_citations_when_one_is_unmatched() -> None:
     result = validate_workbook_insights(
         report(evidence="Sales!A1:B2, Fake!Z99"), context()
     )
 
-    assert result.validation.limited_count == 1
+    assert result.validation.blocked_count == 1
+    assert report().insights[0].fact not in result.overview
+    assert all("Fake!Z99" not in " ".join(item.evidence) for item in result.insights)
 
 
-def test_keeps_unmatched_numeric_claim_for_user_review() -> None:
+def test_blocks_unmatched_numeric_claim() -> None:
     result = validate_workbook_insights(
         report(fact="Sales 값이 근거에 없는 999로 변경됐습니다."), context()
     )
 
-    assert result.validation.limited_count == 1
-    assert result.insights[0].fact.endswith("999로 변경됐습니다.")
-    assert result.insights[0].confidence == 0.8
+    assert result.validation.blocked_count == 1
+    assert "999" not in result.overview
+    assert all("999" not in item.fact for item in result.insights)
 
 
 def test_verifies_dates_and_rounded_change_rate_numerically() -> None:
     trend_context = context()
+    trend_context["sheets"][0]["business_facts"]["selected_records"] = [
+        {"location": "Sales!A1", "values": [{"cell": "A1", "value": "인원(명)"}]}
+    ]
     trend_context["sheets"][0]["business_facts"]["numeric_changes"] = [
         {
             "earliest_period": "2023-09-30",
@@ -109,6 +113,7 @@ def test_verifies_dates_and_rounded_change_rate_numerically() -> None:
     )
 
     insight = result.insights[0]
+    assert result.validation.blocked_count == 0
     assert insight.validation_status == "verified"
     assert insight.confidence == 0.95
 
@@ -126,6 +131,8 @@ def test_removes_cause_without_direct_formula_or_metadata_evidence() -> None:
     )
 
     insight = result.insights[0]
+    assert result.validation.blocked_count == 0
+    assert insight.fact == report().insights[0].fact
     assert insight.cause is None
     assert insight.validation_status == "limited"
-    assert insight.confidence == 0.85
+    assert insight.confidence == 0.95

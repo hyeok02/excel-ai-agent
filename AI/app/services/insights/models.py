@@ -10,7 +10,7 @@ from app.services.workbook_parser import WorkbookSummary
 class WorkbookInsight(BaseModel):
     title: str = Field(description="워크북 또는 주요 시트의 업무 내용을 나타내는 짧은 제목")
     fact: str = Field(
-        description="대상, 기준 시점, 실제 수치와 비교를 포함한 의사결정용 사실"
+        description="인용한 원본의 대상·항목명과 값으로 뒷받침되는 사실. 원문 명칭을 유지"
     )
     cause: str | None = Field(
         default=None, description="근거로 직접 확인된 원인. 확인할 수 없으면 null"
@@ -34,10 +34,10 @@ class WorkbookInsight(BaseModel):
 
 class WorkbookInsightReport(BaseModel):
     overview: str = Field(
-        description="핵심 대상과 기준 시점, 대표 수치와 변화 방향을 설명하는 전체 요약"
+        description="검증 가능한 원본 사실의 요약. 없는 대상·시점·비교를 만들지 않음"
     )
     insights: list[WorkbookInsight] = Field(
-        min_length=1,
+        min_length=0,
         max_length=5,
         description="현재 상태, 기간 변화, 구성, 거래와 위험에 관한 구체적 사실",
     )

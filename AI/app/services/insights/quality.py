@@ -1,34 +1,53 @@
-import re
+import math
 from datetime import datetime
 
 from app.services.insights.fact_trends import is_identity_row
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
+from app.services.insights.source_records import source_record_insights
 
 
 def ensure_business_report(
     report: WorkbookInsightReport, context: dict[str, object]
 ) -> WorkbookInsightReport:
-    changes = metric_changes(context)
-    if not changes or _is_concrete(report):
+    # Generation is not validation: do not judge truth by numeric density or addresses.
+    # A nonempty draft is left for the separate evidence validator to evaluate.
+    if report.insights:
         return report
-    subject = subject_name(context)
-    insights = [_change_insight(subject, change) for change in changes[:5]]
+    return build_source_report(context)
+
+
+def build_source_report(
+    context: dict[str, object], max_insights: int = 5
+) -> WorkbookInsightReport:
+    """Build a literal source-only draft; callers must still validate its evidence."""
+    limit = max(0, min(max_insights, 5))
+    changes = [change for change in metric_changes(context) if _complete_change(change)]
+    # Identity rows are separate evidence: do not attach their subject to trend cells.
+    insights = [_change_insight(None, change) for change in changes[:limit]]
+    if not insights:
+        insights = source_record_insights(context, limit)
     return WorkbookInsightReport(
-        overview=" ".join(insight.fact for insight in insights[:2]),
+        overview=(
+            " ".join(insight.fact for insight in insights[:2])
+            if insights
+            else "분석 입력에서 직접 확인할 수 있는 내용이 부족합니다."
+        ),
         insights=insights,
         limitations=[
-            "변화의 원인은 파일 안의 수치만으로 확인할 수 없어 단정하지 않았습니다."
+            "분석 입력에서 선별된 원본 값만 정리했으며, 원인이나 파일 밖의 비교는 추정하지 않았습니다."
         ],
     )
 
 
-def _is_concrete(report: WorkbookInsightReport) -> bool:
-    text = " ".join(
-        [report.overview, *(insight.fact for insight in report.insights)]
-    )
-    evidence = [item for insight in report.insights for item in insight.evidence]
-    return len(re.findall(r"\d[\d,.]*", text)) >= 2 and any(
-        "!" in item and re.search(r"\d", item) for item in evidence
+def _complete_change(change: dict[str, object]) -> bool:
+    if not all(change.get(key) for key in ("metric", "earliest_period", "latest_period", "evidence")):
+        return False
+    for key in ("earliest_value", "latest_value", "change", "change_rate_percent"):
+        value = change.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            return False
+    return isinstance(change["evidence"], list) and all(
+        isinstance(item, str) and item.strip() for item in change["evidence"]
     )
 
 
@@ -82,10 +101,7 @@ def _change_insight(
             f"{_period(change['latest_period'])} {new}로 {delta}({rate:g}%) {direction}했습니다."
         ),
         cause=None,
-        impact=(
-            f"기간 시작점 수치를 최신 규모로 사용하면 {delta}의 차이가 발생하므로 "
-            "최신 기간 값을 기준으로 비교해야 합니다."
-        ),
+        impact=None,
         category="summary",
         severity="info",
         evidence=[str(item) for item in change["evidence"]],

@@ -1,5 +1,5 @@
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
-from app.services.insights.quality import ensure_business_report
+from app.services.insights.quality import build_source_report, ensure_business_report
 
 
 def _generic_report() -> WorkbookInsightReport:
@@ -20,7 +20,7 @@ def _generic_report() -> WorkbookInsightReport:
     )
 
 
-def test_replaces_generic_report_with_concrete_business_change() -> None:
+def test_builds_source_report_with_concrete_business_change() -> None:
     context = {
         "sheets": [
             {
@@ -50,15 +50,16 @@ def test_replaces_generic_report_with_concrete_business_change() -> None:
         ]
     }
 
-    result = ensure_business_report(_generic_report(), context)
+    result = build_source_report(context)
 
-    assert "Riot Games, Inc." in result.overview
+    assert "Riot Games, Inc." not in result.overview
+    assert "Total Employees" in result.overview
     assert "6,101" in result.overview
     assert "5,417" in result.overview
     assert result.insights[0].evidence == ["인력!E115:L115", "인력!E108:L108"]
 
 
-def test_keeps_concrete_llm_report() -> None:
+def test_leaves_nonempty_llm_draft_for_separate_validation() -> None:
     report = WorkbookInsightReport(
         overview="Riot Games 직원 수는 6,101명에서 5,417명으로 감소했습니다.",
         insights=[
@@ -74,7 +75,7 @@ def test_keeps_concrete_llm_report() -> None:
             )
         ],
     )
-    context = {"sheets": [{"business_facts": {"numeric_changes": [{}]}}]}
+    context = {"sheets": []}
 
     assert ensure_business_report(report, context) is report
 
@@ -110,8 +111,8 @@ def test_builds_concrete_report_for_a_workbook_from_another_domain() -> None:
         ]
     }
 
-    result = ensure_business_report(_generic_report(), context)
+    result = build_source_report(context)
 
-    assert "2공장 압출 라인" in result.overview
+    assert "2공장 압출 라인" not in result.overview
     assert "월간 불량률" in result.overview
     assert result.insights[0].evidence == ["품질!C4:H4"]

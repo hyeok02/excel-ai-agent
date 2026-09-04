@@ -1,23 +1,17 @@
 from app.agent.execution.models import AgentExecution
+from app.services.insights.claim_grounding import grounded_claim
+from app.services.insights.derived_claim_grounding import grounded_derivation
+from app.services.insights.unit_grounding import grounded_units
 from app.services.insights.models import (
-    InsightValidationStatus,
-    InsightValidationSummary,
-    ValidatedWorkbookInsight,
-    ValidatedWorkbookInsightReport,
-    WorkbookInsight,
-    WorkbookInsightReport,
+    InsightValidationStatus, ValidatedWorkbookInsight,
+    ValidatedWorkbookInsightReport, WorkbookInsight, WorkbookInsightReport,
 )
 from app.services.insights.numeric_validation import unmatched_numbers
 from app.services.insights.reference_matching import resolve_references
-from app.services.insights.review_points import (
-    grounded_review_point,
-    grounded_tokens,
-    mask_known_names,
-)
+from app.services.insights.review_points import grounded_tokens, mask_known_names
+from app.services.insights.validated_report import assemble_report, add_source_fallback
 from app.services.insights.validation_index import (
-    EvidenceIndex,
-    agent_evidence_index,
-    extract_references,
+    REFERENCE_PATTERN, EvidenceIndex, agent_evidence_index, extract_references,
     workbook_evidence_index,
 )
 
@@ -25,7 +19,13 @@ from app.services.insights.validation_index import (
 def validate_workbook_insights(
     report: WorkbookInsightReport, context: dict[str, object]
 ) -> ValidatedWorkbookInsightReport:
-    return _validate(report, workbook_evidence_index(context))
+    index = workbook_evidence_index(context)
+    result = _validate(report, index)
+    if result.insights:
+        return result
+    from app.services.insights.quality import build_source_report
+    fallback = _validate(build_source_report(context), index)
+    return add_source_fallback(result, fallback)
 
 
 def validate_agent_insights(
@@ -34,98 +34,58 @@ def validate_agent_insights(
     return _validate(report, agent_evidence_index(execution))
 
 
-def _validate(
-    report: WorkbookInsightReport, index: EvidenceIndex
-) -> ValidatedWorkbookInsightReport:
-    passed: list[ValidatedWorkbookInsight] = []
-    blocked = 0
-    for insight in report.insights:
-        validated = _validate_insight(insight, index)
-        if validated is None:
-            blocked += 1
-        else:
-            passed.append(validated)
-    limited = sum(
-        item.validation_status is InsightValidationStatus.LIMITED for item in passed
-    )
-    verified = len(passed) - limited
-    notices = []
-    if blocked:
-        notices.append(f"내용이나 근거가 비어 있는 인사이트 {blocked}건을 표시에서 제외했습니다.")
-    if limited:
-        notices.append(
-            f"근거 자동 대조가 완전하지 않은 인사이트 {limited}건은 화면에 유지하고 확인 필요로 표시했습니다."
-        )
-    notices.extend(index.limitations)
-    limitations = list(dict.fromkeys([*report.limitations, *notices]))
-    overview = (
-        " ".join(item.fact for item in passed[:2])
-        if passed
-        else "근거 검증을 통과한 인사이트가 없습니다. 원본 범위와 분석 한계를 확인하세요."
-    )
-    return ValidatedWorkbookInsightReport(
-        overview=overview,
-        insights=passed,
-        limitations=limitations,
-        validation=InsightValidationSummary(
-            generated_count=len(report.insights),
-            verified_count=verified,
-            limited_count=limited,
-            blocked_count=blocked,
-            notices=notices,
-        ),
-    )
+def _validate(report: WorkbookInsightReport, index: EvidenceIndex):
+    passed = [item for insight in report.insights
+              if (item := _validate_insight(insight, index)) is not None]
+    return assemble_report(passed, len(report.insights), index.limitations)
 
 
 def _validate_insight(
     insight: WorkbookInsight, index: EvidenceIndex
 ) -> ValidatedWorkbookInsight | None:
-    if not insight.fact.strip() or not insight.evidence:
+    if not insight.fact.strip() or not insight.evidence or insight.confidence < 0.7:
         return None
-    reasons: list[str] = []
-    confidence_penalty = 0.0
-    cited_references = [extract_references(item) for item in insight.evidence]
-    if any(not items for items in cited_references):
-        reasons.append("일부 근거 위치를 자동으로 해석하지 못해 원본 위치 확인이 필요합니다.")
-        confidence_penalty += 0.15
-    references = set().union(*cited_references)
-    resolved_references, unmatched_references = resolve_references(
-        references, index.references
-    )
-    if unmatched_references:
-        reasons.append("일부 셀·범위가 분석 입력과 정확히 일치하지 않아 원본 확인이 필요합니다.")
-        confidence_penalty += 0.25
-    grounded = grounded_tokens([*insight.evidence, *index.evidence_text])
-    claim_text = mask_known_names(
-        " ".join(item for item in [insight.fact, insight.cause] if item), grounded
-    )
-    cited_numbers = set().union(
-        *(
-            index.reference_numbers.get(reference, set())
-            for reference in resolved_references
+    cited = [extract_references(item) for item in insight.evidence]
+    if any(not references for references in cited):
+        return None
+    references = set().union(*cited)
+    resolved, unmatched = resolve_references(references, index.references)
+    if unmatched or not resolved:
+        return None
+    source_text = [text for ref in resolved for text in index.reference_text.get(ref, [])]
+    grounded = grounded_tokens(source_text)
+    cited_numbers = set().union(*(index.reference_numbers.get(ref, set()) for ref in resolved))
+
+    def supported(text: str | None) -> bool:
+        if not text:
+            return False
+        without_addresses = REFERENCE_PATTERN.sub(" ", text)
+        claim = mask_known_names(without_addresses, grounded)
+        return (
+            not unmatched_numbers(claim, cited_numbers)
+            and grounded_claim(text, source_text, resolved)
+            and grounded_derivation(text, source_text, resolved, index.numeric_changes)
+            and grounded_units(text, source_text, resolved, index.numeric_changes)
         )
-    )
-    if unmatched_numbers(claim_text, cited_numbers):
-        reasons.append("일부 수치 표현을 분석 입력에서 자동으로 대조하지 못했습니다.")
-        confidence_penalty += 0.15
+
+    if not supported(insight.fact):
+        return None
+    # Do not let a valid fact carry a fabricated title, cause or recommendation.
     cause = insight.cause
-    if cause and not (resolved_references & index.cause_references):
+    reasons = []
+    if cause and (not resolved & index.cause_references or not supported(cause)):
         cause = None
         reasons.append("원인을 직접 입증하는 수식·메타데이터 근거가 없어 원인 문장을 제외했습니다.")
-        confidence_penalty += 0.1
-    status = (
-        InsightValidationStatus.LIMITED
-        if reasons or insight.confidence < 0.7
-        else InsightValidationStatus.VERIFIED
-    )
-    confidence = round(max(0.0, insight.confidence - confidence_penalty), 2)
-    impact = grounded_review_point(insight.impact, grounded, cited_numbers)
+    status = InsightValidationStatus.LIMITED if reasons else InsightValidationStatus.VERIFIED
     return ValidatedWorkbookInsight(
-        **insight.model_dump(exclude={"cause", "impact", "confidence"}),
+        **insight.model_dump(exclude={"title", "cause", "impact", "recommendation", "evidence"}),
+        title=insight.title if supported(insight.title) else "원본에서 확인한 내용",
         cause=cause,
-        impact=impact,
-        confidence=confidence,
+        impact=insight.impact if supported(insight.impact) else None,
+        recommendation=insight.recommendation if supported(insight.recommendation) else None,
+        evidence=list(dict.fromkeys(
+            match.group(0) for item in insight.evidence for match in REFERENCE_PATTERN.finditer(item)
+        )),
         validation_status=status,
         validation_reasons=reasons,
     )
-

@@ -38,8 +38,6 @@ def resolve_references(
 
 
 def matching_references(citation: str, available: set[str]) -> set[str]:
-    if citation in available:
-        return {citation}
     cited_box = _box(citation)
     if cited_box is None or cited_box.area > MAX_CITATION_AREA:
         return set()
@@ -51,19 +49,8 @@ def matching_references(citation: str, available: set[str]) -> set[str]:
     }
     if contained:
         return contained
-    containing = [
-        (reference, candidate)
-        for reference, candidate in parsed
-        if candidate and _contains(candidate, cited_box)
-    ]
-    if not containing:
-        return set()
-    smallest_area = min(candidate.area for _, candidate in containing)
-    return {
-        reference
-        for reference, candidate in containing
-        if candidate.area == smallest_area
-    }
+    # A smaller citation cannot borrow values from a larger enclosing sample.
+    return set()
 
 
 def _box(reference: str) -> ReferenceBox | None:

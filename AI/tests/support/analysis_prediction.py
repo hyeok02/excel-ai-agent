@@ -42,7 +42,7 @@ class WorkbookAnalysisPredictor:
 
 def review_point_verdict(context: dict[str, object], text: str) -> str:
     """검토 포인트 한 문장이 근거 대조를 통과하는지 판정한다."""
-    report = _probe_report(text, _first_reference(context))
+    report = _probe_report(text, _source_references(context))
     result = validate_workbook_insights(report, context)
     kept = result.insights[0].impact if result.insights else None
     return KEEP if kept else DROP
@@ -66,13 +66,18 @@ def _question_verdicts(
     }
 
 
-def _first_reference(context: dict[str, object]) -> str:
-    sheets = context.get("sheets") or []
-    name = str(sheets[0]["name"]) if sheets else "Sheet1"
-    return f"{name}!A1"
+def _source_references(context: dict[str, object]) -> list[str]:
+    # The probe reviews selected data, not arbitrary A1. Cite the actual rows
+    # so the same scoped source gate as production can evaluate its vocabulary.
+    return list(dict.fromkeys(
+        str(record["location"])
+        for sheet in context.get("sheets", [])
+        for record in sheet.get("business_facts", {}).get("selected_records", [])
+        if record.get("location")
+    )) or ["Sheet1!A1"]
 
 
-def _probe_report(impact: str, reference: str) -> WorkbookInsightReport:
+def _probe_report(impact: str, references: list[str]) -> WorkbookInsightReport:
     return WorkbookInsightReport(
         overview="검토 포인트 판정용 입력",
         insights=[
@@ -83,7 +88,7 @@ def _probe_report(impact: str, reference: str) -> WorkbookInsightReport:
                 impact=impact,
                 category="summary",
                 severity="info",
-                evidence=[reference],
+                evidence=references,
                 recommendation=None,
                 confidence=0.9,
             )
