@@ -23,7 +23,7 @@ cp ai.env.example ai.env
 chmod 600 oracle.env backend.env ai.env
 ```
 
-세 환경 파일의 placeholder를 운영 값으로 변경합니다. `oracle.env`의 `APP_USER_PASSWORD`와 `backend.env`의 `DB_PASSWORD`는 반드시 같아야 합니다. `CORS_ALLOWED_ORIGINS`와 `FRONTEND_BASE_URL`에는 실제 공개 주소를 입력합니다.
+세 환경 파일의 placeholder를 운영 값으로 변경합니다. Oracle 21c의 관리자 및 애플리케이션 사용자 비밀번호는 영문 대·소문자와 숫자를 포함한 12~30자 ASCII 문자열로 지정합니다. `oracle.env`의 `APP_USER_PASSWORD`와 `backend.env`의 `DB_PASSWORD`는 반드시 같아야 합니다. `CORS_ALLOWED_ORIGINS`와 `FRONTEND_BASE_URL`에는 실제 공개 주소를 입력합니다.
 
 ## 실행
 
