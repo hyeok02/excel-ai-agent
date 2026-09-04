@@ -7,6 +7,27 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set PUBLIC_HOST in deploy/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 192m
+    depends_on:
+      frontend:
+        condition: service_healthy
+    networks:
+      - internal
+
   oracle:
     image: gvenzl/oracle-xe:21-slim
     restart: unless-stopped
@@ -67,8 +88,8 @@ services:
         VITE_API_BASE_URL: ""
     restart: unless-stopped
     logging: *default-logging
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     mem_limit: 256m
     depends_on:
       backend:
@@ -77,6 +98,8 @@ services:
       - internal
 
 volumes:
+  caddy-data:
+  caddy-config:
   oracle-data:
   uploads:
 
