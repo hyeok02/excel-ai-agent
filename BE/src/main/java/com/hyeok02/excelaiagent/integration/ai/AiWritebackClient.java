@@ -34,7 +34,7 @@ public class AiWritebackClient {
 			return response;
 		}
 		catch (RestClientException exception) {
-			throw new AiServiceUnavailableException(exception);
+			throw AiWorkbookErrorMapper.translate(exception);
 		}
 	}
 
@@ -50,7 +50,7 @@ public class AiWritebackClient {
 			return new AiWritebackArchiveReader(jsonMapper).read(response);
 		}
 		catch (RestClientException exception) {
-			throw new AiServiceUnavailableException(exception);
+			throw AiWorkbookErrorMapper.translate(exception);
 		}
 	}
 

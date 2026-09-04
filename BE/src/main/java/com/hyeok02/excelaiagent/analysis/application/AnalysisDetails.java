@@ -15,5 +15,6 @@ public record AnalysisDetails(
 		long sizeBytes,
 		boolean sourceAvailable,
 		Instant createdAt,
-		Instant updatedAt) {
+		Instant updatedAt,
+		String failureMessage) {
 }

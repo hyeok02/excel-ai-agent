@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.UUID;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import com.hyeok02.excelaiagent.analysis.error.UnreadableExcelFileException;
+import com.hyeok02.excelaiagent.integration.ai.AiServiceUnavailableException;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookQuestion;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
@@ -79,6 +81,41 @@ class WorkbookQuestionControllerTests extends AnalysisControllerTestSupport {
 					.content("{\"question\":\"핵심 내용을 알려줘\"}"))
 				.andExpect(status().isGone())
 				.andExpect(jsonPath("$.code").value("ANALYSIS_SOURCE_UNAVAILABLE"));
+	}
+
+	@Test
+	void returnsActionableBadRequestWhenStoredWorkbookCannotBeRead() throws Exception {
+		when(aiServiceClient.askWorkbook(any(Resource.class), any()))
+				.thenThrow(new UnreadableExcelFileException());
+		String submission = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(excel("styles.xlsx")).param("mode", "BFS"))
+				.andReturn().getResponse().getContentAsString();
+		String id = JsonPath.read(submission, "$.analysisId");
+
+		mockMvc.perform(post("/api/v1/analyses/{analysisId}/questions", id)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"question\":\"핵심 내용을 알려줘\"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_EXCEL_FILE"))
+				.andExpect(jsonPath("$.message").value(UnreadableExcelFileException.STYLE_MESSAGE));
+	}
+
+	@Test
+	void keepsOutagesUnavailableWithoutReturningInternalDetails() throws Exception {
+		when(aiServiceClient.askWorkbook(any(Resource.class), any()))
+				.thenThrow(new AiServiceUnavailableException(new RuntimeException("private api_key=secret")));
+		String submission = mockMvc.perform(multipart("/api/v1/analyses")
+					.file(excel("sales.xlsx")).param("mode", "BFS"))
+				.andReturn().getResponse().getContentAsString();
+		String id = JsonPath.read(submission, "$.analysisId");
+
+		mockMvc.perform(post("/api/v1/analyses/{analysisId}/questions", id)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"question\":\"핵심 내용을 알려줘\"}"))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(jsonPath("$.code").value("AI_SERVICE_UNAVAILABLE"))
+				.andExpect(jsonPath("$.message")
+						.value("AI 응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요."));
 	}
 
 	private AiWorkbookQuestion answer() {

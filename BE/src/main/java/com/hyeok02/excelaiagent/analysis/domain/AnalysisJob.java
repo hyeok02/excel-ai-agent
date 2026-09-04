@@ -38,6 +38,9 @@ public class AnalysisJob {
 	@Column(name = "owner_username", length = 100)
 	private String ownerUsername;
 
+	@Column(name = "failure_message", length = 500)
+	private String failureMessage;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
@@ -49,23 +52,21 @@ public class AnalysisJob {
 
 	private AnalysisJob(
 			UUID analysisId,
-			AnalysisStatus status,
 			AnalysisMode mode,
 			String originalFilename,
 			String fileExtension,
 			long fileSizeBytes,
 			String ownerUsername,
-			Instant createdAt,
-			Instant updatedAt) {
+			Instant now) {
 		this.analysisId = analysisId;
-		this.status = status;
+		this.status = AnalysisStatus.QUEUED;
 		this.mode = mode;
 		this.originalFilename = originalFilename;
 		this.fileExtension = fileExtension;
 		this.fileSizeBytes = fileSizeBytes;
 		this.ownerUsername = ownerUsername;
-		this.createdAt = createdAt;
-		this.updatedAt = updatedAt;
+		this.createdAt = now;
+		this.updatedAt = now;
 	}
 
 	public static AnalysisJob queued(
@@ -76,16 +77,8 @@ public class AnalysisJob {
 			long fileSizeBytes,
 			String ownerUsername,
 			Instant now) {
-		return new AnalysisJob(
-				analysisId,
-				AnalysisStatus.QUEUED,
-				mode,
-				originalFilename,
-				fileExtension,
-				fileSizeBytes,
-				ownerUsername,
-				now,
-				now);
+		return new AnalysisJob(analysisId, mode, originalFilename, fileExtension,
+				fileSizeBytes, ownerUsername, now);
 	}
 
 	public void markProcessing(Instant now) {
@@ -97,7 +90,12 @@ public class AnalysisJob {
 	}
 
 	public void markFailed(Instant now) {
+		markFailed(now, null);
+	}
+
+	public void markFailed(Instant now, String failureMessage) {
 		transitionFrom(AnalysisStatus.PROCESSING, AnalysisStatus.FAILED, now);
+		this.failureMessage = failureMessage;
 	}
 
 	private void transitionFrom(AnalysisStatus expected, AnalysisStatus next, Instant now) {
@@ -135,6 +133,10 @@ public class AnalysisJob {
 
 	public String getOwnerUsername() {
 		return ownerUsername;
+	}
+
+	public String getFailureMessage() {
+		return failureMessage;
 	}
 
 	public Instant getCreatedAt() {

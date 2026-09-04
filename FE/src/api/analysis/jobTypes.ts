@@ -18,6 +18,7 @@ export interface AnalysisDetails extends AnalysisSubmission {
   fileExtension: string
   sourceAvailable: boolean
   updatedAt: string
+  failureMessage?: string | null
 }
 
 export interface AnalysisHistoryPage {

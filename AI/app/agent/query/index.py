@@ -1,10 +1,8 @@
 from dataclasses import dataclass
-from io import BytesIO
-
-from openpyxl import load_workbook
 
 from app.agent.query.cell_values import formula_text, safe_indexed_value
 from app.services.provenance import AnalysisEvidence, EvidenceKind
+from app.services.workbook_loading import close_workbook, load_workbook_pair
 
 MAX_INDEXED_CELLS = 50_000
 MAX_ROWS_PER_SHEET = 10_000
@@ -55,8 +53,7 @@ class WorkbookDataIndex:
 def build_workbook_data_index(
     filename: str, content: bytes, included_sheets: set[str] | None = None
 ) -> WorkbookDataIndex:
-    formulas = load_workbook(BytesIO(content), data_only=False, read_only=True)
-    values = load_workbook(BytesIO(content), data_only=True, read_only=True)
+    formulas, values = load_workbook_pair(content, read_only=True)
     rows: list[IndexedRow] = []
     cell_count = 0
     truncated = False
@@ -81,8 +78,8 @@ def build_workbook_data_index(
                 truncated = True
                 break
     finally:
-        formulas.close()
-        values.close()
+        close_workbook(formulas)
+        close_workbook(values)
     return WorkbookDataIndex(filename, tuple(rows), cell_count, truncated)
 
 
