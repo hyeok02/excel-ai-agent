@@ -10,6 +10,7 @@ import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResult;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceException;
+import com.hyeok02.excelaiagent.analysis.error.UnreadableExcelFileException;
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
@@ -95,7 +96,9 @@ public class AnalysisJobProcessor {
 
 	private void markFailed(AnalysisJob analysisJob, RuntimeException cause) {
 		try {
-			analysisJob.markFailed(Instant.now());
+			String userMessage = cause instanceof UnreadableExcelFileException
+					? cause.getMessage() : null;
+			analysisJob.markFailed(Instant.now(), userMessage);
 			analysisJobRepository.saveAndFlush(analysisJob);
 		}
 		catch (RuntimeException statusException) {

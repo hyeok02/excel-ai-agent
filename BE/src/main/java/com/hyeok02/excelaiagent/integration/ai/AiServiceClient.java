@@ -73,7 +73,7 @@ public class AiServiceClient {
 			return response;
 		}
 		catch (RestClientException exception) {
-			throw new AiServiceUnavailableException(exception);
+			throw AiWorkbookErrorMapper.translate(exception);
 		}
 	}
 
@@ -101,7 +101,7 @@ public class AiServiceClient {
 			return response;
 		}
 		catch (RestClientException exception) {
-			throw new AiServiceUnavailableException(exception);
+			throw AiWorkbookErrorMapper.translate(exception);
 		}
 	}
 

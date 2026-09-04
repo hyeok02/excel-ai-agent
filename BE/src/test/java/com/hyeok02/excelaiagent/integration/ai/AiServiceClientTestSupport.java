@@ -10,12 +10,14 @@ import org.springframework.web.client.RestClient;
 abstract class AiServiceClientTestSupport {
 	protected MockRestServiceServer server;
 	protected AiServiceClient client;
+	protected RestClient restClient;
 
 	@BeforeEach
 	void setUp() {
 		RestClient.Builder builder = RestClient.builder().baseUrl("http://localhost:8000");
 		server = MockRestServiceServer.bindTo(builder).build();
-		client = new AiServiceClient(builder.build());
+		restClient = builder.build();
+		client = new AiServiceClient(restClient);
 	}
 
 	protected MockMultipartFile workbook() {

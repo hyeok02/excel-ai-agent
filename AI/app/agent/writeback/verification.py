@@ -2,12 +2,12 @@ import hashlib
 from io import BytesIO
 from zipfile import ZipFile
 
-from openpyxl import load_workbook
+from app.services.workbook_loading import close_workbook, load_workbook_for_reading
 
 from app.agent.writeback.models import VerificationCheck
 
 def workbook_fingerprint(content: bytes, keep_vba: bool) -> dict[str, object]:
-    workbook = load_workbook(BytesIO(content), data_only=False, keep_vba=keep_vba)
+    workbook = load_workbook_for_reading(content, keep_vba=keep_vba)
     try:
         return {
             "sheets": tuple(workbook.sheetnames),
@@ -16,7 +16,7 @@ def workbook_fingerprint(content: bytes, keep_vba: bool) -> dict[str, object]:
             "styles": _styles(workbook),
         }
     finally:
-        workbook.close()
+        close_workbook(workbook)
 
 def compare_fingerprints(before, after, changes) -> list[VerificationCheck]:
     targets = {(change.sheet_name, change.reference) for change in changes}

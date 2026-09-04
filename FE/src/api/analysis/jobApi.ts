@@ -61,7 +61,7 @@ const waitForAnalysis = async (
     onStatusChange?.(details.status)
     if (details.status === 'COMPLETED') return
     if (details.status === 'FAILED') {
-      throw new Error('Excel 분석 처리에 실패했습니다.')
+      throw new Error(details.failureMessage ?? 'Excel 분석 처리에 실패했습니다.')
     }
     await new Promise((resolve) => window.setTimeout(resolve, pollIntervalMs))
   }
@@ -95,7 +95,9 @@ export const resumeAnalysis = async (
   const submission = await getAnalysisDetails(analysisId)
   onStatusChange?.(submission.status)
   if (submission.status === 'FAILED') {
-    throw new Error('이 분석은 처리에 실패하여 결과를 열 수 없습니다.')
+    throw new Error(
+      submission.failureMessage ?? '이 분석은 처리에 실패하여 결과를 열 수 없습니다.',
+    )
   }
   if (submission.status !== 'COMPLETED') {
     await waitForAnalysis(analysisId, onStatusChange)

@@ -1,9 +1,8 @@
-from io import BytesIO
 from pathlib import Path
 import re
 
-from openpyxl import load_workbook
 from openpyxl.cell.cell import MergedCell
+from app.services.workbook_loading import close_workbook, load_workbook_for_reading
 
 from app.agent.writeback.models import VerificationCheck, WritebackChange, WritebackManifest
 from app.agent.writeback.package_editor import changed_worksheet_paths, patch_workbook_package
@@ -26,11 +25,11 @@ def apply_writeback(
         raise UnsafeWritebackError("한 번에 1~50개의 검증된 변경만 적용할 수 있습니다.")
     keep_vba = Path(filename).suffix.lower() == ".xlsm"
     before = workbook_fingerprint(content, keep_vba)
-    workbook = load_workbook(BytesIO(content), data_only=False, keep_vba=keep_vba)
+    workbook = load_workbook_for_reading(content, keep_vba=keep_vba)
     try:
         _validate_changes(workbook, changes)
     finally:
-        workbook.close()
+        close_workbook(workbook)
     changed_paths = changed_worksheet_paths(content, changes)
     try:
         modified = patch_workbook_package(content, changes)
@@ -78,7 +77,7 @@ def _validate_changes(workbook, changes: list[WritebackChange]) -> None:
 
 
 def _verify_values(content, changes, keep_vba) -> VerificationCheck:
-    workbook = load_workbook(BytesIO(content), data_only=False, keep_vba=keep_vba)
+    workbook = load_workbook_for_reading(content, keep_vba=keep_vba)
     try:
         passed = all(
             _comparable(
@@ -88,7 +87,7 @@ def _verify_values(content, changes, keep_vba) -> VerificationCheck:
             for item in changes
         )
     finally:
-        workbook.close()
+        close_workbook(workbook)
     return VerificationCheck(name="changed_values", passed=passed, detail="승인한 값 반영")
 
 
