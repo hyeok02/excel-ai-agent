@@ -37,6 +37,7 @@ uploads/
 outputs/
 tmp/
 logs/
+deploy/*.env
 *.xlsx
 *.xlsm
 !AI/tests/fixtures/semantic/*.xlsx
