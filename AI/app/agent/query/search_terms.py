@@ -5,6 +5,7 @@ from app.agent.query.index import IndexedRow
 STOP_WORDS = {
     "알려줘", "보여줘", "무엇", "어떤", "엑셀", "파일", "가장", "높은", "낮은",
     "얼마", "어디", "대한", "있는", "해줘", "the", "what", "which", "show",
+    "and", "of", "to",
 }
 SEMANTIC_ALIASES = {
     "직원": ("headcount", "employee", "employees", "workforce"),
@@ -19,6 +20,17 @@ SEMANTIC_ALIASES = {
     "현금": ("cash",),
     "날짜": ("date", "dates"),
     "비율": ("rate", "ratio", "%"),
+    "중앙값": ("median",),
+    "비교군": ("comparable", "comparables", "peer", "peers"),
+    "거래": ("transaction", "deal"),
+    "거래가치": ("transaction value", "deal value"),
+    "배수": ("multiple", "multiples"),
+    "주주": ("owner", "holder", "shareholder", "stakeholder"),
+    "보유자": ("owner", "holder"),
+    "지분율": ("percent held", "percent owned", "ownership", "stake"),
+    "이벤트": ("event", "development", "announcement"),
+    "최근": ("latest", "recent"),
+    "최대": ("top", "rank", "maximum", "highest"),
 }
 KOREAN_SUFFIXES = (
     "으로부터", "에서부터", "에게서", "으로", "까지", "부터", "처럼", "보다",
@@ -43,7 +55,9 @@ def search_terms(query: str) -> list[str]:
 
 def relevance(row: IndexedRow, terms: list[str]) -> int:
     sheet_text = row.sheet_name.replace("_", " ").casefold()
-    return sum(4 if term in row.search_text else 8 if term in sheet_text else 0 for term in terms)
+    row_hits = sum(term in row.search_text for term in terms)
+    sheet_hit = any(term in sheet_text for term in terms)
+    return row_hits * 4 + int(sheet_hit)
 
 
 def _strip_korean_suffix(token: str) -> str:

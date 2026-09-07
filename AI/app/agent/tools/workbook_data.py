@@ -7,21 +7,28 @@ from app.agent.contracts import (
     ToolCategory,
 )
 from app.agent.query.index import IndexedRow
+from app.agent.query.row_search import search_rows as _search_rows
+from app.agent.query.verified_evidence import (
+    merge_evidence,
+    priority_evidence,
+    range_count_calculations,
+)
+from app.agent.query.verified_facts import build_verified_question_context
 from app.agent.query.workbook_summary_rows import (
     is_workbook_summary_question,
     select_workbook_summary_rows,
 )
 from app.agent.tools.helpers import arguments_or_empty, bounded_integer, optional_string
-from app.agent.tools.workbook_comparisons import build_time_series_comparison
+from app.agent.tools.workbook_comparisons import (
+    build_time_series_comparison,
+    time_series_calculations,
+)
 from app.agent.tools.workbook_headers import (
     HeaderContext,
     build_header_context,
     evidence_with_header,
     header_for,
 )
-from app.agent.query.search_terms import relevance, search_terms
-PRECEDING_ROW_COUNT = 3
-FOLLOWING_ROW_COUNT = 8
 
 
 class WorkbookDataSearchTool:
@@ -56,17 +63,24 @@ class WorkbookDataSearchTool:
         )
         headers = build_header_context(context.data_index.rows, rows)
         comparison = build_time_series_comparison(rows, headers, query)
+        verified = build_verified_question_context(context.workbook)
+        calculations = [
+            *verified["calculations"],
+            *time_series_calculations(comparison),
+            *range_count_calculations(context.data_index.rows, verified),
+        ]
         all_evidence = [
             evidence_with_header(row, cell, headers) for row in rows for cell in row.cells
         ]
         priority = _comparison_reference_order(comparison)
-        evidence = tuple(
-            sorted(
-                all_evidence,
-                key=lambda item: priority.get(
-                    f"{item.sheet_name}!{item.reference}", len(priority)
-                ),
-            )[:600]
+        ordinary = sorted(
+            all_evidence,
+            key=lambda item: priority.get(
+                f"{item.sheet_name}!{item.reference}", len(priority)
+            ),
+        )
+        evidence = merge_evidence(
+            priority_evidence(context.data_index.rows, verified), ordinary, 600
         )
         return AgentToolResult(
             tool_name=self.metadata.name,
@@ -77,38 +91,13 @@ class WorkbookDataSearchTool:
                 "returned_row_count": len(rows),
                 "index_truncated": context.data_index.truncated,
                 "time_series_comparison": comparison,
+                "verified_overview": verified["overview"],
+                "verified_insights": verified["insights"],
+                "calculations": calculations,
                 "rows": [_row_payload(row, headers) for row in rows],
             },
             evidence=evidence,
         )
-
-
-def _search_rows(rows: tuple[IndexedRow, ...], query: str, limit: int) -> list[IndexedRow]:
-    terms = search_terms(query)
-    scored = [(relevance(row, terms), index) for index, row in enumerate(rows)]
-    anchors = [
-        index
-        for score, index in sorted(scored, key=lambda item: (-item[0], item[1]))
-        if score > 0
-    ][:6]
-    if not anchors:
-        return sorted(rows, key=lambda row: len(row.cells), reverse=True)[: min(limit, 20)]
-    selected: set[int] = set()
-    ordered: list[int] = []
-    for anchor in anchors:
-        sheet_name = rows[anchor].sheet_name
-        start = max(0, anchor - PRECEDING_ROW_COUNT)
-        for index in range(start, min(len(rows), anchor + FOLLOWING_ROW_COUNT + 1)):
-            if rows[index].sheet_name != sheet_name:
-                continue
-            if index not in selected:
-                selected.add(index)
-                ordered.append(index)
-            if len(selected) >= limit:
-                break
-        if len(selected) >= limit:
-            break
-    return [rows[index] for index in ordered[:limit]]
 
 
 def _comparison_reference_order(
@@ -116,7 +105,11 @@ def _comparison_reference_order(
 ) -> dict[str, int]:
     if not comparison:
         return {}
-    references = {}
+    references = {
+        reference: index
+        for index, key in enumerate(("start_reference", "end_reference"))
+        if isinstance((reference := comparison.get(key)), str)
+    }
     groups = (comparison.get("largest_absolute_changes"), comparison.get("metrics"))
     for metrics in groups:
         if not isinstance(metrics, list):
@@ -141,6 +134,7 @@ def _row_payload(row: IndexedRow, headers: HeaderContext) -> dict[str, object]:
                 "header": header_for(headers, row.sheet_name, row.row_number, cell.address),
                 "value": cell.value,
                 "formula": cell.formula,
+                "number_format": cell.number_format,
             }
             for cell in row.cells
         ],

@@ -17,13 +17,19 @@ const WorkbookQuestionSection = ({
   const latestAnswer = questions.answers.at(-1)
   const previousAnswers = questions.answers.slice(0, -1).reverse()
   return (
-    <section className="mt-6 overflow-hidden rounded-3xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cyan-50/60 p-5 md:p-7">
+    <section
+      aria-labelledby="workbook-question-heading"
+      className="mt-6 overflow-hidden rounded-3xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cyan-50/60 p-5 md:p-7"
+    >
       <div>
         <div>
           <p className="flex items-center gap-2 text-xs font-extrabold tracking-[0.14em] text-brand-700">
             <MessageSquareText aria-hidden="true" size={16} /> 원본 근거 기반 질문
           </p>
-          <h2 className="mt-2 text-xl font-extrabold tracking-tight text-slate-950">
+          <h2
+            className="mt-2 text-xl font-extrabold tracking-tight text-slate-950"
+            id="workbook-question-heading"
+          >
             이 Excel에 바로 질문하세요
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -56,8 +62,16 @@ const WorkbookQuestionSection = ({
       </div>
 
       {questions.pendingQuestion && (
-        <div className="mt-4 rounded-2xl bg-white/80 p-4 text-sm font-semibold text-slate-500">
-          “{questions.pendingQuestion}”의 원본 근거를 찾고 있습니다…
+        <div
+          aria-atomic="true"
+          aria-live="polite"
+          className="mt-4 rounded-2xl bg-white/80 p-4 text-sm text-slate-500"
+          role="status"
+        >
+          <p className="font-extrabold text-slate-700">답변 준비 중</p>
+          <p className="mt-1">
+            “{questions.pendingQuestion}”에 필요한 원본을 확인하고 있습니다.
+          </p>
         </div>
       )}
       {questions.errorMessage && (

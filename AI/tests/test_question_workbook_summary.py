@@ -5,15 +5,20 @@ from openpyxl.worksheet.formula import ArrayFormula
 from app.agent.query.cell_values import formula_text, safe_indexed_value
 from app.agent.query.index import IndexedCell, IndexedRow
 from app.agent.query.router import build_question_plan
-from app.agent.query.service import _available_evidence
+from app.agent.query.answer_validation import _available_evidence
 from app.agent.query.workbook_summary_rows import select_workbook_summary_rows
 from app.services.provenance import AnalysisEvidence, EvidenceKind
 
 
 def test_summary_question_also_inspects_semantic_structure() -> None:
     plan = build_question_plan("이 엑셀 파일이 무슨 내용을 담고 있는지 요약해줘")
+    suggested = build_question_plan("이 파일은 무엇을 비교하고 있어?")
 
     assert [step.tool_name for step in plan.steps] == [
+        "search_workbook_data",
+        "inspect_semantic_structure",
+    ]
+    assert [step.tool_name for step in suggested.steps] == [
         "search_workbook_data",
         "inspect_semantic_structure",
     ]

@@ -22,7 +22,7 @@ class TimeSeriesAnswerGenerator:
                 "2023년 9월 6,101명에서 2025년 6월 5,417명으로 "
                 "684명(11.2%) 감소했습니다."
             ),
-            evidence=["직원현황!B2", "직원현황!B3"],
+            evidence=["직원현황!A2:B2", "직원현황!A3:B3"],
             confidence=0.93,
         )
 
@@ -42,7 +42,9 @@ def test_time_series_answer_accepts_period_and_calculated_change() -> None:
     body = response.json()
     assert body["status"] == "answered"
     assert "684명(11.2%) 감소" in body["answer"]
-    assert {item["reference"] for item in body["evidence"]} == {"B2", "B3"}
+    assert {item["reference"] for item in body["evidence"]} == {
+        "A2", "B2", "A3", "B3",
+    }
 
 
 def test_search_scope_limit_does_not_reduce_verified_confidence() -> None:
@@ -69,18 +71,19 @@ def test_percent_and_rounded_number_match_source_value() -> None:
     assert unmatched_numbers("1.2e3명", {Decimal("1200")}) == set()
 
 
-def test_common_calculations_use_only_cited_values() -> None:
+def test_does_not_invent_calculations_or_use_header_numbers() -> None:
     evidence = [
-        SimpleNamespace(value=10, formula=None, description="A"),
-        SimpleNamespace(value=20, formula=None, description="B"),
+        SimpleNamespace(value=10, formula=None, description="1월"),
+        SimpleNamespace(value=20, formula=None, description="2월"),
     ]
     candidates = supported_answer_numbers(
         "두 값의 합계와 평균은?", evidence, SimpleNamespace(steps=[])
     )
 
-    assert {Decimal("30"), Decimal("15"), Decimal("10")} <= candidates
-    assert unmatched_numbers("합계 30, 평균 15", candidates) == set()
-    assert unmatched_numbers("합계 999", candidates) == {"999"}
+    assert {Decimal("10"), Decimal("20")} <= candidates
+    assert Decimal("8.25") not in candidates
+    assert Decimal("15") not in candidates
+    assert Decimal("30") not in candidates
 
 
 def _time_series_workbook(extra_rows: int = 0) -> bytes:

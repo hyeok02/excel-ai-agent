@@ -59,11 +59,6 @@ const QuestionAnswerCard = ({ answer }: { answer: WorkbookQuestionAnswer }) => {
             >
               <StatusIcon aria-hidden="true" size={13} /> {presentation.label}
             </span>
-            {answer.confidence > 0 && (
-              <span className="text-xs font-bold text-slate-400">
-                핵심 근거 일치 {Math.round(answer.confidence * 100)}%
-              </span>
-            )}
             {hasScopeLimit && (
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
                 일부 범위 제외
