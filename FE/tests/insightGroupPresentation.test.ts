@@ -35,6 +35,7 @@ test('인사이트를 핵심 지표, 추세, 이상징후, 추가 내용 순서�
     groups.map(({ key }) => key),
     ['metric', 'trend', 'anomaly', 'additional'],
   )
+  assert.equal(groups[0].description, '결론을 뒷받침하는 중요한 수치와 비교 결과입니다.')
 })
 
 test('주의·긴급 인사이트는 category와 무관하게 이상징후로 표시한다', () => {

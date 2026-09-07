@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  insightEvidenceDisclosureLabel,
   parseInsightEvidenceLocation,
   prepareInsightEvidence,
 } from '../src/components/analysis/result/insightEvidencePresentation.ts'
@@ -50,4 +51,8 @@ test('셀 주소 형식이 아니면 원문을 보존한다', () => {
     sheetName: null,
     cellRange: null,
   })
+})
+
+test('접힌 근거 목록의 접근 가능한 이름에 위치 개수를 포함한다', () => {
+  assert.equal(insightEvidenceDisclosureLabel(4), '원본 근거 4개 위치 보기')
 })

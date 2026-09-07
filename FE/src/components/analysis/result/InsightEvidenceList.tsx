@@ -1,16 +1,30 @@
-import { ChevronDown, ChevronUp } from 'lucide-react'
-import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 
-import { prepareInsightEvidence } from '@/components/analysis/result/insightEvidencePresentation'
+import {
+  insightEvidenceDisclosureLabel,
+  prepareInsightEvidence,
+} from '@/components/analysis/result/insightEvidencePresentation'
 
 const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
-  const [expanded, setExpanded] = useState(false)
-  const { visibleLocations, hiddenCount } = prepareInsightEvidence(evidence, expanded)
+  const { visibleLocations } = prepareInsightEvidence(evidence, true)
+
+  if (visibleLocations.length === 0) return null
 
   return (
-    <div className="mt-4">
-      <p className="text-xs font-extrabold text-slate-500">원본 셀 근거</p>
-      <ul className="mt-2 space-y-1.5">
+    <details className="group mt-4 border-t border-slate-100 pt-3">
+      <summary
+        aria-label={insightEvidenceDisclosureLabel(visibleLocations.length)}
+        className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md text-xs font-semibold text-slate-400 transition hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+      >
+        <span>원본 근거</span>
+        <span aria-hidden="true">· {visibleLocations.length}개 위치</span>
+        <ChevronDown
+          aria-hidden="true"
+          className="transition-transform group-open:rotate-180"
+          size={13}
+        />
+      </summary>
+      <ul className="mt-3 space-y-1.5">
         {visibleLocations.map((location, index) => (
           <li
             className="flex flex-wrap items-center gap-1.5 text-xs leading-5"
@@ -18,40 +32,22 @@ const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
           >
             {location.sheetName && location.cellRange ? (
               <>
-                <span className="max-w-full break-all rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
+                <span className="max-w-full break-all rounded-md bg-slate-50 px-2 py-1 font-medium text-slate-500">
                   {location.sheetName}
                 </span>
-                <code className="rounded-lg bg-brand-50 px-2.5 py-1 font-bold text-brand-700">
+                <code className="rounded-md bg-slate-50 px-2 py-1 font-semibold text-slate-500">
                   {location.cellRange}
                 </code>
               </>
             ) : (
-              <span className="max-w-full break-words rounded-lg bg-slate-100 px-2.5 py-1 text-slate-600">
+              <span className="max-w-full break-words rounded-md bg-slate-50 px-2 py-1 text-slate-500">
                 {location.raw}
               </span>
             )}
           </li>
         ))}
       </ul>
-      {hiddenCount > 0 && (
-        <button
-          aria-expanded={expanded}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 hover:text-brand-700"
-          onClick={() => setExpanded((current) => !current)}
-          type="button"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp aria-hidden="true" size={14} /> 위치 접기
-            </>
-          ) : (
-            <>
-              <ChevronDown aria-hidden="true" size={14} /> 위치 {hiddenCount}개 더 보기
-            </>
-          )}
-        </button>
-      )}
-    </div>
+    </details>
   )
 }
 

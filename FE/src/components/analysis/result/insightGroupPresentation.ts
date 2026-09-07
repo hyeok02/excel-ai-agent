@@ -13,22 +13,22 @@ const GROUP_PRESENTATION: Omit<InsightGroup, 'insights'>[] = [
   {
     key: 'metric',
     title: '핵심 지표',
-    description: '원본 값에서 확인한 대표 수치입니다.',
+    description: '결론을 뒷받침하는 중요한 수치와 비교 결과입니다.',
   },
   {
     key: 'trend',
     title: '추세',
-    description: '비교 가능한 시점 사이의 변화를 정리했습니다.',
+    description: '시간에 따라 달라진 핵심 흐름입니다.',
   },
   {
     key: 'anomaly',
     title: '이상징후',
-    description: '원본 근거를 바탕으로 추가 검토가 필요한 내용입니다.',
+    description: '결론에 영향을 줄 수 있어 먼저 확인할 내용입니다.',
   },
   {
     key: 'additional',
     title: '추가 내용',
-    description: '파일에서 확인한 주요 내용을 정리했습니다.',
+    description: '결론을 이해하는 데 필요한 보조 내용입니다.',
   },
 ]
 

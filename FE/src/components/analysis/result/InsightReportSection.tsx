@@ -14,16 +14,22 @@ const InsightReportSection = ({ report: source }: InsightReportSectionProps) => 
   const groups = groupInsights(report.insights)
 
   return (
-    <section className="mt-6 overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50/80 via-white to-white">
+    <section
+      aria-labelledby="workbook-insight-heading"
+      className="mt-6 overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50/80 via-white to-white"
+    >
       <div className="border-b border-brand-100/70 p-5 md:p-6">
         <div className="flex items-center gap-2 text-brand-700">
           <Sparkles aria-hidden="true" size={18} />
-          <span className="text-xs font-extrabold tracking-[0.12em]">핵심 인사이트</span>
+          <span className="text-xs font-extrabold tracking-[0.12em]">분석 요약</span>
         </div>
-        <h3 className="mt-2 text-lg font-extrabold tracking-tight text-slate-950">
-          핵심 현황과 변화
+        <h3
+          className="mt-2 text-xl font-extrabold tracking-tight text-slate-950"
+          id="workbook-insight-heading"
+        >
+          핵심 결론
         </h3>
-        <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
+        <p className="mt-3 max-w-4xl text-base font-semibold leading-7 text-slate-800">
           {report.overview}
         </p>
         {report.hasIncompleteData && (

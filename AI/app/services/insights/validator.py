@@ -22,13 +22,18 @@ def validate_workbook_insights(
 ) -> ValidatedWorkbookInsightReport:
     index = workbook_evidence_index(context)
     canonical = source_narrative_report(context)
+    comparison_is_complete = any(
+        isinstance(sheet, dict) and isinstance(
+            sheet.get("business_facts", {}).get("comparable_transactions"), dict
+        ) for sheet in context.get("sheets", [])
+    )
     result = _validate(report, index, canonical.insights)
     if canonical.insights:
         baseline = _validate(canonical, index, canonical.insights)
         if len(baseline.insights) == len(canonical.insights):
             baseline.overview = canonical.overview
             baseline.validation.overview_validated = True
-            _merge_model_findings(baseline, result)
+            _merge_model_findings(baseline, result, not comparison_is_complete)
             return baseline
     if result.insights:
         return result
@@ -108,11 +113,12 @@ def _required_citations(item, references):
     return bool(required) and required <= references
 
 
-def _merge_model_findings(baseline, result):
+def _merge_model_findings(baseline, result, include_extras=True):
     """Reserve room for independently grounded model detail without replacing the overview."""
     known_facts = {item.fact for item in baseline.insights}
     extras = [item for item in result.insights
-              if item.fact not in known_facts and not _duplicate(item, baseline.insights)]
+              if include_extras and item.fact not in known_facts
+              and not _duplicate(item, baseline.insights)]
     if extras:
         keep = min(len(baseline.insights), 4)
         baseline.insights = [*baseline.insights[:keep], *extras[:5 - keep]]
