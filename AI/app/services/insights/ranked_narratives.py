@@ -68,7 +68,9 @@ def _rank_candidate(sheet, region, row, schema, headers):
         cited.append(title_cell)
     prefix = f"{title}에서 " if title else ""
     fact = f"{prefix}1위는 {name['value']}이며, {', '.join(parts)}입니다."
-    return "rank", float(percent), insight(f"{name['value']} 1위", fact, _refs(sheet, cited))
+    return "rank", float(percent), insight(
+        f"{name['value']} 1위", fact, _refs(sheet, cited), "metric"
+    )
 
 
 def _select(candidates):

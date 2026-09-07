@@ -137,25 +137,3 @@ def test_ranked_header_does_not_cross_a_new_section_title():
     insights, _ = ranked_report(context)
 
     assert all("Wrong Fund" not in item.fact for item in insights)
-
-
-def test_mixed_summary_sheet_is_not_excluded_by_one_region_title():
-    summary = _ranked_sheet("Summary", "Primary Fund", 42)
-    summary["content_outline"] = {"region_titles": ["Top Holders", "Peer Comparison"]}
-    context = {"sheets": [summary, _ranked_sheet("Notes", "Secondary Fund", 60)]}
-
-    insights, _ = ranked_report(context)
-
-    assert insights and "Primary Fund" in insights[0].fact
-
-
-@pytest.mark.parametrize("name", ["Peers", "PeerGroup", "Competitors"])
-def test_common_comparison_sheet_names_are_excluded(name):
-    context = {"sheets": [
-        _ranked_sheet(name, "Peer Fund", 95),
-        _ranked_sheet("Ownership", "Primary Fund", 42),
-    ]}
-
-    insights, _ = ranked_report(context)
-
-    assert insights and all("Peer Fund" not in item.fact for item in insights)

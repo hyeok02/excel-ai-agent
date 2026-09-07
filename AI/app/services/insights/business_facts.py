@@ -6,12 +6,14 @@ from app.services.insights.fact_labels import (
     header_addresses,
     is_technical_row,
     resolve_fact_label,
+    resolve_fact_label_cell,
 )
 from app.services.insights.fact_trends import (
     date_value,
     is_identity_row,
     numeric_changes,
 )
+from app.services.insights.horizontal_series import extract_horizontal_series
 from app.services.insights.table_inputs import build_table_regions, legacy_table_rows
 
 MAX_VALUES_PER_ROW = 10
@@ -66,6 +68,7 @@ def build_business_facts(
     return {
         "selected_records": records,
         "numeric_changes": sorted(changes, key=_change_score, reverse=True)[:4],
+        "horizontal_series": extract_horizontal_series(regions),
         "time_series": trend_rows,
         "table_rows": legacy_table_rows(tables),
         "table_regions": tables,
@@ -85,12 +88,16 @@ def _fact_value(
     if text == "#PEND" or len(text) > 240:
         return None
     address = str(cell.get("address", ""))
-    return {
+    result = {
         "cell": address,
         "label": resolve_fact_label(address, headers, schemas),
         "value": raw,
         "number_format": cell.get("number_format"),
     }
+    label_cell = resolve_fact_label_cell(address, headers)
+    if label_cell:
+        result["label_cell"] = label_cell
+    return result
 
 
 def _record_score(values: list[dict[str, object]], role: str | None) -> int:

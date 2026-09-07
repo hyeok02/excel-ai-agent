@@ -42,22 +42,22 @@ const FormulaRiskSection = ({ summary }: FormulaRiskSectionProps) => {
             <ShieldAlert aria-hidden="true" size={19} />
           </span>
           <div>
-            <h3 className="font-extrabold text-slate-950">수식 오류·영향 점검</h3>
+            <h3 className="font-extrabold text-slate-950">이상징후 · 수식 패턴 점검</h3>
             <p className="mt-1 text-sm text-slate-600">
-              주변과 다른 수식과 직접 입력된 값을 찾고, 결과가 어디까지 영향을 받는지
-              계산했습니다.
+              주변과 다른 수식과 직접 입력된 값을 검토 후보로 찾고, 결과가 어디까지 영향을
+              받는지 계산했습니다.
             </p>
           </div>
         </div>
         <div className="flex gap-2 text-xs font-bold">
           {summary.errorCount > 0 && (
             <span className="rounded-full bg-red-100 px-3 py-1.5 text-red-700">
-              오류 {summary.errorCount}
+              오류 후보 {summary.errorCount}
             </span>
           )}
           {summary.warningCount > 0 && (
             <span className="rounded-full bg-blue-100 px-3 py-1.5 text-blue-700 ring-1 ring-blue-200/70">
-              주의 {summary.warningCount}
+              검토 후보 {summary.warningCount}
             </span>
           )}
         </div>

@@ -106,12 +106,14 @@ def test_excludes_header_and_internal_code_rows() -> None:
                 {
                     "cell": "A3",
                     "label": "Company Name",
+                    "label_cell": "A1",
                     "value": "Riot Games, Inc.",
                     "number_format": "General",
                 },
                 {
                     "cell": "B3",
                     "label": "Headcount Latest",
+                    "label_cell": "B1",
                     "value": 5411,
                     "number_format": "General",
                 },

@@ -27,11 +27,16 @@ const AnalysisResultSection = ({
   return (
     <section className="panel p-5 md:p-7" aria-live="polite">
       <AnalysisResultHeader mode={executedMode} result={result} />
-      <AnalysisResultSummary workbook={workbook} />
 
       {mode === 'LLM' && result.insightReport && (
         <InsightReportSection report={result.insightReport} />
       )}
+
+      {mode === 'LLM' && workbook.formulaRiskSummary && (
+        <FormulaRiskSection summary={workbook.formulaRiskSummary} />
+      )}
+
+      <AnalysisResultSummary workbook={workbook} />
 
       {mode === 'BFS' && (
         <BfsAnalysisWorkspace key={`${result.analysisId}-${mode}`} workbook={workbook} />
@@ -52,10 +57,6 @@ const AnalysisResultSection = ({
               excludedSheets={workbook.excludedSheets ?? []}
               sheets={workbook.sheets}
             />
-
-            {workbook.formulaRiskSummary && (
-              <FormulaRiskSection summary={workbook.formulaRiskSummary} />
-            )}
 
             <WorkbookExplorer sheets={workbook.sheets} />
           </AdvancedAnalysisSection>

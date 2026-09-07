@@ -28,8 +28,8 @@ def reference(sheet, cell):
     return f"'{str(sheet).replace(chr(39), chr(39) * 2)}'!{cell}"
 
 
-def insight(title, fact, evidence):
-    return WorkbookInsight(title=title, fact=fact, category="summary", severity="info",
+def insight(title, fact, evidence, category="summary", severity="info"):
+    return WorkbookInsight(title=title, fact=fact, category=category, severity=severity,
                            evidence=list(dict.fromkeys(evidence)), confidence=1.0)
 
 

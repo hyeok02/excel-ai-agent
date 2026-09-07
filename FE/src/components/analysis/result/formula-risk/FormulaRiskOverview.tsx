@@ -8,7 +8,7 @@ const FormulaRiskOverview = ({ summary }: FormulaRiskOverviewProps) => {
   const priorityCount = summary.criticalRiskCount + summary.highRiskCount
   const items = [
     ['우선 확인', priorityCount, '영향 범위가 큰 항목'],
-    ['반복 수식 이상', summary.patternMismatchCount, '주변과 다른 계산식'],
+    ['반복 패턴 후보', summary.patternMismatchCount, '주변과 다른 계산식'],
     ['직접 입력 의심', summary.hardcodedValueCount, '수식 사이에 입력된 값'],
   ] as const
 

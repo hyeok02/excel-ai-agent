@@ -1,4 +1,5 @@
-export type InsightCategory = 'summary' | 'structure' | 'formula' | 'risk'
+export type InsightCategory =
+  'metric' | 'trend' | 'summary' | 'structure' | 'formula' | 'risk'
 export type InsightSeverity = 'info' | 'warning' | 'critical'
 export type InsightValidationStatus = 'verified' | 'limited'
 
@@ -48,7 +49,13 @@ const readTextList = (value: unknown) =>
     : []
 
 const readCategory = (value: unknown): InsightCategory =>
-  value === 'structure' || value === 'formula' || value === 'risk' ? value : 'summary'
+  value === 'metric' ||
+  value === 'trend' ||
+  value === 'structure' ||
+  value === 'formula' ||
+  value === 'risk'
+    ? value
+    : 'summary'
 
 const readSeverity = (value: unknown): InsightSeverity =>
   value === 'warning' || value === 'critical' ? value : 'info'

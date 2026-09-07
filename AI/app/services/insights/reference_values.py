@@ -58,6 +58,10 @@ def _record_references(record, sheet_name, extract_references, normalize_referen
         "reference",
         "table_range",
         "anchor_cell",
+        "label_cell",
+        "scope_cell",
+        "period_cell",
+        "value_cell",
         "evidence",
         "cell",
     ):
@@ -82,6 +86,7 @@ def _claim_values(value: Any) -> Any:
             "value", "values", "label", "headers", "header_path", "metric",
             "earliest_period", "latest_period", "earliest_value", "latest_value",
             "change", "change_rate_percent", "formula", "sample_rows", "cells",
+            "period", "number_format", "scope", "points",
         }
         # JSON field names, confidence scores and addresses are NOT cell values.
         return [

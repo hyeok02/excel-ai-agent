@@ -83,6 +83,14 @@ def resolve_fact_label(
     return None
 
 
+def resolve_fact_label_cell(
+    address: str, headers: dict[str, list[tuple[int, str]]]
+) -> str | None:
+    column, row = coordinate_from_string(address)
+    preceding = [item for item in headers.get(column, []) if item[0] < row]
+    return f"{column}{max(preceding)[0]}" if preceding else None
+
+
 def _looks_like_header(row: list[dict[str, Any]]) -> bool:
     texts = [str(_raw_value(cell)).strip() for cell in row if _raw_value(cell)]
     if len(texts) < 2 or any(_technical_label(text) for text in texts):

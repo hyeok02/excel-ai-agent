@@ -97,7 +97,9 @@ def _numeric(sheet, label, values):
             f"가장 높은 날은 {period(high[0]['value'])}({number(high[1]['value'])})입니다.")
     if low[1]["value"] == high[1]["value"]:
         fact = f"{name}는 표시된 {len(values)}개 날짜에서 모두 {number(low[1]['value'])}입니다."
-    return insight(f"{name}의 날짜별 차이", fact, _evidence(sheet, label, values))
+    return insight(
+        f"{name}의 날짜별 차이", fact, _evidence(sheet, label, values), "trend"
+    )
 
 
 def _repeated(sheet, rows):
