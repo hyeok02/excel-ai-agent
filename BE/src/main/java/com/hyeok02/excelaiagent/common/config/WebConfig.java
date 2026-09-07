@@ -1,6 +1,7 @@
 package com.hyeok02.excelaiagent.common.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -19,6 +20,7 @@ public class WebConfig implements WebMvcConfigurer {
 				.allowedOrigins(appProperties.cors().allowedOrigins().toArray(String[]::new))
 				.allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
 				.allowedHeaders("*")
+				.exposedHeaders(HttpHeaders.CONTENT_DISPOSITION)
 				.allowCredentials(true)
 				.maxAge(3600);
 	}

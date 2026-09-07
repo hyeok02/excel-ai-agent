@@ -16,12 +16,11 @@ class WorkbookWritebackProposalService:
     async def propose(
         self, instruction: str, data_index: WorkbookDataIndex
     ) -> WritebackProposal:
+        candidates = select_writeback_candidates(instruction, data_index)
         available = {
             key(cell.sheet_name, cell.address): cell
-            for row in data_index.rows
-            for cell in row.cells
+            for cell in candidates
         }
-        candidates = select_writeback_candidates(instruction, data_index)
         context = {
             "truncated": data_index.truncated,
             "max_changes": MAX_CHANGES,
@@ -57,10 +56,15 @@ class WorkbookWritebackProposalService:
                 f"적용 가능한 {len(changes)}개 셀만 제안하고, 확인이 필요한 항목은 제외했습니다."
             )
         ready = bool(changes)
+        summary = (
+            f"승인 전 확인할 {len(changes)}개 셀 변경안을 준비했습니다."
+            if ready
+            else "안전하게 적용할 변경 셀을 확인하지 못했습니다."
+        )
         return WritebackProposal(
             instruction=instruction,
             status=WritebackStatus.READY if ready else WritebackStatus.BLOCKED,
-            summary=draft.summary,
+            summary=summary,
             changes=changes,
             risks=list(dict.fromkeys(risks)),
             limitations=list(dict.fromkeys(limitations)),
