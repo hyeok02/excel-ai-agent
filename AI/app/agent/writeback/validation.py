@@ -8,6 +8,7 @@ from app.agent.writeback.references import (
     expand_reference,
     key,
 )
+from app.agent.writeback.value_authorization import value_is_authorized
 
 FORBIDDEN_FORMULA = re.compile(
     r"(?:\[|https?://|\\\\|\||\b(?:WEBSERVICE|HYPERLINK|RTD|CALL|REGISTER\.ID|EXEC)\s*\()",
@@ -60,6 +61,11 @@ def _append_change(
     if formula_risk:
         risks.append(f"{draft.sheet_name}!{reference}: {formula_risk}")
         return
+    if formula is None and not value_is_authorized(draft.new_value, instruction):
+        risks.append(
+            f"{draft.sheet_name}!{reference}: 새 값이 요청에 명시되지 않아 제외했습니다."
+        )
+        return
     old_value = cell.formula or cell.value
     if draft.new_value == old_value:
         risks.append(f"{draft.sheet_name}!{reference}: 기존 값과 동일합니다.")
@@ -67,6 +73,7 @@ def _append_change(
     affected = affected_cells(data_index, cell.sheet_name, reference)
     change_type = "formula" if formula else "clear" if draft.new_value is None else "value"
     payload = draft.model_dump()
+    payload["sheet_name"] = cell.sheet_name
     payload["reference"] = reference
     changes.append(
         WritebackChange(
