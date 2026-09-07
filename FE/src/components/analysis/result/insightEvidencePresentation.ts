@@ -6,6 +6,9 @@ export interface InsightEvidenceLocation {
   cellRange: string | null
 }
 
+export const insightEvidenceDisclosureLabel = (count: number) =>
+  `원본 근거 ${count}개 위치 보기`
+
 export const parseInsightEvidenceLocation = (raw: string): InsightEvidenceLocation => {
   const separatorIndex = raw.lastIndexOf('!')
   if (separatorIndex <= 0 || separatorIndex === raw.length - 1) {

@@ -6,12 +6,11 @@ import { cn } from '@/utils/cn'
 
 const InsightCardBody = ({ insight }: { insight: InsightResult }) => (
   <>
-    <Detail
-      label="확인된 사실"
-      text={insight.fact || '확인된 사실의 상세 내용이 저장되지 않았습니다.'}
-    />
+    <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
+      {insight.fact || '결론의 상세 내용이 저장되지 않았습니다.'}
+    </p>
     {insight.cause && <Detail bordered label="확인된 원인" text={insight.cause} />}
-    {insight.impact && <Detail impact label="검토 포인트" text={insight.impact} />}
+    {insight.impact && <Detail impact label="왜 중요한가" text={insight.impact} />}
     <InsightEvidenceList evidence={insight.evidence} />
     {insight.validationReasons.length > 0 && (
       <p className="mt-3 text-xs leading-5 text-amber-700">
@@ -26,7 +25,7 @@ const InsightCardBody = ({ insight }: { insight: InsightResult }) => (
           size={15}
         />
         <p>
-          <strong className="mr-1 text-xs text-brand-700">권고</strong>
+          <strong className="mr-1 text-xs text-brand-700">다음 확인</strong>
           {insight.recommendation}
         </p>
       </div>

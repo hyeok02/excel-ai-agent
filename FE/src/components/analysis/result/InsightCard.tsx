@@ -62,13 +62,14 @@ const InsightCard = ({ insight }: InsightCardProps) => {
           {CATEGORY_LABELS[insight.category]}
         </span>
         <span
+          aria-label={`검증 상태: ${insightValidationLabel(insight.validationStatus)}`}
           className={cn(
-            'ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold',
+            'ml-auto inline-flex items-center gap-1 text-[11px] font-semibold',
             insight.validationStatus === null
-              ? 'bg-slate-100 text-slate-500'
+              ? 'text-slate-400'
               : isVerified
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-amber-50 text-amber-700',
+                ? 'text-emerald-600/80'
+                : 'text-amber-600/80',
           )}
         >
           {isVerified ? (
@@ -80,7 +81,9 @@ const InsightCard = ({ insight }: InsightCardProps) => {
         </span>
       </div>
 
-      <h4 className="mt-4 text-base font-extrabold text-slate-900">{insight.title}</h4>
+      <h4 className="mt-3 text-lg font-extrabold leading-7 text-slate-950">
+        {insight.title}
+      </h4>
       <InsightCardBody insight={insight} />
     </article>
   )

@@ -1,6 +1,7 @@
 import re
 from typing import Any
 
+from app.services.insights.comparable_transactions import extract_comparable_transactions
 from app.services.insights.fact_labels import (
     build_fact_labels,
     header_addresses,
@@ -8,11 +9,7 @@ from app.services.insights.fact_labels import (
     resolve_fact_label,
     resolve_fact_label_cell,
 )
-from app.services.insights.fact_trends import (
-    date_value,
-    is_identity_row,
-    numeric_changes,
-)
+from app.services.insights.fact_trends import date_value, is_identity_row, numeric_changes
 from app.services.insights.horizontal_series import extract_horizontal_series
 from app.services.insights.table_inputs import build_table_regions, legacy_table_rows
 
@@ -69,6 +66,7 @@ def build_business_facts(
         "selected_records": records,
         "numeric_changes": sorted(changes, key=_change_score, reverse=True)[:4],
         "horizontal_series": extract_horizontal_series(regions),
+        "comparable_transactions": extract_comparable_transactions(sheet_name, regions),
         "time_series": trend_rows,
         "table_rows": legacy_table_rows(tables),
         "table_regions": tables,
