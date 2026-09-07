@@ -10,6 +10,10 @@ from app.services.provenance import (
     evidence_from_reference,
 )
 from app.services.semantic_models import SemanticClassification
+from app.services.workbook_details.analysis_samples import (
+    MAX_ANALYSIS_SHEET_CELLS,
+    collect_analysis_rows,
+)
 from app.services.workbook_details.cell_values import intersecting_merged_ranges
 from app.services.workbook_details.headers import header_paths, region_title
 from app.services.workbook_details.models import RegionSummary
@@ -25,6 +29,7 @@ def summarize_regions(
     value_worksheet: Worksheet | None = None,
 ) -> list[RegionSummary]:
     summaries: list[RegionSummary] = []
+    remaining_analysis_cells = MAX_ANALYSIS_SHEET_CELLS
     for region in regions:
         min_column, min_row, max_column, max_row = range_boundaries(
             f"{region.start_cell}:{region.end_cell}"
@@ -35,13 +40,19 @@ def summarize_regions(
         )
         semantic_role = region.semantic.role if region.semantic else None
         semantic = _semantic_with_provenance(worksheet.title, region)
+        analysis_rows = collect_analysis_rows(
+            worksheet, value_worksheet,
+            (min_column, min_row, max_column, max_row), remaining_analysis_cells,
+        )
+        remaining_analysis_cells -= sum(len(row) for row in analysis_rows)
         summaries.append(
             RegionSummary(
                 start_cell=region.start_cell,
                 end_cell=region.end_cell,
                 cell_count=region.cell_count,
                 title=region_title(
-                    worksheet, min_row, max_row, min_column, max_column
+                    worksheet, min_row, max_row, min_column, max_column,
+                    value_worksheet,
                 ),
                 row_count=max_row - min_row + 1,
                 column_count=max_column - min_column + 1,
@@ -69,6 +80,7 @@ def summarize_regions(
                     preview_max_row < max_row or preview_max_column < max_column
                 ),
                 semantic=semantic,
+                analysis_rows=analysis_rows,
             )
         )
     return summaries

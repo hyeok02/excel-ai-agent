@@ -6,6 +6,7 @@ import type {
   InsightSeverity,
 } from '@/api/analysis/insightTypes'
 import InsightCardBody from '@/components/analysis/result/InsightCardBody'
+import { insightValidationLabel } from '@/components/analysis/result/insightReportPresentation'
 import { cn } from '@/utils/cn'
 
 const CATEGORY_LABELS: Record<InsightCategory, string> = {
@@ -61,7 +62,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
         <span
           className={cn(
             'ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold',
-            insight.confidence === null
+            insight.validationStatus === null
               ? 'bg-slate-100 text-slate-500'
               : isVerified
                 ? 'bg-emerald-50 text-emerald-700'
@@ -73,11 +74,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
           ) : (
             <CircleAlert aria-hidden="true" size={13} />
           )}
-          {insight.confidence === null
-            ? '근거 정보 없음'
-            : isVerified
-              ? `근거 일치 ${Math.round(insight.confidence * 100)}%`
-              : '근거 확인 필요'}
+          {insightValidationLabel(insight.validationStatus)}
         </span>
       </div>
 

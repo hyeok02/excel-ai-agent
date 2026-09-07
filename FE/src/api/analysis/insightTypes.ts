@@ -8,6 +8,7 @@ export interface InsightValidationSummary {
   limitedCount: number
   blockedCount: number
   notices: string[]
+  overviewValidated?: boolean
 }
 
 export interface InsightResult {
@@ -73,6 +74,7 @@ const normalizeValidation = (value: unknown): InsightValidationSummary | null =>
     limitedCount: readCount(value.limitedCount),
     blockedCount: readCount(value.blockedCount),
     notices: readTextList(value.notices),
+    overviewValidated: value.overviewValidated === true,
   }
 }
 
@@ -103,12 +105,19 @@ export const normalizeInsightReport = (value: unknown): InsightReportResult | nu
   const insights = Array.isArray(value.insights)
     ? value.insights.map(normalizeInsight)
     : []
+  const overview = readText(value.overview)
+  const validation = normalizeValidation(value.validation)
 
   return {
-    overview: readText(value.overview) ?? 'Excel 분석 결과를 확인하세요.',
+    overview: overview ?? 'Excel 분석 결과를 확인하세요.',
     insights,
     limitations: readTextList(value.limitations),
     hasIncompleteData: insights.some((insight) => insight.isIncomplete),
-    validation: normalizeValidation(value.validation),
+    validation: validation
+      ? {
+          ...validation,
+          overviewValidated: overview !== null && validation.overviewValidated === true,
+        }
+      : null,
   }
 }

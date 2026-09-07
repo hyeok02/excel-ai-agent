@@ -12,6 +12,7 @@ def region_title(
     max_row: int,
     min_column: int,
     max_column: int,
+    value_worksheet: Worksheet | None = None,
 ) -> str | None:
     for row in worksheet.iter_rows(
         min_row=min_row,
@@ -20,7 +21,10 @@ def region_title(
         max_col=max_column,
     ):
         for cell in row:
-            label = header_label(cell.value)
+            value = cell.value
+            if isinstance(value, str) and value.startswith("=") and value_worksheet:
+                value = value_worksheet[cell.coordinate].value
+            label = header_label(value)
             if label is not None:
                 return label
     return None

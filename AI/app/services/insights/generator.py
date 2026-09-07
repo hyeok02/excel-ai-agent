@@ -18,6 +18,7 @@ from app.services.insights.models import (
 from app.services.insights.context import build_workbook_context
 from app.services.insights.prompts import SYSTEM_PROMPT, build_user_prompt_from_context
 from app.services.insights.quality import ensure_business_report
+from app.services.insights.source_narratives import source_narrative_report
 from app.services.workbook_parser import WorkbookSummary
 
 
@@ -79,6 +80,7 @@ class LangChainInsightGenerator:
         depth: AnalysisDepth = AnalysisDepth.AUTO,
     ) -> WorkbookInsightReport:
         profile = select_analysis_profile(summary, depth)
+        context = None
         try:
             context = build_workbook_context(summary, profile)
             result = await self._build_model(profile).ainvoke(
@@ -94,6 +96,11 @@ class LangChainInsightGenerator:
             report = WorkbookInsightReport.model_validate(result)
             return ensure_business_report(report, context)
         except Exception as exception:
+            # Optional model prose must not make a complete, source-verified analysis fail.
+            if context is not None:
+                source_report = source_narrative_report(context)
+                if source_report.insights:
+                    return source_report
             raise InsightGenerationError(
                 "AI 인사이트를 생성하지 못했습니다."
             ) from exception

@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookInsights;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 class InsightResultMapperTests {
 	@Test
@@ -52,5 +53,56 @@ class InsightResultMapperTests {
 		assertThat(result.insights().getFirst().validationStatus()).isEqualTo("verified");
 		assertThat(result.validation().blockedCount()).isEqualTo(1);
 		assertThat(result.validation().notices()).containsExactly("1건 차단");
+		assertThat(result.validation().overviewValidated()).isFalse();
+	}
+
+	@Test
+	void carriesExplicitAiOverviewValidationToTheFrontendContract() {
+		JsonMapper mapper = JsonMapper.builder().build();
+		AiWorkbookInsights.InsightReport source = mapper.readValue("""
+				{
+				  "overview": "날짜별 식단과 영양량을 확인할 수 있는 급식표입니다.",
+				  "insights": [], "limitations": [],
+				  "validation": {
+				    "generated_count": 0, "verified_count": 0,
+				    "limited_count": 0, "blocked_count": 0, "notices": [],
+				    "overview_validated": true
+				  }
+				}
+				""", AiWorkbookInsights.InsightReport.class);
+
+		AnalysisInsightResult.Report result = InsightResultMapper.map(source);
+
+		assertThat(source.validation().overviewValidated()).isTrue();
+		assertThat(result.validation().overviewValidated()).isTrue();
+		assertThat(result.overview()).isEqualTo(source.overview());
+		assertThat(mapper.readTree(mapper.writeValueAsString(result))
+				.path("validation").path("overviewValidated").asBoolean()).isTrue();
+	}
+
+	@Test
+	void legacyJsonAndFiveArgumentConstructorsDoNotClaimOverviewValidation() {
+		JsonMapper mapper = JsonMapper.builder().build();
+		AiWorkbookInsights.Validation legacy = mapper.readValue("""
+				{"generated_count": 1, "verified_count": 1,
+				 "limited_count": 0, "blocked_count": 0, "notices": []}
+				""", AiWorkbookInsights.Validation.class);
+		AnalysisInsightResult.Report result = InsightResultMapper.map(
+				new AiWorkbookInsights.InsightReport("기존 요약", List.of(), List.of(), legacy));
+
+		assertThat(legacy.overviewValidated()).isFalse();
+		assertThat(result.validation().overviewValidated()).isFalse();
+		assertThat(new AiWorkbookInsights.Validation(1, 1, 0, 0, List.of())
+				.overviewValidated()).isFalse();
+		assertThat(new AnalysisInsightResult.Validation(1, 1, 0, 0, List.of())
+				.overviewValidated()).isFalse();
+		assertThat(mapper.readValue("""
+				{"generatedCount": 1, "verifiedCount": 1,
+				 "limitedCount": 0, "blockedCount": 0, "notices": []}
+				""", AnalysisInsightResult.Validation.class).overviewValidated()).isFalse();
+		assertThat(mapper.readValue("""
+				{"generated_count": 1, "verified_count": 1, "limited_count": 0,
+				 "blocked_count": 0, "notices": [], "overview_validated": null}
+				""", AiWorkbookInsights.Validation.class).overviewValidated()).isFalse();
 	}
 }

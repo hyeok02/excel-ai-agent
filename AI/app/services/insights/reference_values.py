@@ -1,4 +1,3 @@
-import json
 import re
 from typing import Any, Protocol
 
@@ -10,6 +9,7 @@ CELL_RANGE_PATTERN = re.compile(r"^\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?$
 class ReferenceNumberIndex(Protocol):
     references: set[str]
     reference_numbers: dict[str, set]
+    reference_text: dict[str, list[str]]
 
 
 def index_reference_numbers(
@@ -25,12 +25,12 @@ def index_reference_numbers(
         )
         if not references:
             continue
-        record_numbers = numbers(
-            json.dumps(_claim_values(record), ensure_ascii=False, default=str)
-        )
+        texts = list(_source_strings(_claim_values(record)))
+        record_numbers = numbers(" ".join(texts))
         for reference in references:
             index.references.add(reference)
             index.reference_numbers.setdefault(reference, set()).update(record_numbers)
+            index.reference_text.setdefault(reference, []).extend(texts)
 
 
 def _walk_dicts(value: Any):
@@ -41,6 +41,14 @@ def _walk_dicts(value: Any):
     elif isinstance(value, list):
         for item in value:
             yield from _walk_dicts(item)
+
+
+def _source_strings(value):
+    if isinstance(value, list):
+        for item in value:
+            yield from _source_strings(item)
+    elif value is not None:
+        yield str(value)
 
 
 def _record_references(record, sheet_name, extract_references, normalize_reference):
@@ -70,20 +78,17 @@ def _record_references(record, sheet_name, extract_references, normalize_referen
 
 def _claim_values(value: Any) -> Any:
     if isinstance(value, dict):
-        excluded = {
-            "anchor_cell",
-            "cell",
-            "evidence",
-            "location",
-            "reference",
-            "references",
-            "table_range",
+        source_fields = {
+            "value", "values", "label", "headers", "header_path", "metric",
+            "earliest_period", "latest_period", "earliest_value", "latest_value",
+            "change", "change_rate_percent", "formula", "sample_rows", "cells",
         }
-        return {
-            key: _claim_values(item)
+        # JSON field names, confidence scores and addresses are NOT cell values.
+        return [
+            _claim_values(item)
             for key, item in value.items()
-            if key not in excluded
-        }
+            if key in source_fields
+        ]
     if isinstance(value, list):
         return [_claim_values(item) for item in value]
     return value

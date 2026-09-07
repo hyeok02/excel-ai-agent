@@ -10,7 +10,7 @@ from app.services.insights.reference_values import index_reference_numbers
 from app.services.provenance import EvidenceKind
 
 REFERENCE_PATTERN = re.compile(
-    r"(?:'([^']+)'|([^\s!,:;=\"'\[\]{}]+))!\$?([A-Z]{1,3})\$?(\d+)"
+    r"(?:'((?:[^']|'')+)'|([^\s!,:;=\"'\[\]{}]+))!\$?([A-Z]{1,3})\$?(\d+)"
     r"(?::\$?([A-Z]{1,3})\$?(\d+))?"
 )
 CELL_RANGE_PATTERN = re.compile(r"^\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?$")
@@ -21,6 +21,8 @@ class EvidenceIndex:
     references: set[str] = field(default_factory=set)
     cause_references: set[str] = field(default_factory=set)
     reference_numbers: dict[str, set[Decimal]] = field(default_factory=dict)
+    reference_text: dict[str, list[str]] = field(default_factory=dict)
+    numeric_changes: list[dict] = field(default_factory=list)
     evidence_text: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
 
@@ -53,6 +55,10 @@ def agent_evidence_index(execution: AgentExecution) -> EvidenceIndex:
                     for item in (evidence.description, evidence.formula, evidence.value)
                     if item
                 )
+                index.reference_text.setdefault(reference, []).extend(
+                    str(item) for item in (evidence.description, evidence.formula, evidence.value)
+                    if item is not None
+                )
                 if evidence.kind in {EvidenceKind.FORMULA, EvidenceKind.METADATA}:
                     index.cause_references.add(reference)
     if execution.failed_step_count or execution.skipped_step_count:
@@ -64,6 +70,7 @@ def _index_workbook_sheet(index: EvidenceIndex, sheet: Any) -> None:
     if not isinstance(sheet, dict):
         return
     sheet_name = str(sheet.get("name", ""))
+    index.numeric_changes.extend(sheet.get("business_facts", {}).get("numeric_changes", []))
     serialized = json.dumps(sheet, ensure_ascii=False, default=str)
     index.references.update(extract_references(serialized))
     index.evidence_text.append(serialized)
@@ -77,6 +84,7 @@ def _index_workbook_sheet(index: EvidenceIndex, sheet: Any) -> None:
             if reference:
                 index.references.add(reference)
                 index.cause_references.add(reference)
+                index.reference_text.setdefault(reference, []).append(str(formula.get("formula", "")))
     for key, value in _walk_items(sheet):
         if key not in {"location", "reference", "table_range", "anchor_cell"}:
             continue
@@ -117,7 +125,7 @@ def normalize_reference(value: str) -> str | None:
 
 
 def _normalize_match(match: re.Match[str]) -> str:
-    sheet = (match.group(1) or match.group(2)).strip().casefold()
+    sheet = (match.group(1) or match.group(2)).replace("''", "'").strip().casefold()
     start = f"{match.group(3)}{match.group(4)}"
     end = f":{match.group(5)}{match.group(6)}" if match.group(5) else ""
     return f"{sheet}!{start}{end}".casefold()
