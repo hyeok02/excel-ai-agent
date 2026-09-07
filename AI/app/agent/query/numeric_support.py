@@ -1,104 +1,106 @@
-from decimal import Decimal
+import re
+from decimal import Decimal, InvalidOperation
 
-from app.agent.execution import AgentExecution, AgentStepStatus
-from app.services.insights.numeric_validation import numbers
+from app.agent.execution import AgentExecution
+from app.agent.query.calculations import verified_calculations
+from app.services.insights.numeric_validation import (
+    NUMBER_PATTERN,
+    numbers,
+)
+
+PERCENT = r"(?:[%％]|퍼센트|(?<![A-Za-z])percent(?:age)?(?![A-Za-z]))"
+PERCENT_MARKER = re.compile(PERCENT, re.I)
+PERCENT_VALUE = re.compile(rf"({NUMBER_PATTERN.pattern})\s*{PERCENT}", re.I)
+PERCENT_CONTEXT = re.compile(
+    r"[%％]|(?<![A-Za-z])(?:percent(?:age)?|rate|ratio)(?![A-Za-z])|"
+    r"비율|증감률|성장률|마진",
+    re.I,
+)
 
 
 def supported_answer_numbers(
     question: str, evidence: list[object], execution: AgentExecution
 ) -> set[Decimal]:
     """Return numbers that can be traced to the question or executed tools."""
-    direct = _evidence_numbers(evidence)
-    candidates = numbers(question) | direct
-    candidates.update(_derived_numbers(direct))
-    candidates.update(_comparison_numbers(execution))
+    candidates = numbers(question) | _evidence_numbers(evidence)
+    candidates.update(
+        abs(item.result) for item in verified_calculations(evidence, execution)
+    )
     return candidates
 
 
 def _evidence_numbers(evidence: list[object]) -> set[Decimal]:
     candidates = set()
     for item in evidence:
-        for field in ("value", "formula", "description"):
-            value = getattr(item, field, None)
-            if value is not None:
-                candidates.update(numbers(str(value)))
+        value = getattr(item, "value", None)
+        if value is not None:
+            candidates.update(numbers(str(value)))
     return candidates
 
 
-def _comparison_numbers(execution: AgentExecution) -> set[Decimal]:
+def answer_units_supported(
+    answer: str, evidence: list[object], execution: AgentExecution
+) -> bool:
+    """Require percentage claims to have percentage-typed source provenance."""
+    if not PERCENT_MARKER.search(answer):
+        return True
+    candidates = _direct_percent_numbers(evidence)
+    candidates.update(
+        abs(item.result)
+        for item in verified_calculations(evidence, execution)
+        if item.unit.casefold() == "percent"
+    )
+    claims = _percent_claims(answer)
+    if not claims:
+        return bool(candidates)
+    return all(
+        any(abs(candidate - value) <= tolerance for candidate in candidates)
+        for value, tolerance in claims
+    )
+
+
+def _direct_percent_numbers(evidence: list[object]) -> set[Decimal]:
     candidates = set()
-    for step in execution.steps:
-        if step.status is not AgentStepStatus.SUCCEEDED or not step.result:
-            continue
-        comparison = step.result.data.get("time_series_comparison")
-        if isinstance(comparison, dict):
-            candidates.update(_trusted_values(comparison))
-            candidates.update(_metric_calculations(comparison))
+    for item in evidence:
+        context = " ".join(
+            str(getattr(item, field, "") or "")
+            for field in ("value_type", "description", "header", "label")
+        )
+        value = getattr(item, "value", None)
+        if isinstance(value, str):
+            context = f"{context} {value}"
+        if value is not None and PERCENT_CONTEXT.search(context):
+            candidates.update(_display_percent_values(value))
     return candidates
 
 
-def _trusted_values(value: object, key: str | None = None) -> set[Decimal]:
-    allowed = {
-        "start_date",
-        "end_date",
-        "start_value",
-        "end_value",
-        "change",
-    }
-    if isinstance(value, dict):
-        result = set()
-        for child_key, child in value.items():
-            result.update(_trusted_values(child, child_key))
-        return result
-    if isinstance(value, list):
-        return {
-            number
-            for child in value
-            for number in _trusted_values(child, key)
-        }
-    return numbers(str(value)) if key in allowed else set()
+def _display_percent_values(value: object) -> set[Decimal]:
+    if isinstance(value, str) and PERCENT_MARKER.search(value):
+        return {number for number, _ in _percent_claims(value)}
+    number = _decimal(value)
+    if number is None:
+        return set()
+    number = abs(number)
+    return {number * 100 if number <= 1 else number}
 
 
-def _metric_calculations(comparison: dict[str, object]) -> set[Decimal]:
-    candidates = set()
-    metrics = comparison.get("metrics")
-    if not isinstance(metrics, list):
-        return candidates
-    for metric in metrics:
-        if not isinstance(metric, dict):
+def _percent_claims(value: str) -> list[tuple[Decimal, Decimal]]:
+    claims = []
+    for match in PERCENT_VALUE.finditer(value):
+        number = _decimal(match.group(1))
+        if number is None:
             continue
-        start = _decimal(metric.get("start_value"))
-        end = _decimal(metric.get("end_value"))
-        if start is None or end is None:
-            continue
-        candidates.update(_pair_calculations(start, end))
-    return candidates
-
-
-def _derived_numbers(values: set[Decimal]) -> set[Decimal]:
-    candidates = set()
-    ordered = tuple(values)
-    if ordered:
-        candidates.add(abs(sum(ordered)))
-        candidates.add(abs(sum(ordered) / len(ordered)))
-    for start in ordered:
-        for end in ordered:
-            candidates.update(_pair_calculations(start, end))
-    return candidates
-
-
-def _pair_calculations(start: Decimal, end: Decimal) -> set[Decimal]:
-    result = {abs(end - start)}
-    if start:
-        ratio = abs(end / start)
-        result.update({ratio, ratio * 100, abs((end - start) / start * 100)})
-    return result
+        number = abs(number)
+        tolerance = Decimal("0.5") * (Decimal(10) ** number.as_tuple().exponent)
+        claims.append((number, tolerance))
+    return claims
 
 
 def _decimal(value: object) -> Decimal | None:
     if isinstance(value, bool) or value is None:
         return None
     try:
-        return Decimal(str(value))
-    except (ValueError, ArithmeticError):
+        parsed = Decimal(str(value).replace(",", "").strip())
+        return parsed if parsed.is_finite() else None
+    except (InvalidOperation, ValueError):
         return None

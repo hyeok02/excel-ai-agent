@@ -12,6 +12,7 @@ from app.agent import (
     PlanGenerationError,
 )
 from app.agent.planning import ensure_executable_plan
+from app.agent.query import build_workbook_data_index
 from app.api.agent_tools import get_agent_tool_registry
 from app.api.workbooks import _parse_or_bad_request, read_upload
 
@@ -30,10 +31,15 @@ async def execute_agent_plan(
     registry: Annotated[AgentToolRegistry, Depends(get_agent_tool_registry)],
 ) -> AgentExecution:
     execution_plan = _parse_plan(plan, registry)
-    summary = _parse_or_bad_request(file.filename or "", await read_upload(file))
+    content = await read_upload(file)
+    summary = _parse_or_bad_request(file.filename or "", content)
+    included_sheets = {sheet.name for sheet in summary.sheets}
+    data_index = build_workbook_data_index(
+        summary.filename, content, included_sheets
+    )
     return executor.execute(
         execution_plan,
-        AgentToolContext(summary),
+        AgentToolContext(summary, data_index),
         registry,
     )
 

@@ -42,7 +42,10 @@ def evidence_with_header(
 ) -> AnalysisEvidence:
     evidence = cell.evidence()
     header = header_for(context, row.sheet_name, row.row_number, cell.address)
-    return replace(evidence, description=header) if header else evidence
+    if not header:
+        return evidence
+    format_hint = f" (Excel 표시 형식: {cell.number_format})" if "%" in cell.number_format else ""
+    return replace(evidence, description=f"{header}{format_hint}")
 
 
 def _is_header_row(row: IndexedRow) -> bool:

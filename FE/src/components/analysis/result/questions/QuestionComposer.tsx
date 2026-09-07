@@ -5,17 +5,12 @@ import PromptComposerFrame, {
   promptComposerActionClassName,
   promptComposerTextareaClassName,
 } from '@/components/analysis/common/PromptComposerFrame'
-
-const SUGGESTIONS = [
-  '이 파일에서 가장 중요한 수치와 기준 시점을 알려줘',
-  '검토해야 할 수식 오류나 외부 참조가 있어?',
-  '핵심 내용을 확인할 원본 셀 위치를 알려줘',
-]
+import { QUESTION_SUGGESTIONS } from '@/components/analysis/result/questions/questionPresentation'
 
 interface QuestionComposerProps {
   disabled?: boolean
   isPending: boolean
-  onAsk: (question: string) => boolean
+  onAsk: (question: string) => Promise<boolean>
   onValidationClear: () => void
   validationMessage: string | null
 }
@@ -28,9 +23,10 @@ const QuestionComposer = ({
   validationMessage,
 }: QuestionComposerProps) => {
   const [question, setQuestion] = useState('')
-  const submit = (value = question) => {
+  const submit = async (value = question) => {
     if (disabled) return
-    if (onAsk(value)) setQuestion('')
+    setQuestion(value)
+    if (await onAsk(value)) setQuestion('')
   }
 
   return (
@@ -40,15 +36,15 @@ const QuestionComposer = ({
           <button
             className={promptComposerActionClassName}
             disabled={disabled || isPending || question.trim().length < 2}
-            onClick={() => submit()}
+            onClick={() => void submit()}
             type="button"
           >
             {isPending ? (
-              <LoaderCircle className="animate-spin" size={15} />
+              <LoaderCircle aria-hidden="true" className="animate-spin" size={15} />
             ) : (
-              <Send size={15} />
+              <Send aria-hidden="true" size={15} />
             )}
-            {isPending ? '근거 확인 중' : '질문하기'}
+            {isPending ? '답변 준비 중' : '질문하기'}
           </button>
         }
         hint={
@@ -73,13 +69,13 @@ const QuestionComposer = ({
               !event.nativeEvent.isComposing
             ) {
               event.preventDefault()
-              submit()
+              void submit()
             }
           }}
           placeholder={
             disabled
               ? '원본 파일 보관기간이 지나 질문할 수 없습니다.'
-              : '예: 2024년 매출이 가장 높은 항목과 근거 셀을 알려줘'
+              : '예: 이 파일에서 가장 중요한 결론은 뭐야?'
           }
           value={question}
         />
@@ -94,12 +90,12 @@ const QuestionComposer = ({
         </div>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
-        {SUGGESTIONS.map((suggestion) => (
+        {QUESTION_SUGGESTIONS.map((suggestion) => (
           <button
             className="rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100 disabled:opacity-50"
             disabled={disabled || isPending}
             key={suggestion}
-            onClick={() => submit(suggestion)}
+            onClick={() => void submit(suggestion)}
             type="button"
           >
             {suggestion}

@@ -1,28 +1,15 @@
 import re
-from collections import defaultdict
 from datetime import datetime
 
 from app.agent.query.index import IndexedCell, IndexedRow
+from app.agent.tools.workbook_comparison_series import time_series_candidates
 from app.agent.tools.workbook_headers import HeaderContext, header_for
 
 
 def build_time_series_comparison(
     rows: list[IndexedRow], headers: HeaderContext, query: str
 ) -> dict[str, object] | None:
-    series: dict[tuple[str, str], list[tuple[datetime, IndexedRow]]] = defaultdict(list)
-    for row in rows:
-        for cell in row.cells:
-            header = header_for(headers, row.sheet_name, row.row_number, cell.address)
-            parsed = _date(cell.value) if header and "date" in header.casefold() else None
-            if parsed:
-                series[(row.sheet_name, _column(cell.address))].append((parsed, row))
-    threshold = _question_date(query)
-    candidates = []
-    for key, points in series.items():
-        filtered = [point for point in points if threshold is None or point[0] >= threshold]
-        unique = {point[0]: point[1] for point in filtered}
-        if len(unique) >= 2:
-            candidates.append((key, sorted(unique.items())))
+    candidates = time_series_candidates(rows, headers, _question_date(query))
     if not candidates:
         return None
     (sheet_name, date_column), points = max(candidates, key=lambda item: len(item[1]))
@@ -35,11 +22,57 @@ def build_time_series_comparison(
         "sheet_name": sheet_name,
         "start_date": start_date.date().isoformat(),
         "end_date": end_date.date().isoformat(),
+        "start_reference": f"{sheet_name}!{date_column}{start_row.row_number}",
+        "end_reference": f"{sheet_name}!{date_column}{end_row.row_number}",
         "metrics": metrics,
         "largest_absolute_changes": sorted(
             metrics, key=lambda item: abs(item["change"]), reverse=True
         )[:5],
     }
+
+
+def time_series_calculations(
+    comparison: dict[str, object] | None,
+) -> list[dict[str, object]]:
+    if not comparison or not isinstance(comparison.get("metrics"), list):
+        return []
+    calculations = []
+    metrics = comparison.get("largest_absolute_changes") or comparison["metrics"]
+    for metric in metrics:
+        if not isinstance(metric, dict):
+            continue
+        start = metric.get("start_value")
+        end = metric.get("end_value")
+        references = [metric.get("start_reference"), metric.get("end_reference")]
+        numeric = all(
+            isinstance(item, (int, float)) and not isinstance(item, bool)
+            for item in (start, end)
+        )
+        if not all(isinstance(item, str) for item in references) or not numeric:
+            continue
+        common = {
+            "operand_references": references,
+            "operand_values": [start, end],
+            "label": metric.get("header"),
+        }
+        calculations.append(
+            {
+                **common,
+                "operation": "difference",
+                "result": metric.get("change"),
+                "unit": "source_unit",
+            }
+        )
+        if float(start) != 0:
+            calculations.append(
+                {
+                    **common,
+                    "operation": "percent_change",
+                    "result": (float(end) - float(start)) / abs(float(start)) * 100,
+                    "unit": "percent",
+                }
+            )
+    return calculations
 
 
 def _metric_changes(
@@ -80,15 +113,6 @@ def _question_date(query: str) -> datetime | None:
     if not match:
         return None
     return datetime(int(match.group(1)), int(match.group(2) or 1), 1)
-
-
-def _date(value: object) -> datetime | None:
-    if not isinstance(value, str):
-        return None
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        return None
 
 
 def _number(cell: IndexedCell) -> bool:

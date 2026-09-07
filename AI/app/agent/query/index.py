@@ -15,17 +15,23 @@ class IndexedCell:
     value: str | int | float | bool | None
     formula: str | None
     value_type: str = "text"
+    number_format: str = "General"
 
     @property
     def reference(self) -> str:
         return f"{self.sheet_name}!{self.address}"
 
     def evidence(self) -> AnalysisEvidence:
+        format_hint = (
+            f" (Excel 표시 형식: {self.number_format})"
+            if "%" in self.number_format
+            else ""
+        )
         return AnalysisEvidence(
             kind=EvidenceKind.FORMULA if self.formula else EvidenceKind.CELL,
             sheet_name=self.sheet_name,
             reference=self.address,
-            description="질문과 관련해 원본 Excel에서 조회한 셀",
+            description=f"질문과 관련해 원본 Excel에서 조회한 셀{format_hint}",
             value=self.value,
             formula=self.formula,
         )
@@ -100,6 +106,7 @@ def _indexed_cells(sheet_name: str, formula_row: tuple, value_row: tuple) -> lis
                 safe_value,
                 formula,
                 value_type,
+                str(formula_cell.number_format or "General"),
             )
         )
     return cells

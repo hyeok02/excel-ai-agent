@@ -32,6 +32,13 @@ const AnalysisResultSection = ({
         <InsightReportSection report={result.insightReport} />
       )}
 
+      {mode === 'LLM' && (
+        <WorkbookQuestionSection
+          analysisId={result.analysisId}
+          sourceAvailable={result.sourceAvailable}
+        />
+      )}
+
       {mode === 'LLM' && workbook.formulaRiskSummary && (
         <FormulaRiskSection summary={workbook.formulaRiskSummary} />
       )}
@@ -44,10 +51,6 @@ const AnalysisResultSection = ({
 
       {mode === 'LLM' && (
         <>
-          <WorkbookQuestionSection
-            analysisId={result.analysisId}
-            sourceAvailable={result.sourceAvailable}
-          />
           <WorkbookWritebackSection
             analysisId={result.analysisId}
             sourceAvailable={result.sourceAvailable}

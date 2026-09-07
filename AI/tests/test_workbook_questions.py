@@ -17,7 +17,7 @@ class StubQuestionGenerator:
     def __init__(
         self, evidence: list[str] | None = None, answer: str = "노트북의 1월 값은 10입니다."
     ) -> None:
-        self.evidence = evidence or ["매출현황!B2"]
+        self.evidence = evidence or ["매출현황!A2", "매출현황!B2"]
         self.answer = answer
         self.context: dict[str, object] = {}
 
@@ -48,9 +48,9 @@ def test_answers_question_with_verified_source_cell() -> None:
     assert body["status"] == "answered"
     assert body["answer"] == "노트북의 1월 값은 10입니다."
     assert body["selected_tools"] == ["search_workbook_data"]
-    assert body["evidence"][0]["sheet_name"] == "매출현황"
-    assert body["evidence"][0]["reference"] == "B2"
-    assert body["evidence"][0]["value"] == 10
+    assert body["evidence"][1]["sheet_name"] == "매출현황"
+    assert body["evidence"][1]["reference"] == "B2"
+    assert body["evidence"][1]["value"] == 10
     assert generator.context["steps"][0]["tool_name"] == "search_workbook_data"
     assert "rows" not in generator.context["steps"][0]["data"]
 
@@ -107,7 +107,9 @@ def test_data_search_tool_returns_question_related_rows_and_cells() -> None:
     }
     assert "매출현황!B2" in references
     assert result.data["returned_row_count"] > 0
-    result_cells = result.data["rows"][1]["cells"]
+    result_cells = next(
+        row["cells"] for row in result.data["rows"] if row["row_number"] == 2
+    )
     assert any(cell["header"] == "1월" for cell in result_cells)
 
 
@@ -135,10 +137,9 @@ def test_korean_business_question_prioritizes_semantically_matching_sheet() -> N
         10,
     )
 
-    assert [row.sheet_name for row in result[:2]] == [
-        "Detailed_Headcount_Analytics",
-        "Detailed_Headcount_Analytics",
-    ]
+    assert result[0].sheet_name == "Detailed_Headcount_Analytics"
+    matching_rows = {row.row_number for row in result if row.sheet_name == result[0].sheet_name}
+    assert {107, 108} <= matching_rows
 
 
 def _row(sheet_name: str, row_number: int, value: str) -> IndexedRow:

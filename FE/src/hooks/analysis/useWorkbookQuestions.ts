@@ -16,7 +16,7 @@ export const useWorkbookQuestions = (analysisId: string) => {
     onSettled: () => setPendingQuestion(null),
   })
 
-  const ask = (question: string) => {
+  const ask = async (question: string) => {
     const normalized = question.trim()
     if (questionMutation.isPending) return false
     const message = getQuestionValidationMessage(normalized)
@@ -27,8 +27,12 @@ export const useWorkbookQuestions = (analysisId: string) => {
     setValidationMessage(null)
     questionMutation.reset()
     setPendingQuestion(normalized)
-    questionMutation.mutate(normalized)
-    return true
+    try {
+      await questionMutation.mutateAsync(normalized)
+      return true
+    } catch {
+      return false
+    }
   }
 
   return {
