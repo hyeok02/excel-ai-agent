@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from app.services.insights.fact_labels import (
@@ -11,6 +12,7 @@ from app.services.insights.fact_trends import (
     is_identity_row,
     numeric_changes,
 )
+from app.services.insights.table_inputs import build_table_regions, legacy_table_rows
 
 MAX_VALUES_PER_ROW = 10
 
@@ -21,14 +23,15 @@ def build_business_facts(
     column_schemas: list[dict[str, Any]],
     max_records: int,
 ) -> dict[str, object]:
-    headers, schemas = build_fact_labels(regions, column_schemas)
-    header_cells = header_addresses(regions)
     candidates = []
     trend_rows = []
-    for region in regions:
+    trend_groups = {}
+    for region_index, region in enumerate(regions):
+        headers, schemas = build_fact_labels([region], column_schemas)
+        header_cells = header_addresses([region])
         region_title = region.get("title")
         role = _semantic_role(region)
-        for row in region.get("preview_rows", []):
+        for row in region.get("analysis_rows") or region.get("preview_rows", []):
             if is_technical_row(row) or any(
                 str(cell.get("address")) in header_cells for cell in row
             ):
@@ -46,7 +49,10 @@ def build_business_facts(
                 (_record_score(values, role), _identity_score(values), record)
             )
             if date_value(values[0]["value"]) and len(values) > 1:
-                trend_rows.append(record)
+                scope = _trend_scope(regions, region_index, values)
+                trend_record = {**record, "_trend_scope": scope}
+                trend_rows.append(trend_record)
+                trend_groups.setdefault(scope, []).append(trend_record)
     candidates.sort(key=lambda item: item[0], reverse=True)
     identities = sorted(
         (item for item in candidates if item[1]),
@@ -55,9 +61,14 @@ def build_business_facts(
     )[:2]
     selected = identities + [item for item in candidates if item not in identities]
     records = [record for _, _, record in selected[:max_records]]
+    changes = [change for rows in trend_groups.values() for change in numeric_changes(rows)]
+    tables = build_table_regions(regions)
     return {
         "selected_records": records,
-        "numeric_changes": numeric_changes(trend_rows),
+        "numeric_changes": sorted(changes, key=_change_score, reverse=True)[:4],
+        "time_series": trend_rows,
+        "table_rows": legacy_table_rows(tables),
+        "table_regions": tables,
         "selection_note": "원본 전체가 아닌 핵심 값 행만 선별한 결과",
     }
 
@@ -101,6 +112,23 @@ def _record_score(values: list[dict[str, object]], role: str | None) -> int:
 def _identity_score(values: list[dict[str, object]]) -> int:
     """대상을 적어 둔 식별 행을 행의 모양으로 찾는다."""
     return 2 if is_identity_row(values) else 0
+
+
+def _change_score(change):
+    metric = str(change.get("metric", ""))
+    is_total = bool(re.search(r"\btotal\b|전체|합계|총합", metric, re.I))
+    return is_total, abs(float(change.get("change_rate_percent", 0)))
+
+
+def _trend_scope(regions, region_index, values):
+    signature = tuple(
+        (re.match(r"[A-Z]+", str(value.get("cell", ""))).group(0), value.get("label"))
+        for value in values if re.match(r"[A-Z]+", str(value.get("cell", "")))
+    )
+    for previous in reversed(regions[:region_index + 1]):
+        if _semantic_role(previous) in {"title", "description"} and previous.get("title"):
+            return " ".join(str(previous["title"]).split()), signature
+    return region_index, signature
 
 
 def _semantic_role(region: dict[str, Any]) -> str | None:

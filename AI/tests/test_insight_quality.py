@@ -53,7 +53,7 @@ def test_builds_source_report_with_concrete_business_change() -> None:
     result = build_source_report(context)
 
     assert "Riot Games, Inc." not in result.overview
-    assert "Total Employees" in result.overview
+    assert "전체 직원 수" in result.overview
     assert "6,101" in result.overview
     assert "5,417" in result.overview
     assert result.insights[0].evidence == ["인력!E115:L115", "인력!E108:L108"]

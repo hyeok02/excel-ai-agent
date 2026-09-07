@@ -49,7 +49,8 @@ def test_returns_structured_workbook_insights() -> None:
             "verified_count": 1,
             "limited_count": 0,
             "blocked_count": 0,
-            "notices": [],
+                "notices": [],
+                "overview_validated": True,
         },
     }
 

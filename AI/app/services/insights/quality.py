@@ -4,6 +4,7 @@ from datetime import datetime
 from app.services.insights.fact_trends import is_identity_row
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
 from app.services.insights.source_records import source_record_insights
+from app.services.insights.source_narratives import source_narrative_report
 
 
 def ensure_business_report(
@@ -21,6 +22,14 @@ def build_source_report(
 ) -> WorkbookInsightReport:
     """Build a literal source-only draft; callers must still validate its evidence."""
     limit = max(0, min(max_insights, 5))
+    semantic = source_narrative_report(context)
+    if semantic.insights and limit:
+        selected = semantic.insights[:limit]
+        return semantic.model_copy(update={
+            "insights": selected,
+            "overview": semantic.overview if len(selected) == len(semantic.insights)
+            else " ".join(item.fact for item in selected),
+        })
     changes = [change for change in metric_changes(context) if _complete_change(change)]
     # Identity rows are separate evidence: do not attach their subject to trend cells.
     insights = [_change_insight(None, change) for change in changes[:limit]]

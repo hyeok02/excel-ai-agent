@@ -6,10 +6,11 @@ from app.services.insights.models import (
     InsightValidationStatus, ValidatedWorkbookInsight,
     ValidatedWorkbookInsightReport, WorkbookInsight, WorkbookInsightReport,
 )
-from app.services.insights.numeric_validation import unmatched_numbers
+from app.services.insights.numeric_validation import numbers, unmatched_numbers
 from app.services.insights.reference_matching import resolve_references
 from app.services.insights.review_points import grounded_tokens, mask_known_names
 from app.services.insights.validated_report import assemble_report, add_source_fallback
+from app.services.insights.source_narratives import source_narrative_report
 from app.services.insights.validation_index import (
     REFERENCE_PATTERN, EvidenceIndex, agent_evidence_index, extract_references,
     workbook_evidence_index,
@@ -20,7 +21,15 @@ def validate_workbook_insights(
     report: WorkbookInsightReport, context: dict[str, object]
 ) -> ValidatedWorkbookInsightReport:
     index = workbook_evidence_index(context)
-    result = _validate(report, index)
+    canonical = source_narrative_report(context)
+    result = _validate(report, index, canonical.insights)
+    if canonical.insights:
+        baseline = _validate(canonical, index, canonical.insights)
+        if len(baseline.insights) == len(canonical.insights):
+            baseline.overview = canonical.overview
+            baseline.validation.overview_validated = True
+            _merge_model_findings(baseline, result)
+            return baseline
     if result.insights:
         return result
     from app.services.insights.quality import build_source_report
@@ -34,14 +43,14 @@ def validate_agent_insights(
     return _validate(report, agent_evidence_index(execution))
 
 
-def _validate(report: WorkbookInsightReport, index: EvidenceIndex):
+def _validate(report: WorkbookInsightReport, index: EvidenceIndex, canonical=()):
     passed = [item for insight in report.insights
-              if (item := _validate_insight(insight, index)) is not None]
+              if (item := _validate_insight(insight, index, canonical)) is not None]
     return assemble_report(passed, len(report.insights), index.limitations)
 
 
 def _validate_insight(
-    insight: WorkbookInsight, index: EvidenceIndex
+    insight: WorkbookInsight, index: EvidenceIndex, canonical=()
 ) -> ValidatedWorkbookInsight | None:
     if not insight.fact.strip() or not insight.evidence or insight.confidence < 0.7:
         return None
@@ -59,6 +68,9 @@ def _validate_insight(
     def supported(text: str | None) -> bool:
         if not text:
             return False
+        if any(text in (item.fact, item.title) and _required_citations(item, references)
+               for item in canonical):
+            return True
         without_addresses = REFERENCE_PATTERN.sub(" ", text)
         claim = mask_known_names(without_addresses, grounded)
         return (
@@ -89,3 +101,40 @@ def _validate_insight(
         validation_status=status,
         validation_reasons=reasons,
     )
+
+
+def _required_citations(item, references):
+    required = set().union(*(extract_references(ref) for ref in item.evidence))
+    return bool(required) and required <= references
+
+
+def _merge_model_findings(baseline, result):
+    """Reserve room for independently grounded model detail without replacing the overview."""
+    known_facts = {item.fact for item in baseline.insights}
+    extras = [item for item in result.insights
+              if item.fact not in known_facts and not _duplicate(item, baseline.insights)]
+    if extras:
+        keep = min(len(baseline.insights), 4)
+        baseline.insights = [*baseline.insights[:keep], *extras[:5 - keep]]
+    verified = sum(item.validation_status is InsightValidationStatus.VERIFIED
+                   for item in baseline.insights)
+    baseline.validation.generated_count = len(baseline.insights) + result.validation.blocked_count
+    baseline.validation.blocked_count = result.validation.blocked_count
+    baseline.validation.verified_count = verified
+    baseline.validation.limited_count = len(baseline.insights) - verified
+    baseline.validation.notices = result.validation.notices
+
+
+def _duplicate(candidate, baseline):
+    candidate_refs = _item_references(candidate)
+    candidate_numbers = numbers(candidate.fact)
+    return bool(candidate_refs and candidate_numbers) and any(
+        (candidate_refs <= _item_references(item)
+         or _item_references(item) <= candidate_refs)
+        and candidate_numbers == numbers(item.fact)
+        for item in baseline
+    )
+
+
+def _item_references(item):
+    return set().union(*(extract_references(ref) for ref in item.evidence))

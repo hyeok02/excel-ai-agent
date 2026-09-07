@@ -53,4 +53,5 @@ def test_returns_structured_insights_from_agent_execution() -> None:
         "limited_count": 0,
         "blocked_count": 0,
         "notices": [],
+        "overview_validated": True,
     }

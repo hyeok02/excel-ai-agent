@@ -10,7 +10,7 @@ from app.services.insights.reference_values import index_reference_numbers
 from app.services.provenance import EvidenceKind
 
 REFERENCE_PATTERN = re.compile(
-    r"(?:'([^']+)'|([^\s!,:;=\"'\[\]{}]+))!\$?([A-Z]{1,3})\$?(\d+)"
+    r"(?:'((?:[^']|'')+)'|([^\s!,:;=\"'\[\]{}]+))!\$?([A-Z]{1,3})\$?(\d+)"
     r"(?::\$?([A-Z]{1,3})\$?(\d+))?"
 )
 CELL_RANGE_PATTERN = re.compile(r"^\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?$")
@@ -125,7 +125,7 @@ def normalize_reference(value: str) -> str | None:
 
 
 def _normalize_match(match: re.Match[str]) -> str:
-    sheet = (match.group(1) or match.group(2)).strip().casefold()
+    sheet = (match.group(1) or match.group(2)).replace("''", "'").strip().casefold()
     start = f"{match.group(3)}{match.group(4)}"
     end = f":{match.group(5)}{match.group(6)}" if match.group(5) else ""
     return f"{sheet}!{start}{end}".casefold()

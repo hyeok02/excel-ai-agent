@@ -10,6 +10,10 @@ interface InsightReportSectionProps {
 
 const InsightReportSection = ({ report: source }: InsightReportSectionProps) => {
   const { report, hasSuppressedInsights } = prepareInsightReportPresentation(source)
+  const insightRows = Array.from(
+    { length: Math.ceil(report.insights.length / 2) },
+    (_, rowIndex) => report.insights.slice(rowIndex * 2, rowIndex * 2 + 2),
+  )
 
   return (
     <section className="mt-6 overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50/80 via-white to-white">
@@ -50,12 +54,22 @@ const InsightReportSection = ({ report: source }: InsightReportSectionProps) => 
         </div>
       )}
 
-      <div className="grid gap-3 p-5 md:p-6 lg:grid-cols-2">
-        {report.insights.map((insight, index) => (
-          <InsightCard insight={insight} key={`${insight.title}-${index}`} />
-        ))}
-        {report.insights.length === 0 && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 lg:col-span-2">
+      {report.insights.length > 0 ? (
+        <div className="space-y-3 p-5 md:p-6">
+          {insightRows.map((row, rowIndex) => (
+            <div className="insight-card-row" key={`insight-row-${rowIndex}`}>
+              {row.map((insight, columnIndex) => (
+                <InsightCard
+                  insight={insight}
+                  key={`${insight.title}-${rowIndex * 2 + columnIndex}`}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="p-5 md:p-6">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
             <p className="text-sm font-extrabold text-amber-900">
               근거 검증을 통과한 인사이트가 없습니다
             </p>
@@ -65,8 +79,8 @@ const InsightReportSection = ({ report: source }: InsightReportSectionProps) => 
                 : '근거가 확인되지 않은 주장은 표시하지 않았습니다. 아래 분석 한계와 원본 위치를 확인해 주세요.'}
             </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {report.limitations.length > 0 && (
         <div className="border-t border-brand-100/70 px-5 py-4 md:px-6">

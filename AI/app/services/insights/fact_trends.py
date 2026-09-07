@@ -34,7 +34,10 @@ def numeric_changes(records: list[dict[str, object]]) -> list[dict[str, object]]
             }
         )
     return sorted(
-        changes, key=lambda item: abs(item["change_rate_percent"]), reverse=True
+        changes, key=lambda item: (
+            bool(re.search(r"\btotal\b|전체|합계|총합", item["metric"], re.I)),
+            abs(item["change_rate_percent"]),
+        ), reverse=True
     )[:4]
 
 

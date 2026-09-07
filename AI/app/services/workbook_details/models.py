@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TypeAlias
 
 from app.services.analysis_inclusion import (
@@ -60,6 +60,7 @@ class RegionSummary:
     is_truncated: bool
     analysis_inclusion: AnalysisInclusion = INCLUDED_POPULATED_REGION
     semantic: SemanticClassification | None = None
+    analysis_rows: list[list[dict[str, CellValue]]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

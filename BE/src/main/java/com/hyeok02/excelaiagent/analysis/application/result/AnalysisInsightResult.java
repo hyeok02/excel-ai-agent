@@ -2,6 +2,9 @@ package com.hyeok02.excelaiagent.analysis.application.result;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
+
 public final class AnalysisInsightResult {
 	private AnalysisInsightResult() {
 	}
@@ -13,7 +16,13 @@ public final class AnalysisInsightResult {
 
 	public record Validation(
 			int generatedCount, int verifiedCount, int limitedCount,
-			int blockedCount, List<String> notices) {
+			int blockedCount, List<String> notices,
+			@JsonSetter(nulls = Nulls.AS_EMPTY) boolean overviewValidated) {
+		public Validation(
+				int generatedCount, int verifiedCount, int limitedCount,
+				int blockedCount, List<String> notices) {
+			this(generatedCount, verifiedCount, limitedCount, blockedCount, notices, false);
+		}
 	}
 
 	public record Insight(

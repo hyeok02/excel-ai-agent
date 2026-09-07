@@ -40,15 +40,22 @@ export const prepareInsightReportPresentation = (source: InsightReportResult) =>
   const notices = hasSuppressedInsights
     ? [REANALYSIS_NOTICE]
     : (source.validation?.notices ?? [])
+  // 이전 기록의 validation 존재 여부만으로는 요약 검증을 보장할 수 없다.
+  // 서버가 명시적으로 검증했고, 여기에서 빠진 카드가 없는 요약만 유지한다.
+  const canPreserveOverview =
+    source.validation?.overviewValidated === true &&
+    !hasSuppressedInsights &&
+    insights.length > 0 &&
+    source.overview.trim().length > 0
 
   const report: InsightReportResult = {
     ...source,
-    // 요약에도 배제된 문장이 남을 수 있으므로, 표시 가능한 사실로만 재구성한다.
-    overview:
-      insights
-        .slice(0, 2)
-        .map((insight) => insight.fact)
-        .join(' ') || '원본 근거로 확인할 수 있는 인사이트가 없습니다.',
+    overview: canPreserveOverview
+      ? source.overview
+      : insights
+          .slice(0, 2)
+          .map((insight) => insight.fact)
+          .join(' ') || '원본 근거로 확인할 수 있는 인사이트가 없습니다.',
     insights,
     limitations: hasSuppressedInsights ? notices : source.limitations,
     hasIncompleteData: insights.some((insight) => insight.isIncomplete),
@@ -61,8 +68,14 @@ export const prepareInsightReportPresentation = (source: InsightReportResult) =>
       limitedCount: insights.length - verifiedCount,
       blockedCount,
       notices,
+      overviewValidated: canPreserveOverview,
     },
   }
 
   return { report, hasSuppressedInsights }
+}
+
+export const insightValidationLabel = (status: InsightResult['validationStatus']) => {
+  if (status === 'verified') return '원본 근거 확인'
+  return status === 'limited' ? '근거 확인 필요' : '근거 정보 없음'
 }

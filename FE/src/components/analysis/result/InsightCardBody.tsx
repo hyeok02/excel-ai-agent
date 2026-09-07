@@ -1,6 +1,7 @@
 import { Lightbulb } from 'lucide-react'
 
 import type { InsightResult } from '@/api/analysis/insightTypes'
+import InsightEvidenceList from '@/components/analysis/result/InsightEvidenceList'
 import { cn } from '@/utils/cn'
 
 const InsightCardBody = ({ insight }: { insight: InsightResult }) => (
@@ -11,19 +12,7 @@ const InsightCardBody = ({ insight }: { insight: InsightResult }) => (
     />
     {insight.cause && <Detail bordered label="확인된 원인" text={insight.cause} />}
     {insight.impact && <Detail impact label="검토 포인트" text={insight.impact} />}
-    <div className="mt-4">
-      <p className="text-xs font-extrabold text-slate-500">내용을 확인한 위치</p>
-      <ul className="mt-2 space-y-1.5">
-        {insight.evidence.map((evidence, index) => (
-          <li
-            className="break-words rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600"
-            key={`${evidence}-${index}`}
-          >
-            {evidence}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <InsightEvidenceList evidence={insight.evidence} />
     {insight.validationReasons.length > 0 && (
       <p className="mt-3 text-xs leading-5 text-amber-700">
         {insight.validationReasons.join(' · ')}

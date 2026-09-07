@@ -37,7 +37,8 @@ final class InsightResultMapper {
 		return new AnalysisInsightResult.Validation(
 				validation.generatedCount(), validation.verifiedCount(),
 				validation.limitedCount(), validation.blockedCount(),
-				validation.notices() == null ? List.of() : validation.notices());
+				validation.notices() == null ? List.of() : validation.notices(),
+				validation.overviewValidated());
 	}
 
 	private static boolean hasText(String value) {

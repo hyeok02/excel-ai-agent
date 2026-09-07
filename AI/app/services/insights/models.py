@@ -60,6 +60,7 @@ class InsightValidationSummary(BaseModel):
     limited_count: int = Field(ge=0)
     blocked_count: int = Field(ge=0)
     notices: list[str] = Field(default_factory=list)
+    overview_validated: bool = False
 
 
 class ValidatedWorkbookInsightReport(BaseModel):

@@ -44,7 +44,7 @@ def review_point_verdict(context: dict[str, object], text: str) -> str:
     """검토 포인트 한 문장이 근거 대조를 통과하는지 판정한다."""
     report = _probe_report(text, _source_references(context))
     result = validate_workbook_insights(report, context)
-    kept = result.insights[0].impact if result.insights else None
+    kept = next((item.impact for item in result.insights if item.impact), None)
     return KEEP if kept else DROP
 
 
