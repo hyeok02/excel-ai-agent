@@ -26,7 +26,7 @@ def trend_report(context):
     principal = f"{owner}{metric_name(primary['metric'])}는 {_change(primary, unit)}."
     timeline, timeline_refs = _timeline(primary, records, unit)
     items = [insight(f"{owner}{metric_name(primary['metric'])} 변화", principal + timeline,
-                     [*owner_refs, *primary["evidence"], *timeline_refs])]
+                     [*owner_refs, *primary["evidence"], *timeline_refs], "trend")]
     related = [c for c in changes[1:] if c["evidence"] == primary["evidence"]
                and c["earliest_period"] == primary["earliest_period"]
                and c["latest_period"] == primary["latest_period"]][:4]
@@ -36,7 +36,7 @@ def trend_report(context):
                      for c in related]
         detail = f"같은 기간 {'. '.join(fragments)}."
         items.append(insight("주요 항목별 변화", detail,
-                             [r for c in related for r in c["evidence"]]))
+                             [r for c in related for r in c["evidence"]], "trend"))
     return items, " ".join(part for part in (principal, detail, timeline.strip()) if part)
 
 

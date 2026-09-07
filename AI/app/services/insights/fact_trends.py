@@ -1,6 +1,8 @@
 import re
 from datetime import datetime
 
+from app.services.insights.display_quality import is_identifier_label
+
 MAX_TEXT_LENGTH = 120
 MAX_IDENTITY_CELLS = 3
 NUMERIC_PATTERN = re.compile(r"-?[\d,]+(?:\.\d+)?%?")
@@ -54,7 +56,9 @@ def _numbers_by_label(record: dict[str, object]) -> dict[str, float]:
     return {
         str(value["label"]): float(value["value"])
         for value in record["values"][1:]
-        if value.get("label") and isinstance(value["value"], (int, float))
+        if value.get("label")
+        and not is_identifier_label(value["label"])
+        and isinstance(value["value"], (int, float))
     }
 
 

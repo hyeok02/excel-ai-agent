@@ -9,14 +9,27 @@ const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
 
   return (
     <div className="mt-4">
-      <p className="text-xs font-extrabold text-slate-500">내용을 확인한 위치</p>
+      <p className="text-xs font-extrabold text-slate-500">원본 셀 근거</p>
       <ul className="mt-2 space-y-1.5">
         {visibleLocations.map((location, index) => (
           <li
-            className="break-words rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600"
-            key={`${location}-${index}`}
+            className="flex flex-wrap items-center gap-1.5 text-xs leading-5"
+            key={`${location.raw}-${index}`}
           >
-            {location}
+            {location.sheetName && location.cellRange ? (
+              <>
+                <span className="max-w-full break-all rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
+                  {location.sheetName}
+                </span>
+                <code className="rounded-lg bg-brand-50 px-2.5 py-1 font-bold text-brand-700">
+                  {location.cellRange}
+                </code>
+              </>
+            ) : (
+              <span className="max-w-full break-words rounded-lg bg-slate-100 px-2.5 py-1 text-slate-600">
+                {location.raw}
+              </span>
+            )}
           </li>
         ))}
       </ul>

@@ -111,7 +111,7 @@ def _change_insight(
         ),
         cause=None,
         impact=None,
-        category="summary",
+        category="trend",
         severity="info",
         evidence=[str(item) for item in change["evidence"]],
         recommendation=None,

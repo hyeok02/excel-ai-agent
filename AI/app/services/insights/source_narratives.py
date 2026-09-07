@@ -1,4 +1,5 @@
 """Deterministic semantic facts; model prose may reuse them, not invent bindings."""
+from app.services.insights.horizontal_trends import horizontal_trend_report
 from app.services.insights.models import WorkbookInsightReport
 from app.services.insights.ranked_narratives import ranked_report
 from app.services.insights.sheet_scope import comparison_sheet
@@ -9,7 +10,8 @@ from app.services.insights.validation_index import extract_references
 
 def source_narrative_report(context):
     options = []
-    for mode_order, reporter in enumerate((trend_report, ranked_report, table_report)):
+    reporters = (trend_report, ranked_report, table_report, horizontal_trend_report)
+    for mode_order, reporter in enumerate(reporters):
         items, overview = reporter(context)
         if items:
             comparison, source_order = _source_scope(context, items)

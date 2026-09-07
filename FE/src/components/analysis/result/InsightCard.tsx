@@ -10,10 +10,12 @@ import { insightValidationLabel } from '@/components/analysis/result/insightRepo
 import { cn } from '@/utils/cn'
 
 const CATEGORY_LABELS: Record<InsightCategory, string> = {
+  metric: '핵심 지표',
+  trend: '추세',
   summary: '파일 내용',
   structure: '시트 내용',
   formula: '계산 방식',
-  risk: '위험 분석',
+  risk: '이상징후',
 }
 
 const SEVERITY_CONFIG: Record<

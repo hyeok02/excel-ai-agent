@@ -19,7 +19,7 @@ class WorkbookInsight(BaseModel):
         default=None,
         description="근거에서 직접 이어지는 짧은 검토 포인트. 확인할 수 없으면 null",
     )
-    category: Literal["summary", "structure", "formula", "risk"]
+    category: Literal["metric", "trend", "summary", "structure", "formula", "risk"]
     severity: Literal["info", "warning", "critical"]
     evidence: list[str] = Field(min_length=1)
     recommendation: str | None = Field(

@@ -44,7 +44,7 @@ def _category_totals(sheet, usable, schema):
         cited = [cell for item in members for cell in (item[1], item[2])]
         fact = f"{label} 유형 {len(members)}개 항목의 비중 합계는 {number(total)}%입니다."
         results.append(("aggregate", float(total),
-                        insight(f"{label} 구성비 합계", fact, _refs(sheet, cited))))
+                        insight(f"{label} 구성비 합계", fact, _refs(sheet, cited), "metric")))
     return results
 
 
@@ -57,7 +57,9 @@ def _metric(sheet, kind, label, share, quantity, headers):
     parts.append(f"비중은 {number(percent)}%")
     cited.append(share)
     fact = f"{label['value']}의 {', '.join(parts)}입니다."
-    return kind, float(percent), insight(str(label["value"]), fact, _refs(sheet, cited))
+    return kind, float(percent), insight(
+        str(label["value"]), fact, _refs(sheet, cited), "metric"
+    )
 
 
 def _same_scope(members, schema):

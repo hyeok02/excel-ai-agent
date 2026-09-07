@@ -1,7 +1,8 @@
 import { AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react'
 
 import type { InsightReportResult } from '@/api/analysis'
-import InsightCard from '@/components/analysis/result/InsightCard'
+import InsightCardGroup from '@/components/analysis/result/InsightCardGroup'
+import { groupInsights } from '@/components/analysis/result/insightGroupPresentation'
 import { prepareInsightReportPresentation } from '@/components/analysis/result/insightReportPresentation'
 
 interface InsightReportSectionProps {
@@ -10,10 +11,7 @@ interface InsightReportSectionProps {
 
 const InsightReportSection = ({ report: source }: InsightReportSectionProps) => {
   const { report, hasSuppressedInsights } = prepareInsightReportPresentation(source)
-  const insightRows = Array.from(
-    { length: Math.ceil(report.insights.length / 2) },
-    (_, rowIndex) => report.insights.slice(rowIndex * 2, rowIndex * 2 + 2),
-  )
+  const groups = groupInsights(report.insights)
 
   return (
     <section className="mt-6 overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50/80 via-white to-white">
@@ -55,16 +53,9 @@ const InsightReportSection = ({ report: source }: InsightReportSectionProps) => 
       )}
 
       {report.insights.length > 0 ? (
-        <div className="space-y-3 p-5 md:p-6">
-          {insightRows.map((row, rowIndex) => (
-            <div className="insight-card-row" key={`insight-row-${rowIndex}`}>
-              {row.map((insight, columnIndex) => (
-                <InsightCard
-                  insight={insight}
-                  key={`${insight.title}-${rowIndex * 2 + columnIndex}`}
-                />
-              ))}
-            </div>
+        <div className="space-y-6 p-5 md:p-6">
+          {groups.map((group) => (
+            <InsightCardGroup group={group} key={group.key} />
           ))}
         </div>
       ) : (
