@@ -6,7 +6,8 @@ from app.agent.contracts import (
     ToolArguments,
     ToolCategory,
 )
-from app.agent.query.index import IndexedRow
+from app.agent.query.comparison_scope import comparison_scope
+from app.agent.query.query_rows import query_scope_truncated, with_relevant_priority_rows
 from app.agent.query.row_search import search_rows as _search_rows
 from app.agent.query.verified_evidence import (
     merge_evidence,
@@ -24,11 +25,10 @@ from app.agent.tools.workbook_comparisons import (
     time_series_calculations,
 )
 from app.agent.tools.workbook_headers import (
-    HeaderContext,
     build_header_context,
     evidence_with_header,
-    header_for,
 )
+from app.agent.tools.workbook_data_payload import row_payload
 
 
 class WorkbookDataSearchTool:
@@ -61,9 +61,13 @@ class WorkbookDataSearchTool:
             if summary_question
             else _search_rows(context.data_index.rows, query, limit)
         )
-        headers = build_header_context(context.data_index.rows, rows)
-        comparison = build_time_series_comparison(rows, headers, query)
         verified = build_verified_question_context(context.workbook)
+        rows = with_relevant_priority_rows(context.data_index.rows, rows, verified)
+        headers = build_header_context(context.data_index.rows, rows)
+        scope = comparison_scope(context.workbook, query)
+        comparison = build_time_series_comparison(
+            rows, headers, query, scope.metric_group, scope.columns_by_sheet
+        )
         calculations = [
             *verified["calculations"],
             *time_series_calculations(comparison),
@@ -89,12 +93,14 @@ class WorkbookDataSearchTool:
                 "query": query,
                 "workbook_summary_query": summary_question,
                 "returned_row_count": len(rows),
-                "index_truncated": context.data_index.truncated,
+                "index_truncated": query_scope_truncated(
+                    context.data_index, rows, query, summary_question
+                ),
                 "time_series_comparison": comparison,
                 "verified_overview": verified["overview"],
                 "verified_insights": verified["insights"],
                 "calculations": calculations,
-                "rows": [_row_payload(row, headers) for row in rows],
+                "rows": [row_payload(row, headers) for row in rows],
             },
             evidence=evidence,
         )
@@ -110,7 +116,11 @@ def _comparison_reference_order(
         for index, key in enumerate(("start_reference", "end_reference"))
         if isinstance((reference := comparison.get(key)), str)
     }
-    groups = (comparison.get("largest_absolute_changes"), comparison.get("metrics"))
+    groups = (
+        comparison.get("ranked_changes"),
+        comparison.get("largest_absolute_changes"),
+        comparison.get("metrics"),
+    )
     for metrics in groups:
         if not isinstance(metrics, list):
             continue
@@ -122,20 +132,3 @@ def _comparison_reference_order(
                 if isinstance(reference, str) and reference not in references:
                     references[reference] = len(references)
     return references
-
-
-def _row_payload(row: IndexedRow, headers: HeaderContext) -> dict[str, object]:
-    return {
-        "sheet_name": row.sheet_name,
-        "row_number": row.row_number,
-        "cells": [
-            {
-                "reference": cell.reference,
-                "header": header_for(headers, row.sheet_name, row.row_number, cell.address),
-                "value": cell.value,
-                "formula": cell.formula,
-                "number_format": cell.number_format,
-            }
-            for cell in row.cells
-        ],
-    }

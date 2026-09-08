@@ -14,8 +14,11 @@ SeriesPoint = tuple[datetime, IndexedRow]
 
 
 def time_series_candidates(
-    rows: list[IndexedRow], headers: HeaderContext, threshold: datetime | None
+    rows: list[IndexedRow],
+    headers: HeaderContext,
+    bounds: tuple[datetime | None, datetime | None],
 ) -> list[tuple[SeriesKey, list[SeriesPoint]]]:
+    start, end = bounds
     series: dict[SeriesKey, list[SeriesPoint]] = defaultdict(list)
     for row in rows:
         for cell in row.cells:
@@ -28,7 +31,11 @@ def time_series_candidates(
     candidates = []
     for key, points in series.items():
         for run in _row_runs(points):
-            filtered = [point for point in run if threshold is None or point[0] >= threshold]
+            filtered = [
+                point for point in run
+                if (start is None or point[0] >= start)
+                and (end is None or point[0] <= end)
+            ]
             unique = {date: row for date, row in filtered}
             if len(unique) >= 2:
                 candidates.append((key, sorted(unique.items())))

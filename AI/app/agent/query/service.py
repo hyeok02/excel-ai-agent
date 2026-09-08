@@ -1,6 +1,7 @@
 from app.agent.contracts import AgentToolContext
 from app.agent.execution import AgentToolExecutor
 from app.agent.query.answer_validation import validate_answer
+from app.agent.query.comparison_answers import validated_comparison_answer
 from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
 from app.agent.query.models import (
@@ -33,9 +34,20 @@ class WorkbookQuestionService:
         execution = self._executor.execute(
             plan, AgentToolContext(summary, data_index), self._registry
         )
+        truncated = _search_scope_truncated(execution)
+        if canonical := validated_comparison_answer(question, execution, truncated):
+            return canonical
         draft = await self._generator.generate(
             question, summary.filename, execution_context(execution)
         )
         if clarification := unclear_draft_answer(question, draft):
             return clarification
-        return validate_answer(question, draft, execution, data_index.truncated)
+        return validate_answer(question, draft, execution, truncated)
+
+
+def _search_scope_truncated(execution) -> bool:
+    return any(
+        bool(step.result.data.get("index_truncated"))
+        for step in execution.steps
+        if step.result and isinstance(step.result.data, dict)
+    )

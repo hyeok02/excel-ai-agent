@@ -1,30 +1,42 @@
-import re
-from datetime import datetime
-
-from app.agent.query.index import IndexedCell, IndexedRow
+from app.agent.query.comparison_scope import (
+    question_date_bounds,
+    rank_changes,
+    requested_change_direction,
+)
+from app.agent.query.index import IndexedRow
+from app.agent.tools.workbook_comparison_metrics import metric_changes
 from app.agent.tools.workbook_comparison_series import time_series_candidates
-from app.agent.tools.workbook_headers import HeaderContext, header_for
+from app.agent.tools.workbook_headers import HeaderContext
 
 
 def build_time_series_comparison(
-    rows: list[IndexedRow], headers: HeaderContext, query: str
+    rows: list[IndexedRow],
+    headers: HeaderContext,
+    query: str,
+    metric_group: str | None = None,
+    scoped_columns: dict[str, dict[str, tuple[str, ...]]] | None = None,
 ) -> dict[str, object] | None:
-    candidates = time_series_candidates(rows, headers, _question_date(query))
+    candidates = time_series_candidates(rows, headers, question_date_bounds(query))
     if not candidates:
         return None
-    (sheet_name, date_column), points = max(candidates, key=lambda item: len(item[1]))
+    selected = _best_candidate(rows, headers, candidates, scoped_columns or {})
+    if selected is None:
+        return None
+    (sheet_name, date_column), points, metrics, scoped = selected
     start_date, start_row = points[0]
     end_date, end_row = points[-1]
-    metrics = _metric_changes(start_row, end_row, date_column, headers)
-    if not metrics:
-        return None
+    direction = requested_change_direction(query)
+    ranked = rank_changes(metrics, direction)
     return {
         "sheet_name": sheet_name,
         "start_date": start_date.date().isoformat(),
         "end_date": end_date.date().isoformat(),
         "start_reference": f"{sheet_name}!{date_column}{start_row.row_number}",
         "end_reference": f"{sheet_name}!{date_column}{end_row.row_number}",
+        "metric_group": metric_group if scoped else None,
+        "change_direction": direction,
         "metrics": metrics,
+        "ranked_changes": ranked[:5],
         "largest_absolute_changes": sorted(
             metrics, key=lambda item: abs(item["change"]), reverse=True
         )[:5],
@@ -37,7 +49,9 @@ def time_series_calculations(
     if not comparison or not isinstance(comparison.get("metrics"), list):
         return []
     calculations = []
-    metrics = comparison.get("largest_absolute_changes") or comparison["metrics"]
+    metrics = comparison.get("ranked_changes")
+    if not metrics:
+        metrics = comparison.get("largest_absolute_changes") or comparison["metrics"]
     for metric in metrics:
         if not isinstance(metric, dict):
             continue
@@ -75,56 +89,28 @@ def time_series_calculations(
     return calculations
 
 
-def _metric_changes(
-    start_row: IndexedRow,
-    end_row: IndexedRow,
-    date_column: str,
+def _best_candidate(
+    rows: list[IndexedRow],
     headers: HeaderContext,
-) -> list[dict[str, object]]:
-    end_cells = {_column(cell.address): cell for cell in end_row.cells}
-    metrics = []
-    for start in start_row.cells:
-        column = _column(start.address)
-        end = end_cells.get(column)
-        header = header_for(headers, start_row.sheet_name, start_row.row_number, start.address)
-        if (
-            _column_number(column) <= _column_number(date_column)
-            or not header
-            or not _number(start)
-            or end is None
-            or not _number(end)
-        ):
+    candidates: list,
+    scoped_columns: dict[str, dict[str, tuple[str, ...]]],
+):
+    valid = []
+    for key, points in candidates:
+        sheet_name, date_column = key
+        start_row, end_row = points[0][1], points[-1][1]
+        allowed = scoped_columns.get(sheet_name)
+        if scoped_columns and allowed is None:
             continue
-        metrics.append(
-            {
-                "header": header,
-                "start_value": start.value,
-                "end_value": end.value,
-                "change": round(float(end.value) - float(start.value), 10),
-                "start_reference": start.reference,
-                "end_reference": end.reference,
-            }
+        metrics = metric_changes(
+            rows,
+            start_row,
+            end_row,
+            min(row.row_number for _, row in points),
+            date_column,
+            headers,
+            allowed,
         )
-    return metrics
-
-
-def _question_date(query: str) -> datetime | None:
-    match = re.search(r"(20\d{2})\s*년?\s*(\d{1,2})?\s*월?", query)
-    if not match:
-        return None
-    return datetime(int(match.group(1)), int(match.group(2) or 1), 1)
-
-
-def _number(cell: IndexedCell) -> bool:
-    return isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool)
-
-
-def _column(address: str) -> str:
-    return re.match(r"[A-Z]+", address.upper()).group(0)
-
-
-def _column_number(column: str) -> int:
-    result = 0
-    for character in column:
-        result = result * 26 + ord(character) - ord("A") + 1
-    return result
+        if metrics:
+            valid.append((key, points, metrics, bool(allowed)))
+    return max(valid, key=lambda item: len(item[1])) if valid else None
