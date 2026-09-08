@@ -3,6 +3,7 @@ import re
 
 from app.services.insights.fact_trends import date_value
 from app.services.insights.models import ValidatedWorkbookInsightReport
+from app.services.insights.narrative_values import workbook_identity
 from app.services.insights.reference_matching import matching_references
 from app.services.insights.validation_index import extract_references
 
@@ -10,13 +11,21 @@ from app.services.insights.validation_index import extract_references
 def structured_lead(
     context: dict[str, object], report: ValidatedWorkbookInsightReport
 ) -> str:
-    return (
+    return _with_subject(context, (
         _comparison_lead(context, report)
         or _record_lead(report)
         or _trend_lead(report)
         or _event_lead(context, report)
         or _ranked_lead(report)
-    )
+    ))
+
+
+def _with_subject(context, lead):
+    """Name the subject once it is known, whichever narrative wrote the lead."""
+    holder, _ = workbook_identity(context)
+    if not lead.startswith("이 파일은 ") or not holder or holder in lead:
+        return lead
+    return lead.replace("이 파일은 ", f"이 파일은 {holder}의 ", 1)
 
 
 def _comparison_lead(context, report):

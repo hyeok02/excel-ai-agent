@@ -5,8 +5,9 @@ from app.services.insights.display_quality import business_priority, metric_fami
 from app.services.insights.models import WorkbookInsight
 from datetime import date
 
+from app.services.insights.amount_units import PER_SHARE, amount_unit
 from app.services.insights.narrative_values import (
-    PER_SHARE, amount_unit, number, period, reference, workbook_identity,
+    number, period, reference, workbook_identity,
 )
 from app.services.insights.sheet_scope import narrative_sheet_groups
 
