@@ -10,8 +10,8 @@ import pytest
 
 from app.agent.query import build_workbook_data_index
 from app.agent.query.question_validation import vague_question_answer
-from app.services.insights.context import build_workbook_context
-from app.services.insights.fact_trends import is_plain_text
+from app.services.insights.facts.context import build_workbook_context
+from app.services.insights.facts.fact_trends import is_plain_text
 from app.services.insights.quality import metric_changes, subject_name
 from app.services.workbook_parser import parse_workbook
 from tests.support.analysis_regression import (

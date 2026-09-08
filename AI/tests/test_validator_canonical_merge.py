@@ -1,7 +1,7 @@
 """Validated model details must not disappear behind a full canonical report."""
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
-from app.services.insights.source_narratives import source_narrative_report
-from app.services.insights.validator import _duplicate, validate_workbook_insights
+from app.services.insights.narratives.source_narratives import source_narrative_report
+from app.services.insights.verification.validator import _duplicate, validate_workbook_insights
 
 
 def _cell(address, value):

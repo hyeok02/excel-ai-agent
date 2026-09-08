@@ -2,12 +2,12 @@ from copy import deepcopy
 
 import pytest
 
-from app.services.insights.business_facts import build_business_facts
-from app.services.insights.comparable_transactions import extract_comparable_transactions
+from app.services.insights.facts.business_facts import build_business_facts
+from app.services.insights.facts.comparable_transactions import extract_comparable_transactions
 from app.services.insights.models import WorkbookInsightReport
-from app.services.insights.source_narratives import source_narrative_report
-from app.services.insights.source_records import source_record_insights
-from app.services.insights.validator import validate_workbook_insights
+from app.services.insights.narratives.source_narratives import source_narrative_report
+from app.services.insights.facts.source_records import source_record_insights
+from app.services.insights.verification.validator import validate_workbook_insights
 
 
 def _cell(address, value):

@@ -1,8 +1,8 @@
 import json
 
 from app.services.analysis_strategy import AnalysisProfile, STANDARD_PROFILE
-from app.services.insights.context import build_workbook_context
-from app.services.insights.source_narratives import source_narrative_report
+from app.services.insights.facts.context import build_workbook_context
+from app.services.insights.narratives.source_narratives import source_narrative_report
 from app.services.workbook_parser import WorkbookSummary
 
 SYSTEM_PROMPT = """당신은 Excel 워크북의 실제 내용을 근거로 설명하는 분석 도우미입니다.

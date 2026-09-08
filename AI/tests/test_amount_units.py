@@ -1,4 +1,4 @@
-from app.services.insights.amount_units import amount_unit
+from app.services.insights.display.amount_units import amount_unit
 
 
 def cell(address, value):

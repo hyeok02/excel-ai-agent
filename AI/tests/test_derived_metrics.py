@@ -1,4 +1,4 @@
-from app.services.insights.derived_metrics import (
+from app.services.insights.display.derived_metrics import (
     change_score, derived_metric, magnitude_weight,
 )
 

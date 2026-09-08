@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.insights.ranked_narratives import ranked_report
+from app.services.insights.narratives.ranked_narratives import ranked_report
 
 
 def _cell(address, value):

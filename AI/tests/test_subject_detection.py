@@ -1,5 +1,5 @@
-from app.services.insights.narrative_values import workbook_identity
-from app.services.insights.subject_detection import spanning_subject
+from app.services.insights.narratives.narrative_values import workbook_identity
+from app.services.insights.facts.subject_detection import spanning_subject
 
 
 def cell(address, value):

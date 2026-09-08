@@ -1,7 +1,7 @@
 import pytest
 
-from app.services.insights.claim_grounding import grounded_claim
-from app.services.insights.unit_grounding import grounded_units
+from app.services.insights.verification.claim_grounding import grounded_claim
+from app.services.insights.verification.unit_grounding import grounded_units
 
 
 SOURCE = ["급식 열량", "750", "급식 열량은 750 kcal입니다."]

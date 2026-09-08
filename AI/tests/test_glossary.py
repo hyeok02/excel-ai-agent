@@ -1,4 +1,4 @@
-from app.services.insights.glossary import readable, translate
+from app.services.insights.display.glossary import readable, translate
 
 
 def test_known_terms_keep_the_original_beside_the_reading() -> None:

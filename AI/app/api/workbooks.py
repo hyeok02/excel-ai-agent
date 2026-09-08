@@ -15,8 +15,8 @@ from app.services.insight_generator import (
     LangChainInsightGenerator,
 )
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
-from app.services.insights.context import build_workbook_context
-from app.services.insights.validator import validate_workbook_insights
+from app.services.insights.facts.context import build_workbook_context
+from app.services.insights.verification.validator import validate_workbook_insights
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024

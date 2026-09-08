@@ -1,5 +1,5 @@
 """The workbook's focal sheets must win over ancillary comparison patterns."""
-from app.services.insights.source_narratives import source_narrative_report
+from app.services.insights.narratives.source_narratives import source_narrative_report
 
 
 def _cell(address, value):

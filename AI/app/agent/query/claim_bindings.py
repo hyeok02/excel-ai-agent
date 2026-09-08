@@ -3,7 +3,7 @@ import re
 from collections import defaultdict
 
 from app.agent.query.search_terms import search_terms
-from app.services.insights.numeric_validation import numbers, unmatched_numbers
+from app.services.insights.verification.numeric_validation import numbers, unmatched_numbers
 
 CELL = re.compile(r"^([A-Z]+)(\d+)$", re.I)
 CLAUSE = re.compile(r"[.!?;\n]|,\s*|\b(?:and|while)\b|(?:이고|이며|반면|그리고)", re.I)

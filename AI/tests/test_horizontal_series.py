@@ -1,4 +1,4 @@
-from app.services.insights.horizontal_series import extract_horizontal_series
+from app.services.insights.facts.horizontal_series import extract_horizontal_series
 
 
 def cell(address, value, number_format="General"):

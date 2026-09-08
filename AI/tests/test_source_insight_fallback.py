@@ -93,7 +93,7 @@ def test_incomplete_numeric_change_uses_source_rows_without_guessing_missing_fie
 
 
 def test_source_quotes_are_still_checked_by_the_shared_evidence_validator() -> None:
-    from app.services.insights.validator import validate_workbook_insights
+    from app.services.insights.verification.validator import validate_workbook_insights
 
     context = _context([
         [("C20", "단백질(g)"), ("H20", 25.7), ("J20", 27.1)],

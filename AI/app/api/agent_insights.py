@@ -9,7 +9,7 @@ from app.services.insights.models import (
     InsightGenerationError,
     ValidatedWorkbookInsightReport,
 )
-from app.services.insights.validator import validate_agent_insights
+from app.services.insights.verification.validator import validate_agent_insights
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 

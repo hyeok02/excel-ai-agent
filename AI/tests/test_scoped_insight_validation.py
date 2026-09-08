@@ -1,4 +1,4 @@
-from app.services.insights.validator import validate_workbook_insights
+from app.services.insights.verification.validator import validate_workbook_insights
 from tests.test_insight_validator import context, report
 
 

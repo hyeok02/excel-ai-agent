@@ -15,10 +15,10 @@ from app.services.insights.models import (
     InsightGenerationError,
     WorkbookInsightReport,
 )
-from app.services.insights.context import build_workbook_context
+from app.services.insights.facts.context import build_workbook_context
 from app.services.insights.prompts import SYSTEM_PROMPT, build_user_prompt_from_context
 from app.services.insights.quality import ensure_business_report
-from app.services.insights.source_narratives import source_narrative_report
+from app.services.insights.narratives.source_narratives import source_narrative_report
 from app.services.workbook_parser import WorkbookSummary
 
 

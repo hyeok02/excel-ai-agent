@@ -95,12 +95,12 @@ def _select_calculations(calculations, insights):
 
 
 def _build_context(summary):
-    from app.services.insights.context import build_workbook_context
+    from app.services.insights.facts.context import build_workbook_context
 
     return build_workbook_context(summary)
 
 
 def _source_report(context):
-    from app.services.insights.source_narratives import source_narrative_report
+    from app.services.insights.narratives.source_narratives import source_narrative_report
 
     return source_narrative_report(context)
