@@ -1,5 +1,5 @@
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
-from app.services.insights.validator import validate_workbook_insights
+from app.services.insights.verification.validator import validate_workbook_insights
 
 
 def report(

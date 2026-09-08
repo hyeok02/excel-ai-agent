@@ -5,9 +5,9 @@ from io import BytesIO
 import pytest
 from openpyxl import Workbook
 
-from app.services.insights.context import build_workbook_context
-from app.services.insights.ranked_narratives import ranked_report
-from app.services.insights.table_schema import share_value
+from app.services.insights.facts.context import build_workbook_context
+from app.services.insights.narratives.ranked_narratives import ranked_report
+from app.services.insights.narratives.table_schema import share_value
 from app.services.region_detector import CellRegion
 from app.services.workbook_details.regions import summarize_regions
 from app.services.workbook_parser import parse_workbook

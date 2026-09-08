@@ -1,10 +1,10 @@
 import math
 from datetime import datetime
 
-from app.services.insights.fact_trends import is_identity_row
+from app.services.insights.facts.fact_trends import is_identity_row
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
-from app.services.insights.source_records import source_record_insights
-from app.services.insights.source_narratives import source_narrative_report
+from app.services.insights.facts.source_records import source_record_insights
+from app.services.insights.narratives.source_narratives import source_narrative_report
 
 
 def ensure_business_report(

@@ -16,7 +16,7 @@ from app.agent.query.numeric_support import (
     supported_answer_numbers,
 )
 from app.agent.query.references import matching_references, normalize_reference
-from app.services.insights.numeric_validation import unmatched_numbers
+from app.services.insights.verification.numeric_validation import unmatched_numbers
 
 
 def validate_answer(

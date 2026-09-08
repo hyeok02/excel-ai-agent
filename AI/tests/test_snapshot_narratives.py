@@ -1,4 +1,4 @@
-from app.services.insights.snapshot_narratives import snapshot_report
+from app.services.insights.narratives.snapshot_narratives import snapshot_report
 
 
 def cell(address, value, number_format=None):

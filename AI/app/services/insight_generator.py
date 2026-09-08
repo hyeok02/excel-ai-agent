@@ -1,4 +1,4 @@
-from app.services.insights.context import build_workbook_context
+from app.services.insights.facts.context import build_workbook_context
 from app.services.insights.generator import LangChainInsightGenerator
 from app.services.insights.models import (
     InsightConfigurationError,
@@ -10,7 +10,7 @@ from app.services.insights.models import (
     WorkbookInsightReport,
 )
 from app.services.insights.prompts import SYSTEM_PROMPT, build_user_prompt
-from app.services.insights.samples import MAX_FORMULAS_PER_SHEET
+from app.services.insights.facts.samples import MAX_FORMULAS_PER_SHEET
 
 __all__ = [
     "InsightConfigurationError",

@@ -1,5 +1,5 @@
-from app.services.insights.business_facts import build_business_facts
-from app.services.insights.source_narratives import source_narrative_report
+from app.services.insights.facts.business_facts import build_business_facts
+from app.services.insights.narratives.source_narratives import source_narrative_report
 
 
 def cell(address, value, number_format="General"):

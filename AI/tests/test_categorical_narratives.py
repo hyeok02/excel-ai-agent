@@ -1,4 +1,4 @@
-from app.services.insights.categorical_narratives import categorical_report
+from app.services.insights.narratives.categorical_narratives import categorical_report
 
 
 def cell(address, value, number_format=None):

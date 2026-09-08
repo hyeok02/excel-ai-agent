@@ -1,4 +1,4 @@
-from app.services.insights.business_facts import build_business_facts
+from app.services.insights.facts.business_facts import build_business_facts
 
 
 def _cell(address, value):

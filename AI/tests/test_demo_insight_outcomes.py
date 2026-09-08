@@ -1,7 +1,7 @@
-from app.services.insights.fact_trends import numeric_changes
-from app.services.insights.horizontal_trends import horizontal_trend_report
+from app.services.insights.facts.fact_trends import numeric_changes
+from app.services.insights.narratives.horizontal_trends import horizontal_trend_report
 from app.services.insights.quality import build_source_report
-from app.services.insights.source_narratives import source_narrative_report
+from app.services.insights.narratives.source_narratives import source_narrative_report
 
 
 def _series(metric="Total Revenue", values=(6.026, 4.725), fmt="0.0\\%"):

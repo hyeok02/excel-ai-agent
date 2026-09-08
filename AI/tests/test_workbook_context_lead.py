@@ -1,7 +1,7 @@
-from app.services.insights.comparable_narratives import comparable_transaction_report
+from app.services.insights.narratives.comparable_narratives import comparable_transaction_report
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
-from app.services.insights.trend_narratives import trend_report
-from app.services.insights.validator import validate_workbook_insights
+from app.services.insights.narratives.trend_narratives import trend_report
+from app.services.insights.verification.validator import validate_workbook_insights
 from tests.support.narrative_contexts import trend_context
 
 

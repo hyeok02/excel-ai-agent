@@ -13,7 +13,7 @@ def answer_is_grounded(
     sources = [question, *_evidence_sources(evidence), _reporting_language()]
     sources.extend(_semantic_units(sources))
     sources.extend(_covered_verified_facts(execution, references))
-    from app.services.insights.claim_grounding import grounded_claim
+    from app.services.insights.verification.claim_grounding import grounded_claim
 
     return bool(sources) and grounded_claim(answer, sources, references)
 

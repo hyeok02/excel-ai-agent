@@ -1,7 +1,7 @@
 import re
 from datetime import date
 
-from app.services.insights.numeric_validation import numbers
+from app.services.insights.verification.numeric_validation import numbers
 
 
 def value_is_authorized(value: object, instruction: str) -> bool:

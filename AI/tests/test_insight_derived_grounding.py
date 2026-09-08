@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.insights.derived_claim_grounding import grounded_derivation
+from app.services.insights.verification.derived_claim_grounding import grounded_derivation
 
 
 REFERENCES = {"sheet1!a2:c2"}

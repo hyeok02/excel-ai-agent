@@ -3,7 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 from app.agent.execution import AgentExecution
 from app.agent.query.calculations import verified_calculations
-from app.services.insights.numeric_validation import (
+from app.services.insights.verification.numeric_validation import (
     NUMBER_PATTERN,
     numbers,
 )

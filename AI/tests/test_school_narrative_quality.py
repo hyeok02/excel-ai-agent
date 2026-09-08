@@ -4,11 +4,11 @@ from io import BytesIO
 
 from openpyxl import Workbook
 
-from app.services.insights.context import build_workbook_context
+from app.services.insights.facts.context import build_workbook_context
 from app.services.insights.quality import build_source_report
-from app.services.insights.reference_matching import matching_references
-from app.services.insights.validation_index import extract_references
-from app.services.insights.validator import validate_workbook_insights
+from app.services.insights.verification.reference_matching import matching_references
+from app.services.insights.verification.validation_index import extract_references
+from app.services.insights.verification.validator import validate_workbook_insights
 from app.services.workbook_parser import parse_workbook
 
 

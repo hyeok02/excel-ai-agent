@@ -1,4 +1,4 @@
-from app.services.insights.validation_index import extract_references
+from app.services.insights.verification.validation_index import extract_references
 
 
 def test_quoted_sheet_names_unescape_excel_apostrophes_without_colliding():
