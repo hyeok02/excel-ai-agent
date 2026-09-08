@@ -33,7 +33,8 @@ def trend_report(context):
                and c["latest_period"] == primary["latest_period"]][:4]
     detail = ""
     if related:
-        fragments = [f"{c['metric']} 항목은 {_change(c, metric_unit(c['metric'], records) or unit, False)}"
+        fragments = [f"{metric_name(c['metric'])} 항목은 "
+                     f"{_change(c, metric_unit(c['metric'], records) or unit, False)}"
                      for c in related]
         detail = f"같은 기간 {'. '.join(fragments)}."
         items.append(insight("주요 항목별 변화", detail,
