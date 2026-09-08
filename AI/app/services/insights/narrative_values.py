@@ -59,7 +59,10 @@ def workbook_identity(context):
         name, refs = identity(sheet)
         if name:
             return name.split(" (")[0].strip(), refs
-    return "", []
+    from app.services.insights.subject_detection import spanning_subject
+
+    name, refs = spanning_subject(context)
+    return (name.split(" (")[0].strip(), refs) if name else ("", [])
 
 
 def finite(value):
