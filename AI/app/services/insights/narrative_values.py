@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 
 from app.services.insights.fact_trends import is_identity_row
+from app.services.insights.glossary import readable
 from app.services.insights.models import WorkbookInsight
 
 
@@ -86,10 +87,8 @@ def overall(metric):
 
 
 def metric_name(metric):
-    # This is a display translation of an explicit source header, not a domain guess.
-    if metric.casefold().strip() == "total employees":
-        return "전체 직원 수"
-    return metric
+    # A display translation of an explicit source header, not a domain guess.
+    return readable(metric)
 
 
 def identity(sheet):

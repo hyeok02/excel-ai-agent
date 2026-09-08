@@ -5,6 +5,7 @@ axis, so a change narrative has nothing to compare. What they report is the
 current level of each figure, largest first.
 """
 from app.services.insights.derived_metrics import derived_metric, magnitude_weight
+from app.services.insights.glossary import readable
 from app.services.insights.narrative_values import finite, insight, number, reference
 from app.services.insights.sheet_scope import narrative_sheet_groups
 from app.services.insights.table_dates import column as col
@@ -86,7 +87,7 @@ def _figure(row):
 
 def _listing(figures):
     return ", ".join(
-        f"{' '.join(str(label['value']).split())} {number(value['value'])}"
+        f"{readable(label['value'])} {number(value['value'])}"
         for label, value, _ in figures
     )
 

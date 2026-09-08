@@ -7,6 +7,7 @@ table actually says is how its records are distributed.
 from app.services.insights.categorical_columns import (
     category_column, date_column, header_index, header_like, measurable,
 )
+from app.services.insights.glossary import readable, translate
 from app.services.insights.narrative_values import (
     insight, number, period, reference, subject_particle,
 )
@@ -70,20 +71,22 @@ def _region_report(sheet, rows, title, carried=None):
     name, counts, cells = category
     total = sum(count for _, count in counts)
     top_value, top_count = counts[0]
-    kind = _title(title) or name
+    kind = readable(_title(title) or name)
     share = number(round(top_count / total * 100, 1))
-    following = ", ".join(f"{value} {number(count)}건"
+    following = ", ".join(f"{translate(value) or value} {number(count)}건"
                           for value, count in counts[1:3])
     tail = f", 이어서 {following}입니다" if following else "입니다"
+    headline = readable(top_value)
     items = [insight(
         f"{kind} 구성",
-        f"‘{top_value}’{subject_particle(top_value)} {number(total)}건 중 "
+        f"‘{headline}’{subject_particle(headline)} {number(total)}건 중 "
         f"{number(top_count)}건({share}%)으로 가장 많고{tail}.",
         _evidence(sheet, cells),
     )]
     listed = _distribution(name, counts, total)
     if listed:
-        items.append(insight(f"{name} 분포", listed, _evidence(sheet, cells)))
+        items.append(insight(f"{readable(name)} 분포", listed,
+                             _evidence(sheet, cells)))
     dated = _dates(sheet, header, records)
     if dated:
         items.append(dated)
@@ -98,10 +101,11 @@ def _title(value):
 def _distribution(name, counts, total):
     if len(counts) < 2:
         return ""
-    parts = [f"{value} {number(count)}건" for value, count in counts[:MAX_LISTED]]
+    parts = [f"{translate(value) or value} {number(count)}건"
+             for value, count in counts[:MAX_LISTED]]
     rest = len(counts) - len(parts)
     tail = f", 그 밖에 {number(rest)}개" if rest > 0 else ""
-    return (f"‘{name}’ 항목은 {len(counts)}가지로 나뉩니다. "
+    return (f"‘{readable(name)}’ 항목은 {len(counts)}가지로 나뉩니다. "
             f"{', '.join(parts)}{tail}입니다.")
 
 
@@ -116,7 +120,7 @@ def _dates(sheet, header, records):
     detail = (f" 가장 많은 날은 {period(peak_value)}로 {number(peak_count)}건입니다."
               if peak_count > 1 else "")
     return insight(
-        f"{name} 분포",
+        f"{readable(name)} 분포",
         f"기록은 {span} 모두 {number(len(counts))}개 시점에 걸쳐 있습니다.{detail}",
         _evidence(sheet, cells),
     )

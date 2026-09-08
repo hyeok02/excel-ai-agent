@@ -1,5 +1,6 @@
 """Narratives for normalized, source-addressable horizontal metric series."""
 from app.services.insights.derived_metrics import derived_metric
+from app.services.insights.glossary import readable
 from app.services.insights.display_quality import business_priority, metric_family
 from app.services.insights.models import WorkbookInsight
 from datetime import date
@@ -70,7 +71,8 @@ def _insight(sheet, series, owner=("", ()), unit=("", ())):
     metric = str(series.get("metric", "")).strip()
     scope = str(series.get("scope") or "").strip()
     holder, holder_refs = owner
-    named = f"{scope}의 {metric}" if scope else metric
+    named = (f"{readable(scope)}의 {readable(metric)}" if scope
+             else readable(metric))
     subject = f"{holder}의 {named}" if holder else named
     money, money_refs = unit
     if money and PER_SHARE.search(f"{scope} {metric}"):

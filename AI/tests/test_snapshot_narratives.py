@@ -23,9 +23,10 @@ def test_reports_current_levels_largest_first() -> None:
     items, overview = snapshot_report(context(FIGURES, "VALUATION"))
     assert items
     assert items[0].fact.startswith(
-        "VALUATION의 주요 수치는 Market Cap 1,018,667, TEV 1,081,598"
+        "VALUATION의 주요 수치는 시가총액(Market Cap) 1,018,667, 기업가치(TEV) 1,081,598"
     )
-    assert items[0].fact.index("Total Debt 67,095") < items[0].fact.index("3 Year Beta")
+    assert (items[0].fact.index("총부채(Total Debt) 67,095")
+            < items[0].fact.index("3 Year Beta"))
     assert overview == items[0].fact
 
 
@@ -37,6 +38,7 @@ def test_ratios_are_reported_apart_from_measured_figures() -> None:
     assert "Total Debt/EBITDA" not in items[0].fact
     assert items[1].title == "비율 지표"
     assert "Total Debt/EBITDA 1.41" in items[1].fact
+    assert "비율 지표" == items[1].title
 
 
 def test_a_dated_series_is_left_to_the_trend_narratives() -> None:
