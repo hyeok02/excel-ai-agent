@@ -15,31 +15,6 @@ def number(value):
     return f"{parsed:,.2f}".rstrip("0").rstrip(".")
 
 
-AMOUNT_NOTE = re.compile(
-    r"\bin\s+\$?\s*(millions|billions|thousands)\b"
-    r"|단위\s*[:：(]?\s*(백만|십억|천)",
-    re.I,
-)
-AMOUNT_TEXT = {"millions": "백만 달러", "billions": "십억 달러",
-               "thousands": "천 달러", "백만": "백만", "십억": "십억", "천": "천"}
-PER_SHARE = re.compile(r"per\s+share|\beps\b|주당", re.I)
-
-
-def amount_unit(sheet):
-    """Tables state their money unit once, in a note above the numbers."""
-    name = str(sheet.get("name", ""))
-    for region in sheet.get("business_facts", {}).get("table_regions", []):
-        for row in region.get("rows", []):
-            for cell in row:
-                found = AMOUNT_NOTE.search(str(cell.get("value", "")))
-                if found and cell.get("cell"):
-                    key = (found.group(1) or found.group(2)).casefold()
-                    text = AMOUNT_TEXT.get(key, "")
-                    if text:
-                        return text, [reference(name, cell["cell"])]
-    return "", []
-
-
 def subject_particle(text):
     """Pick 이/가 from the word the reader says: a gloss in brackets is an aside."""
     spoken = re.sub(r"\s*[(（][^)）]*[)）]\s*$", "", str(text)).strip()
