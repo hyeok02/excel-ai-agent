@@ -7,7 +7,9 @@ table actually says is how its records are distributed.
 from app.services.insights.categorical_columns import (
     category_column, date_column, header_index, header_like, measurable,
 )
-from app.services.insights.narrative_values import insight, number, period, reference
+from app.services.insights.narrative_values import (
+    insight, number, period, reference, subject_particle,
+)
 from app.services.insights.sheet_scope import narrative_sheet_groups
 from app.services.insights.table_inputs import narrative_regions
 
@@ -60,12 +62,13 @@ def _region_report(sheet, rows, title, carried=None):
     name, counts, cells = category
     total = sum(count for _, count in counts)
     top_value, top_count = counts[0]
-    scope = f"{_title(title)}에는" if _title(title) else "이 표에는"
+    scope = f"{_title(title)}에" if _title(title) else "이 표에"
     share = number(round(top_count / total * 100, 1))
     items = [insight(
         f"{name} 구성",
-        f"{scope} 총 {number(total)}건의 기록이 있으며, {name} 기준으로 "
-        f"‘{top_value}’가 {number(top_count)}건({share}%)으로 가장 많습니다.",
+        f"{scope} 기록된 {number(total)}건 가운데 ‘{top_value}’"
+        f"{subject_particle(top_value)} {number(top_count)}건({share}%)으로 "
+        "가장 많습니다.",
         _evidence(sheet, cells),
     )]
     listed = _distribution(name, counts, total)
@@ -88,8 +91,8 @@ def _distribution(name, counts, total):
         return ""
     parts = [f"{value} {number(count)}건" for value, count in counts[:MAX_LISTED]]
     rest = len(counts) - len(parts)
-    tail = f", 그 밖에 {number(rest)}개 항목" if rest > 0 else ""
-    return (f"{name}은 {len(counts)}개 값으로 나뉘며, 구성은 "
+    tail = f", 그 밖에 {number(rest)}개" if rest > 0 else ""
+    return (f"‘{name}’ 항목은 {len(counts)}가지로 나뉩니다. "
             f"{', '.join(parts)}{tail}입니다.")
 
 
@@ -105,10 +108,8 @@ def _dates(sheet, header, records):
               if peak_count > 1 else "")
     return insight(
         f"{name} 분포",
-        f"기록은 {span} 분포하며, 서로 다른 {name} 값은 "
-        f"{number(len(counts))}개입니다.{detail}",
+        f"기록은 {span} 모두 {number(len(counts))}개 시점에 걸쳐 있습니다.{detail}",
         _evidence(sheet, cells),
-        "trend",
     )
 
 

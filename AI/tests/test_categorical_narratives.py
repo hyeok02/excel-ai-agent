@@ -24,9 +24,9 @@ def test_counts_records_instead_of_reciting_rows() -> None:
         {"title": None, "rows": [HEADER, *RECORDS]},
     ]))
     assert items
-    assert "총 6건" in items[0].fact
-    assert "‘회의’가 3건(50%)" in items[0].fact
-    assert "유형 기준으로" in items[0].fact
+    assert items[0].title == "유형 구성"
+    assert "이 표에 기록된 6건 가운데" in items[0].fact
+    assert "‘회의’가 3건(50%)으로 가장 많습니다" in items[0].fact
     assert "회의 3건" in items[1].fact and "계약 2건" in items[1].fact
     assert "2025년 12월 1일부터 2025년 12월 5일까지" in overview
 
@@ -36,7 +36,7 @@ def test_header_left_in_its_own_region_still_names_the_columns() -> None:
         {"title": "기록", "rows": [HEADER]},
         {"title": None, "rows": RECORDS},
     ]))
-    assert items and "유형 기준으로" in items[0].fact
+    assert items and items[0].title == "유형 구성"
 
 
 def test_measurement_tables_are_left_to_the_other_narratives() -> None:

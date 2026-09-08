@@ -12,6 +12,7 @@ def structured_lead(
 ) -> str:
     return (
         _comparison_lead(context, report)
+        or _record_lead(report)
         or _trend_lead(report)
         or _event_lead(context, report)
         or _ranked_lead(report)
@@ -34,6 +35,18 @@ def _comparison_lead(context, report):
     return ""
 
 
+def _record_lead(report):
+    """A list of records is described by how many and over what span."""
+    counted = [item for item in report.insights if item.title.endswith(" 구성")]
+    total = re.search(r"기록된 ([\d,]+)건", counted[0].fact) if counted else None
+    if not total:
+        return ""
+    span = next((found for item in report.insights
+                 if (found := re.search(r"기록은 (.+?까지)", item.fact))), None)
+    when = f"{span.group(1)} " if span else ""
+    return f"이 파일은 {when}기록된 {total.group(1)}건을 정리한 목록입니다."
+
+
 def _trend_lead(report):
     items = [item for item in report.insights if item.category == "trend"
              and not item.title.startswith("주요 항목별")]
@@ -42,13 +55,18 @@ def _trend_lead(report):
     if len(items) == 1:
         topic = re.sub(r"\s+변화$", "", " ".join(items[0].title.split()))
         return f"이 파일은 {topic} 변동을 다룹니다."
-    topics = []
+    topics, owners = [], set()
     for item in items[:3]:
         topic = re.sub(r"\s+변화$", "", " ".join(item.title.split()))
-        topic = topic.rsplit("의 ", 1)[-1]
+        head, _, tail = topic.rpartition("의 ")
+        if head:
+            owners.add(head)
+        topic = tail or topic
         if topic.casefold() not in {value.casefold() for value in topics}:
             topics.append(topic)
-    return f"이 파일은 {'와 '.join(topics[:2])} 등 주요 수치의 기간별 변동을 다룹니다."
+    owner = f"{owners.pop()}의 " if len(owners) == 1 else ""
+    return (f"이 파일은 {owner}{'와 '.join(topics[:2])} 등 "
+            "주요 수치의 기간별 변동을 다룹니다.")
 
 
 def _event_lead(context, report):

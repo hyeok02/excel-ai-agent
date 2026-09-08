@@ -2,13 +2,18 @@
 from app.services.insights.derived_metrics import derived_metric
 from app.services.insights.display_quality import business_priority, metric_family
 from app.services.insights.models import WorkbookInsight
-from app.services.insights.narrative_values import number, period, reference
+from datetime import date
+
+from app.services.insights.narrative_values import (
+    PER_SHARE, amount_unit, number, period, reference, workbook_identity,
+)
 from app.services.insights.sheet_scope import narrative_sheet_groups
 
 
 def horizontal_trend_report(context):
     primary, comparisons = narrative_sheet_groups(context)
-    candidates = _candidates(primary) or _candidates(comparisons)
+    owner = workbook_identity(context)
+    candidates = _candidates(primary, owner) or _candidates(comparisons, owner)
     selected, seen, families = [], set(), set()
     for _, insight in sorted(candidates, key=lambda item: item[0], reverse=True):
         metric = insight.title.rsplit(" 변화", 1)[0].casefold()
@@ -24,18 +29,20 @@ def horizontal_trend_report(context):
     return selected, " ".join(item.fact for item in selected[:2])
 
 
-def _candidates(sheets):
+def _candidates(sheets, owner=("", ())):
     results = []
     for source_order, sheet in sheets:
         facts = sheet.get("business_facts", {})
         extracted = facts.get("horizontal_series", [])
         derived = {_signature(item) for item in extracted if _derived(item)}
+        unit = amount_unit(sheet)
         for series_order, series in enumerate(extracted):
-            insight = _insight(str(sheet.get("name", "")), series)
+            insight = _insight(str(sheet.get("name", "")), series, owner, unit)
             if insight:
                 priority = (
                     not _derived(series) and _signature(series) not in derived,
                     business_priority(series.get("metric")),
+                    _settled(series),
                     _basis_priority(series.get("basis")),
                     str(series.get("points", [{}])[-1].get("period", "")),
                     -source_order,
@@ -45,7 +52,14 @@ def _candidates(sheets):
     return results
 
 
-def _insight(sheet, series):
+def _settled(series):
+    """A series running past today is a forecast, not a record of what happened."""
+    points = series.get("points", [])
+    last = str(points[-1].get("period", "")) if points else ""
+    return 0 if last[:10] > date.today().isoformat() else 1
+
+
+def _insight(sheet, series, owner=("", ()), unit=("", ())):
     points = series.get("points", [])
     if len(points) < 2:
         return None
@@ -55,7 +69,12 @@ def _insight(sheet, series):
         return None
     metric = str(series.get("metric", "")).strip()
     scope = str(series.get("scope") or "").strip()
-    subject = f"{scope}의 {metric}" if scope else metric
+    holder, holder_refs = owner
+    named = f"{scope}의 {metric}" if scope else metric
+    subject = f"{holder}의 {named}" if holder else named
+    money, money_refs = unit
+    if money and PER_SHARE.search(f"{scope} {metric}"):
+        money, money_refs = "", []
     if _percentage(points):
         old_text, new_text = _percent(old, earliest), _percent(new, latest)
         fact = (
@@ -65,12 +84,12 @@ def _insight(sheet, series):
     else:
         change = new - old
         rate = abs(change / old * 100) if old else None
-        change_text = number(abs(change))
+        change_text = f"{number(abs(change))}{money}"
         if rate is not None:
             change_text += f"({rate:.2f}%)"
         fact = (
-            f"{subject}: {period(earliest['period'])} {number(old)}에서 "
-            f"{period(latest['period'])} {number(new)}로 "
+            f"{subject}: {period(earliest['period'])} {number(old)}{money}에서 "
+            f"{period(latest['period'])} {number(new)}{money}로 "
             f"{change_text} {_direction(old, new)}했습니다."
         )
     evidence = [
@@ -83,7 +102,8 @@ def _insight(sheet, series):
         fact=fact,
         category="trend",
         severity="info",
-        evidence=[reference(sheet, cell) for cell in dict.fromkeys(evidence) if cell],
+        evidence=[*holder_refs, *money_refs,
+                  *(reference(sheet, cell) for cell in dict.fromkeys(evidence) if cell)],
         confidence=1.0,
     )
 
