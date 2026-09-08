@@ -40,10 +40,6 @@ const AnalysisResultSection = ({
         />
       )}
 
-      {mode === 'LLM' && workbook.formulaRiskSummary && (
-        <FormulaRiskSection summary={workbook.formulaRiskSummary} />
-      )}
-
       {mode === 'BFS' && (
         <BfsAnalysisWorkspace key={`${result.analysisId}-${mode}`} workbook={workbook} />
       )}
@@ -55,6 +51,10 @@ const AnalysisResultSection = ({
             sourceAvailable={result.sourceAvailable}
           />
           <AdvancedAnalysisSection>
+            {workbook.formulaRiskSummary && (
+              <FormulaRiskSection summary={workbook.formulaRiskSummary} />
+            )}
+
             <WorkbookSemanticOverview
               excludedSheets={workbook.excludedSheets ?? []}
               sheets={workbook.sheets}
