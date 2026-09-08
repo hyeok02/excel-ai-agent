@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import {
@@ -32,6 +33,8 @@ export const useAnalysisRun = (
 ) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  // 닫은 분석은 주소에서 지워지기 전에도 다시 불러오지 않는다.
+  const [dismissedId, setDismissedId] = useState<string | null>(null)
   const analysisId = searchParams.get(ANALYSIS_ID_PARAM)
 
   const mutation = useMutation({
@@ -63,7 +66,11 @@ export const useAnalysisRun = (
   })
 
   const restored = useQuery({
-    enabled: Boolean(analysisId) && !mutation.isPending && !mutation.data,
+    enabled:
+      Boolean(analysisId) &&
+      analysisId !== dismissedId &&
+      !mutation.isPending &&
+      !mutation.data,
     queryFn: () => resumeAnalysis(analysisId as string, progress.updateStatus),
     queryKey: ['analysis', analysisId],
     retry: false,
@@ -88,11 +95,13 @@ export const useAnalysisRun = (
     isError: mutation.isError || restored.isError,
     isPending: mutation.isPending || restored.isFetching,
     open: (nextAnalysisId: string) => {
+      setDismissedId(null)
       mutation.reset()
       progress.reset(false)
       setSearchParams({ [ANALYSIS_ID_PARAM]: nextAnalysisId })
     },
     reset: () => {
+      setDismissedId(analysisId)
       mutation.reset()
       forgetOpenAnalysis()
     },
