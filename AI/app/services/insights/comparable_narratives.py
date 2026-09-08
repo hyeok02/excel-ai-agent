@@ -74,24 +74,31 @@ def _overview(comparison):
     conclusions = []
     value = metrics.get("transaction_value")
     if value:
-        direction = "작았습니다" if value["difference"] < 0 else "컸습니다"
+        direction = "낮았습니다" if value["difference"] < 0 else "높았습니다"
         conclusions.append(
-            f"총 거래가치는 비교군 중앙값보다 "
+            f"{subject}의 전체 거래가격은 비슷한 거래들의 중간 수준보다 "
             f"{abs(value['difference_percent']):.1f}% {direction}."
         )
     multiple = metrics.get("ebitda_multiple")
     if multiple:
         direction = "낮았습니다" if multiple["difference"] < 0 else "높았습니다"
+        same_direction = value and (value["difference"] < 0) == (multiple["difference"] < 0)
+        topic = (
+            "회사의 이익 규모를 고려한 가격도" if same_direction
+            else "회사의 이익 규모를 고려한 가격은"
+        )
         conclusions.append(
-            f"EBITDA 대비 거래가격은 비교군 중앙값보다 "
+            f"{topic} 비슷한 거래들의 중간 수준보다 "
             f"{abs(multiple['difference_percent']):.1f}% {direction}."
         )
         if multiple["valid_count"] < multiple["peer_count"]:
+            price = "저렴했다고" if multiple["difference"] < 0 else "비쌌다고"
             conclusions.append(
-                f"다만 EBITDA 배수는 비교거래 {multiple['peer_count']}건 중 "
-                f"{multiple['valid_count']}건만 확인돼 가격 수준을 단정하기 어렵습니다."
+                f"다만 이익 자료가 확인되는 비교 거래는 "
+                f"{multiple['peer_count']}건 중 {multiple['valid_count']}건뿐이어서, "
+                f"{subject}의 거래가 실제로 {price} 단정하기 어렵습니다."
             )
-    return f"{subject} 거래를 비교군과 대조했습니다. " + " ".join(conclusions)
+    return " ".join(conclusions)
 
 
 def _display(metric, value):
