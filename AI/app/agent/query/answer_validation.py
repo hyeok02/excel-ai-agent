@@ -5,6 +5,8 @@ from app.agent.query.answer_grounding import (
     verified_support_references,
 )
 from app.agent.query.claim_bindings import answer_bindings_supported
+from app.agent.query.comparison_answers import validated_comparison_answer
+from app.agent.query.comparison_evidence import available_evidence as _available_evidence
 from app.agent.query.models import (
     QuestionAnswer,
     QuestionAnswerDraft,
@@ -26,6 +28,10 @@ def validate_answer(
     index_truncated: bool,
 ) -> QuestionAnswer:
     available = _available_evidence(execution)
+    if canonical := validated_comparison_answer(
+        question, execution, index_truncated, available
+    ):
+        return canonical
     matched, unknown = _match_evidence(draft.evidence, available)
     support = verified_support_references(question, matched, execution)
     supported_evidence, _ = _match_evidence(support, available)
@@ -92,21 +98,6 @@ def _match_evidence(citations, available):
     return [available[key] for key in dict.fromkeys(matched_keys)], unknown
 
 
-def _available_evidence(execution: AgentExecution) -> dict[str, object]:
-    available = {}
-    for step in execution.steps:
-        if not step.result:
-            continue
-        for item in step.result.evidence:
-            if not item.reference:
-                continue
-            key = normalize_reference(f"{item.sheet_name}!{item.reference}")
-            current = available.get(key)
-            if key and (current is None or _quality(item) > _quality(current)):
-                available[key] = item
-    return available
-
-
 def _blocked(question, execution, evidence, limitations, answer):
     return QuestionAnswer(
         question=question,
@@ -116,12 +107,6 @@ def _blocked(question, execution, evidence, limitations, answer):
         selected_tools=_tools(execution),
         evidence=[_present(item) for item in evidence],
         limitations=_unique(limitations),
-    )
-
-
-def _quality(item: object) -> int:
-    return 2 * int(getattr(item, "value", None) is not None) + int(
-        bool(getattr(item, "formula", None))
     )
 
 

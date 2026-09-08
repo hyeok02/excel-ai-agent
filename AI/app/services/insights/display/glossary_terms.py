@@ -52,6 +52,8 @@ TERMS = {
     "sales & marketing": "영업·마케팅",
     "general & administrative": "일반관리",
     "research & development": "연구개발",
+    "services": "서비스",
+    "other": "기타",
     # 사건·공시 유형
     "key developments": "주요 사건",
     "key development": "주요 사건",

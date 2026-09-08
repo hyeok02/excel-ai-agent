@@ -2,6 +2,14 @@
 from app.agent.execution import AgentExecution, AgentStepStatus
 from app.agent.query.references import matching_references, normalize_reference
 from app.agent.query.search_terms import search_terms
+from app.agent.query.translated_evidence import translated_evidence_sources
+
+REPORTING_LANGUAGE = (
+    "단 다만 자료 해석 신중해야 합니다 신뢰도 주의 필요합니다 대표성 한계 "
+    "확인되는 확인된 것 건뿐이어서 건뿐이므로 불과 "
+    "감소했고 증가했고 감소하며 증가하며"
+)
+
 
 def answer_is_grounded(
     answer: str,
@@ -10,7 +18,8 @@ def answer_is_grounded(
     question: str = "",
 ) -> bool:
     references = _cited_references(evidence)
-    sources = [question, *_evidence_sources(evidence), _reporting_language()]
+    sources = [question, *_evidence_sources(evidence), REPORTING_LANGUAGE]
+    sources.extend(translated_evidence_sources(evidence))
     sources.extend(_semantic_units(sources))
     sources.extend(_covered_verified_facts(execution, references))
     from app.services.insights.verification.claim_grounding import grounded_claim
@@ -139,11 +148,3 @@ def _semantic_units(sources: list[str]) -> list[str]:
          "이벤트 발표 공시 소식"),
     )
     return [words for markers, words in aliases if any(marker in text for marker in markers)]
-
-
-def _reporting_language() -> str:
-    return (
-        "단 다만 자료 해석 신중해야 합니다 신뢰도 주의 필요합니다 대표성 한계 "
-        "확인되는 확인된 것 건뿐이어서 건뿐이므로 불과"
-        " 감소했고 증가했고 감소하며 증가하며"
-    )

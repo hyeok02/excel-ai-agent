@@ -62,6 +62,19 @@ def test_verified_fact_adds_omitted_range_support() -> None:
     assert verified_fallback_answer("EBITDA 비교", evidence, execution) is None
 
 
+def test_cited_english_header_allows_its_korean_glossary_name_only() -> None:
+    services = [_evidence("W107", "Department", "Services")]
+    research = [_evidence("N107", "Department", "Research & Development")]
+    question = "어느 부서가 가장 많이 감소했어?"
+
+    assert answer_is_grounded(
+        "서비스 부서가 가장 많이 감소했습니다.", services, _execution(), question
+    )
+    assert not answer_is_grounded(
+        "서비스 부서가 가장 많이 감소했습니다.", research, _execution(), question
+    )
+
+
 def _evidence(reference: str, description: str, value: object):
     return SimpleNamespace(
         sheet_name="거래" if reference != "A2" and reference != "B2" else "매출현황",

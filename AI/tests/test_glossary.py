@@ -5,6 +5,7 @@ def test_known_terms_keep_the_original_beside_the_reading() -> None:
     assert readable("Revenue") == "매출(Revenue)"
     assert readable("EBITDA") == "상각전영업이익(EBITDA)"
     assert readable("KEY DEVELOPMENTS") == "주요 사건(KEY DEVELOPMENTS)"
+    assert readable("Services") == "서비스(Services)"
 
 
 def test_unknown_terms_are_shown_exactly_as_written() -> None:
