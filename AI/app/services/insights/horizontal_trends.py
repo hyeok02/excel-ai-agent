@@ -1,4 +1,5 @@
 """Narratives for normalized, source-addressable horizontal metric series."""
+from app.services.insights.derived_metrics import derived_metric
 from app.services.insights.display_quality import business_priority, metric_family
 from app.services.insights.models import WorkbookInsight
 from app.services.insights.narrative_values import number, period, reference
@@ -27,10 +28,13 @@ def _candidates(sheets):
     results = []
     for source_order, sheet in sheets:
         facts = sheet.get("business_facts", {})
-        for series_order, series in enumerate(facts.get("horizontal_series", [])):
+        extracted = facts.get("horizontal_series", [])
+        derived = {_signature(item) for item in extracted if _derived(item)}
+        for series_order, series in enumerate(extracted):
             insight = _insight(str(sheet.get("name", "")), series)
             if insight:
                 priority = (
+                    not _derived(series) and _signature(series) not in derived,
                     business_priority(series.get("metric")),
                     _basis_priority(series.get("basis")),
                     str(series.get("points", [{}])[-1].get("period", "")),
@@ -82,6 +86,21 @@ def _insight(sheet, series):
         evidence=[reference(sheet, cell) for cell in dict.fromkeys(evidence) if cell],
         confidence=1.0,
     )
+
+
+def _signature(series):
+    """Same row, same numbers: one copy may have lost its percent formatting."""
+    points = series.get("points", [])
+    ends = [points[0].get("value"), points[-1].get("value")] if points else []
+    return (str(series.get("metric", "")).casefold(), *(str(value) for value in ends))
+
+
+def _derived(series):
+    """A growth rate or ratio answers how the change changed: never the headline."""
+    if _percentage(series.get("points", [])):
+        return True
+    name = f"{series.get('scope') or ''} {series.get('metric') or ''}"
+    return derived_metric(name)
 
 
 def _percentage(points):

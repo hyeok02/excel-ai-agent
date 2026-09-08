@@ -2,6 +2,7 @@ import re
 from typing import Any
 
 from app.services.insights.comparable_transactions import extract_comparable_transactions
+from app.services.insights.derived_metrics import change_score
 from app.services.insights.fact_labels import (
     build_fact_labels,
     header_addresses,
@@ -64,7 +65,7 @@ def build_business_facts(
     tables = build_table_regions(regions)
     return {
         "selected_records": records,
-        "numeric_changes": sorted(changes, key=_change_score, reverse=True)[:4],
+        "numeric_changes": sorted(changes, key=change_score, reverse=True)[:4],
         "horizontal_series": extract_horizontal_series(regions),
         "comparable_transactions": extract_comparable_transactions(sheet_name, regions),
         "time_series": trend_rows,
@@ -117,12 +118,6 @@ def _record_score(values: list[dict[str, object]], role: str | None) -> int:
 def _identity_score(values: list[dict[str, object]]) -> int:
     """대상을 적어 둔 식별 행을 행의 모양으로 찾는다."""
     return 2 if is_identity_row(values) else 0
-
-
-def _change_score(change):
-    metric = str(change.get("metric", ""))
-    is_total = bool(re.search(r"\btotal\b|전체|합계|총합", metric, re.I))
-    return is_total, abs(float(change.get("change_rate_percent", 0)))
 
 
 def _trend_scope(regions, region_index, values):

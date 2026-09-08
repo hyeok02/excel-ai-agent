@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
 
+from app.services.insights.derived_metrics import derived_metric, magnitude_weight
 from app.services.insights.display_quality import is_identifier_label
 
 MAX_TEXT_LENGTH = 120
@@ -37,7 +38,9 @@ def numeric_changes(records: list[dict[str, object]]) -> list[dict[str, object]]
         )
     return sorted(
         changes, key=lambda item: (
+            not derived_metric(item["metric"]),
             bool(re.search(r"\btotal\b|전체|합계|총합", item["metric"], re.I)),
+            magnitude_weight(item["latest_value"]),
             abs(item["change_rate_percent"]),
         ), reverse=True
     )[:4]
