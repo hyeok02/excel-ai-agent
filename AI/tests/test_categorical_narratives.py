@@ -25,10 +25,12 @@ def test_counts_records_instead_of_reciting_rows() -> None:
     ]))
     assert items
     assert items[0].title == "유형 구성"
-    assert "이 표에 기록된 6건 가운데" in items[0].fact
-    assert "‘회의’가 3건(50%)으로 가장 많습니다" in items[0].fact
+    assert items[0].fact == (
+        "‘회의’가 6건 중 3건(50%)으로 가장 많고, 이어서 계약 2건, 점검 1건입니다."
+    )
     assert "회의 3건" in items[1].fact and "계약 2건" in items[1].fact
-    assert "2025년 12월 1일부터 2025년 12월 5일까지" in overview
+    assert overview == items[0].fact
+    assert "2025년 12월 1일부터 2025년 12월 5일까지" in items[2].fact
 
 
 def test_header_left_in_its_own_region_still_names_the_columns() -> None:
@@ -37,6 +39,15 @@ def test_header_left_in_its_own_region_still_names_the_columns() -> None:
         {"title": None, "rows": RECORDS},
     ]))
     assert items and items[0].title == "유형 구성"
+
+
+def test_a_caption_above_the_table_names_what_is_recorded() -> None:
+    items, _ = categorical_report(context([
+        {"title": None, "rows": [[cell("C2", "일일 점검 기록")]]},
+        {"title": None, "rows": [HEADER]},
+        {"title": None, "rows": RECORDS},
+    ]))
+    assert items and items[0].title == "일일 점검 기록 구성"
 
 
 def test_measurement_tables_are_left_to_the_other_narratives() -> None:

@@ -38,13 +38,14 @@ def _comparison_lead(context, report):
 def _record_lead(report):
     """A list of records is described by how many and over what span."""
     counted = [item for item in report.insights if item.title.endswith(" 구성")]
-    total = re.search(r"기록된 ([\d,]+)건", counted[0].fact) if counted else None
+    total = re.search(r"([\d,]+)건 중", counted[0].fact) if counted else None
     if not total:
         return ""
     span = next((found for item in report.insights
                  if (found := re.search(r"기록은 (.+?까지)", item.fact))), None)
-    when = f"{span.group(1)} " if span else ""
-    return f"이 파일은 {when}기록된 {total.group(1)}건을 정리한 목록입니다."
+    when = f"{span.group(1)}의 " if span else ""
+    kind = counted[0].title.rsplit(" 구성", 1)[0]
+    return f"이 파일은 {when}‘{kind}’ 기록 {total.group(1)}건을 정리한 목록입니다."
 
 
 def _trend_lead(report):

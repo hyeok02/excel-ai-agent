@@ -35,16 +35,24 @@ def _candidates(sheets):
     results = []
     for source_order, sheet in sheets:
         facts = sheet.get("business_facts", {})
-        carried = None
+        carried, heading = None, ""
         for region in narrative_regions(facts):
             rows = region.get("rows", [])
             report = _region_report(
-                str(sheet.get("name", "")), rows, region.get("title"), carried,
+                str(sheet.get("name", "")), rows, heading, carried,
             )
             if report:
                 results.append((source_order, *report))
             carried = rows[-1] if rows and header_like(rows[-1]) else carried
+            heading = _heading(rows) or heading
     return results
+
+
+def _heading(rows):
+    """A table announces what it records in a caption of its own, above it."""
+    if len(rows) != 1 or len(rows[0]) != 1:
+        return ""
+    return _title(rows[0][0].get("value"))
 
 
 def _region_report(sheet, rows, title, carried=None):
@@ -62,13 +70,15 @@ def _region_report(sheet, rows, title, carried=None):
     name, counts, cells = category
     total = sum(count for _, count in counts)
     top_value, top_count = counts[0]
-    scope = f"{_title(title)}에" if _title(title) else "이 표에"
+    kind = _title(title) or name
     share = number(round(top_count / total * 100, 1))
+    following = ", ".join(f"{value} {number(count)}건"
+                          for value, count in counts[1:3])
+    tail = f", 이어서 {following}입니다" if following else "입니다"
     items = [insight(
-        f"{name} 구성",
-        f"{scope} 기록된 {number(total)}건 가운데 ‘{top_value}’"
-        f"{subject_particle(top_value)} {number(top_count)}건({share}%)으로 "
-        "가장 많습니다.",
+        f"{kind} 구성",
+        f"‘{top_value}’{subject_particle(top_value)} {number(total)}건 중 "
+        f"{number(top_count)}건({share}%)으로 가장 많고{tail}.",
         _evidence(sheet, cells),
     )]
     listed = _distribution(name, counts, total)
@@ -77,8 +87,7 @@ def _region_report(sheet, rows, title, carried=None):
     dated = _dates(sheet, header, records)
     if dated:
         items.append(dated)
-    overview = " ".join([items[0].fact, *(item.fact for item in items[2:3])])
-    return items, overview, total + (10 if dated else 0)
+    return items, items[0].fact, total + (10 if dated else 0)
 
 
 def _title(value):
