@@ -11,6 +11,7 @@ from app.services.insights.reference_matching import resolve_references
 from app.services.insights.review_points import grounded_tokens, mask_known_names
 from app.services.insights.validated_report import assemble_report, add_source_fallback
 from app.services.insights.source_narratives import source_narrative_report
+from app.services.insights.workbook_overview import add_workbook_context
 from app.services.insights.validation_index import (
     REFERENCE_PATTERN, EvidenceIndex, agent_evidence_index, extract_references,
     workbook_evidence_index,
@@ -28,18 +29,22 @@ def validate_workbook_insights(
         ) for sheet in context.get("sheets", [])
     )
     result = _validate(report, index, canonical.insights)
+    validated = None
     if canonical.insights:
         baseline = _validate(canonical, index, canonical.insights)
         if len(baseline.insights) == len(canonical.insights):
             baseline.overview = canonical.overview
             baseline.validation.overview_validated = True
             _merge_model_findings(baseline, result, not comparison_is_complete)
-            return baseline
-    if result.insights:
-        return result
-    from app.services.insights.quality import build_source_report
-    fallback = _validate(build_source_report(context), index)
-    return add_source_fallback(result, fallback)
+            validated = baseline
+    if validated is None:
+        if result.insights:
+            validated = result
+        else:
+            from app.services.insights.quality import build_source_report
+            fallback = _validate(build_source_report(context), index)
+            validated = add_source_fallback(result, fallback)
+    return add_workbook_context(report, validated, context, index)
 
 
 def validate_agent_insights(
@@ -111,7 +116,6 @@ def _validate_insight(
 def _required_citations(item, references):
     required = set().union(*(extract_references(ref) for ref in item.evidence))
     return bool(required) and required <= references
-
 
 def _merge_model_findings(baseline, result, include_extras=True):
     """Reserve room for independently grounded model detail without replacing the overview."""

@@ -22,8 +22,9 @@ def trend_report(context):
         "business_facts", {}).get("selected_records", [])
     subject, owner_refs = identity(sheet)
     unit = metric_unit(primary["metric"], records)
+    metric = metric_name(primary["metric"])
     owner = f"{subject}의 " if subject else ""
-    principal = f"{owner}{metric_name(primary['metric'])}는 {_change(primary, unit)}."
+    principal = f"{owner}{metric}는 {_change(primary, unit)}."
     timeline, timeline_refs = _timeline(primary, records, unit)
     items = [insight(f"{owner}{metric_name(primary['metric'])} 변화", principal + timeline,
                      [*owner_refs, *primary["evidence"], *timeline_refs], "trend")]
@@ -37,7 +38,9 @@ def trend_report(context):
         detail = f"같은 기간 {'. '.join(fragments)}."
         items.append(insight("주요 항목별 변화", detail,
                              [r for c in related for r in c["evidence"]], "trend"))
-    return items, " ".join(part for part in (principal, detail, timeline.strip()) if part)
+    return items, " ".join(
+        part for part in (principal, detail, timeline.strip()) if part
+    )
 
 
 def _trend_candidates(sheets):
