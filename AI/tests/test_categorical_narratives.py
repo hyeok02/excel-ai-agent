@@ -59,7 +59,7 @@ def test_measurement_tables_are_left_to_the_other_narratives() -> None:
     assert categorical_report(context([{"title": None, "rows": rows}])) == ([], "")
 
 
-def test_evidence_points_at_the_counted_cells() -> None:
+def test_evidence_points_at_the_whole_counted_range() -> None:
     items, _ = categorical_report(context([{"title": None, "rows": [HEADER, *RECORDS]}]))
-    assert all("!" in reference for reference in items[0].evidence)
-    assert "'이벤트'!D7" in items[0].evidence
+    assert items[0].evidence == ["'이벤트'!D7:D12"]
+    assert items[-1].evidence == ["'이벤트'!C7:C12"]
