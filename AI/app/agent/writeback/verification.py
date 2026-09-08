@@ -1,4 +1,3 @@
-import hashlib
 from io import BytesIO
 from zipfile import ZipFile
 
@@ -70,21 +69,6 @@ def package_checks(
         _check("excel_extensions", features_preserved, "유효성·확장 기능 보존"),
         _check("recalculation", _recalculation_requested(after), "Excel 실행 시 수식 재계산"),
     ]
-
-def vba_digest(content: bytes) -> str | None:
-    try:
-        with ZipFile(BytesIO(content)) as archive:
-            name = next((item for item in archive.namelist() if item.endswith("vbaProject.bin")), None)
-            return hashlib.sha256(archive.read(name)).hexdigest() if name else None
-    except Exception:
-        return None
-
-def add_macro_check(checks, before: bytes, after: bytes, keep_vba: bool) -> None:
-    if not keep_vba:
-        checks.append(_check("macros", True, "매크로가 없는 .xlsx 파일"))
-        return
-    original, modified = vba_digest(before), vba_digest(after)
-    checks.append(_check("macros", original == modified, "VBA 프로젝트 보존"))
 
 def _formulas(workbook) -> dict[tuple[str, str], str]:
     return {

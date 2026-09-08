@@ -6,8 +6,8 @@ from app.services.workbook_loading import close_workbook, load_workbook_for_read
 
 from app.agent.writeback.models import VerificationCheck, WritebackChange, WritebackManifest
 from app.agent.writeback.package_editor import changed_worksheet_paths, patch_workbook_package
+from app.agent.writeback.macro_verification import add_macro_check
 from app.agent.writeback.verification import (
-    add_macro_check,
     compare_fingerprints,
     package_checks,
     workbook_fingerprint,
