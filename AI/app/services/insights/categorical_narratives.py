@@ -15,7 +15,6 @@ from app.services.insights.sheet_scope import narrative_sheet_groups
 from app.services.insights.table_inputs import narrative_regions
 
 MIN_RECORDS = 5
-MAX_EVIDENCE = 10
 MAX_LISTED = 4
 
 
@@ -127,4 +126,10 @@ def _dates(sheet, header, records):
 
 
 def _evidence(sheet, cells):
-    return [reference(sheet, cell["cell"]) for cell in cells[:MAX_EVIDENCE]]
+    """Cite the counted range itself: a count of 18 must not point at 10 cells."""
+    if not cells:
+        return []
+    span = cells[0]["cell"]
+    if len(cells) > 1:
+        span = f"{span}:{cells[-1]['cell']}"
+    return [reference(sheet, span)]

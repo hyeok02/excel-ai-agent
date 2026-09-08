@@ -41,8 +41,9 @@ def amount_unit(sheet):
 
 
 def subject_particle(text):
-    """Pick 이/가 from the last character so the sentence reads naturally."""
-    last = str(text).strip()[-1:]
+    """Pick 이/가 from the word the reader says: a gloss in brackets is an aside."""
+    spoken = re.sub(r"\s*[(（][^)）]*[)）]\s*$", "", str(text)).strip()
+    last = (spoken or str(text).strip())[-1:]
     if not last:
         return "가"
     if "가" <= last <= "힣":
