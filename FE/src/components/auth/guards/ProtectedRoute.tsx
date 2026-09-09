@@ -21,7 +21,8 @@ const ProtectedRoute = ({ children }: PropsWithChildren) => {
   }
 
   if (!user) {
-    return <Navigate replace state={{ from: location.pathname }} to={ROUTES.login} />
+    const returnUrl = `${location.pathname}${location.search}${location.hash}`
+    return <Navigate replace state={{ from: returnUrl }} to={ROUTES.login} />
   }
 
   return children
