@@ -33,6 +33,9 @@ curl http://localhost:8080/actuator/health
 | `AI_SERVICE_BASE_URL` | `http://localhost:8000` | Python AI 서비스 주소 |
 | `AI_SERVICE_CONNECT_TIMEOUT` | `3s` | AI 서비스 연결 제한 시간 |
 | `AI_SERVICE_READ_TIMEOUT` | `150s` | AI 서비스 응답 제한 시간 |
+| `TELEGRAM_ENABLED` | `false` | 분석 결과 텔레그램 전송 활성화 |
+| `TELEGRAM_BOT_TOKEN` | 빈 값 | BotFather에서 발급한 봇 토큰 |
+| `TELEGRAM_CHAT_ID` | 빈 값 | 분석 결과를 받을 채팅방 ID |
 | `AUTH_SECURITY_ENABLED` | `true` | API 로그인 보호 활성화 |
 | `FRONTEND_BASE_URL` | `http://localhost:5173` | SSO 완료 후 돌아갈 Frontend 주소 |
 | `BOOTSTRAP_ADMIN_USERNAME` | `admin` | 최초 관리자 아이디 |
@@ -61,3 +64,10 @@ curl http://localhost:8080/actuator/health
   - 응답: 답변, 신뢰도, 선택된 Agent Tool, 원본 시트·셀 근거, 분석 한계
 
 Q&A는 기존 분석 ID에 보관된 원본 Excel을 다시 사용하므로 파일을 재업로드하지 않습니다.
+
+## 텔레그램 공유
+
+BotFather에서 봇을 만든 뒤 받을 채팅방에서 봇과 먼저 대화를 시작합니다. 환경 변수에
+`TELEGRAM_ENABLED=true`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`를 설정하면 분석 결과
+화면의 `Telegram` 버튼으로 핵심 결론, 검증된 주요 인사이트, 이상 징후 요약을 전송합니다.
+봇 토큰과 채팅방 ID는 Frontend에 전달하지 않습니다.

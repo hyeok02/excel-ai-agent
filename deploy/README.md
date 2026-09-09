@@ -26,6 +26,10 @@ chmod 600 .env oracle.env backend.env ai.env
 
 환경 파일의 placeholder를 운영 값으로 변경합니다. `.env`의 `PUBLIC_HOST`에는 이 서버를 가리키는 공인 DNS 이름을 입력합니다. Oracle 21c의 관리자 및 애플리케이션 사용자 비밀번호는 영문 대·소문자와 숫자를 포함한 12~30자 ASCII 문자열로 지정합니다. `oracle.env`의 `APP_USER_PASSWORD`와 `backend.env`의 `DB_PASSWORD`는 반드시 같아야 합니다. `CORS_ALLOWED_ORIGINS`와 `FRONTEND_BASE_URL`에는 `https://`를 포함한 실제 공개 주소를 입력합니다.
 
+텔레그램 공유를 사용할 때는 받을 채팅방에서 봇과 먼저 대화를 시작한 뒤 `backend.env`의
+`TELEGRAM_ENABLED=true`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`를 설정합니다. 봇 토큰은
+Frontend 환경 변수나 Git 저장소에 넣지 않습니다.
+
 소유한 도메인이 없다면 데모 환경에서 `IP주소.sslip.io` 형식의 DNS 이름을 사용할 수 있습니다. EC2의 공인 IP가 바뀌면 DNS 이름과 두 URL 환경 변수도 함께 변경해야 합니다.
 
 ## 실행

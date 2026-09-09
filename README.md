@@ -270,6 +270,9 @@ http://localhost:5173
 | `UPLOAD_RETENTION` | `7d` | 원본 파일 보관기간 |
 | `MAX_FILE_SIZE` | `50MB` | 업로드 가능한 단일 파일 크기 |
 | `AUTH_SECURITY_ENABLED` | `true` | 로그인 및 접근 제어 활성화 |
+| `TELEGRAM_ENABLED` | `false` | 분석 결과 텔레그램 공유 활성화 |
+| `TELEGRAM_BOT_TOKEN` | 빈 값 | 서버에서만 사용하는 봇 토큰 |
+| `TELEGRAM_CHAT_ID` | 빈 값 | 시연 메시지를 받을 채팅방 ID |
 | `BOOTSTRAP_ADMIN_USERNAME` | `admin` | 최초 관리자 아이디 |
 | `BOOTSTRAP_ADMIN_PASSWORD` | `admin1234` | 최초 관리자 비밀번호 |
 
