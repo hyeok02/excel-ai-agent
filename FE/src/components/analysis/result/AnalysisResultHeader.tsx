@@ -3,6 +3,7 @@ import { CalendarClock, CheckCircle2 } from 'lucide-react'
 import type { AnalysisMode, AnalysisResultDetails } from '@/api/analysis'
 import AnalysisExportActions from '@/components/analysis/result/AnalysisExportActions'
 import { MODE_PRESENTATION } from '@/components/analysis/result/analysisResultPresentation'
+import TelegramShareButton from '@/components/analysis/result/TelegramShareButton'
 
 interface AnalysisResultHeaderProps {
   mode: AnalysisMode
@@ -33,6 +34,7 @@ const AnalysisResultHeader = ({ mode, result }: AnalysisResultHeaderProps) => {
           {new Date(result.createdAt).toLocaleString('ko-KR')}
         </time>
         <AnalysisExportActions result={result} />
+        <TelegramShareButton analysisId={result.analysisId} />
       </div>
     </div>
   )
