@@ -13,7 +13,7 @@ from app.agent import (
     ToolCategory,
     create_default_tool_registry,
 )
-from app.api.workbooks import _parse_or_bad_request, read_upload
+from app.api.workbooks import parse_or_bad_request, read_upload
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 _registry = create_default_tool_registry()
@@ -71,7 +71,7 @@ async def create_agent_plan(
     planner: Annotated[AgentPlanner, Depends(get_agent_planner)],
     registry: Annotated[AgentToolRegistry, Depends(get_agent_tool_registry)],
 ) -> AgentExecutionPlan:
-    summary = _parse_or_bad_request(file.filename or "", await read_upload(file))
+    summary = await parse_or_bad_request(file.filename or "", await read_upload(file))
     try:
         return await planner.create_plan(intent, summary, registry.list_metadata())
     except PlanGenerationError as exception:

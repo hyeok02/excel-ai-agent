@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 
 from app.agent import AgentExecution
 from app.agent.insights import AgentInsightGenerator, LangChainAgentInsightGenerator
@@ -31,7 +32,7 @@ async def generate_agent_insights(
 ) -> ValidatedWorkbookInsightReport:
     try:
         report = await generator.generate(execution)
-        return validate_agent_insights(report, execution)
+        return await run_in_threadpool(validate_agent_insights, report, execution)
     except InsightGenerationError as exception:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

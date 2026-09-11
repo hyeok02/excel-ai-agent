@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError
 
 from app.agent import (
@@ -14,7 +15,7 @@ from app.agent import (
 from app.agent.planning import ensure_executable_plan
 from app.agent.query import build_workbook_data_index
 from app.api.agent_tools import get_agent_tool_registry
-from app.api.workbooks import _parse_or_bad_request, read_upload
+from app.api.workbooks import parse_or_bad_request, read_upload
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 
@@ -32,12 +33,13 @@ async def execute_agent_plan(
 ) -> AgentExecution:
     execution_plan = _parse_plan(plan, registry)
     content = await read_upload(file)
-    summary = _parse_or_bad_request(file.filename or "", content)
+    summary = await parse_or_bad_request(file.filename or "", content)
     included_sheets = {sheet.name for sheet in summary.sheets}
-    data_index = build_workbook_data_index(
-        summary.filename, content, included_sheets
+    data_index = await run_in_threadpool(
+        build_workbook_data_index, summary.filename, content, included_sheets
     )
-    return executor.execute(
+    return await run_in_threadpool(
+        executor.execute,
         execution_plan,
         AgentToolContext(summary, data_index),
         registry,
