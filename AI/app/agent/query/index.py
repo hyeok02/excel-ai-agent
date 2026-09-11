@@ -77,12 +77,10 @@ def build_workbook_data_index(
     try:
         for sheet_index, formula_sheet in enumerate(selected_sheets):
             value_sheet = values[formula_sheet.title]
+            indexed_row_count = 0
             for row_number, (formula_row, value_row) in enumerate(
                 zip(formula_sheet.iter_rows(), value_sheet.iter_rows()), start=1
             ):
-                if row_number > MAX_ROWS_PER_SHEET:
-                    truncated_sheets.add(formula_sheet.title)
-                    break
                 if cell_count >= MAX_INDEXED_CELLS:
                     truncated_sheets.update(
                         sheet.title for sheet in selected_sheets[sheet_index:]
@@ -90,10 +88,14 @@ def build_workbook_data_index(
                     break
                 cells = _indexed_cells(formula_sheet.title, formula_row, value_row)
                 if cells:
+                    if indexed_row_count >= MAX_ROWS_PER_SHEET:
+                        truncated_sheets.add(formula_sheet.title)
+                        break
                     remaining = MAX_INDEXED_CELLS - cell_count
                     cells = cells[:remaining]
                     rows.append(IndexedRow(formula_sheet.title, row_number, tuple(cells)))
                     cell_count += len(cells)
+                    indexed_row_count += 1
             if cell_count >= MAX_INDEXED_CELLS:
                 truncated_sheets.update(
                     sheet.title for sheet in selected_sheets[sheet_index:]

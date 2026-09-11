@@ -10,6 +10,7 @@ from app.agent.query.models import (
 )
 from app.agent.query.question_validation import unclear_draft_answer, vague_question_answer
 from app.agent.query.router import build_question_plan
+from app.agent.query.workbook_summary_answers import validated_workbook_summary_answer
 from app.agent.registry import AgentToolRegistry
 from app.services.workbook_parsing.models import WorkbookSummary
 
@@ -36,6 +37,8 @@ class WorkbookQuestionService:
         )
         truncated = _search_scope_truncated(execution)
         if canonical := validated_comparison_answer(question, execution, truncated):
+            return canonical
+        if canonical := validated_workbook_summary_answer(question, execution, truncated):
             return canonical
         draft = await self._generator.generate(
             question, summary.filename, execution_context(execution)
