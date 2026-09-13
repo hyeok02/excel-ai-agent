@@ -31,7 +31,7 @@ def build_source_report(
             else " ".join(item.fact for item in selected),
         })
     changes = [change for change in metric_changes(context) if _complete_change(change)]
-    # Identity rows are separate evidence: do not attach their subject to trend cells.
+    # Identity rows are separate evidence: do not attach their subject to change cells.
     insights = [_change_insight(None, change) for change in changes[:limit]]
     if not insights:
         insights = source_record_insights(context, limit)
@@ -111,7 +111,7 @@ def _change_insight(
         ),
         cause=None,
         impact=None,
-        category="trend",
+        category="change",
         severity="info",
         evidence=[str(item) for item in change["evidence"]],
         recommendation=None,

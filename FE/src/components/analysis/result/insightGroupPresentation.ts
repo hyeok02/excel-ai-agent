@@ -1,6 +1,6 @@
 import type { InsightResult } from '@/api/analysis/insightTypes'
 
-export type InsightGroupKey = 'metric' | 'trend' | 'anomaly' | 'additional'
+export type InsightGroupKey = 'metric' | 'trend' | 'change' | 'anomaly' | 'additional'
 
 export interface InsightGroup {
   key: InsightGroupKey
@@ -17,8 +17,13 @@ const GROUP_PRESENTATION: Omit<InsightGroup, 'insights'>[] = [
   },
   {
     key: 'trend',
-    title: '추세',
-    description: '시간에 따라 달라진 핵심 흐름입니다.',
+    title: '기간별 추이',
+    description: '여러 시점에서 확인된 값의 흐름입니다.',
+  },
+  {
+    key: 'change',
+    title: '시점 간 증감',
+    description: '두 시점의 값을 비교한 변화입니다.',
   },
   {
     key: 'anomaly',
@@ -36,6 +41,7 @@ const getGroupKey = (insight: InsightResult): InsightGroupKey => {
   if (insight.category === 'risk' || insight.severity !== 'info') return 'anomaly'
   if (insight.category === 'metric') return 'metric'
   if (insight.category === 'trend') return 'trend'
+  if (insight.category === 'change') return 'change'
   return 'additional'
 }
 

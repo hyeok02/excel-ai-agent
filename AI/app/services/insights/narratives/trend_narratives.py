@@ -26,8 +26,9 @@ def trend_report(context):
     owner = f"{subject}의 " if subject else ""
     principal = f"{owner}{metric}는 {_change(primary, unit)}."
     timeline, timeline_refs = _timeline(primary, records, unit)
+    category = "trend" if timeline else "change"
     items = [insight(f"{owner}{metric_name(primary['metric'])} 변화", principal + timeline,
-                     [*owner_refs, *primary["evidence"], *timeline_refs], "trend")]
+                     [*owner_refs, *primary["evidence"], *timeline_refs], category)]
     related = [c for c in changes[1:] if c["evidence"] == primary["evidence"]
                and c["earliest_period"] == primary["earliest_period"]
                and c["latest_period"] == primary["latest_period"]][:4]
@@ -37,8 +38,8 @@ def trend_report(context):
                      f"{_change(c, metric_unit(c['metric'], records) or unit, False)}"
                      for c in related]
         detail = f"같은 기간 {'. '.join(fragments)}."
-        items.append(insight("주요 항목별 변화", detail,
-                             [r for c in related for r in c["evidence"]], "trend"))
+        items.append(insight(_related_title(metric, related), detail,
+                             [r for c in related for r in c["evidence"]], "change"))
     return items, " ".join(
         part for part in (principal, detail, timeline.strip()) if part
     )
@@ -53,6 +54,15 @@ def _trend_candidates(sheets):
             candidates.append((source_order, any(overall(c["metric"]) for c in changes),
                                sheet, changes))
     return candidates
+
+
+def _related_title(metric, related):
+    paths = [str(change["metric"]).split(" > ", 1) for change in related]
+    if all(len(path) == 2 for path in paths):
+        axes = {path[0].strip().casefold() for path in paths}
+        if len(axes) == 1:
+            return f"{metric_name(paths[0][0].strip())}별 {metric} 변화"
+    return f"{metric}의 주요 항목별 변화"
 
 
 def complete_change(change):

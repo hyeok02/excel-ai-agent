@@ -103,7 +103,7 @@ def _insight(sheet, series, owner=("", ()), unit=("", ())):
     return WorkbookInsight(
         title=f"{subject} 변화",
         fact=fact,
-        category="trend",
+        category="change",
         severity="info",
         evidence=[*holder_refs, *money_refs,
                   *(reference(sheet, cell) for cell in dict.fromkeys(evidence) if cell)],

@@ -14,7 +14,7 @@ def structured_lead(
     return _with_subject(context, (
         _comparison_lead(context, report)
         or _record_lead(report)
-        or _trend_lead(report)
+        or _change_lead(report)
         or _event_lead(context, report)
         or _ranked_lead(report)
     ))
@@ -57,9 +57,9 @@ def _record_lead(report):
     return f"이 파일은 {when}‘{kind}’ 기록 {total.group(1)}건을 정리한 목록입니다."
 
 
-def _trend_lead(report):
-    items = [item for item in report.insights if item.category == "trend"
-             and not item.title.startswith("주요 항목별")]
+def _change_lead(report):
+    items = [item for item in report.insights if item.category in {"trend", "change"}
+             and not item.fact.startswith("같은 기간 ")]
     if not items:
         return ""
     if len(items) == 1:
@@ -75,8 +75,9 @@ def _trend_lead(report):
         if topic.casefold() not in {value.casefold() for value in topics}:
             topics.append(topic)
     owner = f"{owners.pop()}의 " if len(owners) == 1 else ""
+    when = "기간별 " if any(item.category == "trend" for item in items) else ""
     return (f"이 파일은 {owner}{'와 '.join(topics[:2])} 등 "
-            "주요 수치의 기간별 변동을 다룹니다.")
+            f"주요 수치의 {when}변동을 다룹니다.")
 
 
 def _event_lead(context, report):

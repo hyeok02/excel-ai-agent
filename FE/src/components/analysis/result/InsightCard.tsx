@@ -11,7 +11,8 @@ import { cn } from '@/utils/cn'
 
 const CATEGORY_LABELS: Record<InsightCategory, string> = {
   metric: '핵심 지표',
-  trend: '추세',
+  trend: '기간별 추이',
+  change: '증감 비교',
   summary: '파일 내용',
   structure: '시트 내용',
   formula: '계산 방식',
