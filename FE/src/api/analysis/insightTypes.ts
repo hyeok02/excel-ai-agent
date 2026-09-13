@@ -14,6 +14,7 @@ export interface InsightValidationSummary {
 
 export interface InsightResult {
   title: string
+  topic: string | null
   fact: string
   cause: string | null
   impact: string | null
@@ -95,6 +96,7 @@ const normalizeInsight = (value: unknown, index: number): InsightResult => {
 
   return {
     title,
+    topic: readText(insight.topic),
     fact,
     cause: readText(insight.cause),
     impact,

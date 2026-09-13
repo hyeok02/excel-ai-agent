@@ -9,6 +9,9 @@ from app.services.workbook_parser import WorkbookSummary
 
 class WorkbookInsight(BaseModel):
     title: str = Field(description="워크북 또는 주요 시트의 업무 내용을 나타내는 짧은 제목")
+    topic: str | None = Field(
+        default=None, description="원본 항목명에서 확인한 짧은 주제 명사구. 확인할 수 없으면 null"
+    )
     fact: str = Field(
         description="인용한 원본의 대상·항목명과 값으로 뒷받침되는 사실. 원문 명칭을 유지"
     )

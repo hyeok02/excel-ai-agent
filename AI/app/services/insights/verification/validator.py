@@ -100,8 +100,9 @@ def _validate_insight(
         reasons.append("원인을 직접 입증하는 수식·메타데이터 근거가 없어 원인 문장을 제외했습니다.")
     status = InsightValidationStatus.LIMITED if reasons else InsightValidationStatus.VERIFIED
     return ValidatedWorkbookInsight(
-        **insight.model_dump(exclude={"title", "cause", "impact", "recommendation", "evidence"}),
+        **insight.model_dump(exclude={"title", "topic", "cause", "impact", "recommendation", "evidence"}),
         title=insight.title if supported(insight.title) else "원본에서 확인한 내용",
+        topic=insight.topic if supported(insight.topic) else None,
         cause=cause,
         impact=insight.impact if supported(insight.impact) else None,
         recommendation=insight.recommendation if supported(insight.recommendation) else None,
@@ -117,8 +118,7 @@ def _required_citations(item, references):
     required = set().union(*(extract_references(ref) for ref in item.evidence))
     return bool(required) and required <= references
 
-def _merge_model_findings(baseline, result, include_extras=True):
-    """Reserve room for independently grounded model detail without replacing the overview."""
+def _merge_model_findings(baseline, result, include_extras=True):  # Keep the grounded overview.
     known_facts = {item.fact for item in baseline.insights}
     extras = [item for item in result.insights
               if include_extras and item.fact not in known_facts

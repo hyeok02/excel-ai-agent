@@ -11,7 +11,7 @@ const InsightCardGroup = ({ group }: { group: InsightGroup }) => {
     <section aria-labelledby={`insight-group-${group.key}`}>
       <div className="mb-3">
         <h4
-          className="text-sm font-extrabold text-slate-900"
+          className="text-lg font-extrabold leading-7 text-slate-900"
           id={`insight-group-${group.key}`}
         >
           {group.title}
@@ -25,6 +25,7 @@ const InsightCardGroup = ({ group }: { group: InsightGroup }) => {
               <InsightCard
                 insight={insight}
                 key={`${insight.title}-${rowIndex * 2 + columnIndex}`}
+                showTitle={group.title !== insight.title}
               />
             ))}
           </div>

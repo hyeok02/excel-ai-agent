@@ -9,6 +9,7 @@ import { groupInsights } from '../src/components/analysis/result/insightGroupPre
 
 const insight = (changes: Partial<InsightResult>): InsightResult => ({
   title: '원본에서 확인한 내용',
+  topic: null,
   fact: '원본 셀 값으로 확인했습니다.',
   cause: null,
   impact: null,
@@ -37,8 +38,8 @@ test('인사이트를 핵심 지표, 기간별 추이, 시점 간 증감, 이상
     ['metric', 'trend', 'change', 'anomaly', 'additional'],
   )
   assert.equal(groups[0].description, '결론을 뒷받침하는 중요한 수치와 비교 결과입니다.')
-  assert.equal(groups[1].title, '기간별 추이')
-  assert.equal(groups[2].title, '시점 간 증감')
+  assert.equal(groups[1].title, '원본에서 확인한 내용')
+  assert.equal(groups[2].title, '원본에서 확인한 내용')
 })
 
 test('주의·긴급 인사이트는 category와 무관하게 이상징후로 표시한다', () => {
@@ -88,4 +89,25 @@ test('이전 분석 결과의 항목별 비교 카드를 증감 비교로 보여
 
   assert.equal(report?.insights[0].category, 'change')
   assert.equal(groupInsights(report?.insights ?? [])[0].key, 'change')
+})
+
+test('실제 인사이트 주제를 섹션 제목에 반영하고 분류명만 제목으로 쓰지 않는다', () => {
+  const groups = groupInsights([
+    insight({ category: 'trend', topic: '전체 직원 수', title: '전체 직원 수 변화' }),
+    insight({ category: 'change', topic: '부서별 직원 수', title: '부서별 직원 수 변화' }),
+  ])
+
+  assert.deepEqual(groups.map(({ title }) => title), [
+    '전체 직원 수 추이',
+    '부서별 직원 수 증감',
+  ])
+})
+
+test('같은 분류에 서로 다른 주제가 있으면 한 주제로 단정하지 않는다', () => {
+  const groups = groupInsights([
+    insight({ category: 'metric', topic: '매출액' }),
+    insight({ category: 'metric', topic: '순이익' }),
+  ])
+
+  assert.equal(groups[0].title, '매출액 · 순이익')
 })

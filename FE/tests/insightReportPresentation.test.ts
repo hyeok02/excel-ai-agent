@@ -12,6 +12,7 @@ const REMOVED_CAUSE_REASON =
 
 const insight = (changes: Partial<InsightResult> = {}): InsightResult => ({
   title: '식단 정보',
+  topic: null,
   fact: '급식표에 영양량이 표시되어 있습니다.',
   category: 'summary',
   severity: 'info',

@@ -51,13 +51,14 @@ public record AiWorkbookInsights(
 			Double confidence,
 			String description,
 			@JsonProperty("validation_status") String validationStatus,
-			@JsonProperty("validation_reasons") List<String> validationReasons) {
+			@JsonProperty("validation_reasons") List<String> validationReasons,
+			String topic) {
 		public Insight(
 				String title, String fact, String cause, String impact,
 				String category, String severity, List<String> evidence,
 				String recommendation, Double confidence) {
 			this(title, fact, cause, impact, category, severity,
-					evidence, recommendation, confidence, null, null, List.of());
+					evidence, recommendation, confidence, null, null, List.of(), null);
 		}
 
 		public Insight(
@@ -65,7 +66,17 @@ public record AiWorkbookInsights(
 				String category, String severity, List<String> evidence,
 				String recommendation, Double confidence, String description) {
 			this(title, fact, cause, impact, category, severity,
-					evidence, recommendation, confidence, description, null, List.of());
+					evidence, recommendation, confidence, description, null, List.of(), null);
+		}
+
+		public Insight(
+				String title, String fact, String cause, String impact,
+				String category, String severity, List<String> evidence,
+				String recommendation, Double confidence, String description,
+				String validationStatus, List<String> validationReasons) {
+			this(title, fact, cause, impact, category, severity,
+					evidence, recommendation, confidence, description,
+					validationStatus, validationReasons, null);
 		}
 	}
 }

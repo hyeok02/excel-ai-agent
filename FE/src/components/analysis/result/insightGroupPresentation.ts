@@ -9,33 +9,37 @@ export interface InsightGroup {
   insights: InsightResult[]
 }
 
-const GROUP_PRESENTATION: Omit<InsightGroup, 'insights'>[] = [
+const GROUP_PRESENTATION: Pick<InsightGroup, 'key' | 'description'>[] = [
   {
     key: 'metric',
-    title: '핵심 지표',
     description: '결론을 뒷받침하는 중요한 수치와 비교 결과입니다.',
   },
   {
     key: 'trend',
-    title: '기간별 추이',
     description: '여러 시점에서 확인된 값의 흐름입니다.',
   },
   {
     key: 'change',
-    title: '시점 간 증감',
     description: '두 시점의 값을 비교한 변화입니다.',
   },
   {
     key: 'anomaly',
-    title: '이상징후',
     description: '결론에 영향을 줄 수 있어 먼저 확인할 내용입니다.',
   },
   {
     key: 'additional',
-    title: '추가 내용',
     description: '결론을 이해하는 데 필요한 보조 내용입니다.',
   },
 ]
+
+const topicHeading = (insights: InsightResult[], category: InsightGroupKey) => {
+  const topics = [...new Set(insights.map((insight) => insight.topic ?? insight.title))]
+  if (topics.length > 1) return topics.join(' · ')
+  if (!insights[0].topic) return topics[0]
+  if (category === 'trend') return `${topics[0]} 추이`
+  if (category === 'change') return `${topics[0]} 증감`
+  return topics[0]
+}
 
 const getGroupKey = (insight: InsightResult): InsightGroupKey => {
   if (insight.category === 'risk' || insight.severity !== 'info') return 'anomaly'
@@ -46,7 +50,9 @@ const getGroupKey = (insight: InsightResult): InsightGroupKey => {
 }
 
 export const groupInsights = (insights: InsightResult[]): InsightGroup[] =>
-  GROUP_PRESENTATION.map((presentation) => ({
-    ...presentation,
-    insights: insights.filter((insight) => getGroupKey(insight) === presentation.key),
-  })).filter((group) => group.insights.length > 0)
+  GROUP_PRESENTATION.flatMap((presentation) => {
+    const selected = insights.filter((insight) => getGroupKey(insight) === presentation.key)
+    return selected.length
+      ? [{ ...presentation, title: topicHeading(selected, presentation.key), insights: selected }]
+      : []
+  })

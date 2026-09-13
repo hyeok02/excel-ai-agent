@@ -38,9 +38,10 @@ const SEVERITY_CONFIG: Record<
 
 interface InsightCardProps {
   insight: InsightResult
+  showTitle?: boolean
 }
 
-const InsightCard = ({ insight }: InsightCardProps) => {
+const InsightCard = ({ insight, showTitle = true }: InsightCardProps) => {
   const severity = SEVERITY_CONFIG[insight.severity]
   const SeverityIcon = severity.icon
   const isVerified = insight.validationStatus === 'verified'
@@ -82,9 +83,11 @@ const InsightCard = ({ insight }: InsightCardProps) => {
         </span>
       </div>
 
-      <h4 className="mt-3 text-lg font-extrabold leading-7 text-slate-950">
-        {insight.title}
-      </h4>
+      {showTitle && (
+        <h4 className="mt-3 text-lg font-extrabold leading-7 text-slate-950">
+          {insight.title}
+        </h4>
+      )}
       <InsightCardBody insight={insight} />
     </article>
   )
