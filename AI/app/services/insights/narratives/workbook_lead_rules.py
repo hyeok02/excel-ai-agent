@@ -57,8 +57,7 @@ def _comparison_sentence(subject, comparison):
         0,
     )
     if peers:
-        return (f"이 파일은 {subject}의 거래 가격이 비슷한 거래 {peers}건과 비교해 "
-                f"어느 수준인지 보여주는 자료입니다.")
+        return f"이 파일은 {subject}의 거래 가격을 비슷한 거래 {peers}건과 비교한 자료입니다."
     return f"이 파일은 {subject}의 거래 가격을 비슷한 거래들과 비교한 자료입니다."
 
 

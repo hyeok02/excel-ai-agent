@@ -70,36 +70,48 @@ def _title_name(metric):
 
 
 def _overview(comparison):
+    """
+    비교 결과를 두 문장으로 줄인다.
+
+    지표마다 문장을 따로 만들면 대상 이름과 "비슷한 거래"가 네 문장에 걸쳐 반복되어
+    읽기 어려웠다. 결과는 한 문장에 모으고, 근거가 부족하면 그 사실만 덧붙인다.
+    카드 제목과 같은 "중앙값"을 쓴다.
+    """
     metrics = {metric.get("kind"): metric for metric in comparison.get("metrics", [])}
-    subject = str(comparison.get("subject", "")).strip()
-    conclusions = []
     value = metrics.get("transaction_value")
-    if value:
-        direction = "낮았습니다" if value["difference"] < 0 else "높았습니다"
-        conclusions.append(
-            f"{subject}의 전체 거래가격은 비슷한 거래들의 중간 수준보다 "
-            f"{abs(value['difference_percent']):.1f}% {direction}."
-        )
     multiple = metrics.get("ebitda_multiple")
+    sentences = [sentence for sentence in (
+        _result_sentence(value, multiple),
+        _coverage_sentence(multiple),
+    ) if sentence]
+    return " ".join(sentences)
+
+
+def _result_sentence(value, multiple):
+    """두 지표가 모두 있으면 한 문장으로 잇는다."""
+    if value and multiple:
+        return (f"거래 가격은 비교 대상의 중앙값보다 {_gap(value)}고, "
+                f"이익 대비 가격은 {_gap(multiple)}습니다.")
+    if value:
+        return f"거래 가격은 비교 대상의 중앙값보다 {_gap(value)}습니다."
     if multiple:
-        direction = "낮았습니다" if multiple["difference"] < 0 else "높았습니다"
-        same_direction = value and (value["difference"] < 0) == (multiple["difference"] < 0)
-        topic = (
-            "회사의 이익 규모를 고려한 가격도" if same_direction
-            else "회사의 이익 규모를 고려한 가격은"
-        )
-        conclusions.append(
-            f"{topic} 비슷한 거래들의 중간 수준보다 "
-            f"{abs(multiple['difference_percent']):.1f}% {direction}."
-        )
-        if multiple["valid_count"] < multiple["peer_count"]:
-            price = "저렴했다고" if multiple["difference"] < 0 else "비쌌다고"
-            conclusions.append(
-                f"다만 이익 자료가 확인되는 비교 거래는 "
-                f"{multiple['peer_count']}건 중 {multiple['valid_count']}건뿐이어서, "
-                f"{subject}의 거래가 실제로 {price} 단정하기 어렵습니다."
-            )
-    return " ".join(conclusions)
+        return f"이익 대비 가격은 비교 대상의 중앙값보다 {_gap(multiple)}습니다."
+    return ""
+
+
+def _coverage_sentence(multiple):
+    """이익 자료가 비교 거래 전부에서 확인되지 않으면 결론을 단정하지 않는다."""
+    if not multiple or multiple["valid_count"] >= multiple["peer_count"]:
+        return ""
+    price = "저렴했다고" if multiple["difference"] < 0 else "비쌌다고"
+    return (f"다만 이익 자료가 있는 거래가 {multiple['peer_count']}건 중 "
+            f"{multiple['valid_count']}건뿐이라 실제로 {price} 단정하기는 어렵습니다.")
+
+
+def _gap(metric):
+    """"23.8% 낮" 처럼 어미를 붙여 쓸 수 있는 조각으로 돌려준다."""
+    direction = "낮" if metric["difference"] < 0 else "높"
+    return f"{abs(metric['difference_percent']):.1f}% {direction}"
 
 
 def _display(metric, value):
