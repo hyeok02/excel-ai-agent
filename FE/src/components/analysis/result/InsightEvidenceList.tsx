@@ -9,9 +9,6 @@ import {
 const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
   const { visibleLocations } = prepareInsightEvidence(evidence, true)
   const groups = groupInsightEvidence(visibleLocations)
-  const locationNumbers = new Map(
-    visibleLocations.map((location, index) => [location.raw, index + 1]),
-  )
 
   if (visibleLocations.length === 0) return null
 
@@ -31,27 +28,23 @@ const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
           size={13}
         />
       </summary>
-      <div className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+      <div className="mt-3 space-y-3">
         {groups.map((group) => (
           <section
-            className="px-3 py-2.5"
             key={group.sheetName === null ? 'unknown' : `sheet:${group.sheetName}`}
           >
-            <p className="mb-2 break-all text-xs font-semibold text-slate-700">
+            <p className="mb-1 break-all text-xs font-medium text-slate-500">
               {group.sheetName ?? '기타 위치'}
             </p>
-            <ol className="space-y-1.5">
+            <ul className="divide-y divide-slate-100">
               {group.locations.map((location) => (
-                <li className="flex min-w-0 items-baseline gap-1.5" key={location.raw}>
-                  <span className="shrink-0 text-[11px] tabular-nums text-slate-400">
-                    {String(locationNumbers.get(location.raw)).padStart(2, '0')}
-                  </span>
-                  <code className="min-w-0 break-all text-xs font-medium text-slate-700">
+                <li className="py-1.5 first:pt-0 last:pb-0" key={location.raw}>
+                  <code className="break-all text-xs font-medium text-slate-700">
                     {location.cellRange ?? location.raw}
                   </code>
                 </li>
               ))}
-            </ol>
+            </ul>
           </section>
         ))}
       </div>
