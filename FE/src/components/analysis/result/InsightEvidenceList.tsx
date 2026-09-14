@@ -1,7 +1,6 @@
 import { ChevronDown, FileSpreadsheet } from 'lucide-react'
 
 import {
-  compactInsightEvidenceRanges,
   groupInsightEvidence,
   insightEvidenceDisclosureLabel,
   prepareInsightEvidence,
@@ -10,6 +9,9 @@ import {
 const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
   const { visibleLocations } = prepareInsightEvidence(evidence, true)
   const groups = groupInsightEvidence(visibleLocations)
+  const locationNumbers = new Map(
+    visibleLocations.map((location, index) => [location.raw, index + 1]),
+  )
 
   if (visibleLocations.length === 0) return null
 
@@ -29,19 +31,28 @@ const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
           size={13}
         />
       </summary>
-      <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
         {groups.map((group) => (
-          <div
-            className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-slate-100 px-3 py-2.5 last:border-b-0"
+          <section
+            className="px-3 py-2.5"
             key={group.sheetName === null ? 'unknown' : `sheet:${group.sheetName}`}
           >
-            <span className="min-w-0 break-all text-xs font-semibold text-slate-700">
+            <p className="mb-2 break-all text-xs font-semibold text-slate-700">
               {group.sheetName ?? '기타 위치'}
-            </span>
-            <span className="min-w-0 break-words font-mono text-xs text-slate-500">
-              {compactInsightEvidenceRanges(group.locations).join('  ·  ')}
-            </span>
-          </div>
+            </p>
+            <ol className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
+              {group.locations.map((location) => (
+                <li className="flex min-w-0 items-baseline gap-1.5" key={location.raw}>
+                  <span className="shrink-0 text-[11px] tabular-nums text-slate-400">
+                    {String(locationNumbers.get(location.raw)).padStart(2, '0')}
+                  </span>
+                  <code className="min-w-0 break-all text-xs font-medium text-slate-700">
+                    {location.cellRange ?? location.raw}
+                  </code>
+                </li>
+              ))}
+            </ol>
+          </section>
         ))}
       </div>
     </details>
