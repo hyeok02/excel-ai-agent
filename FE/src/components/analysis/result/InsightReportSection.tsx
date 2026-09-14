@@ -21,7 +21,9 @@ const InsightReportSection = ({ report: source }: InsightReportSectionProps) => 
 
     const alignEvidence = () => {
       const cards = Array.from(grid.children)
-      const details = cards.map((card) => card.querySelector<HTMLDetailsElement>('details'))
+      const details = cards.map((card) =>
+        card.querySelector<HTMLDetailsElement>('details'),
+      )
       details.forEach((detail) => detail?.style.removeProperty('margin-top'))
 
       const rows = new Map<number, { detail: HTMLDetailsElement; top: number }[]>()

@@ -94,13 +94,17 @@ test('이전 분석 결과의 항목별 비교 카드를 증감 비교로 보여
 test('실제 인사이트 주제를 섹션 제목에 반영하고 분류명만 제목으로 쓰지 않는다', () => {
   const groups = groupInsights([
     insight({ category: 'trend', topic: '전체 직원 수', title: '전체 직원 수 변화' }),
-    insight({ category: 'change', topic: '부서별 직원 수', title: '부서별 직원 수 변화' }),
+    insight({
+      category: 'change',
+      topic: '부서별 직원 수',
+      title: '부서별 직원 수 변화',
+    }),
   ])
 
-  assert.deepEqual(groups.map(({ title }) => title), [
-    '전체 직원 수 추이',
-    '부서별 직원 수 증감',
-  ])
+  assert.deepEqual(
+    groups.map(({ title }) => title),
+    ['전체 직원 수 추이', '부서별 직원 수 증감'],
+  )
 })
 
 test('같은 분류에 서로 다른 주제가 있으면 한 주제로 단정하지 않는다', () => {
@@ -141,9 +145,6 @@ test('주제가 많아도 제목을 무한히 이어 붙이지 않는다', () =>
 })
 
 test('원본에서 주제를 확인하지 못하면 빈 상투어를 주제로 내세우지 않는다', () => {
-  const groups = groupInsights([
-    insight({ title: '원본에서 확인한 내용', topic: null }),
-  ])
-
+  const groups = groupInsights([insight({ title: '원본에서 확인한 내용', topic: null })])
   assert.equal(groups[0].title, '주제 확인 불가')
 })
