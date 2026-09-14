@@ -10,7 +10,9 @@ from app.services.insights.facts.fact_labels import (
     resolve_fact_label,
     resolve_fact_label_cell,
 )
-from app.services.insights.facts.fact_trends import date_value, is_identity_row, numeric_changes
+from app.services.insights.facts.fact_trends import (
+    SUBJECT_LABEL, date_value, is_identity_row, numeric_changes,
+)
 from app.services.insights.facts.horizontal_series import extract_horizontal_series
 from app.services.insights.facts.table_inputs import build_table_regions, legacy_table_rows
 
@@ -116,8 +118,11 @@ def _record_score(values: list[dict[str, object]], role: str | None) -> int:
 
 
 def _identity_score(values: list[dict[str, object]]) -> int:
-    """대상을 적어 둔 식별 행을 행의 모양으로 찾는다."""
-    return 2 if is_identity_row(values) else 0
+    """대상을 적어 둔 식별 행을 찾는다. 이름표가 대상을 가리키면 더 위에 둔다."""
+    if not is_identity_row(values):
+        return 0
+    labels = " ".join(str(value.get("value", "")) for value in values[:-1])
+    return 4 if SUBJECT_LABEL.search(labels) else 2
 
 
 def _trend_scope(regions, region_index, values):

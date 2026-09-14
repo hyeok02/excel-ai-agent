@@ -6,6 +6,10 @@ from app.services.insights.display.display_quality import is_identifier_label
 
 MAX_TEXT_LENGTH = 120
 MAX_IDENTITY_CELLS = 3
+# 식별 행의 이름표가 대상을 가리키는지 판단하는 기준.
+SUBJECT_LABEL = re.compile(
+    r"(?:분석\s*)?대상|회사|기업|기관|\b(?:company|entity|focus)\b|►", re.I
+)
 NUMERIC_PATTERN = re.compile(r"-?[\d,]+(?:\.\d+)?%?")
 
 
