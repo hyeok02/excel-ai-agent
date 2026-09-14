@@ -52,7 +52,7 @@ def validate_answer(
             limitations or ["질문과 직접 연결되는 셀 근거가 없습니다."],
             "현재 확인된 원본 셀 근거만으로는 이 질문에 답할 수 없습니다.",
         )
-    candidates = supported_answer_numbers(question, matched, execution)
+    candidates = supported_answer_numbers(question, matched, execution, draft.answer)
     answer = draft.answer
     number_error = bool(unmatched_numbers(answer, candidates))
     unit_error = not answer_units_supported(answer, matched, execution)
