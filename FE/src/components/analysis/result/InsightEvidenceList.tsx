@@ -1,4 +1,8 @@
+import { useState } from 'react'
+
 import EvidenceDisclosure from '@/components/analysis/common/EvidenceDisclosure'
+import { limitEvidence } from '@/components/analysis/common/evidencePreview'
+import EvidenceShowMoreButton from '@/components/analysis/common/EvidenceShowMoreButton'
 import {
   groupInsightEvidence,
   insightEvidenceDisclosureLabel,
@@ -6,8 +10,10 @@ import {
 } from '@/components/analysis/result/insightEvidencePresentation'
 
 const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
+  const [showAll, setShowAll] = useState(false)
   const { visibleLocations } = prepareInsightEvidence(evidence, true)
-  const groups = groupInsightEvidence(visibleLocations)
+  const { visible, hiddenCount } = limitEvidence(visibleLocations, showAll)
+  const groups = groupInsightEvidence(visible)
 
   if (visibleLocations.length === 0) return null
 
@@ -39,6 +45,11 @@ const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
           </section>
         ))}
       </div>
+      <EvidenceShowMoreButton
+        expanded={showAll}
+        hiddenCount={hiddenCount}
+        onToggle={() => setShowAll((current) => !current)}
+      />
     </EvidenceDisclosure>
   )
 }
