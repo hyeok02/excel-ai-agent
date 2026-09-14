@@ -10,7 +10,7 @@ test('추천 질문은 파일의 의미·비교·근거를 묻는다', () => {
   assert.equal(QUESTION_SUGGESTIONS.length, 3)
   assert.match(QUESTION_SUGGESTIONS.join(' '), /무엇을 비교/)
   assert.match(QUESTION_SUGGESTIONS.join(' '), /비교 기준/)
-  assert.match(QUESTION_SUGGESTIONS.join(' '), /근거/)
+  assert.match(QUESTION_SUGGESTIONS.join(' '), /어떤 시트/)
 })
 
 test('접힌 근거의 접근 가능한 이름에 개수를 포함한다', () => {
