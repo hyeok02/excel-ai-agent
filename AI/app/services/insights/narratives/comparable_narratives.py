@@ -2,7 +2,6 @@
 import re
 
 from app.services.insights.narratives.narrative_values import insight
-from app.services.insights.narratives.topic_labels import source_topic
 
 
 def comparable_transaction_report(context):
@@ -54,7 +53,7 @@ def _comparison_insight(comparison, metric):
     return insight(
         f"{_title_name(metric)}: 비교군 중앙값보다 {rate:.1f}% {title_direction}",
         fact, metric.get("evidence", []), "metric",
-        topic=source_topic(metric.get("label")),
+        topic=_title_name(metric),
     )
 
 

@@ -72,7 +72,7 @@ def test_comparable_narrative_is_selected_before_row_dump_fallbacks():
     assert "$911.8M" in facts and "$1,196.6M" in facts
     assert "'Deal Review'!E12:E21" in report.insights[0].evidence
     assert [item.topic for item in report.insights] == [
-        "Transaction Value/ EBITDA (x)", "Total Transaction Value ($M)",
+        "EBITDA 대비 거래가격", "총 거래가치",
     ]
     validated = validate_workbook_insights(report, context)
     assert [item.topic for item in validated.insights] == [item.topic for item in report.insights]
