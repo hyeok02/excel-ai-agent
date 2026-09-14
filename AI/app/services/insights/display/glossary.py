@@ -4,13 +4,14 @@ import re
 from app.services.insights.display.glossary_terms import TERMS
 
 HANGUL = re.compile(r"[가-힣]")
-TRIM = re.compile(r"^[\s'\"(\[]+|[\s'\".,:;)\]]+$")
+# 원본 표에서 하위 항목은 "- Cash & Short Term Investments"처럼 들여쓰기 기호를 달고 온다.
+TRIM = re.compile(r"^[\s'\"(\[\-\u2013\u2014\u2022\u00b7]+|[\s'\".,:;)\]]+$")
 MAX_LENGTH = 60
 
 
 def readable(value) -> str:
     """Render '한국어(원문)' when the term is known, else the original text."""
-    text = " ".join(str(value or "").split())
+    text = TRIM.sub("", " ".join(str(value or "").split()))
     korean = translate(text)
     return f"{korean}({text})" if korean else text
 
