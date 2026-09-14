@@ -32,6 +32,7 @@ def test_returns_structured_workbook_insights() -> None:
         "insights": [
             {
                 "title": "수식 검토 필요",
+                "topic": None,
                 "fact": "매출현황 시트에 합계 수식이 있습니다.",
                 "cause": None,
                 "impact": "합계 값은 B열과 C열 참조 범위에 의존합니다.",
