@@ -1,6 +1,7 @@
 import { ChevronDown, FileSpreadsheet } from 'lucide-react'
 
 import {
+  compactInsightEvidenceRanges,
   groupInsightEvidence,
   insightEvidenceDisclosureLabel,
   prepareInsightEvidence,
@@ -28,31 +29,18 @@ const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
           size={13}
         />
       </summary>
-      <div className="mt-3 space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-        <p className="text-[11px] text-slate-500">원본 Excel에서 확인할 시트와 셀 위치</p>
+      <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {groups.map((group) => (
-          <div key={group.sheetName === null ? 'unknown' : `sheet:${group.sheetName}`}>
-            <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="break-all font-semibold text-slate-700">
-                {group.sheetName ?? '기타 위치'}
-              </span>
-              <span className="text-slate-400">{group.locations.length}개</span>
-            </div>
-            <ul className="flex flex-wrap gap-1.5">
-              {group.locations.map((location) => (
-                <li key={location.raw}>
-                  {location.cellRange ? (
-                    <code className="inline-block max-w-full break-all rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600">
-                      {location.cellRange}
-                    </code>
-                  ) : (
-                    <span className="inline-block max-w-full break-words rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600">
-                      {location.raw}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+          <div
+            className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-slate-100 px-3 py-2.5 last:border-b-0"
+            key={group.sheetName === null ? 'unknown' : `sheet:${group.sheetName}`}
+          >
+            <span className="min-w-0 break-all text-xs font-semibold text-slate-700">
+              {group.sheetName ?? '기타 위치'}
+            </span>
+            <span className="min-w-0 break-words font-mono text-xs text-slate-500">
+              {compactInsightEvidenceRanges(group.locations).join('  ·  ')}
+            </span>
           </div>
         ))}
       </div>

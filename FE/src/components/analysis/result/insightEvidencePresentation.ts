@@ -60,3 +60,52 @@ export const groupInsightEvidence = (
   }
   return [...groups.values()]
 }
+
+export const compactInsightEvidenceRanges = (
+  locations: InsightEvidenceLocation[],
+): string[] => {
+  const bands = new Map<string, { firstIndex: number; rows: number[]; start: string; end: string }>()
+  const results: { firstIndex: number; text: string }[] = []
+
+  locations.forEach((location, index) => {
+    const range = location.cellRange
+    const match = range?.match(/^(\$?[A-Z]{1,3})([1-9]\d*)(?::(\$?[A-Z]{1,3})([1-9]\d*))?$/i)
+    if (!match || (match[4] && match[2] !== match[4])) {
+      results.push({ firstIndex: index, text: range ?? location.raw })
+      return
+    }
+
+    const start = match[1].toUpperCase()
+    const end = (match[3] ?? match[1]).toUpperCase()
+    const key = `${start}:${end}`
+    const band = bands.get(key) ?? { firstIndex: index, rows: [], start, end }
+    band.rows.push(Number(match[2]))
+    bands.set(key, band)
+  })
+
+  for (const band of bands.values()) {
+    const rows = [...new Set(band.rows)].sort((left, right) => left - right)
+    let startRow = rows[0]
+    let endRow = rows[0]
+
+    const addRange = () => {
+      const text = band.start === band.end && startRow === endRow
+        ? `${band.start}${startRow}`
+        : `${band.start}${startRow}:${band.end}${endRow}`
+      results.push({ firstIndex: band.firstIndex, text })
+    }
+
+    for (const row of rows.slice(1)) {
+      if (row === endRow + 1) {
+        endRow = row
+      } else {
+        addRange()
+        startRow = row
+        endRow = row
+      }
+    }
+    addRange()
+  }
+
+  return results.sort((left, right) => left.firstIndex - right.firstIndex).map(({ text }) => text)
+}
