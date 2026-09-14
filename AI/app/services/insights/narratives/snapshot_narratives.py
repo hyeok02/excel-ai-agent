@@ -7,6 +7,7 @@ current level of each figure, largest first.
 from app.services.insights.display.derived_metrics import derived_metric, magnitude_weight
 from app.services.insights.display.glossary import readable
 from app.services.insights.narratives.narrative_values import finite, insight, number, reference
+from app.services.insights.narratives.topic_labels import source_topic
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.narratives.table_dates import column as col
 from app.services.insights.narratives.table_dates import date_axis
@@ -37,13 +38,14 @@ def _candidates(sheets):
         for region in narrative_regions(facts):
             report = _region_report(
                 str(sheet.get("name", "")), region.get("rows", []), region.get("title"),
+                region.get("title_cell"),
             )
             if report:
                 results.append((source_order, *report))
     return results
 
 
-def _region_report(sheet, rows, title):
+def _region_report(sheet, rows, title, title_cell=None):
     if any(date_axis(rows, index, row) for index, row in enumerate(rows)):
         return None
     figures = [figure for row in rows if (figure := _figure(row))]
@@ -52,17 +54,24 @@ def _region_report(sheet, rows, title):
         return None
     measured.sort(key=lambda figure: magnitude_weight(figure[1]["value"]), reverse=True)
     scope = f"{' '.join(str(title).split())}의" if title else "이 표의"
+    cited_title = (title_cell if isinstance(title_cell, dict) and title_cell.get("cell")
+                   and " ".join(str(title_cell.get("value", "")).split())
+                   == " ".join(str(title or "").split()) else None)
+    topic = source_topic(title) if cited_title else source_topic(measured[0][0]["value"])
+    evidence = _evidence(sheet, measured[:MAX_LISTED])
+    if cited_title:
+        evidence.insert(0, reference(sheet, cited_title["cell"]))
     items = [insight(
         f"{' '.join(str(title).split())} 주요 수치" if title else "주요 수치",
         f"{scope} 주요 수치는 {_listing(measured[:MAX_LISTED])}입니다.",
-        _evidence(sheet, measured[:MAX_LISTED]), "metric",
+        evidence, "metric", topic=topic,
     )]
     ratios = [figure for figure in figures if figure[2]][:MAX_LISTED]
     if len(ratios) >= 2:
         items.append(insight(
             "비율 지표",
             f"함께 기록된 비율 지표는 {_listing(ratios)}입니다.",
-            _evidence(sheet, ratios), "metric",
+            _evidence(sheet, ratios), "metric", topic=source_topic(ratios[0][0]["value"]),
         ))
     return items, items[0].fact, len(measured)
 

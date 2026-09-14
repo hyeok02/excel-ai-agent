@@ -3,6 +3,7 @@ from app.services.insights.display.display_quality import is_field_label
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.models import WorkbookInsight
 from app.services.insights.narratives.narrative_values import period, reference
+from app.services.insights.narratives.topic_labels import source_topic
 
 
 def build_event_insight(sheet, values):
@@ -35,6 +36,7 @@ def build_event_insight(sheet, values):
     return WorkbookInsight(
         title=title, fact=fact, category="summary", severity="info",
         evidence=[reference(sheet, cell["cell"]) for cell in used], confidence=1.0,
+        topic=source_topic(category["value"]) if category else None,
     )
 
 

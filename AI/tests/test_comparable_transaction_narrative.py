@@ -71,6 +71,11 @@ def test_comparable_narrative_is_selected_before_row_dump_fallbacks():
     assert "23.8%" in report.overview and "49.0%" in report.overview
     assert "$911.8M" in facts and "$1,196.6M" in facts
     assert "'Deal Review'!E12:E21" in report.insights[0].evidence
+    assert [item.topic for item in report.insights] == [
+        "Transaction Value/ EBITDA (x)", "Total Transaction Value ($M)",
+    ]
+    validated = validate_workbook_insights(report, context)
+    assert [item.topic for item in validated.insights] == [item.topic for item in report.insights]
 
 
 def test_multiple_with_fewer_than_three_values_is_not_reported():

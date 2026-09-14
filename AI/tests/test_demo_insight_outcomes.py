@@ -45,6 +45,7 @@ def test_horizontal_percentage_is_a_grounded_info_change():
         "'CompanySummary'!D98", "'CompanySummary'!D100",
         "'CompanySummary'!F98", "'CompanySummary'!F100",
     ]
+    assert items[0].topic == "1 Year Growth (%)의 총매출(Total Revenue)"
 
 
 def test_internal_identifier_trend_cannot_override_visible_metric():

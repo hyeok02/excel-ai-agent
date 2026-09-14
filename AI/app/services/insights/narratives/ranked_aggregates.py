@@ -3,6 +3,7 @@ import re
 from collections import defaultdict
 
 from app.services.insights.narratives.narrative_values import finite, insight, number, reference
+from app.services.insights.narratives.topic_labels import source_topic
 from app.services.insights.narratives.table_schema import share_value
 
 TOTAL = re.compile(r"\b(?:all|total|overall)\b|전체|합계|총합", re.I)
@@ -44,7 +45,8 @@ def _category_totals(sheet, usable, schema):
         cited = [cell for item in members for cell in (item[1], item[2])]
         fact = f"{label} 유형 {len(members)}개 항목의 비중 합계는 {number(total)}%입니다."
         results.append(("aggregate", float(total),
-                        insight(f"{label} 구성비 합계", fact, _refs(sheet, cited), "metric")))
+                        insight(f"{label} 구성비 합계", fact, _refs(sheet, cited), "metric",
+                                topic=source_topic(label))))
     return results
 
 
@@ -58,7 +60,8 @@ def _metric(sheet, kind, label, share, quantity, headers):
     cited.append(share)
     fact = f"{label['value']}의 {', '.join(parts)}입니다."
     return kind, float(percent), insight(
-        str(label["value"]), fact, _refs(sheet, cited), "metric"
+        str(label["value"]), fact, _refs(sheet, cited), "metric",
+        topic=source_topic(label["value"]),
     )
 
 

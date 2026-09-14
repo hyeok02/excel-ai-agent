@@ -1,7 +1,8 @@
 import math
 from datetime import datetime
 
-from app.services.insights.facts.fact_trends import is_identity_row
+from app.services.insights.display.display_quality import is_presentable_label
+from app.services.insights.facts.fact_trends import date_value, is_identity_row
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
 from app.services.insights.facts.source_records import source_record_insights
 from app.services.insights.narratives.source_narratives import source_narrative_report
@@ -105,6 +106,7 @@ def _change_insight(
     owner = f"{subject}의 " if subject else ""
     return WorkbookInsight(
         title=f"{metric} {rate:g}% {direction}",
+        topic=metric if is_presentable_label(metric) and date_value(metric) is None else None,
         fact=(
             f"{owner}{metric} 지표는 {_period(change['earliest_period'])} {old}에서 "
             f"{_period(change['latest_period'])} {new}로 {delta}({rate:g}%) {direction}했습니다."

@@ -11,6 +11,7 @@ from app.services.insights.narratives.event_narrative import build_event_insight
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.models import WorkbookInsight
 from app.services.insights.narratives.narrative_values import finite, number, period, reference
+from app.services.insights.narratives.topic_labels import source_topic
 
 MAX_FIELDS = 7
 HEADER_ONLY = re.compile(
@@ -46,6 +47,7 @@ def build_record_insight(sheet: str, values: list[dict[str, object]]):
         severity="info",
         evidence=evidence,
         confidence=1.0,
+        topic=source_topic(title_cell["value"]) if title_cell in usable[:MAX_FIELDS] else None,
     )
 
 

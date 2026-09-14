@@ -1,4 +1,6 @@
 from app.services.insights.narratives.snapshot_narratives import snapshot_report
+from app.services.insights.models import WorkbookInsightReport
+from app.services.insights.verification.validator import validate_workbook_insights
 
 
 def cell(address, value, number_format=None):
@@ -28,6 +30,7 @@ def test_reports_current_levels_largest_first() -> None:
     assert (items[0].fact.index("총부채(Total Debt) 67,095")
             < items[0].fact.index("3 Year Beta"))
     assert overview == items[0].fact
+    assert items[0].topic == "시가총액(Market Cap)"
 
 
 def test_ratios_are_reported_apart_from_measured_figures() -> None:
@@ -39,6 +42,7 @@ def test_ratios_are_reported_apart_from_measured_figures() -> None:
     assert items[1].title == "비율 지표"
     assert "Total Debt/EBITDA 1.41" in items[1].fact
     assert "비율 지표" == items[1].title
+    assert items[1].topic == "Total Debt/EBITDA"
 
 
 def test_a_dated_series_is_left_to_the_trend_narratives() -> None:
@@ -49,3 +53,13 @@ def test_a_dated_series_is_left_to_the_trend_narratives() -> None:
 
 def test_too_few_figures_report_nothing() -> None:
     assert snapshot_report(context(FIGURES[:2])) == ([], "")
+
+
+def test_snapshot_topic_survives_grounding_from_cited_label() -> None:
+    source = context(FIGURES, "VALUATION")
+    items, overview = snapshot_report(source)
+    report = validate_workbook_insights(
+        WorkbookInsightReport(overview=overview, insights=items), source,
+    )
+
+    assert report.insights[0].topic == "시가총액(Market Cap)"
