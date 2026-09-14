@@ -41,6 +41,15 @@ const MODULE_REVEAL_DELAYS = [
   'home-reveal-delay-5',
 ] as const
 
+/** 사이드바에 노출 중인 모듈만 카드로 보여준다. */
+const MODULE_CARDS = MODULE_SUMMARIES.flatMap((module) => {
+  const navigationItem = BUSINESS_NAVIGATION_ITEMS.find((item) => item.id === module.id)
+  return navigationItem ? [{ ...module, to: navigationItem.to }] : []
+})
+
+const MODULE_GRID_COLUMNS =
+  MODULE_CARDS.length > 1 ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:max-w-sm'
+
 const DashboardPage = () => {
   return (
     <div className="space-y-8">
@@ -52,8 +61,8 @@ const DashboardPage = () => {
             <br />더 빠른 판단으로 바꿉니다.
           </h1>
           <p className="mt-5 max-w-xl text-sm leading-6 text-blue-100 md:text-base">
-            외부 데이터 수집부터 Excel 구조 분석까지, 네 가지 AI 업무를 하나의 공간에서
-            관리하세요.
+            복잡한 Excel 워크북의 구조와 수식 관계를 분석하고, 근거를 확인할 수 있는
+            인사이트로 바꿉니다.
           </p>
         </div>
         <div className="hero-orbit hero-orbit-one" />
@@ -68,13 +77,12 @@ const DashboardPage = () => {
               업무 바로가기
             </h2>
           </div>
-          <p className="hidden text-sm text-slate-400 sm:block">4개의 AI 업무 모듈</p>
+          <p className="hidden text-sm text-slate-400 sm:block">
+            {MODULE_CARDS.length}개의 AI 업무 모듈
+          </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {MODULE_SUMMARIES.map((module, index) => {
-            const navigationItem = BUSINESS_NAVIGATION_ITEMS.find(
-              (item) => item.id === module.id,
-            )
+        <div className={`grid gap-4 ${MODULE_GRID_COLUMNS}`}>
+          {MODULE_CARDS.map((module, index) => {
             const Icon = module.icon
             const content = (
               <>
@@ -95,16 +103,16 @@ const DashboardPage = () => {
               </>
             )
 
-            return navigationItem ? (
+            return (
               <div
                 className={`home-reveal ${MODULE_REVEAL_DELAYS[index]}`}
                 key={module.id}
               >
-                <Link className="module-card block h-full" to={navigationItem.to}>
+                <Link className="module-card block h-full" to={module.to}>
                   {content}
                 </Link>
               </div>
-            ) : null
+            )
           })}
         </div>
       </section>

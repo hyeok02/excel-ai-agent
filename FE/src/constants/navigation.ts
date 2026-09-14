@@ -15,7 +15,22 @@ export const DASHBOARD_NAVIGATION_ITEM = {
   description: '업무 시작 화면',
 } as const
 
+/**
+ * 화면에 노출할 업무 모듈.
+ * 아직 API가 붙지 않은 모듈은 빈 화면만 보여주므로 목록에서 빼둔다.
+ * 화면과 라우트는 그대로 남아 있어, 담당 API가 연결되면 항목만 다시 추가하면 된다.
+ */
 export const BUSINESS_NAVIGATION_ITEMS = [
+  {
+    id: 'excel-analysis',
+    to: ROUTES.excelAnalysis,
+    label: 'Excel 분석',
+    description: '워크북 구조 분석',
+  },
+] as const
+
+/** API 연결 전이라 노출하지 않는 모듈. 연결되면 BUSINESS_NAVIGATION_ITEMS로 옮긴다. */
+export const PENDING_NAVIGATION_ITEMS = [
   {
     id: 'public-monitor',
     to: ROUTES.publicMonitor,
@@ -33,11 +48,5 @@ export const BUSINESS_NAVIGATION_ITEMS = [
     to: ROUTES.newsCollection,
     label: '뉴스 수집',
     description: '키워드 기반 뉴스 수집',
-  },
-  {
-    id: 'excel-analysis',
-    to: ROUTES.excelAnalysis,
-    label: 'Excel 분석',
-    description: '워크북 구조 분석',
   },
 ] as const

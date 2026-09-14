@@ -5,6 +5,7 @@ import BistelligenceLogo from '@/components/navigation/brand/BistelligenceLogo'
 import {
   BUSINESS_NAVIGATION_ITEMS,
   DASHBOARD_NAVIGATION_ITEM,
+  PENDING_NAVIGATION_ITEMS,
 } from '@/constants/navigation'
 
 interface AppHeaderProps {
@@ -13,8 +14,9 @@ interface AppHeaderProps {
 
 const AppHeader = ({ onMenuClick }: AppHeaderProps) => {
   const { pathname } = useLocation()
-  const currentItem = BUSINESS_NAVIGATION_ITEMS.find((item) =>
-    pathname.startsWith(item.to),
+  // 노출하지 않는 모듈도 주소로 직접 들어올 수 있어, 제목은 양쪽에서 찾는다.
+  const currentItem = [...BUSINESS_NAVIGATION_ITEMS, ...PENDING_NAVIGATION_ITEMS].find(
+    (item) => pathname.startsWith(item.to),
   )
   const currentLabel = currentItem?.label ?? DASHBOARD_NAVIGATION_ITEM.label
 
