@@ -12,7 +12,7 @@ export interface InsightEvidenceGroup {
 }
 
 export const insightEvidenceDisclosureLabel = (count: number) =>
-  `원본 근거 ${count}개 위치 보기`
+  `원본 근거 ${count}개 보기`
 
 export const parseInsightEvidenceLocation = (raw: string): InsightEvidenceLocation => {
   const separatorIndex = raw.lastIndexOf('!')
