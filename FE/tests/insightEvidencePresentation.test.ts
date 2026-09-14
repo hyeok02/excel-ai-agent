@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  groupInsightEvidence,
   insightEvidenceDisclosureLabel,
   parseInsightEvidenceLocation,
   prepareInsightEvidence,
@@ -55,4 +56,25 @@ test('셀 주소 형식이 아니면 원문을 보존한다', () => {
 
 test('접힌 근거 목록의 접근 가능한 이름에 위치 개수를 포함한다', () => {
   assert.equal(insightEvidenceDisclosureLabel(4), '원본 근거 4개 위치 보기')
+})
+
+test('원본 위치는 시트별로 묶되 각 셀 범위와 순서를 보존한다', () => {
+  const locations = prepareInsightEvidence([
+    "'월별 현황'!B2:D2",
+    '요약!A1',
+    "'월별 현황'!B3:D3",
+    '원본 위치 미상',
+  ], true).visibleLocations
+
+  assert.deepEqual(
+    groupInsightEvidence(locations).map((group) => ({
+      sheetName: group.sheetName,
+      locations: group.locations.map((location) => location.raw),
+    })),
+    [
+      { sheetName: '월별 현황', locations: ["'월별 현황'!B2:D2", "'월별 현황'!B3:D3"] },
+      { sheetName: '요약', locations: ['요약!A1'] },
+      { sheetName: null, locations: ['원본 위치 미상'] },
+    ],
+  )
 })

@@ -6,6 +6,11 @@ export interface InsightEvidenceLocation {
   cellRange: string | null
 }
 
+export interface InsightEvidenceGroup {
+  sheetName: string | null
+  locations: InsightEvidenceLocation[]
+}
+
 export const insightEvidenceDisclosureLabel = (count: number) =>
   `원본 근거 ${count}개 위치 보기`
 
@@ -39,4 +44,19 @@ export const prepareInsightEvidence = (
     visibleLocations,
     hiddenCount: Math.max(0, locations.length - previewLimit),
   }
+}
+
+export const groupInsightEvidence = (
+  locations: InsightEvidenceLocation[],
+): InsightEvidenceGroup[] => {
+  const groups = new Map<string | null, InsightEvidenceGroup>()
+  for (const location of locations) {
+    let group = groups.get(location.sheetName)
+    if (!group) {
+      group = { sheetName: location.sheetName, locations: [] }
+      groups.set(location.sheetName, group)
+    }
+    group.locations.push(location)
+  }
+  return [...groups.values()]
 }
