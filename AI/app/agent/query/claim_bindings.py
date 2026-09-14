@@ -6,6 +6,9 @@ from app.agent.query.search_terms import search_terms
 from app.services.insights.verification.numeric_validation import numbers, unmatched_numbers
 
 CELL = re.compile(r"^([A-Z]+)(\d+)$", re.I)
+# 날짜 셀은 행 이름표가 아니다. 이름표로 보면 기간을 밝힌 문장이
+# 이름표를 빠뜨렸다고 잘못 판정된다.
+DATE_LIKE = re.compile(r"^\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[T ].*)?$")
 CLAUSE = re.compile(r"[.!?;\n]|,\s*|\b(?:and|while)\b|(?:이고|이며|반면|그리고)", re.I)
 
 
@@ -40,7 +43,8 @@ def _labeled_numeric_rows(evidence: list[object]):
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             values.append(value)
         elif isinstance(value, str) and value.strip():
-            labels.append(value)
+            if not DATE_LIKE.match(value.strip()):
+                labels.append(value)
     return {
         key: (labels, values)
         for key, (labels, values) in grouped.items()

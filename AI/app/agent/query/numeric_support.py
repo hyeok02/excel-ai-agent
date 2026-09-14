@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 from app.agent.execution import AgentExecution
 from app.agent.query.calculations import verified_calculations
+from app.agent.query.derived_numbers import derived_numbers, derived_percent_numbers
 from app.services.insights.verification.numeric_validation import (
     NUMBER_PATTERN,
     numbers,
@@ -19,13 +20,18 @@ PERCENT_CONTEXT = re.compile(
 
 
 def supported_answer_numbers(
-    question: str, evidence: list[object], execution: AgentExecution
+    question: str,
+    evidence: list[object],
+    execution: AgentExecution,
+    answer: str = "",
 ) -> set[Decimal]:
     """Return numbers that can be traced to the question or executed tools."""
     candidates = numbers(question) | _evidence_numbers(evidence)
     candidates.update(
         abs(item.result) for item in verified_calculations(evidence, execution)
     )
+    candidates.update(derived_numbers(answer, evidence))
+    candidates.update(derived_percent_numbers(answer, evidence))
     return candidates
 
 
@@ -50,6 +56,7 @@ def answer_units_supported(
         for item in verified_calculations(evidence, execution)
         if item.unit.casefold() == "percent"
     )
+    candidates.update(derived_percent_numbers(answer, evidence))
     claims = _percent_claims(answer)
     if not claims:
         return bool(candidates)
