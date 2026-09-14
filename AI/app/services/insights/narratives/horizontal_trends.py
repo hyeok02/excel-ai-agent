@@ -71,8 +71,7 @@ def _insight(sheet, series, owner=("", ()), unit=("", ())):
     metric = str(series.get("metric", "")).strip()
     scope = str(series.get("scope") or "").strip()
     _, holder_refs = owner
-    # 워크북 전체가 한 대상을 다루므로 대상 이름은 요약의 첫 문장에서 한 번만 밝힌다.
-    # 카드마다 붙이면 제목과 본문에 같은 이름이 계속 반복된다.
+    # 대상 이름은 요약 첫 문장에서 한 번만 밝힌다. 카드마다 붙이면 계속 반복된다.
     subject = (f"{readable(scope)}의 {readable(metric)}" if scope
                else readable(metric))
     topic = scoped_source_topic(metric, series.get("label_cell"), scope, series.get("scope_cell"))
