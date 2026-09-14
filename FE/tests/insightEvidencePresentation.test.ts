@@ -59,12 +59,10 @@ test('접힌 근거 목록의 접근 가능한 이름에 위치 개수를 포함
 })
 
 test('원본 위치는 시트별로 묶되 각 셀 범위와 순서를 보존한다', () => {
-  const locations = prepareInsightEvidence([
-    "'월별 현황'!B2:D2",
-    '요약!A1',
-    "'월별 현황'!B3:D3",
-    '원본 위치 미상',
-  ], true).visibleLocations
+  const locations = prepareInsightEvidence(
+    ["'월별 현황'!B2:D2", '요약!A1', "'월별 현황'!B3:D3", '원본 위치 미상'],
+    true,
+  ).visibleLocations
 
   assert.deepEqual(
     groupInsightEvidence(locations).map((group) => ({

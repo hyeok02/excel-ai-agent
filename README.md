@@ -264,6 +264,7 @@ http://localhost:5173
 | 환경 변수 | 기본값 | 설명 |
 | --- | --- | --- |
 | `SERVER_PORT` | `8080` | Backend 실행 포트 |
+| `SESSION_TIMEOUT` | `8h` | 로그인 세션 유지 시간 |
 | `AI_SERVICE_BASE_URL` | `http://localhost:8000` | Python AI Service 주소 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | 요청을 허용할 Frontend 주소 |
 | `UPLOAD_DIR` | `./uploads` | 원본 파일 저장 경로 |

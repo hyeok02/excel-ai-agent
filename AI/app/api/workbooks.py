@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 
 from app.api.workbook_models import (
     SemanticClassificationResponse,
@@ -16,7 +17,12 @@ from app.services.insight_generator import (
 )
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
 from app.services.insights.facts.context import build_workbook_context
+from app.services.insights.models import (
+    ValidatedWorkbookInsightReport,
+    WorkbookInsightReport,
+)
 from app.services.insights.verification.validator import validate_workbook_insights
+from app.services.workbook_parsing.models import WorkbookSummary
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
@@ -56,7 +62,7 @@ async def read_upload(upload: UploadFile) -> bytes:
 async def summarize_workbook(
     file: Annotated[UploadFile, File(description="분석할 Excel 파일")],
 ) -> WorkbookSummaryResponse:
-    summary = _parse_or_bad_request(file.filename or "", await read_upload(file))
+    summary = await parse_or_bad_request(file.filename or "", await read_upload(file))
     return WorkbookSummaryResponse.model_validate(summary)
 
 
@@ -69,7 +75,7 @@ async def generate_workbook_insights(
         Form(description="분석 깊이: AUTO, FAST, PRECISE"),
     ] = AnalysisDepth.AUTO,
 ) -> WorkbookInsightsResponse:
-    summary = _parse_or_bad_request(file.filename or "", await read_upload(file))
+    summary = await parse_or_bad_request(file.filename or "", await read_upload(file))
     try:
         report = await insight_generator.generate(summary, depth)
     except InsightGenerationError as exception:
@@ -77,17 +83,21 @@ async def generate_workbook_insights(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exception),
         ) from exception
-    profile = select_analysis_profile(summary, depth)
-    validated_report = validate_workbook_insights(
-        report, build_workbook_context(summary, profile)
-    )
+    validated_report = await run_in_threadpool(_verify_insights, report, summary, depth)
     return WorkbookInsightsResponse(
         workbook=WorkbookSummaryResponse.model_validate(summary),
         report=validated_report,
     )
 
 
-def _parse_or_bad_request(filename: str, content: bytes):
+def _verify_insights(
+    report: WorkbookInsightReport, summary: WorkbookSummary, depth: AnalysisDepth
+) -> ValidatedWorkbookInsightReport:
+    profile = select_analysis_profile(summary, depth)
+    return validate_workbook_insights(report, build_workbook_context(summary, profile))
+
+
+def _parse_workbook_or_bad_request(filename: str, content: bytes) -> WorkbookSummary:
     try:
         return parse_workbook(filename, content)
     except InvalidWorkbookError as exception:
@@ -97,8 +107,14 @@ def _parse_or_bad_request(filename: str, content: bytes):
         ) from exception
 
 
+async def parse_or_bad_request(filename: str, content: bytes) -> WorkbookSummary:
+    """워크북 파싱은 CPU 작업이라, 이벤트 루프를 막지 않도록 워커 스레드에서 실행한다."""
+    return await run_in_threadpool(_parse_workbook_or_bad_request, filename, content)
+
+
 __all__ = [
     "SemanticClassificationResponse",
     "get_insight_generator",
+    "parse_or_bad_request",
     "router",
 ]

@@ -8,7 +8,11 @@ from app.agent.writeback.references import (
     expand_reference,
     key,
 )
-from app.agent.writeback.value_authorization import value_is_authorized
+from app.agent.writeback.value_authorization import (
+    as_number,
+    stated_current_value,
+    value_is_authorized,
+)
 
 FORBIDDEN_FORMULA = re.compile(
     r"(?:\[|https?://|\\\\|\||\b(?:WEBSERVICE|HYPERLINK|RTD|CALL|REGISTER\.ID|EXEC)\s*\()",
@@ -67,6 +71,14 @@ def _append_change(
         )
         return
     old_value = cell.formula or cell.value
+    # 요청이 바꾸기 전 값을 밝혔는데 대상 셀이 다른 값을 들고 있으면 엉뚱한 셀을 고른 것이다.
+    stated = stated_current_value(instruction, draft.new_value)
+    if stated is not None and as_number(old_value) != stated:
+        risks.append(
+            f"{draft.sheet_name}!{reference}: 요청에 적힌 현재 값 {stated}과 "
+            f"원본 값 {old_value}이 달라 제외했습니다."
+        )
+        return
     if draft.new_value == old_value:
         risks.append(f"{draft.sheet_name}!{reference}: 기존 값과 동일합니다.")
         return

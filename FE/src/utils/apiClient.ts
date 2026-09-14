@@ -20,12 +20,6 @@ apiClient.interceptors.response.use(
   (error: AxiosError) => Promise.reject(error),
 )
 
-export const getErrorMessage = (error: unknown) => {
-  if (axios.isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? error.message
-  }
-
-  return error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-}
+export { getErrorMessage } from '@/utils/errorMessage'
 
 export default apiClient

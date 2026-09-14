@@ -32,6 +32,10 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
+  servlet:
+    session:
+      # 기본값 30분은 시연·발표처럼 미리 로그인해 두고 한참 뒤에 조작하는 흐름에서 짧다.
+      timeout: ${SESSION_TIMEOUT:8h}
   error:
     include-message: never
     include-stacktrace: never

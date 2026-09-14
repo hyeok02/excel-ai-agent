@@ -3,6 +3,7 @@ from typing import Annotated
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import TypeAdapter, ValidationError
 
 from app.agent.query import build_workbook_data_index
@@ -14,7 +15,7 @@ from app.agent.writeback import (
     apply_writeback,
 )
 from app.agent.writeback.editor import UnsafeWritebackError
-from app.api.workbooks import _parse_or_bad_request, read_upload
+from app.api.workbooks import parse_or_bad_request, read_upload
 from app.services.insights.models import InsightConfigurationError, InsightGenerationError
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
@@ -34,9 +35,11 @@ async def propose_writeback(
     generator: Annotated[LangChainWritebackGenerator, Depends(get_writeback_generator)],
 ) -> WritebackProposal:
     content = await read_upload(file)
-    summary = _parse_or_bad_request(file.filename or "", content)
+    summary = await parse_or_bad_request(file.filename or "", content)
     included = {sheet.name for sheet in summary.sheets}
-    index = build_workbook_data_index(summary.filename, content, included)
+    index = await run_in_threadpool(
+        build_workbook_data_index, summary.filename, content, included
+    )
     try:
         return await WorkbookWritebackProposalService(generator).propose(instruction, index)
     except InsightGenerationError as exception:
@@ -49,18 +52,27 @@ async def apply_approved_writeback(
     file: Annotated[UploadFile, File(description="수정할 원본 Excel 파일")],
 ):
     content = await read_upload(file)
-    _parse_or_bad_request(file.filename or "", content)
+    await parse_or_bad_request(file.filename or "", content)
     try:
         parsed = TypeAdapter(list[WritebackChange]).validate_json(changes)
-        modified, manifest = apply_writeback(file.filename or "workbook.xlsx", content, parsed)
-        archive = BytesIO()
-        extension = (file.filename or "workbook.xlsx").rsplit(".", 1)[-1].lower()
-        with ZipFile(archive, "w", ZIP_DEFLATED) as package:
-            package.writestr(f"workbook.{extension}", modified)
-            package.writestr("manifest.json", manifest.model_dump_json())
-        return _zip_response(archive.getvalue())
+        archive = await run_in_threadpool(
+            _build_writeback_archive, file.filename or "workbook.xlsx", content, parsed
+        )
+        return _zip_response(archive)
     except (ValidationError, UnsafeWritebackError) as exception:
         raise HTTPException(status_code=422, detail=str(exception)) from exception
+
+
+def _build_writeback_archive(
+    filename: str, content: bytes, changes: list[WritebackChange]
+) -> bytes:
+    modified, manifest = apply_writeback(filename, content, changes)
+    archive = BytesIO()
+    extension = filename.rsplit(".", 1)[-1].lower()
+    with ZipFile(archive, "w", ZIP_DEFLATED) as package:
+        package.writestr(f"workbook.{extension}", modified)
+        package.writestr("manifest.json", manifest.model_dump_json())
+    return archive.getvalue()
 
 
 def _zip_response(content: bytes):
