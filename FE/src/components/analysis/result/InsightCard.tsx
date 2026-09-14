@@ -47,7 +47,7 @@ const InsightCard = ({ insight, showTitle = true }: InsightCardProps) => {
   const isVerified = insight.validationStatus === 'verified'
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         {insight.severity !== 'info' && (
           <span

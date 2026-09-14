@@ -59,7 +59,7 @@ const InsightReportSection = ({ report: source }: InsightReportSectionProps) => 
       )}
 
       {report.insights.length > 0 ? (
-        <div className="grid gap-x-3 gap-y-6 p-5 lg:grid-cols-2 lg:items-start md:p-6">
+        <div className="grid gap-x-3 gap-y-6 p-5 lg:grid-cols-2 lg:has-[details[open]]:items-start md:p-6">
           {groups.map((group) => (
             <InsightCardGroup group={group} key={group.key} />
           ))}

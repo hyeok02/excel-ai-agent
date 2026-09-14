@@ -13,10 +13,10 @@ const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
   if (visibleLocations.length === 0) return null
 
   return (
-    <details className="group mt-4 border-t border-slate-100 pt-3">
+    <details className="group mt-auto pt-4">
       <summary
         aria-label={insightEvidenceDisclosureLabel(visibleLocations.length)}
-        className="flex w-full cursor-pointer list-none items-center justify-between gap-2 rounded-md text-xs font-semibold text-slate-500 transition hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+        className="flex w-full cursor-pointer list-none items-center justify-between gap-2 rounded-md border-t border-slate-100 pt-3 text-xs font-semibold text-slate-500 transition hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
       >
         <span className="inline-flex items-center gap-1.5">
           <FileSpreadsheet aria-hidden="true" size={14} />
