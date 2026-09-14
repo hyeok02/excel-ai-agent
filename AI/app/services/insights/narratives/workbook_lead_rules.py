@@ -40,8 +40,26 @@ def _comparison_lead(context, report):
             continue
         subject = " ".join(str(comparison.get("subject", "")).split())
         if subject:
-            return f"이 파일은 {subject} 거래가격을 비슷한 거래들과 비교한 자료입니다."
+            return _comparison_sentence(subject, comparison)
     return ""
+
+
+def _comparison_sentence(subject, comparison):
+    """
+    누구의 가격을 무엇과 견주는지 그대로 풀어 쓴다.
+
+    "A 거래가격을 비슷한 거래들과 비교" 만으로는 A가 무엇인지, 비교 대상이 몇 건인지
+    알 수 없어 첫 문장에서 파일의 정체가 잡히지 않는다.
+    """
+    peers = comparison.get("peer_count") or next(
+        (metric.get("peer_count") for metric in comparison.get("metrics", [])
+         if metric.get("peer_count")),
+        0,
+    )
+    if peers:
+        return (f"이 파일은 {subject}의 거래 가격이 비슷한 거래 {peers}건과 비교해 "
+                f"어느 수준인지 보여주는 자료입니다.")
+    return f"이 파일은 {subject}의 거래 가격을 비슷한 거래들과 비교한 자료입니다."
 
 
 def _record_lead(report):
