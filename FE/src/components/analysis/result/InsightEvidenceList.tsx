@@ -36,9 +36,12 @@ const InsightEvidenceList = ({ evidence }: { evidence: string[] }) => {
             <p className="mb-1 break-all text-xs font-medium text-slate-500">
               {group.sheetName ?? '기타 위치'}
             </p>
-            <ul className="divide-y divide-slate-100">
+            <ul className="space-y-1.5">
               {group.locations.map((location) => (
-                <li className="py-1.5 first:pt-0 last:pb-0" key={location.raw}>
+                <li
+                  className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
+                  key={location.raw}
+                >
                   <code className="break-all text-xs font-medium text-slate-700">
                     {location.cellRange ?? location.raw}
                   </code>
