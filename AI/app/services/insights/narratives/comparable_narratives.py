@@ -53,6 +53,7 @@ def _comparison_insight(comparison, metric):
     return insight(
         f"{_title_name(metric)}: 비교군 중앙값보다 {rate:.1f}% {title_direction}",
         fact, metric.get("evidence", []), "metric",
+        topic=_title_name(metric),
     )
 
 

@@ -24,7 +24,7 @@ final class InsightResultMapper {
 		String impact = hasText(insight.impact()) ? insight.impact() : null;
 		Double confidence = normalizeConfidence(insight.confidence());
 		return new AnalysisInsightResult.Insight(
-				insight.title(), fact, insight.cause(), impact,
+				insight.title(), insight.topic(), fact, insight.cause(), impact,
 				insight.category(), insight.severity(), insight.evidence(),
 				insight.recommendation(), confidence, insight.validationStatus(),
 				insight.validationReasons() == null ? List.of() : insight.validationReasons());

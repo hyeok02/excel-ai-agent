@@ -1,6 +1,7 @@
 """Source-only summaries for ranked and aggregate tables."""
 
 from app.services.insights.narratives.narrative_values import finite, insight, number, reference
+from app.services.insights.narratives.topic_labels import source_topic
 from app.services.insights.narratives.ranked_aggregates import aggregate_candidates, quantity_label
 from app.services.insights.narratives.ranked_regions import ranked_regions
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
@@ -69,7 +70,8 @@ def _rank_candidate(sheet, region, row, schema, headers):
     prefix = f"{title}에서 " if title else ""
     fact = f"{prefix}1위는 {name['value']}이며, {', '.join(parts)}입니다."
     return "rank", float(percent), insight(
-        f"{name['value']} 1위", fact, _refs(sheet, cited), "metric"
+        f"{name['value']} 1위", fact, _refs(sheet, cited), "metric",
+        topic=source_topic(title if title_cell else name["value"]),
     )
 
 

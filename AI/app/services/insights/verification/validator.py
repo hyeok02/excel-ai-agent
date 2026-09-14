@@ -9,6 +9,7 @@ from app.services.insights.models import (
 from app.services.insights.verification.numeric_validation import numbers, unmatched_numbers
 from app.services.insights.verification.reference_matching import resolve_references
 from app.services.insights.verification.review_points import grounded_tokens, mask_known_names
+from app.services.insights.verification.topic_grounding import grounded_topic, required_citations
 from app.services.insights.verification.validated_report import assemble_report, add_source_fallback
 from app.services.insights.narratives.source_narratives import source_narrative_report
 from app.services.insights.narratives.workbook_overview import add_workbook_context
@@ -78,7 +79,7 @@ def _validate_insight(
     def supported(text: str | None) -> bool:
         if not text:
             return False
-        if any(text in (item.fact, item.title) and _required_citations(item, references)
+        if any(text in (item.fact, item.title) and required_citations(item, references)
                for item in canonical):
             return True
         without_addresses = REFERENCE_PATTERN.sub(" ", text)
@@ -100,8 +101,9 @@ def _validate_insight(
         reasons.append("원인을 직접 입증하는 수식·메타데이터 근거가 없어 원인 문장을 제외했습니다.")
     status = InsightValidationStatus.LIMITED if reasons else InsightValidationStatus.VERIFIED
     return ValidatedWorkbookInsight(
-        **insight.model_dump(exclude={"title", "cause", "impact", "recommendation", "evidence"}),
+        **insight.model_dump(exclude={"title", "topic", "cause", "impact", "recommendation", "evidence"}),
         title=insight.title if supported(insight.title) else "원본에서 확인한 내용",
+        topic=insight.topic if grounded_topic(insight.topic, source_text, references, canonical) else None,
         cause=cause,
         impact=insight.impact if supported(insight.impact) else None,
         recommendation=insight.recommendation if supported(insight.recommendation) else None,
@@ -113,12 +115,7 @@ def _validate_insight(
     )
 
 
-def _required_citations(item, references):
-    required = set().union(*(extract_references(ref) for ref in item.evidence))
-    return bool(required) and required <= references
-
-def _merge_model_findings(baseline, result, include_extras=True):
-    """Reserve room for independently grounded model detail without replacing the overview."""
+def _merge_model_findings(baseline, result, include_extras=True):  # Keep the grounded overview.
     known_facts = {item.fact for item in baseline.insights}
     extras = [item for item in result.insights
               if include_extras and item.fact not in known_facts

@@ -1,5 +1,6 @@
 """Explain bounded date-column tables through explicit row/column relationships."""
 from app.services.insights.narratives.narrative_values import finite, insight, number, period, reference
+from app.services.insights.narratives.topic_labels import source_topic
 from app.services.insights.narratives.table_dates import column as col
 from app.services.insights.narratives.table_dates import date_axis, is_date
 from app.services.insights.facts.table_inputs import narrative_regions
@@ -85,7 +86,8 @@ def _text_row(sheet, label, values):
         excerpts.append(f"{period(date['value'])}에는 {sample}{' 등' if len(parts) > 2 else ''}")
     name = str(label["value"]).strip() if label else "날짜별 기록"
     return insight(name, f"{' / '.join(excerpts)}이 기록되어 있습니다.",
-                   _evidence(sheet, label, values))
+                   _evidence(sheet, label, values),
+                   topic=source_topic(label["value"]) if label else None)
 
 
 def _numeric(sheet, label, values):
@@ -97,9 +99,10 @@ def _numeric(sheet, label, values):
             f"가장 높은 날은 {period(high[0]['value'])}({number(high[1]['value'])})입니다.")
     if low[1]["value"] == high[1]["value"]:
         fact = f"{name}는 표시된 {len(values)}개 날짜에서 모두 {number(low[1]['value'])}입니다."
-    return insight(
-        f"{name}의 날짜별 차이", fact, _evidence(sheet, label, values), "trend"
-    )
+    title = (f"{name}의 날짜별 동일 값" if low[1]["value"] == high[1]["value"]
+             else f"{name}의 날짜별 값 범위")
+    return insight(title, fact, _evidence(sheet, label, values), "metric",
+                   topic=source_topic(label["value"]))
 
 
 def _repeated(sheet, rows):
@@ -107,7 +110,8 @@ def _repeated(sheet, rows):
     for label, values in rows:
         parts.append(f"{str(label['value']).strip()} 항목: {len(values)}개 날짜 모두 ‘{values[0][1]['value']}’")
         evidence.extend(_evidence(sheet, label, values))
-    return insight("동일하게 기록된 항목", "; ".join(parts) + "로 표기되어 있습니다.", evidence)
+    return insight("동일하게 기록된 항목", "; ".join(parts) + "로 표기되어 있습니다.",
+                   evidence, topic=source_topic(rows[0][0]["value"]))
 
 
 def _not_header(row, rows):

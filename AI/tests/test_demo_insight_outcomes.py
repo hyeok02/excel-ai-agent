@@ -28,7 +28,7 @@ def _series(metric="Total Revenue", values=(6.026, 4.725), fmt="0.0\\%"):
     }
 
 
-def test_horizontal_percentage_is_a_grounded_info_trend():
+def test_horizontal_percentage_is_a_grounded_info_change():
     context = {"sheets": [{"name": "CompanySummary", "business_facts": {
         "horizontal_series": [_series()],
     }}]}
@@ -36,7 +36,7 @@ def test_horizontal_percentage_is_a_grounded_info_trend():
     items, overview = horizontal_trend_report(context)
 
     assert len(items) == 1
-    assert items[0].category == "trend"
+    assert items[0].category == "change"
     assert items[0].severity == "info"
     assert "6.03%" in overview and "4.72%" in overview
     assert "159" not in overview
@@ -45,6 +45,7 @@ def test_horizontal_percentage_is_a_grounded_info_trend():
         "'CompanySummary'!D98", "'CompanySummary'!D100",
         "'CompanySummary'!F98", "'CompanySummary'!F100",
     ]
+    assert items[0].topic == "1 Year Growth (%)의 총매출(Total Revenue)"
 
 
 def test_internal_identifier_trend_cannot_override_visible_metric():

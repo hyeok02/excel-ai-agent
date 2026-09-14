@@ -11,7 +11,8 @@ import { cn } from '@/utils/cn'
 
 const CATEGORY_LABELS: Record<InsightCategory, string> = {
   metric: '핵심 지표',
-  trend: '추세',
+  trend: '기간별 추이',
+  change: '증감 비교',
   summary: '파일 내용',
   structure: '시트 내용',
   formula: '계산 방식',
@@ -37,15 +38,16 @@ const SEVERITY_CONFIG: Record<
 
 interface InsightCardProps {
   insight: InsightResult
+  showTitle?: boolean
 }
 
-const InsightCard = ({ insight }: InsightCardProps) => {
+const InsightCard = ({ insight, showTitle = true }: InsightCardProps) => {
   const severity = SEVERITY_CONFIG[insight.severity]
   const SeverityIcon = severity.icon
   const isVerified = insight.validationStatus === 'verified'
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         {insight.severity !== 'info' && (
           <span
@@ -81,9 +83,11 @@ const InsightCard = ({ insight }: InsightCardProps) => {
         </span>
       </div>
 
-      <h4 className="mt-3 text-lg font-extrabold leading-7 text-slate-950">
-        {insight.title}
-      </h4>
+      {showTitle && (
+        <h4 className="mt-3 text-lg font-extrabold leading-7 text-slate-950">
+          {insight.title}
+        </h4>
+      )}
       <InsightCardBody insight={insight} />
     </article>
   )

@@ -1,4 +1,6 @@
 from app.services.insights.narratives.categorical_narratives import categorical_report
+from app.services.insights.models import WorkbookInsightReport
+from app.services.insights.verification.validator import validate_workbook_insights
 
 
 def cell(address, value, number_format=None):
@@ -31,6 +33,7 @@ def test_counts_records_instead_of_reciting_rows() -> None:
     assert "회의 3건" in items[1].fact and "계약 2건" in items[1].fact
     assert overview == items[0].fact
     assert "2025년 12월 1일부터 2025년 12월 5일까지" in items[2].fact
+    assert [item.topic for item in items] == ["유형", "유형", "발생일"]
 
 
 def test_header_left_in_its_own_region_still_names_the_columns() -> None:
@@ -48,6 +51,8 @@ def test_a_caption_above_the_table_names_what_is_recorded() -> None:
         {"title": None, "rows": RECORDS},
     ]))
     assert items and items[0].title == "일일 점검 기록 구성"
+    assert items[0].topic == "일일 점검 기록"
+    assert "'이벤트'!C2" in items[0].evidence
 
 
 def test_measurement_tables_are_left_to_the_other_narratives() -> None:
@@ -61,5 +66,21 @@ def test_measurement_tables_are_left_to_the_other_narratives() -> None:
 
 def test_evidence_points_at_the_whole_counted_range() -> None:
     items, _ = categorical_report(context([{"title": None, "rows": [HEADER, *RECORDS]}]))
-    assert items[0].evidence == ["'이벤트'!D7:D12"]
-    assert items[-1].evidence == ["'이벤트'!C7:C12"]
+    assert items[0].evidence == ["'이벤트'!D5", "'이벤트'!D7:D12"]
+    assert items[-1].evidence == ["'이벤트'!C5", "'이벤트'!C7:C12"]
+
+
+def test_caption_and_column_topics_survive_grounding_from_cited_cells() -> None:
+    source = context([
+        {"title": None, "rows": [[cell("C2", "일일 점검 기록")]]},
+        {"title": None, "rows": [HEADER]},
+        {"title": None, "rows": RECORDS},
+    ])
+    items, overview = categorical_report(source)
+    report = validate_workbook_insights(
+        WorkbookInsightReport(overview=overview, insights=items), source,
+    )
+
+    assert [item.topic for item in report.insights[:3]] == [
+        "일일 점검 기록", "유형", "발생일",
+    ]

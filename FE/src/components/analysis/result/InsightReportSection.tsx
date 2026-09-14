@@ -1,4 +1,5 @@
 import { AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react'
+import { useLayoutEffect, useRef } from 'react'
 
 import type { InsightReportResult } from '@/api/analysis'
 import InsightCardGroup from '@/components/analysis/result/InsightCardGroup'
@@ -12,6 +13,40 @@ interface InsightReportSectionProps {
 const InsightReportSection = ({ report: source }: InsightReportSectionProps) => {
   const { report, hasSuppressedInsights } = prepareInsightReportPresentation(source)
   const groups = groupInsights(report.insights)
+  const cardsRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    const grid = cardsRef.current
+    if (!grid) return
+
+    const alignEvidence = () => {
+      const cards = Array.from(grid.children)
+      const details = cards.map((card) => card.querySelector<HTMLDetailsElement>('details'))
+      details.forEach((detail) => detail?.style.removeProperty('margin-top'))
+
+      const rows = new Map<number, { detail: HTMLDetailsElement; top: number }[]>()
+      cards.forEach((card, index) => {
+        const detail = details[index]
+        const summary = detail?.querySelector('summary')
+        if (!detail || !summary) return
+        const row = Math.round(card.getBoundingClientRect().top)
+        const entries = rows.get(row) ?? []
+        entries.push({ detail, top: summary.getBoundingClientRect().top })
+        rows.set(row, entries)
+      })
+
+      rows.forEach((entries) => {
+        const bottom = Math.max(...entries.map(({ top }) => top))
+        entries.forEach(({ detail, top }) => {
+          detail.style.marginTop = `${16 + Math.max(0, bottom - top)}px`
+        })
+      })
+    }
+
+    alignEvidence()
+    window.addEventListener('resize', alignEvidence)
+    return () => window.removeEventListener('resize', alignEvidence)
+  })
 
   return (
     <section
@@ -59,7 +94,10 @@ const InsightReportSection = ({ report: source }: InsightReportSectionProps) => 
       )}
 
       {report.insights.length > 0 ? (
-        <div className="space-y-6 p-5 md:p-6">
+        <div
+          className="grid gap-x-3 gap-y-6 p-5 lg:grid-cols-2 lg:has-[details[open]]:items-start md:p-6"
+          ref={cardsRef}
+        >
           {groups.map((group) => (
             <InsightCardGroup group={group} key={group.key} />
           ))}

@@ -57,6 +57,27 @@ class InsightResultMapperTests {
 	}
 
 	@Test
+	void carriesSourceDerivedTopicWithoutChangingLegacyInsights() {
+		JsonMapper mapper = JsonMapper.builder().build();
+		AiWorkbookInsights.InsightReport source = mapper.readValue("""
+				{
+				  "overview": "직원 현황", "limitations": [],
+				  "insights": [{
+				    "title": "전체 직원 수 변화", "topic": "전체 직원 수 변동",
+				    "fact": "직원 수가 줄었습니다.", "category": "trend",
+				    "severity": "info", "evidence": ["Data!A1"]
+				  }]
+				}
+				""", AiWorkbookInsights.InsightReport.class);
+
+		AnalysisInsightResult.Insight result = InsightResultMapper.map(source).insights().getFirst();
+
+		assertThat(result.topic()).isEqualTo("전체 직원 수 변동");
+		assertThat(mapper.writeValueAsString(result))
+				.contains("\"topic\":\"전체 직원 수 변동\"");
+	}
+
+	@Test
 	void carriesExplicitAiOverviewValidationToTheFrontendContract() {
 		JsonMapper mapper = JsonMapper.builder().build();
 		AiWorkbookInsights.InsightReport source = mapper.readValue("""

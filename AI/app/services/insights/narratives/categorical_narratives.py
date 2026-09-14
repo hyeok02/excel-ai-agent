@@ -11,6 +11,7 @@ from app.services.insights.display.glossary import readable, translate
 from app.services.insights.narratives.narrative_values import (
     insight, number, period, reference, subject_particle,
 )
+from app.services.insights.narratives.topic_labels import source_topic
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.table_inputs import narrative_regions
 
@@ -35,16 +36,17 @@ def _candidates(sheets):
     results = []
     for source_order, sheet in sheets:
         facts = sheet.get("business_facts", {})
-        carried, heading = None, ""
+        carried, heading, heading_cell = None, "", None
         for region in narrative_regions(facts):
             rows = region.get("rows", [])
             report = _region_report(
-                str(sheet.get("name", "")), rows, heading, carried,
+                str(sheet.get("name", "")), rows, heading, carried, heading_cell,
             )
             if report:
                 results.append((source_order, *report))
             carried = rows[-1] if rows and header_like(rows[-1]) else carried
-            heading = _heading(rows) or heading
+            if caption := _heading(rows):
+                heading, heading_cell = caption, rows[0][0]
     return results
 
 
@@ -55,7 +57,7 @@ def _heading(rows):
     return _title(rows[0][0].get("value"))
 
 
-def _region_report(sheet, rows, title, carried=None):
+def _region_report(sheet, rows, title, carried=None, heading_cell=None):
     index = header_index(rows)
     header, records = (rows[index], rows[index + 1:]) if index is not None else (
         carried, rows
@@ -71,6 +73,12 @@ def _region_report(sheet, rows, title, carried=None):
     total = sum(count for _, count in counts)
     top_value, top_count = counts[0]
     kind = readable(_title(title) or name)
+    header_ref = next((reference(sheet, cell["cell"]) for cell in header
+                       if " ".join(str(cell.get("value", "")).split()) == name), None)
+    cited = [*([header_ref] if header_ref else []), *_evidence(sheet, cells)]
+    if heading_cell and heading_cell.get("cell") and _title(title):
+        cited.insert(0, reference(sheet, heading_cell["cell"]))
+    topic = source_topic(title) if heading_cell else source_topic(name)
     share = number(round(top_count / total * 100, 1))
     following = ", ".join(f"{translate(value) or value} {number(count)}건"
                           for value, count in counts[1:3])
@@ -80,12 +88,12 @@ def _region_report(sheet, rows, title, carried=None):
         f"{kind} 구성",
         f"‘{headline}’{subject_particle(headline)} {number(total)}건 중 "
         f"{number(top_count)}건({share}%)으로 가장 많고{tail}.",
-        _evidence(sheet, cells),
+        cited, topic=topic,
     )]
     listed = _distribution(name, counts, total)
     if listed:
         items.append(insight(f"{readable(name)} 분포", listed,
-                             _evidence(sheet, cells)))
+                             cited, topic=source_topic(name)))
     dated = _dates(sheet, header, records)
     if dated:
         items.append(dated)
@@ -121,7 +129,9 @@ def _dates(sheet, header, records):
     return insight(
         f"{readable(name)} 분포",
         f"기록은 {span} 모두 {number(len(counts))}개 시점에 걸쳐 있습니다.{detail}",
-        _evidence(sheet, cells),
+        [*([reference(sheet, cell["cell"]) for cell in header
+            if " ".join(str(cell.get("value", "")).split()) == name][:1]),
+         *_evidence(sheet, cells)], topic=source_topic(name),
     )
 
 

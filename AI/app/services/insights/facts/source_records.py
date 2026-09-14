@@ -1,7 +1,9 @@
 import math
 import re
 
+from app.services.insights.display.display_quality import is_presentable_label
 from app.services.insights.models import WorkbookInsight
+from app.services.insights.narratives.narrative_values import reference
 from app.services.insights.narratives.record_display import build_record_insight, record_priority
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 
@@ -26,6 +28,9 @@ def source_record_insights(
                 continue
             item = build_record_insight(name, values)
             if item:
+                item = item.model_copy(update={
+                    "topic": item.topic or _source_topic(item, name, values),
+                })
                 candidates.append((record_priority(values), -source_order, item))
     candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
     insights = []
@@ -42,6 +47,19 @@ def source_record_insights(
         if len(insights) >= limit:
             break
     return insights
+
+
+def _source_topic(
+    item: WorkbookInsight, sheet: str, values: list[dict[str, object]]
+) -> str | None:
+    """Use a literal source cell only when that cell is cited by the card."""
+    title = item.title
+    if not is_presentable_label(title):
+        return None
+    return next((title for cell in values
+                 if isinstance(cell.get("value"), str)
+                 and " ".join(cell["value"].split()) == title
+                 and reference(sheet, cell["cell"]) in item.evidence), None)
 
 
 def _usable(value: object) -> bool:

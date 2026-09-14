@@ -26,7 +26,7 @@ public final class AnalysisInsightResult {
 	}
 
 	public record Insight(
-			String title, String fact, String cause, String impact,
+			String title, String topic, String fact, String cause, String impact,
 			String category, String severity, List<String> evidence,
 			String recommendation, Double confidence,
 			String validationStatus, List<String> validationReasons) {

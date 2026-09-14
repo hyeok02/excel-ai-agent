@@ -1,4 +1,5 @@
 """Group related source changes; never promote a percentage over the overall metric."""
+from app.services.insights.display.glossary import translate
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.narratives.narrative_values import (
     finite, identity, insight, metric_name, metric_unit, number, overall, period,
@@ -23,11 +24,14 @@ def trend_report(context):
     subject, owner_refs = identity(sheet)
     unit = metric_unit(primary["metric"], records)
     metric = metric_name(primary["metric"])
+    topic = translate(primary["metric"]) or metric
     owner = f"{subject}의 " if subject else ""
     principal = f"{owner}{metric}는 {_change(primary, unit)}."
     timeline, timeline_refs = _timeline(primary, records, unit)
+    category = "trend" if timeline else "change"
     items = [insight(f"{owner}{metric_name(primary['metric'])} 변화", principal + timeline,
-                     [*owner_refs, *primary["evidence"], *timeline_refs], "trend")]
+                     [*owner_refs, *primary["evidence"], *timeline_refs], category,
+                     topic=topic)]
     related = [c for c in changes[1:] if c["evidence"] == primary["evidence"]
                and c["earliest_period"] == primary["earliest_period"]
                and c["latest_period"] == primary["latest_period"]][:4]
@@ -37,8 +41,10 @@ def trend_report(context):
                      f"{_change(c, metric_unit(c['metric'], records) or unit, False)}"
                      for c in related]
         detail = f"같은 기간 {'. '.join(fragments)}."
-        items.append(insight("주요 항목별 변화", detail,
-                             [r for c in related for r in c["evidence"]], "trend"))
+        related_topic = _related_topic(topic, related)
+        items.append(insight(f"{related_topic} 변화", detail,
+                             [r for c in related for r in c["evidence"]], "change",
+                             topic=related_topic))
     return items, " ".join(
         part for part in (principal, detail, timeline.strip()) if part
     )
@@ -53,6 +59,23 @@ def _trend_candidates(sheets):
             candidates.append((source_order, any(overall(c["metric"]) for c in changes),
                                sheet, changes))
     return candidates
+
+
+def _related_topic(metric, related):
+    paths = [str(change["metric"]).split(">", 1) for change in related]
+    axes = list(dict.fromkeys(
+        translate(path[0].strip()) or path[0].strip()
+        for path in paths if len(path) == 2 and path[0].strip()
+    ))
+    if all(len(path) == 2 for path in paths):
+        if len(axes) <= 2:
+            return f"{'·'.join(axes)}별 {metric}"
+    if axes:
+        return f"{'·'.join(axes[:2])} 등 항목별 {metric}"
+    labels = [translate(path[0].strip()) or path[0].strip() for path in paths]
+    if len(labels) <= 2 and all(len(label) <= 24 for label in labels):
+        return "·".join(labels)
+    return f"{metric}의 주요 항목"
 
 
 def complete_change(change):

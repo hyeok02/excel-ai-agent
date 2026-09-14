@@ -9,6 +9,7 @@ from app.services.insights.display.amount_units import PER_SHARE, amount_unit
 from app.services.insights.narratives.narrative_values import (
     number, period, reference, workbook_identity,
 )
+from app.services.insights.narratives.topic_labels import scoped_source_topic
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 
 
@@ -56,9 +57,7 @@ def _candidates(sheets, owner=("", ())):
 
 def _settled(series):
     """A series running past today is a forecast, not a record of what happened."""
-    points = series.get("points", [])
-    last = str(points[-1].get("period", "")) if points else ""
-    return 0 if last[:10] > date.today().isoformat() else 1
+    return 0 if series.get("points") and str(series["points"][-1].get("period", ""))[:10] > date.today().isoformat() else 1
 
 
 def _insight(sheet, series, owner=("", ()), unit=("", ())):
@@ -75,6 +74,7 @@ def _insight(sheet, series, owner=("", ()), unit=("", ())):
     named = (f"{readable(scope)}의 {readable(metric)}" if scope
              else readable(metric))
     subject = f"{holder}의 {named}" if holder else named
+    topic = scoped_source_topic(metric, series.get("label_cell"), scope, series.get("scope_cell"))
     money, money_refs = unit
     if money and PER_SHARE.search(f"{scope} {metric}"):
         money, money_refs = "", []
@@ -103,19 +103,20 @@ def _insight(sheet, series, owner=("", ()), unit=("", ())):
     return WorkbookInsight(
         title=f"{subject} 변화",
         fact=fact,
-        category="trend",
+        category="change",
         severity="info",
         evidence=[*holder_refs, *money_refs,
                   *(reference(sheet, cell) for cell in dict.fromkeys(evidence) if cell)],
         confidence=1.0,
+        topic=topic,
     )
 
 
 def _signature(series):
     """Same row, same numbers: one copy may have lost its percent formatting."""
     points = series.get("points", [])
-    ends = [points[0].get("value"), points[-1].get("value")] if points else []
-    return (str(series.get("metric", "")).casefold(), *(str(value) for value in ends))
+    return (str(series.get("metric", "")).casefold(),
+            *(str(point.get("value")) for point in points[:1] + points[-1:]))
 
 
 def _derived(series):

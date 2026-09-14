@@ -1,5 +1,5 @@
 export type InsightCategory =
-  'metric' | 'trend' | 'summary' | 'structure' | 'formula' | 'risk'
+  'metric' | 'trend' | 'change' | 'summary' | 'structure' | 'formula' | 'risk'
 export type InsightSeverity = 'info' | 'warning' | 'critical'
 export type InsightValidationStatus = 'verified' | 'limited'
 
@@ -14,6 +14,7 @@ export interface InsightValidationSummary {
 
 export interface InsightResult {
   title: string
+  topic: string | null
   fact: string
   cause: string | null
   impact: string | null
@@ -51,6 +52,7 @@ const readTextList = (value: unknown) =>
 const readCategory = (value: unknown): InsightCategory =>
   value === 'metric' ||
   value === 'trend' ||
+  value === 'change' ||
   value === 'structure' ||
   value === 'formula' ||
   value === 'risk'
@@ -87,15 +89,19 @@ const normalizeValidation = (value: unknown): InsightValidationSummary | null =>
 
 const normalizeInsight = (value: unknown, index: number): InsightResult => {
   const insight = isRecord(value) ? value : {}
+  const title = readText(insight.title) ?? `인사이트 ${index + 1}`
+  const category = readCategory(insight.category)
   const fact = readText(insight.fact) ?? readText(insight.description) ?? ''
   const impact = readText(insight.impact)
 
   return {
-    title: readText(insight.title) ?? `인사이트 ${index + 1}`,
+    title,
+    topic: readText(insight.topic),
     fact,
     cause: readText(insight.cause),
     impact,
-    category: readCategory(insight.category),
+    // 이전 분석 결과에 저장된 항목별 비교 카드도 올바른 그룹에 보여준다.
+    category: category === 'trend' && title === '주요 항목별 변화' ? 'change' : category,
     severity: readSeverity(insight.severity),
     evidence: readTextList(insight.evidence),
     recommendation: readText(insight.recommendation),
