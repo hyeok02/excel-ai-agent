@@ -44,16 +44,9 @@ def test_wrong_percent_change_is_still_rejected() -> None:
     assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
 
 
-def test_percent_change_with_the_base_reversed_is_rejected() -> None:
-    """5,417을 기준으로 한 12.63%는 이 문장의 감소율이 아니다."""
-    answer = _answer("전체 직원 수는 6,101명에서 5,417명으로 12.63% 감소했습니다.")
-
-    assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
-
-
-def test_ratio_between_cited_values_is_not_a_change_rate() -> None:
-    """88.79%와 112.63%는 두 값의 비중일 뿐 증감률이 아니다."""
-    for wrong in ("88.79", "112.63"):
+def test_only_the_stated_base_counts_as_a_change_rate() -> None:
+    """12.63%는 기준을 뒤집은 값, 88.79%와 112.63%는 비중이라 감소율이 아니다."""
+    for wrong in ("12.63", "88.79", "112.63"):
         answer = _answer(f"전체 직원 수는 6,101명에서 5,417명으로 {wrong}% 감소했습니다.")
 
         assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
@@ -67,15 +60,10 @@ def test_difference_without_its_operands_is_rejected() -> None:
 
 def test_stated_increase_on_decreasing_values_is_rejected() -> None:
     """줄어든 값을 두고 증가라고 쓰면 수치가 맞아도 통과시키지 않는다."""
-    answer = _answer("전체 직원 수는 6,101명에서 5,417명으로 684명 증가했습니다.")
+    for wrong in ("684명", "11.21%"):
+        answer = _answer(f"전체 직원 수는 6,101명에서 5,417명으로 {wrong} 증가했습니다.")
 
-    assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
-
-
-def test_stated_increase_rate_on_decreasing_values_is_rejected() -> None:
-    answer = _answer("전체 직원 수는 6,101명에서 5,417명으로 11.21% 증가했습니다.")
-
-    assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+        assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
 
 
 def test_real_increase_is_accepted() -> None:
@@ -102,10 +90,12 @@ def test_ratio_between_cited_values_is_accepted() -> None:
     assert answer.status is QuestionAnswerStatus.ANSWERED
 
 
-def test_ratio_is_not_accepted_as_a_change_rate() -> None:
-    answer = _answer("전체 직원 수는 6,101명에서 5,417명으로 88.79% 감소했습니다.")
+def test_ratio_binds_its_numerator_and_denominator() -> None:
+    """"A는 B의 P%"는 A÷B×100 한 값만 인정한다."""
+    for wrong in ("112.63", "12.63"):
+        answer = _answer(f"5,417명은 6,101명의 {wrong}%입니다.")
 
-    assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+        assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
 
 
 def test_one_clause_does_not_vouch_for_another() -> None:
