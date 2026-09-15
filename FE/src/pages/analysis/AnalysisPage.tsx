@@ -26,6 +26,7 @@ const AnalysisPage = () => {
     openAnalysis,
     processingStatus,
     selectFile,
+    restoredFile,
     selectedFile,
     startAnalysis,
     status,
@@ -53,6 +54,7 @@ const AnalysisPage = () => {
           onSelectFile={selectFile}
           onStartAnalysis={startAnalysis}
           onOpenHistory={() => setIsHistoryOpen(true)}
+          restoredFile={restoredFile}
           selectedFile={selectedFile}
           status={status}
         />

@@ -4,6 +4,9 @@ import {
   EmptyFilePicker,
   SelectedFile,
 } from '@/components/analysis/upload/AnalysisFilePickerStates'
+import RestoredFilePicker, {
+  type RestoredAnalysisFile,
+} from '@/components/analysis/upload/RestoredFilePicker'
 import type { AnalysisViewStatus } from '@/hooks/analysis/useWorkbookAnalysis'
 import { cn } from '@/utils/cn'
 
@@ -12,6 +15,7 @@ interface AnalysisFileDropZoneProps {
   onClearFile: () => void
   onSelectFile: (file: File) => void
   onStartAnalysis: () => void
+  restoredFile: RestoredAnalysisFile | null
   selectedFile: File | null
   status: AnalysisViewStatus
 }
@@ -21,6 +25,7 @@ const AnalysisFileDropZone = ({
   onClearFile,
   onSelectFile,
   onStartAnalysis,
+  restoredFile,
   selectedFile,
   status,
 }: AnalysisFileDropZoneProps) => {
@@ -43,7 +48,7 @@ const AnalysisFileDropZone = ({
     <div
       className={cn(
         'upload-zone',
-        selectedFile && 'upload-zone-selected',
+        (selectedFile || restoredFile) && 'upload-zone-selected',
         isDragging && 'border-brand-500 bg-brand-50',
         isPending && 'pointer-events-none opacity-70',
       )}
@@ -66,6 +71,13 @@ const AnalysisFileDropZone = ({
           onFileChange={handleFileChange}
           onStartAnalysis={onStartAnalysis}
           status={status}
+        />
+      ) : restoredFile ? (
+        <RestoredFilePicker
+          file={restoredFile}
+          isPending={isPending}
+          onClearFile={onClearFile}
+          onFileChange={handleFileChange}
         />
       ) : (
         <EmptyFilePicker isPending={isPending} onFileChange={handleFileChange} />
