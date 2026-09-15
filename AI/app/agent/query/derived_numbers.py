@@ -8,11 +8,14 @@
 증감률은 먼저 적힌 값을 기준으로만 계산한다. 방향을 가리지 않으면
 "6,101명에서 5,417명으로 12.63% 감소"처럼 기준을 뒤집은 값까지 통과한다.
 
-비중(a가 b의 몇 %인가)은 증감을 말하지 않는 문장에서만 인정한다. 증감
-문장에서까지 허용하면 "6,101명에서 5,417명으로 88.79% 감소"가 통과한다.
+비중은 "A는 B의 P%" 형태에서만, 그것도 A ÷ B × 100 한 값만 인정한다.
+분자와 분모를 묶지 않으면 뒤집은 값(112.63%)이나 같은 절의 증감률
+(12.63%)까지 비중으로 통과한다. 증감을 말하는 문장에서는 비중을 아예
+인정하지 않는다. "6,101명에서 5,417명으로 88.79% 감소"를 막기 위해서다.
 """
+import re
 from decimal import Decimal, InvalidOperation
-from itertools import combinations, permutations
+from itertools import combinations
 
 from app.agent.query.answer_clauses import stated_direction
 from app.services.insights.verification.numeric_validation import (
@@ -21,6 +24,8 @@ from app.services.insights.verification.numeric_validation import (
 )
 
 MAX_PAIRED_VALUES = 24
+# "…의 88.79%" 또는 "88.79% of …" 처럼 비중을 말하는 자리.
+RATIO_FRAME = re.compile(r"의\s*-?\d[\d,]*(?:\.\d+)?\s*%|%\s*of\b", re.I)
 
 
 def derived_numbers(text: str, evidence: list[object]) -> set[Decimal]:
@@ -30,19 +35,19 @@ def derived_numbers(text: str, evidence: list[object]) -> set[Decimal]:
 
 
 def derived_percent_numbers(text: str, evidence: list[object]) -> set[Decimal]:
-    """먼저 적힌 값을 기준으로 한 증감률과, 증감 문장이 아닐 때의 비중을 모은다."""
+    """이 문장이 말하는 종류의 백분율만 모은다. 증감률과 비중은 섞지 않는다."""
     values = stated_cell_values(text, evidence)
-    rates = {
+    if stated_direction(text) is None and RATIO_FRAME.search(text):
+        return {
+            abs(first / second * 100)
+            for first, second in combinations(values, 2)
+            if second
+        }
+    return {
         abs((second - first) / first * 100)
         for first, second in combinations(values, 2)
         if first
     }
-    if stated_direction(text) is not None:
-        return rates
-    ratios = {
-        abs(second / first * 100) for first, second in permutations(values, 2) if first
-    }
-    return rates | ratios
 
 
 def stated_cell_values(text: str, evidence: list[object]) -> list[Decimal]:
