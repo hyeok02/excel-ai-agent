@@ -3,6 +3,7 @@ import { History, TriangleAlert } from 'lucide-react'
 import type { AnalysisDepth, AnalysisMode } from '@/api/analysis'
 import AnalysisFileDropZone from '@/components/analysis/upload/AnalysisFileDropZone'
 import AnalysisOptions from '@/components/analysis/upload/AnalysisOptions'
+import type { RestoredAnalysisFile } from '@/components/analysis/upload/RestoredFilePicker'
 import type { AnalysisViewStatus } from '@/hooks/analysis/useWorkbookAnalysis'
 
 interface AnalysisUploadPanelProps {
@@ -17,6 +18,7 @@ interface AnalysisUploadPanelProps {
   onOpenHistory: () => void
   onSelectFile: (file: File) => void
   onStartAnalysis: () => void
+  restoredFile: RestoredAnalysisFile | null
   selectedFile: File | null
   status: AnalysisViewStatus
 }
@@ -33,6 +35,7 @@ const AnalysisUploadPanel = ({
   onOpenHistory,
   onSelectFile,
   onStartAnalysis,
+  restoredFile,
   selectedFile,
   status,
 }: AnalysisUploadPanelProps) => (
@@ -68,6 +71,7 @@ const AnalysisUploadPanel = ({
       onClearFile={onClearFile}
       onSelectFile={onSelectFile}
       onStartAnalysis={onStartAnalysis}
+      restoredFile={restoredFile}
       selectedFile={selectedFile}
       status={status}
     />

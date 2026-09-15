@@ -46,6 +46,13 @@ export const useWorkbookAnalysis = () => {
         : 'idle'
 
   const executedMode = run.completed?.submission.mode ?? null
+  // 복원된 분석은 결과만 남고 File 객체가 없다. 업로드 칸이 비어 보이지
+  // 않도록 저장된 파일 정보를 대신 내려보낸다.
+  const submission = run.completed?.submission ?? null
+  const restoredFile =
+    !selectedFile && submission
+      ? { name: submission.originalFilename, sizeBytes: submission.sizeBytes }
+      : null
   const canShowInsights = run.completed?.result.insightReport != null
   // 결과가 있으면 선택한 방식이 '보기 방식'이 된다.
   const displayMode = executedMode ? (viewMode ?? executedMode) : mode
@@ -123,6 +130,7 @@ export const useWorkbookAnalysis = () => {
       run.open(nextAnalysisId)
     },
     processingStatus: progress.processingStatus,
+    restoredFile,
     selectFile,
     selectedFile,
     startAnalysis,
