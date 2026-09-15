@@ -40,6 +40,21 @@ def test_wrong_percent_change_is_still_rejected() -> None:
     assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
 
 
+def test_percent_change_with_the_base_reversed_is_rejected() -> None:
+    """5,417을 기준으로 한 12.63%는 이 문장의 감소율이 아니다."""
+    answer = _answer("전체 직원 수는 6,101명에서 5,417명으로 12.63% 감소했습니다.")
+
+    assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+
+
+def test_ratio_between_cited_values_is_not_a_change_rate() -> None:
+    """88.79%와 112.63%는 두 값의 비중일 뿐 증감률이 아니다."""
+    for wrong in ("88.79", "112.63"):
+        answer = _answer(f"전체 직원 수는 6,101명에서 5,417명으로 {wrong}% 감소했습니다.")
+
+        assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+
+
 def test_difference_without_its_operands_is_rejected() -> None:
     answer = _answer("전체 직원 수가 684명 감소했습니다.")
 
