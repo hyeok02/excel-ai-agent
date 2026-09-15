@@ -95,6 +95,29 @@ def test_direction_is_checked_per_clause() -> None:
     assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
 
 
+def test_ratio_between_cited_values_is_accepted() -> None:
+    """증감을 말하지 않는 문장에서는 비중도 원본으로 재현해 인정한다."""
+    answer = _answer("904명은 5,417명의 16.69%입니다.")
+
+    assert answer.status is QuestionAnswerStatus.ANSWERED
+
+
+def test_ratio_is_not_accepted_as_a_change_rate() -> None:
+    answer = _answer("전체 직원 수는 6,101명에서 5,417명으로 88.79% 감소했습니다.")
+
+    assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+
+
+def test_one_clause_does_not_vouch_for_another() -> None:
+    """앞 절에서 만들어진 근거로 뒤 절의 주장을 통과시키지 않는다."""
+    answer = _answer(
+        "5,417명은 6,101명의 88.79%이고, "
+        "일반관리는 1,018명에서 904명으로 88.79% 감소했습니다."
+    )
+
+    assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+
+
 def test_date_cell_is_not_treated_as_a_row_label() -> None:
     answer = _answer(
         "전체 직원 수는 2023년 9월 1일 6,101명에서 "

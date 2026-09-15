@@ -1,4 +1,5 @@
 from app.agent.execution import AgentExecution, AgentStepStatus
+from app.agent.query.answer_clauses import clauses
 from app.agent.query.answer_grounding import (
     answer_is_grounded,
     verified_fallback_answer,
@@ -53,10 +54,17 @@ def validate_answer(
             limitations or ["질문과 직접 연결되는 셀 근거가 없습니다."],
             "현재 확인된 원본 셀 근거만으로는 이 질문에 답할 수 없습니다.",
         )
-    candidates = supported_answer_numbers(question, matched, execution, draft.answer)
     answer = draft.answer
-    number_error = bool(unmatched_numbers(answer, candidates))
-    unit_error = not answer_units_supported(answer, matched, execution)
+    # 절 단위로 본다. 답변 전체로 보면 한 절에서 만들어진 근거가
+    # 다른 절의 주장을 통과시킨다.
+    parts = clauses(answer) or [answer]
+    number_error = any(
+        unmatched_numbers(part, supported_answer_numbers(question, matched, execution, part))
+        for part in parts
+    )
+    unit_error = any(
+        not answer_units_supported(part, matched, execution) for part in parts
+    )
     meaning_error = not answer_is_grounded(
         answer, matched, execution, question
     ) or not answer_bindings_supported(answer, matched)
