@@ -4,6 +4,7 @@ from app.agent.query.answer_grounding import (
     verified_fallback_answer,
     verified_support_references,
 )
+from app.agent.query.change_direction import answer_directions_supported
 from app.agent.query.claim_bindings import answer_bindings_supported
 from app.agent.query.comparison_answers import validated_comparison_answer
 from app.agent.query.comparison_evidence import available_evidence as _available_evidence
@@ -59,7 +60,8 @@ def validate_answer(
     meaning_error = not answer_is_grounded(
         answer, matched, execution, question
     ) or not answer_bindings_supported(answer, matched)
-    if number_error or unit_error or meaning_error:
+    direction_error = not answer_directions_supported(answer, matched)
+    if number_error or unit_error or meaning_error or direction_error:
         answer = verified_fallback_answer(question, matched, execution) or ""
         if not answer:
             if number_error:
@@ -68,6 +70,8 @@ def validate_answer(
                 limitations.append("답변의 백분율 단위를 원본 셀이나 검증된 계산에서 확인하지 못했습니다.")
             if meaning_error:
                 limitations.append("답변의 일부 의미를 인용한 원본에서 확인하지 못했습니다.")
+            if direction_error:
+                limitations.append("답변이 말한 증감 방향이 원본 값의 변화와 달랐습니다.")
             return _blocked(
                 question, execution, matched, limitations,
                 "답변 내용을 원본 셀과 대조하지 못해 결과를 표시하지 않았습니다.",

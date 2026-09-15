@@ -9,7 +9,8 @@ CELL = re.compile(r"^([A-Z]+)(\d+)$", re.I)
 # 날짜 셀은 행 이름표가 아니다. 이름표로 보면 기간을 밝힌 문장이
 # 이름표를 빠뜨렸다고 잘못 판정된다.
 DATE_LIKE = re.compile(r"^\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[T ].*)?$")
-CLAUSE = re.compile(r"[.!?;\n]|,\s*|\b(?:and|while)\b|(?:이고|이며|반면|그리고)", re.I)
+# 천 단위 구분 기호와 소수점은 절 경계가 아니다.
+CLAUSE = re.compile(r"[!?;\n]|[.,](?!\d)|\b(?:and|while)\b|(?:이고|이며|반면|그리고)", re.I)
 
 
 def answer_bindings_supported(answer: str, evidence: list[object]) -> bool:
