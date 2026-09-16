@@ -4,7 +4,6 @@ import AgentReadySection from '@/components/analysis/result/AgentReadySection'
 import AnalysisResultHeader from '@/components/analysis/result/AnalysisResultHeader'
 import AnalysisResultSummary from '@/components/analysis/result/AnalysisResultSummary'
 import BfsAnalysisWorkspace from '@/components/analysis/result/bfs/BfsAnalysisWorkspace'
-import FormulaRiskSection from '@/components/analysis/result/formula-risk/FormulaRiskSection'
 import InsightReportSection from '@/components/analysis/result/InsightReportSection'
 import WorkbookQuestionSection from '@/components/analysis/result/questions/WorkbookQuestionSection'
 import WorkbookWritebackSection from '@/components/analysis/result/writeback/WorkbookWritebackSection'
@@ -51,10 +50,6 @@ const AnalysisResultSection = ({
             sourceAvailable={result.sourceAvailable}
           />
           <AdvancedAnalysisSection>
-            {workbook.formulaRiskSummary && (
-              <FormulaRiskSection summary={workbook.formulaRiskSummary} />
-            )}
-
             <WorkbookSemanticOverview
               excludedSheets={workbook.excludedSheets ?? []}
               sheets={workbook.sheets}
