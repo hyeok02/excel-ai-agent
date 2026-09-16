@@ -2,7 +2,15 @@ import type {
   SemanticSheetImportance,
   SemanticSheetRole,
 } from '@/components/analysis/workbook/semantic/semanticModel'
-import type { RolePresentation } from '@/components/analysis/workbook/semantic/semanticRolePresentation'
+
+/** 시트 배지는 카드 머리글에 하나만 놓이므로 채운 형태를 그대로 쓴다. */
+export interface SheetRolePresentation {
+  label: string
+  description: string
+  badgeClass: string
+  surfaceClass: string
+  borderClass: string
+}
 
 export const SHEET_ROLE_PRESENTATION = {
   input: {
@@ -40,7 +48,7 @@ export const SHEET_ROLE_PRESENTATION = {
     surfaceClass: 'bg-slate-50',
     borderClass: 'border-l-slate-400',
   },
-} as const satisfies Record<SemanticSheetRole, RolePresentation>
+} as const satisfies Record<SemanticSheetRole, SheetRolePresentation>
 
 export const SHEET_IMPORTANCE_PRESENTATION = {
   low: { label: '구조상 중심도 · 낮음', className: 'bg-slate-100 text-slate-600' },
