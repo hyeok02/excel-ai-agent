@@ -6,7 +6,6 @@ import BfsAnalysisNavigation, {
   type BfsView,
 } from '@/components/analysis/result/bfs/BfsAnalysisNavigation'
 import DependencyMapSection from '@/components/analysis/result/DependencyMapSection'
-import FormulaRiskSection from '@/components/analysis/result/formula-risk/FormulaRiskSection'
 import WorkbookExplorer from '@/components/analysis/workbook/explorer/WorkbookExplorer'
 import WorkbookSemanticOverview from '@/components/analysis/workbook/semantic/summaries/WorkbookSemanticOverview'
 
@@ -17,7 +16,6 @@ interface BfsAnalysisWorkspaceProps {
 const BfsAnalysisWorkspace = ({ workbook }: BfsAnalysisWorkspaceProps) => {
   const [activeView, setActiveView] = useState<BfsView>('flow')
   const graph = workbook.dependencyGraph
-  const risks = workbook.formulaRiskSummary
 
   return (
     <section className="mt-6">
@@ -25,7 +23,6 @@ const BfsAnalysisWorkspace = ({ workbook }: BfsAnalysisWorkspaceProps) => {
         activeView={activeView}
         clusterCount={graph?.clusterCount ?? 0}
         onChange={setActiveView}
-        riskCount={risks?.totalCount ?? 0}
         sheetCount={workbook.sheets.length}
       />
 
@@ -44,7 +41,6 @@ const BfsAnalysisWorkspace = ({ workbook }: BfsAnalysisWorkspaceProps) => {
             </p>
           </div>
         )}
-        {activeView === 'risk' && risks && <FormulaRiskSection summary={risks} />}
         {activeView === 'structure' && (
           <WorkbookSemanticOverview
             excludedSheets={workbook.excludedSheets ?? []}

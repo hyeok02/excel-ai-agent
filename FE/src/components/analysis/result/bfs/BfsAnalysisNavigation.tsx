@@ -1,14 +1,13 @@
-import { Braces, Network, ShieldAlert, Table2 } from 'lucide-react'
+import { Braces, Network, Table2 } from 'lucide-react'
 
 import { cn } from '@/utils/cn'
 
-export type BfsView = 'flow' | 'risk' | 'structure' | 'source'
+export type BfsView = 'flow' | 'structure' | 'source'
 
 interface BfsAnalysisNavigationProps {
   activeView: BfsView
   clusterCount: number
   onChange: (view: BfsView) => void
-  riskCount: number
   sheetCount: number
 }
 
@@ -16,7 +15,6 @@ const BfsAnalysisNavigation = ({
   activeView,
   clusterCount,
   onChange,
-  riskCount,
   sheetCount,
 }: BfsAnalysisNavigationProps) => {
   const tabs = [
@@ -25,12 +23,6 @@ const BfsAnalysisNavigation = ({
       label: '계산 구조',
       description: `${clusterCount.toLocaleString()}개 계산 흐름`,
       icon: Network,
-    },
-    {
-      id: 'risk',
-      label: '수식 점검',
-      description: `${riskCount.toLocaleString()}건 확인`,
-      icon: ShieldAlert,
     },
     {
       id: 'structure',
@@ -60,7 +52,7 @@ const BfsAnalysisNavigation = ({
             계산 흐름부터 필요한 항목만 확인하세요
           </h3>
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            결과를 네 영역으로 나눴습니다. 한 번에 하나만 열어 복잡한 워크북도 빠르게
+            결과를 세 영역으로 나눴습니다. 한 번에 하나만 열어 복잡한 워크북도 빠르게
             검토할 수 있습니다.
           </p>
         </div>
@@ -68,7 +60,7 @@ const BfsAnalysisNavigation = ({
 
       <div
         aria-label="BFS 분석 결과 선택"
-        className="grid gap-2 bg-slate-50 p-2 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-2 bg-slate-50 p-2 sm:grid-cols-3"
         role="tablist"
       >
         {tabs.map(({ id, label, description, icon: Icon }) => {
