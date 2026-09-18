@@ -47,12 +47,13 @@ public class WorkbookWritebackController {
 	}
 
 	@PostMapping("/{writebackId}/approve")
-	@Operation(summary = "Excel 변경 제안 명시적 승인 및 복사본 생성")
+	@Operation(summary = "선택한 셀에 대한 Excel 변경 승인 및 복사본 생성")
 	public WritebackView approve(
 			@PathVariable UUID analysisId, @PathVariable UUID writebackId,
 			@RequestBody WritebackApprovalRequest request, Principal principal) {
 		return service.approve(
-				analysisId, writebackId, request.confirmed(), actor(principal));
+				analysisId, writebackId, request.confirmed(), request.approvedCells(),
+				actor(principal));
 	}
 
 	@PostMapping("/{writebackId}/reject")

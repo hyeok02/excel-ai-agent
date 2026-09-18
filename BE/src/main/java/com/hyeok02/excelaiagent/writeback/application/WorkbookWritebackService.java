@@ -61,7 +61,9 @@ public class WorkbookWritebackService {
 	}
 
 	@Transactional
-	public WritebackView approve(UUID analysisId, UUID writebackId, boolean confirmed, String actor) {
+	public WritebackView approve(
+			UUID analysisId, UUID writebackId, boolean confirmed,
+			List<String> approvedCells, String actor) {
 		if (!confirmed) {
 			throw new InvalidWritebackStateException("변경 전·후 값을 확인해야 승인할 수 있습니다.");
 		}
@@ -69,7 +71,8 @@ public class WorkbookWritebackService {
 		WorkbookWriteback item = find(analysisId, writebackId);
 		requireProposed(item);
 		AiWritebackProposal proposal = json.proposal(item.getProposalJson());
-		AiWritebackPackage result = aiClient.apply(original(job), proposal.changes());
+		AiWritebackPackage result = aiClient.apply(
+				original(job), WritebackApprovalScope.select(proposal.changes(), approvedCells));
 		fileStorage.storeWriteback(analysisId, writebackId, job.getFileExtension(), result.workbook());
 		item.apply(json.manifest(result.manifest()), actor, Instant.now());
 		return WritebackView.from(item, json);

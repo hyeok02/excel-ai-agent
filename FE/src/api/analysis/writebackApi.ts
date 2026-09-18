@@ -21,10 +21,11 @@ export const proposeWorkbookWriteback = async (
 export const approveWorkbookWriteback = async (
   analysisId: string,
   writebackId: string,
+  approvedCells: string[] = [],
 ) => {
   const { data } = await apiClient.post<WorkbookWriteback>(
     `${base(analysisId)}/${writebackId}/approve`,
-    { confirmed: true },
+    { approvedCells, confirmed: true },
   )
   return data
 }

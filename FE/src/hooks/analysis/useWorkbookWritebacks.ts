@@ -24,8 +24,13 @@ export const useWorkbookWritebacks = (analysisId: string) => {
     onSuccess: refresh,
   })
   const approval = useMutation({
-    mutationFn: (writebackId: string) =>
-      approveWorkbookWriteback(analysisId, writebackId),
+    mutationFn: ({
+      writebackId,
+      approvedCells,
+    }: {
+      writebackId: string
+      approvedCells: string[]
+    }) => approveWorkbookWriteback(analysisId, writebackId, approvedCells),
     onSuccess: refresh,
   })
   const rejection = useMutation({
@@ -59,9 +64,9 @@ export const useWorkbookWritebacks = (analysisId: string) => {
     return proposal.mutateAsync(instruction)
   }
 
-  const approve = async (writebackId: string) => {
+  const approve = async (writebackId: string, approvedCells: string[] = []) => {
     resetMutationMessages()
-    return approval.mutateAsync(writebackId)
+    return approval.mutateAsync({ approvedCells, writebackId })
   }
 
   const reject = async (writebackId: string) => {
@@ -92,7 +97,7 @@ export const useWorkbookWritebacks = (analysisId: string) => {
     isLoading: history.isLoading,
     isProposing: proposal.isPending,
     pendingId: approval.isPending
-      ? approval.variables
+      ? approval.variables.writebackId
       : rejection.isPending
         ? rejection.variables
         : download.isPending
