@@ -9,7 +9,6 @@ import {
   columnsForView,
   hasDetectedUnit,
   isClassifiedColumn,
-  needsColumnReview,
 } from '@/components/analysis/workbook/schema/columnSchemaUtils'
 
 interface SheetColumnSchemaProps {
@@ -21,7 +20,6 @@ const SheetColumnSchema = ({ columns, sheetName }: SheetColumnSchemaProps) => {
   const [view, setView] = useState<ColumnSchemaView>('important')
   const [expanded, setExpanded] = useState(false)
   const classifiedCount = columns.filter(isClassifiedColumn).length
-  const reviewCount = columns.filter(needsColumnReview).length
   const unitCount = columns.filter(hasDetectedUnit).length
   const importantCount = columnsForView(columns, 'important').length
   const visibleColumns = useMemo(() => columnsForView(columns, view), [columns, view])
@@ -52,18 +50,13 @@ const SheetColumnSchema = ({ columns, sheetName }: SheetColumnSchemaProps) => {
 
       <ColumnSchemaSummary
         classifiedCount={classifiedCount}
-        reviewCount={reviewCount}
         totalCount={columns.length}
         unitCount={unitCount}
       />
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
         <p className="text-[10px] font-bold text-slate-500">
-          {view === 'important'
-            ? '주요 의미별 대표 열'
-            : view === 'review'
-              ? '검토가 필요한 열'
-              : '전체 열'}
+          {view === 'important' ? '주요 의미별 대표 열' : '전체 열'}
         </p>
         <div className="flex rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold">
           <ViewButton
@@ -71,9 +64,6 @@ const SheetColumnSchema = ({ columns, sheetName }: SheetColumnSchemaProps) => {
             onClick={() => changeView('important')}
           >
             주요 {importantCount}
-          </ViewButton>
-          <ViewButton active={view === 'review'} onClick={() => changeView('review')}>
-            검토 필요 {reviewCount}
           </ViewButton>
           <ViewButton active={view === 'all'} onClick={() => changeView('all')}>
             전체 {columns.length}
@@ -90,11 +80,6 @@ const SheetColumnSchema = ({ columns, sheetName }: SheetColumnSchemaProps) => {
           />
         ))}
       </div>
-      {visibleColumns.length === 0 && (
-        <p className="mt-3 rounded-xl bg-emerald-50 px-4 py-3 text-center text-[11px] font-bold text-emerald-700">
-          확인이 필요한 미분류 열이 없습니다.
-        </p>
-      )}
       {visibleColumns.length > 3 && (
         <button
           className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[11px] font-extrabold text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"

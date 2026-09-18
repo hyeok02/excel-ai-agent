@@ -51,7 +51,6 @@ const RegionSemanticSummary = ({ region }: RegionSemanticSummaryProps) => {
       <div className="mt-3">
         <ClassificationReasonPanel
           analysisInclusion={region.analysisInclusion}
-          confidence={semantic.confidence}
           reasons={semantic.reasons}
           title="영역 역할 판단 근거"
         />

@@ -46,12 +46,11 @@ const SheetSemanticSummary = ({ sheet }: { sheet: SheetResult }) => {
 
         <details className="mt-3">
           <summary className="cursor-pointer list-none text-[11px] font-bold text-brand-700 marker:hidden">
-            분류 근거와 신뢰도 보기
+            분류 근거 보기
           </summary>
           <div className="mt-3">
             <ClassificationReasonPanel
               analysisInclusion={analysisInclusion}
-              confidence={classification.confidence}
               reasons={classification.reasons}
               title={`시트 역할 판단 · 구조상 중심도 점수 ${classification.importanceScore}`}
             />
