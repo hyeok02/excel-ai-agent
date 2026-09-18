@@ -1,8 +1,14 @@
-import { Ban, CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck, X } from 'lucide-react'
+import { Ban, CheckCircle2, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 
 import type { WorkbookWriteback } from '@/api/analysis'
+import WritebackApprovalPanel from '@/components/analysis/result/writeback/WritebackApprovalPanel'
 import WritebackChangeList from '@/components/analysis/result/writeback/WritebackChangeList'
+import {
+  allChangeKeys,
+  brokenDependencies,
+  toggleChangeKey,
+} from '@/components/analysis/result/writeback/writebackSelection'
 import WritebackStatusBadge from '@/components/analysis/result/writeback/WritebackStatusBadge'
 import WritebackVerification from '@/components/analysis/result/writeback/WritebackVerification'
 
@@ -11,7 +17,7 @@ interface Props {
   item: WorkbookWriteback
   pendingAction: 'approve' | 'reject' | 'download' | null
   downloadedFilename?: string
-  onApprove: () => Promise<unknown>
+  onApprove: (approvedCells: string[]) => Promise<unknown>
   onRetry: () => void
   onReject: () => Promise<unknown>
   onDownload: () => void
@@ -27,10 +33,12 @@ const WritebackProposalCard = ({
   onReject,
   onDownload,
 }: Props) => {
-  const [confirmed, setConfirmed] = useState(false)
+  const changes = item.proposal.changes
+  const [selected, setSelected] = useState(() => allChangeKeys(changes))
   const proposed = item.status === 'PROPOSED'
   const blocked = item.status === 'BLOCKED'
   const failed = item.status === 'FAILED'
+  const selectable = proposed && changes.length > 1
 
   return (
     <article className="mt-5 rounded-3xl border border-slate-200 bg-slate-50/60 p-5">
@@ -43,8 +51,14 @@ const WritebackProposalCard = ({
         </div>
         <WritebackStatusBadge status={item.status} />
       </div>
-      {item.proposal.changes.length > 0 && (
-        <WritebackChangeList changes={item.proposal.changes} />
+      {changes.length > 0 && (
+        <WritebackChangeList
+          changes={changes}
+          onSelectAll={setSelected}
+          onToggle={(key) => setSelected((current) => toggleChangeKey(current, key))}
+          selectable={selectable}
+          selected={selected}
+        />
       )}
       {item.proposal.risks.length > 0 && (
         <div
@@ -71,48 +85,15 @@ const WritebackProposalCard = ({
         </div>
       )}
       {proposed && (
-        <div className="mt-4 border-t border-slate-200 pt-4">
-          <label className="flex cursor-pointer items-start gap-3 text-sm font-semibold text-slate-700">
-            <input
-              checked={confirmed}
-              className="mt-0.5 h-4 w-4 accent-brand-600"
-              disabled={actionsDisabled}
-              onChange={(event) => setConfirmed(event.target.checked)}
-              type="checkbox"
-            />
-            원본 값과 변경 값을 확인했으며, 원본이 아닌 복사본 수정을 승인합니다.
-          </label>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={actionsDisabled || !confirmed || pendingAction !== null}
-              onClick={() => void onApprove().catch(() => undefined)}
-              type="button"
-            >
-              {pendingAction === 'approve' ? (
-                <LoaderCircle className="animate-spin" size={16} />
-              ) : (
-                <ShieldCheck size={16} />
-              )}
-              {pendingAction === 'approve'
-                ? '복사본 수정 및 검증 중…'
-                : '승인하고 수정본 만들기'}
-            </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 disabled:opacity-40"
-              disabled={actionsDisabled || pendingAction !== null}
-              onClick={() => void onReject().catch(() => undefined)}
-              type="button"
-            >
-              {pendingAction === 'reject' ? (
-                <LoaderCircle className="animate-spin" size={16} />
-              ) : (
-                <X size={16} />
-              )}
-              {pendingAction === 'reject' ? '거절 처리 중…' : '거절'}
-            </button>
-          </div>
-        </div>
+        <WritebackApprovalPanel
+          actionsDisabled={actionsDisabled}
+          brokenCells={selectable ? brokenDependencies(changes, selected) : []}
+          onApprove={() => void onApprove(selected).catch(() => undefined)}
+          onReject={() => void onReject().catch(() => undefined)}
+          pendingAction={pendingAction}
+          selectedCount={selected.length}
+          totalCount={changes.length}
+        />
       )}
       {(blocked || failed) && (
         <div className="mt-4 border-t border-slate-200 pt-4">

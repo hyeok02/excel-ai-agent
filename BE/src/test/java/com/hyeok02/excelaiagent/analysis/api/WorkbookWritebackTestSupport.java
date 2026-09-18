@@ -31,6 +31,17 @@ abstract class WorkbookWritebackTestSupport extends AnalysisControllerTestSuppor
 				"변경 제안", changes, blocked ? List.of("수식 셀") : List.of(), List.of());
 	}
 
+	/** B2를 참조하는 C2가 함께 제안된 변경. 부분 승인 검증에 쓴다. */
+	protected AiWritebackProposal dependentProposal() {
+		List<AiWritebackProposal.Change> changes = List.of(
+				new AiWritebackProposal.Change("매출현황", "B2", 12, "정정", 10,
+						List.of(), "value", "number", List.of("매출현황!C2"), "low"),
+				new AiWritebackProposal.Change("매출현황", "C2", "=B2*2", "합계 재계산", "=B2",
+						List.of(), "formula", "formula", List.of(), "low"));
+		return new AiWritebackProposal("B2와 C2 수정", "ready",
+				"변경 제안 2건", changes, List.of(), List.of());
+	}
+
 	protected AiWritebackPackage packageResult() {
 		AiWritebackManifest manifest = new AiWritebackManifest(
 				List.of("매출현황!B2"),

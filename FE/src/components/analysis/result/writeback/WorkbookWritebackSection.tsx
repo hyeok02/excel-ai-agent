@@ -60,7 +60,7 @@ const WorkbookWritebackSection = ({
         downloadedFilename={downloadedFilename}
         item={item}
         key={`${item.writebackId}-${item.status}`}
-        onApprove={() => writebacks.approve(item.writebackId)}
+        onApprove={(cells) => writebacks.approve(item.writebackId, cells)}
         onDownload={() => writebacks.download(item.writebackId)}
         onReject={() => writebacks.reject(item.writebackId)}
         onRetry={() => retry(item.instruction)}
