@@ -1,7 +1,7 @@
 package com.hyeok02.excelaiagent.telegram.api;
 
 import java.security.Principal;
-import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import com.hyeok02.excelaiagent.telegram.application.TelegramShareService;
@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,12 +26,19 @@ public class TelegramShareController {
 	@PostMapping("/telegram")
 	@Operation(summary = "분석 결과를 텔레그램으로 전송")
 	public TelegramShareResponse share(
-			@PathVariable UUID analysisId, Principal principal) {
-		Instant sentAt = telegramShareService.share(analysisId, actor(principal));
-		return new TelegramShareResponse(sentAt);
+			@PathVariable UUID analysisId,
+			@RequestBody(required = false) TelegramShareRequest request,
+			Principal principal) {
+		return telegramShareService.share(
+				analysisId, actor(principal), request == null
+						? null
+						: request.recipientIds() == null ? List.of() : request.recipientIds());
 	}
 
 	private String actor(Principal principal) {
 		return principal == null ? "system" : principal.getName();
+	}
+
+	public record TelegramShareRequest(List<UUID> recipientIds) {
 	}
 }

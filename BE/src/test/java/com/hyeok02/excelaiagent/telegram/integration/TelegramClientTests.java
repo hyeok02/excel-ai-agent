@@ -3,6 +3,7 @@ package com.hyeok02.excelaiagent.telegram.integration;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -44,9 +45,60 @@ class TelegramClientTests {
 				.isInstanceOf(TelegramNotConfiguredException.class);
 	}
 
+	@Test
+	void sendsMessageToExplicitRecipientChat() {
+		RestClient.Builder builder = RestClient.builder().baseUrl("https://api.telegram.test");
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		TelegramClient client = new TelegramClient(builder.build(), properties(true));
+		server.expect(once(), requestTo("https://api.telegram.test/botdemo-token/sendMessage"))
+				.andExpect(method(POST))
+				.andExpect(content().string(containsString("\"chat_id\":\"98765\"")))
+				.andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+
+		client.sendMessage("98765", "연결 완료");
+
+		server.verify();
+	}
+
+	@Test
+	void resolvesBotUsernameWithGetMe() {
+		RestClient.Builder builder = RestClient.builder().baseUrl("https://api.telegram.test");
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		TelegramClient client = new TelegramClient(builder.build(), properties(true));
+		server.expect(once(), requestTo("https://api.telegram.test/botdemo-token/getMe"))
+				.andExpect(method(GET))
+				.andRespond(withSuccess(
+						"{\"ok\":true,\"result\":{\"username\":\"excel_demo_bot\"}}",
+						MediaType.APPLICATION_JSON));
+
+		org.assertj.core.api.Assertions.assertThat(client.getBotUsername())
+				.isEqualTo("excel_demo_bot");
+
+		server.verify();
+	}
+
+	@Test
+	void registersWebhookWithSecretAndMessageUpdates() {
+		RestClient.Builder builder = RestClient.builder().baseUrl("https://api.telegram.test");
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		TelegramClient client = new TelegramClient(builder.build(), properties(true));
+		server.expect(once(), requestTo("https://api.telegram.test/botdemo-token/setWebhook"))
+				.andExpect(method(POST))
+				.andExpect(content().string(containsString(
+						"\"secret_token\":\"webhook-secret\"")))
+				.andExpect(content().string(containsString("\"allowed_updates\":[\"message\"]")))
+				.andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+
+		client.setWebhook("https://example.test/api/v1/telegram/webhook", "webhook-secret");
+
+		server.verify();
+	}
+
 	private TelegramProperties properties(boolean enabled) {
 		return new TelegramProperties(
-				enabled, "demo-token", "12345", "https://api.telegram.test",
-				Duration.ofSeconds(1), Duration.ofSeconds(1));
+				enabled, "demo-token", "12345", "webhook-secret",
+				"https://example.test/api/v1/telegram/webhook",
+				"https://api.telegram.test", Duration.ofSeconds(1),
+				Duration.ofSeconds(1), Duration.ofHours(24));
 	}
 }

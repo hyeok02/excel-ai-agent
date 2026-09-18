@@ -3,7 +3,6 @@ package com.hyeok02.excelaiagent.telegram.application;
 import java.util.List;
 
 import com.hyeok02.excelaiagent.analysis.application.AnalysisResultDetails;
-import com.hyeok02.excelaiagent.analysis.application.result.AnalysisFormulaRiskResult;
 import com.hyeok02.excelaiagent.analysis.application.result.AnalysisInsightResult;
 import com.hyeok02.excelaiagent.common.config.AuthProperties;
 import org.springframework.stereotype.Component;
@@ -21,6 +20,12 @@ public class TelegramMessageFormatter {
 	}
 
 	public String format(AnalysisResultDetails result) {
+		String link = authProperties.frontendBaseUrl()
+				+ "/excel-analysis?id=" + result.analysisId();
+		return format(result, link);
+	}
+
+	public String format(AnalysisResultDetails result, String detailsUrl) {
 		StringBuilder message = new StringBuilder("📊 Excel 분석 완료\n");
 		message.append("파일: ").append(clean(result.workbook().filename(), 180));
 
@@ -32,12 +37,8 @@ public class TelegramMessageFormatter {
 			message.append("\n\n분석 요약\n")
 					.append("시트 ").append(result.workbook().sheetCount()).append("개를 분석했습니다.");
 		}
-		appendFormulaRisks(message, result.workbook().formulaRiskSummary());
-
-		String link = authProperties.frontendBaseUrl()
-				+ "/excel-analysis?id=" + result.analysisId();
 		return clip(message.toString(), MAX_BODY_LENGTH)
-				+ "\n\n🔗 상세 결과\n" + link;
+				+ "\n\n🔗 상세 결과\n" + detailsUrl;
 	}
 
 	private void appendInsights(StringBuilder message, AnalysisInsightResult.Report report) {
@@ -82,16 +83,6 @@ public class TelegramMessageFormatter {
 		return report.validation() != null
 				&& report.validation().overviewValidated()
 				&& !suppressed && !visible.isEmpty() && hasText(report.overview());
-	}
-
-	private void appendFormulaRisks(
-			StringBuilder message, AnalysisFormulaRiskResult.Summary risks) {
-		if (risks == null || risks.totalCount() == 0) {
-			return;
-		}
-		message.append("\n\n⚠️ 이상 징후: 총 ").append(risks.totalCount()).append("건")
-				.append(" (오류 ").append(risks.errorCount())
-				.append("건, 경고 ").append(risks.warningCount()).append("건)");
 	}
 
 	private String clean(String value, int limit) {

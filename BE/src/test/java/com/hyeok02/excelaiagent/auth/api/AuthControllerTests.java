@@ -40,9 +40,27 @@ class AuthControllerTests {
 	}
 
 	@Test
+	void allowsOpaquePublicShareLookupWithoutLogin() throws Exception {
+		mockMvc.perform(get("/api/v1/public/analysis-shares/{token}", "a".repeat(43)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("ANALYSIS_SHARE_NOT_FOUND"))
+				.andExpect(jsonPath("$.path")
+						.value("/api/v1/public/analysis-shares/{token}"));
+	}
+
+	@Test
 	void reportsEmptyCurrentUserWithoutLogin() throws Exception {
 		mockMvc.perform(get("/api/v1/auth/me"))
 				.andExpect(status().isNoContent());
+	}
+
+	@Test
+	void permitsWebhookWithoutLoginOrCsrfButStillRequiresTelegramSecret() throws Exception {
+		mockMvc.perform(post("/api/v1/telegram/webhook")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{}"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("INVALID_TELEGRAM_WEBHOOK_SECRET"));
 	}
 
 	@Test
