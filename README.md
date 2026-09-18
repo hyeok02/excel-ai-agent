@@ -273,7 +273,11 @@ http://localhost:5173
 | `AUTH_SECURITY_ENABLED` | `true` | 로그인 및 접근 제어 활성화 |
 | `TELEGRAM_ENABLED` | `false` | 분석 결과 텔레그램 공유 활성화 |
 | `TELEGRAM_BOT_TOKEN` | 빈 값 | 서버에서만 사용하는 봇 토큰 |
-| `TELEGRAM_CHAT_ID` | 빈 값 | 시연 메시지를 받을 채팅방 ID |
+| `TELEGRAM_CHAT_ID` | 빈 값 | 기존 단일 수신처를 유지할 때 사용하는 기본 채팅방 ID(선택) |
+| `TELEGRAM_WEBHOOK_SECRET` | 빈 값 | Telegram webhook 요청 검증용 비밀 문자열 |
+| `TELEGRAM_WEBHOOK_URL` | 빈 값 | 공개 HTTPS Telegram webhook URL |
+| `TELEGRAM_INVITATION_TTL` | `24h` | 일회용 수신자 초대 링크 유효 시간 |
+| `ANALYSIS_PUBLIC_SHARE_TTL` | `7d` | 수신자용 읽기 전용 분석 링크 유효 시간 |
 | `BOOTSTRAP_ADMIN_USERNAME` | `admin` | 최초 관리자 아이디 |
 | `BOOTSTRAP_ADMIN_PASSWORD` | `admin1234` | 최초 관리자 비밀번호 |
 

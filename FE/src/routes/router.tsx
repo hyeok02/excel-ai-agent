@@ -14,6 +14,8 @@ import {
   NotFoundPage,
   PersonNewsPage,
   PublicMonitorPage,
+  SharedAnalysisPage,
+  TelegramRecipientsPage,
   UserManagementPage,
 } from '@/routes/LazyPages'
 
@@ -45,11 +47,16 @@ const router = createBrowserRouter([
         path: ROUTES.userManagement.slice(1),
         element: <AdminRoute>{page(<UserManagementPage />)}</AdminRoute>,
       },
+      {
+        path: ROUTES.telegramRecipients.slice(1),
+        element: page(<TelegramRecipientsPage />),
+      },
       { path: '*', element: page(<NotFoundPage />) },
     ],
   },
   { path: ROUTES.login, element: page(<LoginPage />) },
   { path: ROUTES.authCallback, element: page(<AuthCallbackPage />) },
+  { path: ROUTES.sharedAnalysis, element: page(<SharedAnalysisPage />) },
 ])
 
 export default router

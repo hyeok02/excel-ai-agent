@@ -3,6 +3,12 @@ import { lazy } from 'react'
 export const UserManagementPage = lazy(
   () => import('@/pages/admin/users/UserManagementPage'),
 )
+export const TelegramRecipientsPage = lazy(
+  () => import('@/pages/admin/telegram/TelegramRecipientsPage'),
+)
+export const SharedAnalysisPage = lazy(
+  () => import('@/pages/analysis/shared/SharedAnalysisPage'),
+)
 export const AnalysisPage = lazy(() => import('@/pages/analysis/AnalysisPage'))
 export const AuthCallbackPage = lazy(
   () => import('@/pages/auth/callback/AuthCallbackPage'),

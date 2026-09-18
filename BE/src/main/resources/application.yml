@@ -78,9 +78,14 @@ app:
     enabled: ${TELEGRAM_ENABLED:false}
     bot-token: ${TELEGRAM_BOT_TOKEN:}
     chat-id: ${TELEGRAM_CHAT_ID:}
+    webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
+    webhook-url: ${TELEGRAM_WEBHOOK_URL:}
     base-url: ${TELEGRAM_API_BASE_URL:https://api.telegram.org}
     connect-timeout: ${TELEGRAM_CONNECT_TIMEOUT:3s}
     read-timeout: ${TELEGRAM_READ_TIMEOUT:10s}
+    invitation-ttl: ${TELEGRAM_INVITATION_TTL:24h}
+  analysis-public-share:
+    ttl: ${ANALYSIS_PUBLIC_SHARE_TTL:7d}
   auth:
     security-enabled: ${AUTH_SECURITY_ENABLED:true}
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}

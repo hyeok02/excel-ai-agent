@@ -3,6 +3,7 @@ import {
   FileSpreadsheet,
   House,
   Newspaper,
+  Send,
   UserRoundSearch,
   UsersRound,
 } from 'lucide-react'
@@ -73,9 +74,9 @@ const SidebarNavigation = ({ onNavigate }: SidebarNavigationProps) => {
         })}
       </div>
 
-      {user?.role === 'ADMIN' && (
-        <>
-          <NavigationLabel>관리</NavigationLabel>
+      <NavigationLabel>관리</NavigationLabel>
+      <div className="space-y-1.5">
+        {user?.role === 'ADMIN' && (
           <NavLink
             className={navigationClassName}
             onClick={onNavigate}
@@ -84,8 +85,16 @@ const SidebarNavigation = ({ onNavigate }: SidebarNavigationProps) => {
             <UsersRound aria-hidden="true" size={19} strokeWidth={1.9} />
             <span>사용자 관리</span>
           </NavLink>
-        </>
-      )}
+        )}
+        <NavLink
+          className={navigationClassName}
+          onClick={onNavigate}
+          to={ROUTES.telegramRecipients}
+        >
+          <Send aria-hidden="true" size={19} strokeWidth={1.9} />
+          <span>텔레그램 수신자</span>
+        </NavLink>
+      </div>
     </nav>
   )
 }

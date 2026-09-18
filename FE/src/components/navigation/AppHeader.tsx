@@ -6,18 +6,26 @@ import {
   BUSINESS_NAVIGATION_ITEMS,
   DASHBOARD_NAVIGATION_ITEM,
   PENDING_NAVIGATION_ITEMS,
+  ROUTES,
 } from '@/constants/navigation'
 
 interface AppHeaderProps {
   onMenuClick: () => void
 }
 
+const MANAGEMENT_HEADER_ITEMS = [
+  { to: ROUTES.userManagement, label: '사용자 관리' },
+  { to: ROUTES.telegramRecipients, label: '텔레그램 수신자' },
+] as const
+
 const AppHeader = ({ onMenuClick }: AppHeaderProps) => {
   const { pathname } = useLocation()
   // 노출하지 않는 모듈도 주소로 직접 들어올 수 있어, 제목은 양쪽에서 찾는다.
-  const currentItem = [...BUSINESS_NAVIGATION_ITEMS, ...PENDING_NAVIGATION_ITEMS].find(
-    (item) => pathname.startsWith(item.to),
-  )
+  const currentItem = [
+    ...BUSINESS_NAVIGATION_ITEMS,
+    ...PENDING_NAVIGATION_ITEMS,
+    ...MANAGEMENT_HEADER_ITEMS,
+  ].find((item) => pathname.startsWith(item.to))
   const currentLabel = currentItem?.label ?? DASHBOARD_NAVIGATION_ITEM.label
 
   return (

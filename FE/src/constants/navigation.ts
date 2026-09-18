@@ -7,6 +7,8 @@ export const ROUTES = {
   login: '/login',
   authCallback: '/auth/callback',
   userManagement: '/admin/users',
+  telegramRecipients: '/admin/telegram-recipients',
+  sharedAnalysis: '/shared/analysis/:token',
 } as const
 
 export const DASHBOARD_NAVIGATION_ITEM = {

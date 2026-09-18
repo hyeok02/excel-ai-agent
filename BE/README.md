@@ -35,7 +35,11 @@ curl http://localhost:8080/actuator/health
 | `AI_SERVICE_READ_TIMEOUT` | `150s` | AI 서비스 응답 제한 시간 |
 | `TELEGRAM_ENABLED` | `false` | 분석 결과 텔레그램 전송 활성화 |
 | `TELEGRAM_BOT_TOKEN` | 빈 값 | BotFather에서 발급한 봇 토큰 |
-| `TELEGRAM_CHAT_ID` | 빈 값 | 분석 결과를 받을 채팅방 ID |
+| `TELEGRAM_CHAT_ID` | 빈 값 | 수신자를 선택하지 않는 기존 전송의 기본 채팅방 ID(선택) |
+| `TELEGRAM_WEBHOOK_SECRET` | 빈 값 | Telegram webhook 요청 검증용 임의 비밀 문자열 |
+| `TELEGRAM_WEBHOOK_URL` | 빈 값 | 외부에서 접근 가능한 HTTPS webhook 전체 URL |
+| `TELEGRAM_INVITATION_TTL` | `24h` | 일회용 수신자 초대 링크 유효 시간 |
+| `ANALYSIS_PUBLIC_SHARE_TTL` | `7d` | 수신자용 읽기 전용 분석 링크 유효 시간 |
 | `AUTH_SECURITY_ENABLED` | `true` | API 로그인 보호 활성화 |
 | `FRONTEND_BASE_URL` | `http://localhost:5173` | SSO 완료 후 돌아갈 Frontend 주소 |
 | `BOOTSTRAP_ADMIN_USERNAME` | `admin` | 최초 관리자 아이디 |
@@ -67,7 +71,22 @@ Q&A는 기존 분석 ID에 보관된 원본 Excel을 다시 사용하므로 파�
 
 ## 텔레그램 공유
 
-BotFather에서 봇을 만든 뒤 받을 채팅방에서 봇과 먼저 대화를 시작합니다. 환경 변수에
-`TELEGRAM_ENABLED=true`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`를 설정하면 분석 결과
-화면의 `Telegram` 버튼으로 핵심 결론, 검증된 주요 인사이트, 이상 징후 요약을 전송합니다.
-봇 토큰과 채팅방 ID는 Frontend에 전달하지 않습니다.
+BotFather에서 봇을 만든 뒤 `TELEGRAM_ENABLED=true`, `TELEGRAM_BOT_TOKEN`,
+`TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_WEBHOOK_URL`을 설정합니다. Webhook URL은 외부에서
+접근 가능한 HTTPS 주소이며 보통
+`https://<backend-host>/api/v1/telegram/webhook`입니다. 서버는 시작할 때 Telegram의
+`setWebhook`을 호출해 URL, 비밀 헤더와 `message` 업데이트를 등록합니다.
+
+로그인한 사용자는 일회용 초대 링크를 생성하고 상대방에게 전달할 수 있습니다. 상대방이
+링크를 열고 봇의 **Start**를 누르면 개인 채팅 ID가 초대를 만든 사용자에게만 귀속됩니다.
+원문 초대 토큰은 생성 응답에서 한 번만 반환되고 데이터베이스에는 SHA-256 해시만
+저장됩니다. 초대는 기본 24시간 후 만료되며 한 번만 사용할 수 있습니다.
+
+분석 결과 전송 시 등록된 수신자 UUID를 선택하면 수신자별 성공·실패 결과가 반환됩니다.
+봇 토큰과 실제 Telegram 채팅 ID는 Frontend 응답에 포함되지 않습니다. 요청 body 자체를
+생략한 기존 호출만 `TELEGRAM_CHAT_ID`를 기본 수신자로 사용하며, 명시적으로 빈 수신자
+목록을 보내면 요청이 거부됩니다.
+
+등록된 수신자에게 전송되는 상세 결과 주소는 기본 7일 동안 유효한 읽기 전용 링크입니다.
+링크 원문은 데이터베이스에 저장하지 않으며, 수신자를 연결 해제하면 발급된 링크도 즉시
+폐기됩니다. 공유 화면에는 질문·Excel 수정·내보내기·재전송 기능이 노출되지 않습니다.

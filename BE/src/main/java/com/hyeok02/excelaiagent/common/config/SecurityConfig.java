@@ -63,16 +63,19 @@ public class SecurityConfig {
 		if (authProperties.securityEnabled()) {
 			http.csrf(csrf -> csrf
 					.csrfTokenRepository(csrfRepository)
-					.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
+					.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+					.ignoringRequestMatchers("/api/v1/telegram/webhook"))
 					.authorizeHttpRequests(authorize -> authorize
 					.requestMatchers(
 							"/health", "/actuator/health/**", "/v3/api-docs/**",
 							"/swagger-ui/**", "/swagger-ui.html", "/oauth2/**", "/login/oauth2/**")
 						.permitAll()
 					.requestMatchers(HttpMethod.GET,
-							"/api/v1/auth/me", "/api/v1/auth/config", "/api/v1/auth/csrf")
+							"/api/v1/auth/me", "/api/v1/auth/config", "/api/v1/auth/csrf",
+							"/api/v1/public/analysis-shares/*")
 						.permitAll()
 					.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+					.requestMatchers(HttpMethod.POST, "/api/v1/telegram/webhook").permitAll()
 					.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 					.anyRequest().authenticated());
 		}
