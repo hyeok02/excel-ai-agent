@@ -3,50 +3,21 @@ import { BadgeInfo, MapPin } from 'lucide-react'
 import type { AnalysisInclusion, SemanticReason } from '@/api/analysis'
 
 export interface ClassificationReasonPanelProps {
-  confidence: number
   reasons: SemanticReason[]
   analysisInclusion?: AnalysisInclusion | null
   title?: string
 }
 
-const confidenceLabel = (confidence: number) => {
-  if (confidence >= 0.9) return '매우 높음'
-  if (confidence >= 0.75) return '높음'
-  if (confidence >= 0.55) return '보통'
-  return '검토 필요'
-}
-
 const ClassificationReasonPanel = ({
-  confidence,
   reasons,
   analysisInclusion,
   title = '판단 근거',
 }: ClassificationReasonPanelProps) => {
-  const normalizedConfidence = Math.min(1, Math.max(0, confidence))
-  const confidencePercent = Math.round(normalizedConfidence * 100)
-
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700">
-          <BadgeInfo aria-hidden="true" className="text-brand-600" size={14} />
-          {title}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-slate-400">
-            신뢰도 {confidenceLabel(normalizedConfidence)}
-          </span>
-          <span className="min-w-11 text-right text-xs font-extrabold text-brand-700">
-            {confidencePercent}%
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
-        <span
-          className="block h-full rounded-full bg-gradient-to-r from-brand-500 to-cyan-400"
-          style={{ width: `${confidencePercent}%` }}
-        />
+      <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700">
+        <BadgeInfo aria-hidden="true" className="text-brand-600" size={14} />
+        {title}
       </div>
 
       {analysisInclusion && (

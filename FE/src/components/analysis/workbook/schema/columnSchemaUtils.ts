@@ -1,30 +1,21 @@
 import type { ColumnSchemaResult } from '@/api/analysis'
 
-export type ColumnSchemaView = 'important' | 'review' | 'all'
+export type ColumnSchemaView = 'important' | 'all'
 
 export const isClassifiedColumn = (column: ColumnSchemaResult) =>
   column.standardField !== 'unknown'
 
 export const hasDetectedUnit = (column: ColumnSchemaResult) => column.unitType !== 'none'
 
-export const needsColumnReview = (column: ColumnSchemaResult) =>
-  !isClassifiedColumn(column) || column.confidence < 0.65
-
+/** 의미가 판정된 열, 그중에서도 단위까지 읽어낸 열을 앞으로 보낸다. */
 export const prioritizeColumns = (columns: ColumnSchemaResult[]) =>
   [...columns].sort((left, right) => {
-    const leftScore =
-      Number(isClassifiedColumn(left)) * 2 +
-      Number(hasDetectedUnit(left)) +
-      left.confidence
-    const rightScore =
-      Number(isClassifiedColumn(right)) * 2 +
-      Number(hasDetectedUnit(right)) +
-      right.confidence
-    return rightScore - leftScore
+    const score = (column: ColumnSchemaResult) =>
+      Number(isClassifiedColumn(column)) * 2 + Number(hasDetectedUnit(column))
+    return score(right) - score(left)
   })
 
 export const columnsForView = (columns: ColumnSchemaResult[], view: ColumnSchemaView) => {
-  if (view === 'review') return columns.filter(needsColumnReview)
   if (view === 'all') return columns
 
   const seenMeanings = new Set<string>()

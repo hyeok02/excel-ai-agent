@@ -1,6 +1,5 @@
 import type { AnalysisMode, AnalysisResultDetails } from '@/api/analysis'
 import AdvancedAnalysisSection from '@/components/analysis/result/AdvancedAnalysisSection'
-import AgentReadySection from '@/components/analysis/result/AgentReadySection'
 import AnalysisResultHeader from '@/components/analysis/result/AnalysisResultHeader'
 import AnalysisResultSummary from '@/components/analysis/result/AnalysisResultSummary'
 import BfsAnalysisWorkspace from '@/components/analysis/result/bfs/BfsAnalysisWorkspace'
@@ -57,8 +56,6 @@ const AnalysisResultSection = ({
 
             <WorkbookExplorer sheets={workbook.sheets} />
           </AdvancedAnalysisSection>
-
-          <AgentReadySection hasInsightReport={result.insightReport !== null} />
         </>
       )}
     </section>

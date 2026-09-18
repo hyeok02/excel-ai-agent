@@ -21,7 +21,7 @@ const AdvancedAnalysisSection = ({ children }: { children: ReactNode }) => {
               {expanded ? '상세 분석 접기' : '상세 분석 보기'}
             </span>
             <span className="mt-1 block text-xs leading-5 text-slate-500">
-              워크북 구조, 수식 위험과 시트별 원본 내용을 확인할 수 있어요.
+              워크북 구조와 시트별 원본 내용을 확인할 수 있어요.
             </span>
           </span>
         </span>
