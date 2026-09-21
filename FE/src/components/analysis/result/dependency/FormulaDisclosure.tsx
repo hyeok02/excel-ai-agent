@@ -26,16 +26,19 @@ const FormulaDisclosure = ({
           <span>기술 상세 · {label === 'Excel 수식 원문' ? '축약 수식' : label}</span>
           <span className="shrink-0 font-semibold text-slate-400">보기</span>
         </summary>
-        <div className="border-t border-slate-200 bg-slate-50 p-3">
-          <p className="text-[11px] leading-4 text-slate-500">
+        <div className="border-t border-slate-200 bg-slate-950 p-3">
+          <p className="text-[10px] font-bold tracking-wide text-slate-400">축약 수식</p>
+          <p className="mt-2 text-[11px] leading-4 text-slate-400">
             원본 수식이 길어 동일한 계산 의미의 TEXTJOIN 수식으로 간결하게 표시했습니다.
           </p>
           {compactedFormula && (
-            <code className="mt-2 block overflow-x-auto whitespace-nowrap rounded-lg bg-white px-3 py-2 font-mono text-[11px] text-slate-700">
-              {compactedFormula}
-            </code>
+            <div className="mt-2 max-h-44 overflow-auto rounded-lg bg-black/20 p-3">
+              <code className="block min-w-max whitespace-pre font-mono text-[11px] leading-5 text-slate-200">
+                {compactedFormula}
+              </code>
+            </div>
           )}
-          {summary && <p className="mt-2 text-xs leading-5 text-slate-500">{summary}</p>}
+          {summary && <p className="mt-2 text-xs leading-5 text-slate-400">{summary}</p>}
         </div>
       </details>
     )
