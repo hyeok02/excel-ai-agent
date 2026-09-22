@@ -34,7 +34,7 @@ class WritebackRelatedCell(BaseModel):
     current_value: str | int | float | bool | None
     suggested_value: str | int | float | bool | None
     kind: Literal["total", "mirror"]
-    reason: str = Field(min_length=1, max_length=300)
+    reason: str = Field(min_length=1, max_length=400)
 
 
 class WritebackChange(WritebackChangeDraft):

@@ -50,7 +50,7 @@ const WritebackRelatedCells = ({ cells, selectable, selected, onToggle }: Props)
                 {showValue(cell.suggestedValue)}
               </span>
             </div>
-            <p className="mt-1.5 text-[11px] leading-4 text-amber-900/80">
+            <p className="mt-1.5 whitespace-pre-line text-[11px] leading-5 text-amber-900/80">
               {cell.reason}
             </p>
           </div>

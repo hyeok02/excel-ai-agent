@@ -8,6 +8,7 @@ import re
 
 from app.agent.writeback.mirrored_series import column_label, find_mirrors
 from app.agent.writeback.models import WritebackRelatedCell
+from app.agent.writeback.related_wording import total_reason
 from app.agent.writeback.row_totals import find_row_total, integer
 
 ADDRESS = re.compile(r"^([A-Z]{1,3})([1-9][0-9]*)$")
@@ -64,25 +65,11 @@ def _row_total(columns, sheet_name: str, letter: str, row_number: int, new_value
             current_value=before,
             suggested_value=before - integer(target[letter]) + integer(new_value),
             kind="total",
-            reason=_total_reason(columns, total_column, letter, row_number, used),
+            reason=total_reason(
+                columns, target, total_column, letter, row_number, used, new_value
+            ),
         )
     ]
-
-
-def _label(columns, letter: str, row_number: int) -> str:
-    """열 머리글. 없으면 셀 주소를 그대로 쓴다."""
-    return column_label(columns.get(letter, {}), row_number) or f"{letter}{row_number}"
-
-
-def _total_reason(columns, total_column, letter, row_number, used) -> str:
-    """열 문자 대신 사람이 읽는 머리글로 합계 관계를 설명한다."""
-    total = _label(columns, total_column, row_number)
-    target = _label(columns, letter, row_number)
-    tail = (f"수식이 아니라 숫자로 적혀 있어, {target} 값만 바꾸면 합이 맞지 않습니다.")
-    head = f"{total_column}{row_number}({total})은 이 행의 값 {len(used)}개를 더한 합계입니다"
-    parts = ", ".join(sorted(_label(columns, name, row_number) for name in used))
-    detailed = f"{head} — {parts}. {tail}"
-    return detailed if len(detailed) <= 300 else f"{head}. {tail}"
 
 
 def _mirrors(sheets, columns, sheet_name, letter, row_number, new_value) -> list:
