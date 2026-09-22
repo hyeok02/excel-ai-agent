@@ -8,6 +8,9 @@ export interface WritebackRelatedCell {
   suggestedValue: string | number | boolean | null
   kind: 'total' | 'mirror'
   reason: string
+  /** 합계 셀일 때만 채워진다. [바꾸기 전 식, 바꾼 뒤 식] */
+  breakdown?: string[]
+  parts?: string[]
 }
 
 export interface WritebackChange {

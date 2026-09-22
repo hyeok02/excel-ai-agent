@@ -108,11 +108,20 @@ def test_drops_a_related_cell_that_is_already_a_change_of_its_own():
     assert [cell.reference for cell in changes[0].related_cells] == ["F108"]
 
 
-def test_explains_the_sum_with_column_headers_not_column_letters():
-    reason = find()[0].reason
+def test_names_the_added_items_with_column_headers_not_column_letters():
+    total = find()[0]
 
-    assert "총계" in reason and "서비스" in reason and "일반관리" in reason
-    assert "+ W" not in reason and "+ G" not in reason
+    assert total.parts == ["일반관리", "연구개발", "영업", "서비스"]
+    assert "총계" in total.reason
+
+
+def test_shows_the_sum_before_and_after_the_change():
+    total = find()[0]
+
+    assert total.breakdown == [
+        "1200 + 1300 + 1836 + 1081 = 5417",
+        "1200 + 1300 + 1836 + 1000 = 5336",
+    ]
 
 
 def test_falls_back_to_the_cell_address_when_a_column_has_no_header():
@@ -120,6 +129,14 @@ def test_falls_back_to_the_cell_address_when_a_column_has_no_header():
     for letter in HEADERS:
         del columns[letter][107]
 
-    reason = related_cells({"부서현황": columns}, "부서현황", "W108", 1000)[0].reason
+    total = related_cells({"부서현황": columns}, "부서현황", "W108", 1000)[0]
 
-    assert "W108" in reason and "F108" in reason
+    assert total.parts == ["G108", "N108", "R108", "W108"]
+    assert "F108" in total.reason
+
+
+def test_a_mirrored_cell_carries_no_sum_breakdown():
+    mirror = find()[1]
+
+    assert mirror.kind == "mirror"
+    assert mirror.breakdown == [] and mirror.parts == []

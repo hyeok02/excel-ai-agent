@@ -34,7 +34,10 @@ class WritebackRelatedCell(BaseModel):
     current_value: str | int | float | bool | None
     suggested_value: str | int | float | bool | None
     kind: Literal["total", "mirror"]
-    reason: str = Field(min_length=1, max_length=400)
+    reason: str = Field(min_length=1, max_length=300)
+    # 합계 셀일 때만 채운다. [바꾸기 전 식, 바꾼 뒤 식]과 더하는 항목 이름.
+    breakdown: list[str] = Field(default_factory=list, max_length=2)
+    parts: list[str] = Field(default_factory=list, max_length=7)
 
 
 class WritebackChange(WritebackChangeDraft):

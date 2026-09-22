@@ -107,6 +107,7 @@ const WritebackChangeCard = ({
           onToggle={onToggleRelated}
           selectable={selectable && selected}
           selected={selectedKeys}
+          sheetName={change.sheetName}
         />
       )}
     </div>

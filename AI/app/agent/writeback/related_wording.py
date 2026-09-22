@@ -1,12 +1,10 @@
-"""관련 셀을 왜 함께 고쳐야 하는지 사람이 읽을 문장으로 만든다.
+"""관련 셀을 왜 함께 고쳐야 하는지 화면에 보여 줄 조각으로 만든다.
 
 열 문자(AI, G, W …)는 읽는 사람에게 아무 뜻이 없어 열 머리글로 바꾸고,
-더하는 값을 바꾸기 전후로 나란히 보여 준다.
+한 문장으로 뭉치지 않도록 설명·계산식·항목 이름을 따로 돌려준다.
 """
 from app.agent.writeback.mirrored_series import column_label
 from app.agent.writeback.row_totals import integer
-
-MAX_REASON = 400
 
 
 def label(columns, letter: str, row_number: int) -> str:
@@ -19,24 +17,24 @@ def _column_order(letter: str) -> tuple[int, str]:
     return len(letter), letter
 
 
-def _sum_line(target, order, letter, new_value) -> str:
-    parts = [integer(new_value if name == letter else target[name]) for name in order]
+def _sum_line(target, order, letter, value) -> str:
+    parts = [integer(value if name == letter else target[name]) for name in order]
     return f"{' + '.join(str(part) for part in parts)} = {sum(parts)}"
 
 
-def total_reason(columns, target, total, letter, row_number, used, new_value) -> str:
-    others = sorted((name for name in used if name != letter), key=_column_order)
-    order = [*others, letter]
-    names = ", ".join(sorted(label(columns, name, row_number) for name in used))
-    opening = f"{total}{row_number}({label(columns, total, row_number)})은 이 행의 "
-    head = f"{opening}{names} {len(used)}가지를 더한 합계입니다."
-    body = (
-        f"\n지금: {_sum_line(target, order, letter, target[letter])}"
-        f"\n바꾼 뒤: {_sum_line(target, order, letter, new_value)}\n"
-        f"{total}{row_number}에는 수식이 아니라 숫자가 그대로 적혀 있어서, "
-        f"함께 고치지 않으면 예전 합계 그대로 남습니다."
-    )
-    if len(head + body) <= MAX_REASON:
-        return head + body
-    # 항목 이름이 길면 나열을 빼고 개수만 밝힌다.
-    return f"{opening}값 {len(used)}가지를 더한 합계입니다.{body}"
+def total_wording(columns, target, total, letter, row_number, used, new_value) -> dict:
+    """합계 셀 설명. reason은 한 문장, 계산식과 항목 이름은 따로 보낸다."""
+    order = [*sorted((name for name in used if name != letter), key=_column_order), letter]
+    before = integer(target[total])
+    return {
+        "reason": (
+            f"{total}{row_number}은 이 행의 값 {len(used)}개를 더한 "
+            f"합계({label(columns, total, row_number)})입니다. 수식이 아니라 숫자가 "
+            f"그대로 적혀 있어, 함께 고치지 않으면 {before} 그대로 남습니다."
+        ),
+        "breakdown": [
+            _sum_line(target, order, letter, target[letter]),
+            _sum_line(target, order, letter, new_value),
+        ],
+        "parts": [label(columns, name, row_number) for name in order],
+    }

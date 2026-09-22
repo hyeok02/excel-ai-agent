@@ -8,7 +8,7 @@ import re
 
 from app.agent.writeback.mirrored_series import column_label, find_mirrors
 from app.agent.writeback.models import WritebackRelatedCell
-from app.agent.writeback.related_wording import total_reason
+from app.agent.writeback.related_wording import total_wording
 from app.agent.writeback.row_totals import find_row_total, integer
 
 ADDRESS = re.compile(r"^([A-Z]{1,3})([1-9][0-9]*)$")
@@ -65,7 +65,7 @@ def _row_total(columns, sheet_name: str, letter: str, row_number: int, new_value
             current_value=before,
             suggested_value=before - integer(target[letter]) + integer(new_value),
             kind="total",
-            reason=total_reason(
+            **total_wording(
                 columns, target, total_column, letter, row_number, used, new_value
             ),
         )

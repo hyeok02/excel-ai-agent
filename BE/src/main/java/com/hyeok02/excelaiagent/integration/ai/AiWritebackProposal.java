@@ -54,7 +54,28 @@ public record AiWritebackProposal(
 				@JsonAlias("current_value") Object currentValue,
 				@JsonAlias("suggested_value") Object suggestedValue,
 				String kind,
-				String reason) {}
+				String reason,
+				List<String> breakdown,
+				List<String> parts) {
+
+			/** 합계 셀이 아니면 비어 있고, 예전에 저장한 제안에는 아예 없다. */
+			public RelatedCell(
+					String sheetName, String reference, Object currentValue,
+					Object suggestedValue, String kind, String reason) {
+				this(sheetName, reference, currentValue, suggestedValue, kind, reason,
+						List.of(), List.of());
+			}
+
+			@Override
+			public List<String> breakdown() {
+				return breakdown == null ? List.of() : breakdown;
+			}
+
+			@Override
+			public List<String> parts() {
+				return parts == null ? List.of() : parts;
+			}
+		}
 	}
 
 	public boolean blocked() {
