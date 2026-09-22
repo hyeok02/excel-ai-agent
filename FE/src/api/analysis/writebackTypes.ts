@@ -1,5 +1,15 @@
 export type WritebackStatus = 'PROPOSED' | 'BLOCKED' | 'APPLIED' | 'REJECTED' | 'FAILED'
 
+/** 수식으로 이어져 있지 않아 함께 확인해야 하는 셀. */
+export interface WritebackRelatedCell {
+  sheetName: string
+  reference: string
+  currentValue: string | number | boolean | null
+  suggestedValue: string | number | boolean | null
+  kind: 'total' | 'mirror'
+  reason: string
+}
+
 export interface WritebackChange {
   sheetName: string
   reference: string
@@ -14,6 +24,7 @@ export interface WritebackChange {
     reference: string
     value: string | number | boolean | null
   }>
+  relatedCells?: WritebackRelatedCell[]
 }
 
 export interface WritebackProposal {

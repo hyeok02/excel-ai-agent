@@ -1,13 +1,53 @@
-import type { WritebackChange } from '@/api/analysis'
+import type { WritebackChange, WritebackRelatedCell } from '@/api/analysis'
 
 /** 변경을 가리키는 키. 근거 셀 목록과 같은 `시트!셀` 형식을 쓴다. */
 export const changeKey = (change: WritebackChange) =>
   `${change.sheetName}!${change.reference}`
 
-export const allChangeKeys = (changes: WritebackChange[]) => changes.map(changeKey)
+export const relatedKey = (related: WritebackRelatedCell) =>
+  `${related.sheetName}!${related.reference}`
+
+const relatedOf = (change: WritebackChange) => change.relatedCells ?? []
+
+/** 변경과 그에 딸린 관련 셀을 모두 합한 승인 후보. */
+export const allChangeKeys = (changes: WritebackChange[]) =>
+  changes.flatMap((change) => [changeKey(change), ...relatedOf(change).map(relatedKey)])
 
 export const toggleChangeKey = (selected: string[], key: string) =>
   selected.includes(key) ? selected.filter((item) => item !== key) : [...selected, key]
+
+/**
+ * 선택을 바꾼 뒤, 본 변경이 빠지면 그에 딸린 관련 셀도 함께 뺀다.
+ * 관련 셀은 본 변경이 있어야 의미가 있어 단독으로는 승인할 수 없다.
+ */
+export const toggleSelection = (
+  changes: WritebackChange[],
+  selected: string[],
+  key: string,
+) => {
+  const next = new Set(toggleChangeKey(selected, key))
+  const kept = new Set(changes.map(changeKey).filter((item) => next.has(item)))
+  for (const change of changes) {
+    if (next.has(changeKey(change))) continue
+    for (const related of relatedOf(change)) {
+      if (!kept.has(relatedKey(related))) next.delete(relatedKey(related))
+    }
+  }
+  return [...next]
+}
+
+/** 본 변경은 승인했는데 함께 확인할 셀을 빼둔 경우를 찾는다. */
+export const unselectedRelated = (changes: WritebackChange[], selected: string[]) => {
+  const chosen = new Set(selected)
+  const left: string[] = []
+  for (const change of changes) {
+    if (!chosen.has(changeKey(change))) continue
+    for (const related of relatedOf(change)) {
+      if (!chosen.has(relatedKey(related))) left.push(relatedKey(related))
+    }
+  }
+  return [...new Set(left)]
+}
 
 /**
  * 한쪽만 승인하면 결과가 미리보기와 달라지는 변경 쌍을 찾는다.

@@ -1,13 +1,9 @@
 import { ArrowRight, Sigma } from 'lucide-react'
 
 import type { WritebackChange } from '@/api/analysis'
+import WritebackRelatedCells from '@/components/analysis/result/writeback/WritebackRelatedCells'
+import { showValue as show } from '@/components/analysis/result/writeback/writebackValue'
 import OriginalLocationButton from '@/components/analysis/workbook/details/OriginalLocationButton'
-
-const show = (value: WritebackChange['oldValue']) => {
-  if (value === null) return '(빈 셀)'
-  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
-  return String(value)
-}
 
 const RISK_LABEL = { low: '낮은 영향', medium: '영향 확인', high: '높은 영향' }
 const RISK_CLASS = {
@@ -20,11 +16,21 @@ interface Props {
   change: WritebackChange
   selectable: boolean
   selected: boolean
+  selectedKeys: string[]
   onToggle: () => void
+  onToggleRelated: (key: string) => void
 }
 
-const WritebackChangeCard = ({ change, selectable, selected, onToggle }: Props) => {
+const WritebackChangeCard = ({
+  change,
+  selectable,
+  selected,
+  selectedKeys,
+  onToggle,
+  onToggleRelated,
+}: Props) => {
   const risk = change.riskLevel ?? 'low'
+  const related = change.relatedCells ?? []
   return (
     <div
       className={`rounded-2xl border p-4 transition ${
@@ -94,6 +100,14 @@ const WritebackChangeCard = ({ change, selectable, selected, onToggle }: Props) 
           <Sigma size={13} /> 이 값을 참조하는 수식 {change.affectedCells.length}개가 다시
           계산됩니다.
         </p>
+      )}
+      {related.length > 0 && (
+        <WritebackRelatedCells
+          cells={related}
+          onToggle={onToggleRelated}
+          selectable={selectable && selected}
+          selected={selectedKeys}
+        />
       )}
     </div>
   )
