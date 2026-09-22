@@ -1,5 +1,5 @@
 """수식으로 이어져 있지 않아 함께 고쳐야 하는 셀을 찾는 규칙 검증."""
-from app.agent.writeback.related_cells import related_cells
+from app.agent.writeback.related_cells import dedupe_related, related_cells
 
 HEADERS = {"G": "일반관리", "N": "연구개발", "R": "영업", "W": "서비스", "F": "총계"}
 ROWS = {
@@ -87,3 +87,22 @@ def test_skips_non_numeric_and_unknown_targets():
 
 def test_reports_at_most_four_cells():
     assert len(find()) <= 4
+
+
+class FakeChange:
+    def __init__(self, sheet_name, reference, related):
+        self.sheet_name = sheet_name
+        self.reference = reference
+        self.related_cells = related
+
+
+def test_drops_a_related_cell_that_is_already_a_change_of_its_own():
+    total, mirror = find()
+    changes = [
+        FakeChange("부서현황", "W108", [total, mirror]),
+        FakeChange("Chart_Data", "bs7", []),
+    ]
+
+    dedupe_related(changes)
+
+    assert [cell.reference for cell in changes[0].related_cells] == ["F108"]

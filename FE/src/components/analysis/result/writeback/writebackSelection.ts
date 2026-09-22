@@ -9,9 +9,15 @@ export const relatedKey = (related: WritebackRelatedCell) =>
 
 const relatedOf = (change: WritebackChange) => change.relatedCells ?? []
 
-/** 변경과 그에 딸린 관련 셀을 모두 합한 승인 후보. */
-export const allChangeKeys = (changes: WritebackChange[]) =>
-  changes.flatMap((change) => [changeKey(change), ...relatedOf(change).map(relatedKey)])
+/** 변경과 그에 딸린 관련 셀을 모두 합한 승인 후보. 같은 셀은 한 번만 센다. */
+export const allChangeKeys = (changes: WritebackChange[]) => [
+  ...new Set(
+    changes.flatMap((change) => [
+      changeKey(change),
+      ...relatedOf(change).map(relatedKey),
+    ]),
+  ),
+]
 
 export const toggleChangeKey = (selected: string[], key: string) =>
   selected.includes(key) ? selected.filter((item) => item !== key) : [...selected, key]

@@ -93,3 +93,15 @@ def _mirrors(sheets, columns, sheet_name, letter, row_number, new_value) -> list
             )
         )
     return found
+
+
+def dedupe_related(changes: list) -> list:
+    """이미 변경으로 제안한 셀은 관련 셀에서 뺀다. 화면에 두 번 나오지 않게."""
+    proposed = {(change.sheet_name.casefold(), change.reference.upper()) for change in changes}
+    for change in changes:
+        change.related_cells = [
+            cell
+            for cell in change.related_cells
+            if (cell.sheet_name.casefold(), cell.reference.upper()) not in proposed
+        ]
+    return changes

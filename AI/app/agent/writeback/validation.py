@@ -1,7 +1,7 @@
 import re
 
 from app.agent.writeback.models import WritebackChange
-from app.agent.writeback.related_cells import related_cells, sheet_columns
+from app.agent.writeback.related_cells import dedupe_related, related_cells, sheet_columns
 from app.agent.writeback.references import (
     MAX_CHANGES,
     affected_cells,
@@ -43,7 +43,7 @@ def validate_changes(
                 changes, risks, seen, draft, reference, available,
                 data_index, instruction, sheets,
             )
-    return changes, risks
+    return dedupe_related(changes), risks
 
 
 def _append_change(
