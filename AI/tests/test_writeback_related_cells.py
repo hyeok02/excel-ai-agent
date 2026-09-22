@@ -106,3 +106,20 @@ def test_drops_a_related_cell_that_is_already_a_change_of_its_own():
     dedupe_related(changes)
 
     assert [cell.reference for cell in changes[0].related_cells] == ["F108"]
+
+
+def test_explains_the_sum_with_column_headers_not_column_letters():
+    reason = find()[0].reason
+
+    assert "총계" in reason and "서비스" in reason and "일반관리" in reason
+    assert "+ W" not in reason and "+ G" not in reason
+
+
+def test_falls_back_to_the_cell_address_when_a_column_has_no_header():
+    columns = budget_sheet()
+    for letter in HEADERS:
+        del columns[letter][107]
+
+    reason = related_cells({"부서현황": columns}, "부서현황", "W108", 1000)[0].reason
+
+    assert "W108" in reason and "F108" in reason

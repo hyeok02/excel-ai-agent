@@ -58,17 +58,31 @@ def _row_total(columns, sheet_name: str, letter: str, row_number: int, new_value
         return []
     total_column, used = result
     before = integer(target[total_column])
-    parts = " + ".join(sorted(used))
     return [
         WritebackRelatedCell(
             sheet_name=sheet_name, reference=f"{total_column}{row_number}",
             current_value=before,
             suggested_value=before - integer(target[letter]) + integer(new_value),
             kind="total",
-            reason=f"이 행의 {total_column}{row_number}은 {parts}의 합입니다. "
-                   f"수식이 아니라 값으로 들어 있어 함께 바꾸지 않으면 합이 어긋납니다.",
+            reason=_total_reason(columns, total_column, letter, row_number, used),
         )
     ]
+
+
+def _label(columns, letter: str, row_number: int) -> str:
+    """열 머리글. 없으면 셀 주소를 그대로 쓴다."""
+    return column_label(columns.get(letter, {}), row_number) or f"{letter}{row_number}"
+
+
+def _total_reason(columns, total_column, letter, row_number, used) -> str:
+    """열 문자 대신 사람이 읽는 머리글로 합계 관계를 설명한다."""
+    total = _label(columns, total_column, row_number)
+    target = _label(columns, letter, row_number)
+    tail = (f"수식이 아니라 숫자로 적혀 있어, {target} 값만 바꾸면 합이 맞지 않습니다.")
+    head = f"{total_column}{row_number}({total})은 이 행의 값 {len(used)}개를 더한 합계입니다"
+    parts = ", ".join(sorted(_label(columns, name, row_number) for name in used))
+    detailed = f"{head} — {parts}. {tail}"
+    return detailed if len(detailed) <= 300 else f"{head}. {tail}"
 
 
 def _mirrors(sheets, columns, sheet_name, letter, row_number, new_value) -> list:
