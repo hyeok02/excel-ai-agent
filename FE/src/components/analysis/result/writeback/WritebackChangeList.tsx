@@ -24,9 +24,15 @@ const WritebackChangeList = ({
 }: Props) => {
   const visible = changes.slice(0, 4)
   const remaining = changes.slice(4)
-  const sheetCount = new Set(changes.map((change) => change.sheetName)).size
+  const keys = allChangeKeys(changes)
+  const sheetCount = new Set(
+    changes.flatMap((change) => [
+      change.sheetName,
+      ...(change.relatedCells ?? []).map((related) => related.sheetName),
+    ]),
+  ).size
   const formulaCount = changes.filter((change) => change.changeType === 'formula').length
-  const allSelected = selectable && selected.length === changes.length
+  const allSelected = selectable && selected.length === keys.length
 
   const card = (change: WritebackChange) => {
     const key = changeKey(change)
@@ -35,8 +41,10 @@ const WritebackChangeList = ({
         change={change}
         key={key}
         onToggle={() => onToggle?.(key)}
+        onToggleRelated={(item) => onToggle?.(item)}
         selectable={selectable}
         selected={!selectable || selected.includes(key)}
+        selectedKeys={selected}
       />
     )
   }
@@ -46,7 +54,7 @@ const WritebackChangeList = ({
       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-extrabold text-slate-600">
         <span className="rounded-full bg-white px-3 py-1.5 shadow-sm">
           {selectable
-            ? `선택 ${selected.length} / ${changes.length}개`
+            ? `선택 ${selected.length} / ${keys.length}개`
             : `변경 ${changes.length}개`}
         </span>
         <span className="rounded-full bg-white px-3 py-1.5 shadow-sm">
@@ -57,10 +65,10 @@ const WritebackChangeList = ({
             수식 {formulaCount}개
           </span>
         )}
-        {selectable && changes.length > 1 && (
+        {selectable && keys.length > 1 && (
           <button
             className="ml-auto rounded-lg px-2 py-1 text-xs font-bold text-brand-700 underline-offset-4 transition hover:underline"
-            onClick={() => onSelectAll?.(allSelected ? [] : allChangeKeys(changes))}
+            onClick={() => onSelectAll?.(allSelected ? [] : keys)}
             type="button"
           >
             {allSelected ? '전체 해제' : '전체 선택'}

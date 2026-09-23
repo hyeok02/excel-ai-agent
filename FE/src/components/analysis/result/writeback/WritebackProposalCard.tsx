@@ -7,7 +7,8 @@ import WritebackChangeList from '@/components/analysis/result/writeback/Writebac
 import {
   allChangeKeys,
   brokenDependencies,
-  toggleChangeKey,
+  toggleSelection,
+  unselectedRelated,
 } from '@/components/analysis/result/writeback/writebackSelection'
 import WritebackStatusBadge from '@/components/analysis/result/writeback/WritebackStatusBadge'
 import WritebackVerification from '@/components/analysis/result/writeback/WritebackVerification'
@@ -34,11 +35,12 @@ const WritebackProposalCard = ({
   onDownload,
 }: Props) => {
   const changes = item.proposal.changes
+  const keys = allChangeKeys(changes)
   const [selected, setSelected] = useState(() => allChangeKeys(changes))
   const proposed = item.status === 'PROPOSED'
   const blocked = item.status === 'BLOCKED'
   const failed = item.status === 'FAILED'
-  const selectable = proposed && changes.length > 1
+  const selectable = proposed && keys.length > 1
 
   return (
     <article className="mt-5 rounded-3xl border border-slate-200 bg-slate-50/60 p-5">
@@ -55,7 +57,9 @@ const WritebackProposalCard = ({
         <WritebackChangeList
           changes={changes}
           onSelectAll={setSelected}
-          onToggle={(key) => setSelected((current) => toggleChangeKey(current, key))}
+          onToggle={(key) =>
+            setSelected((current) => toggleSelection(changes, current, key))
+          }
           selectable={selectable}
           selected={selected}
         />
@@ -88,11 +92,12 @@ const WritebackProposalCard = ({
         <WritebackApprovalPanel
           actionsDisabled={actionsDisabled}
           brokenCells={selectable ? brokenDependencies(changes, selected) : []}
+          relatedCells={selectable ? unselectedRelated(changes, selected) : []}
           onApprove={() => void onApprove(selected).catch(() => undefined)}
           onReject={() => void onReject().catch(() => undefined)}
           pendingAction={pendingAction}
           selectedCount={selected.length}
-          totalCount={changes.length}
+          totalCount={keys.length}
         />
       )}
       {(blocked || failed) && (

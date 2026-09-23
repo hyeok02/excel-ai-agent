@@ -6,6 +6,7 @@ import { approvalButtonLabel } from '@/components/analysis/result/writeback/writ
 interface Props {
   actionsDisabled: boolean
   brokenCells: string[]
+  relatedCells: string[]
   pendingAction: 'approve' | 'reject' | 'download' | null
   selectedCount: number
   totalCount: number
@@ -16,6 +17,7 @@ interface Props {
 const WritebackApprovalPanel = ({
   actionsDisabled,
   brokenCells,
+  relatedCells,
   pendingAction,
   selectedCount,
   totalCount,
@@ -35,6 +37,18 @@ const WritebackApprovalPanel = ({
             <p className="mt-0.5 text-xs">
               {brokenCells.join(' · ')} 은(는) 선택하지 않은 변경의 셀을 참조합니다.
               이대로 승인하면 이 셀의 계산 결과가 위 미리보기와 달라집니다.
+            </p>
+          </div>
+        </div>
+      )}
+      {relatedCells.length > 0 && (
+        <div className="mb-3 flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          <TriangleAlert className="mt-0.5 shrink-0" size={17} />
+          <div>
+            <p className="font-extrabold">같이 확인할 셀을 빼두었습니다</p>
+            <p className="mt-0.5 text-xs">
+              {relatedCells.join(' · ')} 은(는) 수식으로 이어져 있지 않아 자동으로
+              따라오지 않습니다. 이대로 승인하면 이 셀은 예전 값 그대로 남습니다.
             </p>
           </div>
         </div>

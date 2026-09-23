@@ -106,3 +106,4 @@ const NavigationLabel = ({ children }: { children: string }) => (
 )
 
 export default SidebarNavigation
+  

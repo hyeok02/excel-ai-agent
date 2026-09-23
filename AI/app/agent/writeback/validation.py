@@ -1,6 +1,7 @@
 import re
 
 from app.agent.writeback.models import WritebackChange
+from app.agent.writeback.related_cells import dedupe_related, related_cells, sheet_columns
 from app.agent.writeback.references import (
     MAX_CHANGES,
     affected_cells,
@@ -24,6 +25,7 @@ def validate_changes(
     drafts, available, data_index, instruction: str
 ) -> tuple[list[WritebackChange], list[str]]:
     changes, risks, seen = [], [], set()
+    sheets = sheet_columns(data_index)
     for draft in drafts:
         references = expand_reference(draft.reference)
         if not references:
@@ -38,13 +40,14 @@ def validate_changes(
             continue
         for reference in references:
             _append_change(
-                changes, risks, seen, draft, reference, available, data_index, instruction
+                changes, risks, seen, draft, reference, available,
+                data_index, instruction, sheets,
             )
-    return changes, risks
+    return dedupe_related(changes), risks
 
 
 def _append_change(
-    changes, risks, seen, draft, reference, available, data_index, instruction
+    changes, risks, seen, draft, reference, available, data_index, instruction, sheets
 ) -> None:
     cell_key = key(draft.sheet_name, reference)
     cell = available.get(cell_key)
@@ -96,6 +99,9 @@ def _append_change(
             value_type=_value_type(draft.new_value, cell.value_type, change_type),
             affected_cells=affected,
             risk_level=_risk_level(change_type, affected),
+            related_cells=related_cells(
+                sheets, cell.sheet_name, reference, draft.new_value
+            ),
         )
     )
 
