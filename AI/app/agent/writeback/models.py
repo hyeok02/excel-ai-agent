@@ -47,6 +47,8 @@ class WritebackChange(WritebackChangeDraft):
     value_type: Literal["text", "number", "boolean", "date", "datetime", "blank", "formula"] = "text"
     affected_cells: list[str] = Field(default_factory=list, max_length=12)
     risk_level: Literal["low", "medium", "high"] = "low"
+    # 새 값이 요청에 없고 계산으로 나온 경우, 그 계산 과정.
+    derivation: str | None = Field(default=None, max_length=200)
     related_cells: list[WritebackRelatedCell] = Field(default_factory=list, max_length=4)
 
 

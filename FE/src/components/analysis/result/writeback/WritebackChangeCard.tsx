@@ -1,4 +1,4 @@
-import { ArrowRight, Sigma } from 'lucide-react'
+import { ArrowRight, Calculator, Sigma } from 'lucide-react'
 
 import type { WritebackChange } from '@/api/analysis'
 import WritebackRelatedCells from '@/components/analysis/result/writeback/WritebackRelatedCells'
@@ -81,6 +81,12 @@ const WritebackChangeCard = ({
         </span>
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-500">변경 이유: {change.reason}</p>
+      {change.derivation && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-brand-50 px-3 py-2 text-xs leading-5 font-semibold text-brand-800">
+          <Calculator className="mt-0.5 shrink-0" size={13} />
+          {change.derivation}
+        </p>
+      )}
       {change.contextCells && change.contextCells.length > 0 && (
         <p
           className="mt-2 truncate text-xs text-slate-400"

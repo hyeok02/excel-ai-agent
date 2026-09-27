@@ -1,5 +1,6 @@
 import re
 
+from app.agent.writeback.derived_values import authorize_value
 from app.agent.writeback.models import WritebackChange
 from app.agent.writeback.related_cells import dedupe_related, related_cells, sheet_columns
 from app.agent.writeback.references import (
@@ -9,11 +10,7 @@ from app.agent.writeback.references import (
     expand_reference,
     key,
 )
-from app.agent.writeback.value_authorization import (
-    as_number,
-    stated_current_value,
-    value_is_authorized,
-)
+from app.agent.writeback.value_authorization import as_number, stated_current_value
 
 FORBIDDEN_FORMULA = re.compile(
     r"(?:\[|https?://|\\\\|\||\b(?:WEBSERVICE|HYPERLINK|RTD|CALL|REGISTER\.ID|EXEC)\s*\()",
@@ -68,10 +65,10 @@ def _append_change(
     if formula_risk:
         risks.append(f"{draft.sheet_name}!{reference}: {formula_risk}")
         return
-    if formula is None and not value_is_authorized(draft.new_value, instruction):
-        risks.append(
-            f"{draft.sheet_name}!{reference}: 새 값이 요청에 명시되지 않아 제외했습니다."
-        )
+    # 요청에 값이 그대로 적혀 있거나, 요청이 밝힌 계산으로 그 값이 나와야 한다.
+    derivation, rejection = authorize_value(cell.value, draft.new_value, instruction, formula)
+    if rejection:
+        risks.append(f"{draft.sheet_name}!{reference}: {rejection} 제외했습니다.")
         return
     old_value = cell.formula or cell.value
     # 요청이 바꾸기 전 값을 밝혔는데 대상 셀이 다른 값을 들고 있으면 엉뚱한 셀을 고른 것이다.
@@ -98,7 +95,8 @@ def _append_change(
             change_type=change_type,
             value_type=_value_type(draft.new_value, cell.value_type, change_type),
             affected_cells=affected,
-            risk_level=_risk_level(change_type, affected),
+            risk_level=_risk_level(change_type, affected, derivation),
+            derivation=derivation,
             related_cells=related_cells(
                 sheets, cell.sheet_name, reference, draft.new_value
             ),
@@ -138,9 +136,10 @@ def _value_type(value: object, current_type: str, change_type: str) -> str:
     return "text"
 
 
-def _risk_level(change_type: str, affected: list[str]) -> str:
+def _risk_level(change_type: str, affected: list[str], derivation: str | None = None) -> str:
+    # 계산해서 낸 값은 요청에 숫자가 없어 대상 셀을 값으로 다시 확인할 수 없다.
     if len(affected) > 8:
         return "high"
-    if change_type == "formula" or affected:
+    if change_type == "formula" or affected or derivation:
         return "medium"
     return "low"
