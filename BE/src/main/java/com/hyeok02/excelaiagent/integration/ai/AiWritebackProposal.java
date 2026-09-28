@@ -23,12 +23,13 @@ public record AiWritebackProposal(
 			@JsonAlias("value_type") String valueType,
 			@JsonAlias("affected_cells") List<String> affectedCells,
 			@JsonAlias("risk_level") String riskLevel,
-			@JsonAlias("related_cells") List<RelatedCell> relatedCells) {
+			@JsonAlias("related_cells") List<RelatedCell> relatedCells,
+			String derivation) {
 		public Change(
 				String sheetName, String reference, Object newValue, String reason,
 				Object oldValue, List<ContextCell> contextCells) {
 			this(sheetName, reference, newValue, reason, oldValue, contextCells,
-					null, null, List.of(), null, List.of());
+					null, null, List.of(), null, List.of(), null);
 		}
 
 		public Change(
@@ -36,7 +37,7 @@ public record AiWritebackProposal(
 				Object oldValue, List<ContextCell> contextCells, String changeType,
 				String valueType, List<String> affectedCells, String riskLevel) {
 			this(sheetName, reference, newValue, reason, oldValue, contextCells,
-					changeType, valueType, affectedCells, riskLevel, List.of());
+					changeType, valueType, affectedCells, riskLevel, List.of(), null);
 		}
 
 		/** 예전에 저장한 제안 JSON에는 이 항목이 없어 null로 들어온다. */

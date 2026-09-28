@@ -8,6 +8,9 @@ from app.services.insights.verification.numeric_validation import numbers
 MAX_CANDIDATE_CELLS = 240
 MAX_TEXT_ANCHORS = 12
 MAX_VALUE_ANCHORS = 8
+SHEET_NAME_WEIGHT = 3
+# "10%"의 10은 시트에 들어 있는 값이 아니라 비율이므로 값 앵커로 쓰지 않는다.
+RATE = re.compile(r"(?<![\w.])\d+(?:\.\d+)?\s*(?:%|퍼센트|프로)")
 
 
 def select_writeback_candidates(
@@ -51,7 +54,7 @@ def _stated_value_matches(
     "1081에서 981로"처럼 바꾸기 전 값을 말했다면 그 값을 가진 셀이 대상일 가능성이 가장 높다.
     본문 검색은 행 전체를 문자열로 훑어 11081 같은 값도 걸리지만, 여기서는 숫자로 비교한다.
     """
-    stated = numbers(instruction)
+    stated = numbers(RATE.sub(" ", instruction))
     if not stated:
         return [], []
     positions: list[int] = []
@@ -66,10 +69,23 @@ def _stated_value_matches(
     return positions, cells
 
 
+def _sheet_relevance(sheet_name: str, terms) -> int:
+    """
+    요청의 낱말을 시트 이름이 담고 있으면 그 시트를 먼저 본다.
+
+    행 본문만 보고 순서를 정하면 열이 넓은 시트 한 장이 후보 상한을 다 써버려,
+    정작 요청이 가리키는 시트의 셀이 모델에게 전달되지 않는다.
+    """
+    folded = sheet_name.casefold()
+    return sum(
+        SHEET_NAME_WEIGHT for term in terms if len(term) > 2 and term.casefold() in folded
+    )
+
+
 def _text_anchors(instruction: str, index: WorkbookDataIndex) -> list[int]:
     terms = search_terms(instruction)
     scored = [
-        (relevance(row, terms), position)
+        (relevance(row, terms) + _sheet_relevance(row.sheet_name, terms), position)
         for position, row in enumerate(index.rows)
     ]
     return [

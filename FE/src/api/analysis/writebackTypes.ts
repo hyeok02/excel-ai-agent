@@ -28,6 +28,8 @@ export interface WritebackChange {
     value: string | number | boolean | null
   }>
   relatedCells?: WritebackRelatedCell[]
+  /** 새 값이 요청에 없고 계산으로 나온 경우, 그 계산 과정. */
+  derivation?: string | null
 }
 
 export interface WritebackProposal {
