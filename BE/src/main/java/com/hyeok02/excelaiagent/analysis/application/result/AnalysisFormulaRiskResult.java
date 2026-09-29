@@ -10,6 +10,8 @@ public final class AnalysisFormulaRiskResult {
 			int totalCount,
 			int errorCount,
 			int warningCount,
+			int infoCount,
+			int cachedErrorCount,
 			int brokenReferenceCount,
 			int missingSheetCount,
 			int externalReferenceCount,

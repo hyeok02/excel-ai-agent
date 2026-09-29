@@ -55,6 +55,8 @@ class FormulaRiskSummaryResponse(BaseModel):
     total_count: int
     error_count: int
     warning_count: int
+    info_count: int
+    cached_error_count: int
     broken_reference_count: int
     missing_sheet_count: int
     external_reference_count: int

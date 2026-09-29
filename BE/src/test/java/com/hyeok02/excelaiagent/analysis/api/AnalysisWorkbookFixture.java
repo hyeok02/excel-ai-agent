@@ -96,7 +96,7 @@ final class AnalysisWorkbookFixture {
 				"[Budget.xlsx]Plan!C3", null, null,
 				provenance("formula_risk_detector", "formula", "D2", "='[Budget.xlsx]Plan'!C3"),
 				impact);
-		return new AiFormulaRiskSummary(1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, List.of(finding));
+		return new AiFormulaRiskSummary(1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, List.of(finding));
 	}
 
 	private static AiProvenance provenance(

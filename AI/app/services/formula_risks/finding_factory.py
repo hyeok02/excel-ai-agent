@@ -12,6 +12,7 @@ def build_formula_finding(
     *,
     reference: str | None = None,
     function_name: str | None = None,
+    observed_value: str | int | float | bool | None = None,
 ) -> FormulaRiskFinding:
     return _build(
         kind,
@@ -22,7 +23,7 @@ def build_formula_finding(
         item.formula,
         reference,
         function_name,
-        None,
+        observed_value,
     )
 
 
@@ -34,7 +35,7 @@ def build_hardcoded_finding(
 ) -> FormulaRiskFinding:
     return _build(
         "hardcoded_value",
-        "warning",
+        "info",
         sheet_name,
         cell,
         "반복 수식 영역에서 이 셀만 값이 직접 입력되어 계산 누락 가능성이 있습니다.",

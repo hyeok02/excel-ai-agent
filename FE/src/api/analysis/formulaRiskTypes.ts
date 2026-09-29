@@ -1,6 +1,7 @@
 import type { AnalysisProvenance } from '@/api/analysis/evidenceTypes'
 
 export type FormulaRiskKind =
+  | 'cached_error'
   | 'broken_reference'
   | 'missing_sheet'
   | 'external_reference'
@@ -8,7 +9,7 @@ export type FormulaRiskKind =
   | 'formula_pattern_mismatch'
   | 'hardcoded_value'
 
-export type FormulaRiskSeverity = 'error' | 'warning'
+export type FormulaRiskSeverity = 'error' | 'warning' | 'info'
 export type FormulaRiskLevel = 'low' | 'medium' | 'high' | 'critical'
 
 export interface FormulaRiskImpactResult {
@@ -38,6 +39,8 @@ export interface FormulaRiskSummaryResult {
   totalCount: number
   errorCount: number
   warningCount: number
+  infoCount: number
+  cachedErrorCount: number
   brokenReferenceCount: number
   missingSheetCount: number
   externalReferenceCount: number

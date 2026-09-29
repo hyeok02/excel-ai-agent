@@ -10,10 +10,11 @@ final class FormulaRiskResultMapper {
 	static AnalysisFormulaRiskResult.Summary map(AiFormulaRiskSummary summary) {
 		if (summary == null) {
 			return new AnalysisFormulaRiskResult.Summary(
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, java.util.List.of());
+					0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, java.util.List.of());
 		}
 		return new AnalysisFormulaRiskResult.Summary(
 				summary.totalCount(), summary.errorCount(), summary.warningCount(),
+				summary.infoCount(), summary.cachedErrorCount(),
 				summary.brokenReferenceCount(), summary.missingSheetCount(),
 				summary.externalReferenceCount(), summary.dynamicFunctionCount(),
 				summary.patternMismatchCount(), summary.hardcodedValueCount(),

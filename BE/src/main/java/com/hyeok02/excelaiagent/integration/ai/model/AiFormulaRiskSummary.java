@@ -7,6 +7,8 @@ public record AiFormulaRiskSummary(
 		@JsonProperty("total_count") int totalCount,
 		@JsonProperty("error_count") int errorCount,
 		@JsonProperty("warning_count") int warningCount,
+		@JsonProperty("info_count") int infoCount,
+		@JsonProperty("cached_error_count") int cachedErrorCount,
 		@JsonProperty("broken_reference_count") int brokenReferenceCount,
 		@JsonProperty("missing_sheet_count") int missingSheetCount,
 		@JsonProperty("external_reference_count") int externalReferenceCount,
@@ -22,6 +24,6 @@ public record AiFormulaRiskSummary(
 	}
 
 	public static AiFormulaRiskSummary empty() {
-		return new AiFormulaRiskSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of());
+		return new AiFormulaRiskSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of());
 	}
 }
