@@ -5,11 +5,17 @@ interface FormulaRiskOverviewProps {
 }
 
 const FormulaRiskOverview = ({ summary }: FormulaRiskOverviewProps) => {
-  const priorityCount = summary.criticalRiskCount + summary.highRiskCount
   const items = [
-    ['우선 확인', priorityCount, '영향 범위가 큰 항목'],
-    ['반복 패턴 후보', summary.patternMismatchCount, '주변과 다른 계산식'],
-    ['직접 입력 의심', summary.hardcodedValueCount, '수식 사이에 입력된 값'],
+    ['계산 오류', summary.cachedErrorCount, '결과가 #N/A·#DIV/0! 로 남은 셀'],
+    [
+      '끊어질 수 있는 참조',
+      summary.brokenReferenceCount +
+        summary.missingSheetCount +
+        summary.externalReferenceCount +
+        summary.dynamicFunctionCount,
+      '깨진 참조, 외부 파일, 동적 함수',
+    ],
+    ['참고 항목', summary.infoCount, '주변과 다른 수식, 직접 입력된 값'],
   ] as const
 
   return (

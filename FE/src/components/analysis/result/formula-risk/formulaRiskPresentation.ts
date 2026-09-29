@@ -4,6 +4,10 @@ export const FORMULA_RISK_PRESENTATION: Record<
   FormulaRiskKind,
   { label: string; action: string }
 > = {
+  cached_error: {
+    label: '계산 결과가 오류',
+    action: '수식이 계산에 실패해 이 셀을 참조하는 계산까지 함께 틀어집니다.',
+  },
   broken_reference: {
     label: '깨진 셀 참조',
     action: '삭제되거나 이동된 셀을 다시 연결해야 합니다.',

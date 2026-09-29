@@ -33,6 +33,8 @@ class FormulaRiskSummary:
     total_count: int
     error_count: int
     warning_count: int
+    info_count: int
+    cached_error_count: int
     broken_reference_count: int
     missing_sheet_count: int
     external_reference_count: int
@@ -45,7 +47,7 @@ class FormulaRiskSummary:
 
     @classmethod
     def empty(cls) -> "FormulaRiskSummary":
-        return cls(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [])
+        return cls(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [])
 
     @classmethod
     def from_findings(
@@ -55,6 +57,8 @@ class FormulaRiskSummary:
             total_count=len(findings),
             error_count=sum(item.severity == "error" for item in findings),
             warning_count=sum(item.severity == "warning" for item in findings),
+            info_count=sum(item.severity == "info" for item in findings),
+            cached_error_count=sum(item.kind == "cached_error" for item in findings),
             broken_reference_count=sum(
                 item.kind == "broken_reference" for item in findings
             ),

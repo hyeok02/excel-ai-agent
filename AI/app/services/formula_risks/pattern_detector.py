@@ -32,7 +32,7 @@ def detect_pattern_mismatches(
                 findings.append(
                     build_formula_finding(
                         "formula_pattern_mismatch",
-                        "warning",
+                        "info",
                         sheet_name,
                         item,
                         "주변 셀과 다른 수식 패턴이 사용되어 복사 또는 수정 오류인지 확인이 필요합니다.",
