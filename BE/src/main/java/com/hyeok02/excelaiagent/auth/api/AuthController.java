@@ -16,7 +16,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -72,9 +71,7 @@ public class AuthController {
 				|| "anonymousUser".equals(authentication.getPrincipal())) {
 			return ResponseEntity.noContent().build();
 		}
-		AppUser user = authentication.getPrincipal() instanceof OidcUser oidcUser
-				? userAccountService.requireByEmail(oidcUser.getEmail())
-				: userAccountService.requireByUsername(authentication.getName());
+		AppUser user = userAccountService.requireAuthenticatedUser(authentication);
 		return ResponseEntity.ok(CurrentUserResponse.from(user));
 	}
 

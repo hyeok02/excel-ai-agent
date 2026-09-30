@@ -60,6 +60,9 @@ public class GlobalExceptionHandler {
 					"depth는 AUTO, FAST 또는 PRECISE 중 하나여야 합니다.", request);
 		}
 		if (UUID.class.equals(type)) {
+			if ("userId".equals(exception.getName())) {
+				return badRequest("INVALID_USER_ID", "userId는 UUID 형식이어야 합니다.", request);
+			}
 			return badRequest("INVALID_ANALYSIS_ID", "analysisId는 UUID 형식이어야 합니다.", request);
 		}
 		return badRequest("INVALID_REQUEST_VALUE", "요청 값의 형식을 확인해주세요.", request);

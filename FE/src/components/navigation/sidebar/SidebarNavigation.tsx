@@ -2,6 +2,7 @@ import {
   Building2,
   FileSpreadsheet,
   House,
+  Mail,
   Newspaper,
   Send,
   UserRoundSearch,
@@ -94,6 +95,14 @@ const SidebarNavigation = ({ onNavigate }: SidebarNavigationProps) => {
           <Send aria-hidden="true" size={19} strokeWidth={1.9} />
           <span>텔레그램 수신자</span>
         </NavLink>
+        <NavLink
+          className={navigationClassName}
+          onClick={onNavigate}
+          to={ROUTES.emailRecipients}
+        >
+          <Mail aria-hidden="true" size={19} strokeWidth={1.9} />
+          <span>이메일 수신자</span>
+        </NavLink>
       </div>
     </nav>
   )
@@ -106,4 +115,3 @@ const NavigationLabel = ({ children }: { children: string }) => (
 )
 
 export default SidebarNavigation
-  

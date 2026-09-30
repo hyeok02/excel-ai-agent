@@ -4,22 +4,28 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 import com.hyeok02.excelaiagent.auth.domain.AppUser;
 import com.hyeok02.excelaiagent.auth.domain.AppUserRepository;
 import com.hyeok02.excelaiagent.auth.domain.AuthProvider;
 import com.hyeok02.excelaiagent.auth.domain.UserRole;
 import com.hyeok02.excelaiagent.auth.error.DuplicateUsernameException;
+import com.hyeok02.excelaiagent.auth.error.LastActiveAdminException;
+import com.hyeok02.excelaiagent.auth.error.SelfDeactivationException;
 import com.hyeok02.excelaiagent.auth.error.SsoAccessDeniedException;
+import com.hyeok02.excelaiagent.auth.error.UserAccountNotFoundException;
 import com.hyeok02.excelaiagent.common.config.AuthProperties;
 import jakarta.transaction.Transactional;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -74,6 +80,9 @@ public class UserAccountService implements UserDetailsService {
 		validateSsoDomain(normalizedEmail);
 		return appUserRepository.findByEmailIgnoreCase(normalizedEmail)
 				.map(user -> {
+					if (!user.isEnabled()) {
+						throw new SsoAccessDeniedException("비활성화된 계정입니다. 관리자에게 문의해주세요.");
+					}
 					String safeDisplayName = displayName == null || displayName.isBlank()
 							? user.getDisplayName()
 							: displayName.trim();
@@ -95,6 +104,52 @@ public class UserAccountService implements UserDetailsService {
 
 	public List<AppUser> listUsers() {
 		return appUserRepository.findAllByOrderByCreatedAtDesc();
+	}
+
+	@Transactional
+	public AppUser updateUserStatus(UUID userId, boolean enabled, UUID actorUserId) {
+		if (!enabled && userId.equals(actorUserId)) {
+			throw new SelfDeactivationException();
+		}
+
+		AppUser target;
+		if (!enabled && appUserRepository.findRoleByUserId(userId)
+				.orElseThrow(() -> new UserAccountNotFoundException(userId)) == UserRole.ADMIN) {
+			List<AppUser> admins = appUserRepository.findAllByRoleForUpdate(UserRole.ADMIN);
+			target = admins.stream()
+					.filter(user -> user.getUserId().equals(userId))
+					.findFirst()
+					.orElseThrow(() -> new UserAccountNotFoundException(userId));
+			if (target.isEnabled()
+					&& admins.stream().filter(AppUser::isEnabled).count() <= 1) {
+				throw new LastActiveAdminException();
+			}
+		}
+		else {
+			target = appUserRepository.findByUserIdForUpdate(userId)
+					.orElseThrow(() -> new UserAccountNotFoundException(userId));
+		}
+
+		target.updateEnabled(enabled, Instant.now(clock));
+		return target;
+	}
+
+	public AppUser requireAuthenticatedUser(Authentication authentication) {
+		if (authentication == null || !authentication.isAuthenticated()) {
+			throw new UsernameNotFoundException("인증된 사용자를 찾을 수 없습니다.");
+		}
+		return authentication.getPrincipal() instanceof OidcUser oidcUser
+				? requireByEmail(oidcUser.getEmail())
+				: requireByUsername(authentication.getName());
+	}
+
+	public boolean isAuthenticationEnabled(Authentication authentication) {
+		try {
+			return requireAuthenticatedUser(authentication).isEnabled();
+		}
+		catch (UsernameNotFoundException exception) {
+			return false;
+		}
 	}
 
 	@Override

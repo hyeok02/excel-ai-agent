@@ -2,6 +2,7 @@ package com.hyeok02.excelaiagent.auth.api;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import com.hyeok02.excelaiagent.auth.application.UserAccountService;
 import com.hyeok02.excelaiagent.auth.domain.AppUser;
@@ -13,7 +14,10 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,6 +46,16 @@ public class AdminUserController {
 				request.username(), request.password(), request.displayName(), request.role()));
 	}
 
+	@PatchMapping("/{userId}/status")
+	public UserResponse updateUserStatus(
+			@PathVariable UUID userId,
+			@Valid @RequestBody UpdateUserStatusRequest request,
+			Authentication authentication) {
+		AppUser actor = userAccountService.requireAuthenticatedUser(authentication);
+		return UserResponse.from(userAccountService.updateUserStatus(
+				userId, request.enabled(), actor.getUserId()));
+	}
+
 	public record CreateUserRequest(
 			@NotBlank(message = "아이디를 입력해주세요.")
 			@Size(min = 3, max = 50, message = "아이디는 3~50자로 입력해주세요.")
@@ -54,6 +68,10 @@ public class AdminUserController {
 			@Size(max = 100, message = "이름은 100자를 초과할 수 없습니다.")
 			String displayName,
 			@NotNull(message = "권한을 선택해주세요.") UserRole role) {
+	}
+
+	public record UpdateUserStatusRequest(
+			@NotNull(message = "활성 상태를 선택해주세요.") Boolean enabled) {
 	}
 
 	public record UserResponse(

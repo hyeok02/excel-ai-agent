@@ -3,6 +3,7 @@ package com.hyeok02.excelaiagent.common.config;
 import java.io.IOException;
 
 import com.hyeok02.excelaiagent.auth.application.CompanyOidcUserService;
+import com.hyeok02.excelaiagent.auth.application.EnabledAccountFilter;
 import com.hyeok02.excelaiagent.auth.application.UserAccountService;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -19,6 +20,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
@@ -48,7 +50,8 @@ public class SecurityConfig {
 	SecurityFilterChain securityFilterChain(
 			HttpSecurity http,
 			AuthProperties authProperties,
-			CompanyOidcUserService companyOidcUserService) throws Exception {
+			CompanyOidcUserService companyOidcUserService,
+			UserAccountService userAccountService) throws Exception {
 		CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 		csrfRepository.setHeaderName("X-XSRF-TOKEN");
 		csrfRepository.setCookieCustomizer(cookie -> cookie.path("/").sameSite("Lax"));
@@ -61,7 +64,10 @@ public class SecurityConfig {
 				.logout(logout -> logout.disable());
 
 		if (authProperties.securityEnabled()) {
-			http.csrf(csrf -> csrf
+			http.addFilterAfter(
+					new EnabledAccountFilter(userAccountService),
+					SecurityContextHolderFilter.class)
+					.csrf(csrf -> csrf
 					.csrfTokenRepository(csrfRepository)
 					.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
 					.ignoringRequestMatchers("/api/v1/telegram/webhook"))

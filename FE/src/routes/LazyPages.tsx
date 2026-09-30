@@ -6,6 +6,9 @@ export const UserManagementPage = lazy(
 export const TelegramRecipientsPage = lazy(
   () => import('@/pages/admin/telegram/TelegramRecipientsPage'),
 )
+export const EmailRecipientsPage = lazy(
+  () => import('@/pages/admin/email/EmailRecipientsPage'),
+)
 export const SharedAnalysisPage = lazy(
   () => import('@/pages/analysis/shared/SharedAnalysisPage'),
 )

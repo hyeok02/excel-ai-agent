@@ -16,6 +16,7 @@ interface AppHeaderProps {
 const MANAGEMENT_HEADER_ITEMS = [
   { to: ROUTES.userManagement, label: '사용자 관리' },
   { to: ROUTES.telegramRecipients, label: '텔레그램 수신자' },
+  { to: ROUTES.emailRecipients, label: '이메일 수신자' },
 ] as const
 
 const AppHeader = ({ onMenuClick }: AppHeaderProps) => {

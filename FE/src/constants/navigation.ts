@@ -8,6 +8,7 @@ export const ROUTES = {
   authCallback: '/auth/callback',
   userManagement: '/admin/users',
   telegramRecipients: '/admin/telegram-recipients',
+  emailRecipients: '/admin/email-recipients',
   sharedAnalysis: '/shared/analysis/:token',
 } as const
 

@@ -14,4 +14,7 @@ public interface AnalysisPublicShareRepository
 	boolean existsByTokenHash(String tokenHash);
 
 	List<AnalysisPublicShare> findAllByRecipientIdAndRevokedAtIsNull(UUID recipientId);
+
+	List<AnalysisPublicShare> findAllByEmailRecipientIdAndRevokedAtIsNull(
+			UUID emailRecipientId);
 }

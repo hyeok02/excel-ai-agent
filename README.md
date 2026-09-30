@@ -277,6 +277,13 @@ http://localhost:5173
 | `TELEGRAM_WEBHOOK_SECRET` | 빈 값 | Telegram webhook 요청 검증용 비밀 문자열 |
 | `TELEGRAM_WEBHOOK_URL` | 빈 값 | 공개 HTTPS Telegram webhook URL |
 | `TELEGRAM_INVITATION_TTL` | `24h` | 일회용 수신자 초대 링크 유효 시간 |
+| `EMAIL_ENABLED` | `false` | 분석 결과 이메일 공유 활성화 |
+| `EMAIL_FROM_ADDRESS` | 빈 값 | 검증된 발신 이메일 주소 |
+| `SMTP_HOST` | `localhost` | SMTP 서버 호스트 |
+| `SMTP_PORT` | `587` | STARTTLS SMTP 포트 |
+| `SMTP_USERNAME` | 빈 값 | SMTP 인증 사용자 이름 |
+| `SMTP_PASSWORD` | 빈 값 | SMTP 비밀번호 또는 앱 비밀번호 |
+| `SMTP_STARTTLS_REQUIRED` | `true` | TLS 협상 실패 시 평문 전송 차단 |
 | `ANALYSIS_PUBLIC_SHARE_TTL` | `7d` | 수신자용 읽기 전용 분석 링크 유효 시간 |
 | `BOOTSTRAP_ADMIN_USERNAME` | `admin` | 최초 관리자 아이디 |
 | `BOOTSTRAP_ADMIN_PASSWORD` | `admin1234` | 최초 관리자 비밀번호 |
