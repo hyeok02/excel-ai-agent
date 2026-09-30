@@ -33,6 +33,13 @@ Webhook URL은 `https://PUBLIC_HOST/api/v1/telegram/webhook` 형식이어야 합
 수신자를 연결합니다. 기존 단일 채팅방 전송도 유지하려면 `TELEGRAM_CHAT_ID`를 선택적으로
 설정합니다. 봇 토큰과 webhook 비밀값은 Frontend 환경 변수나 Git 저장소에 넣지 않습니다.
 
+이메일 공유를 사용할 때는 `backend.env`의 `EMAIL_ENABLED=true`, 검증된
+`EMAIL_FROM_ADDRESS`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`를 설정합니다. 기본값은
+포트 587, SMTP 인증, STARTTLS 활성화 및 필수화입니다. 따라서 서버가 STARTTLS를 제공하지
+않으면 평문으로 낮춰 전송하지 않고 실패합니다. 465번 implicit TLS(SMTPS)를 사용하는
+공급자는 포트만 바꾸지 말고 공급자 문서에 따라 SSL 속성을 별도로 구성해야 합니다.
+SMTP 자격증명은 `backend.env`에만 저장하고 파일 권한 `600`을 유지합니다.
+
 소유한 도메인이 없다면 데모 환경에서 `IP주소.sslip.io` 형식의 DNS 이름을 사용할 수 있습니다. EC2의 공인 IP가 바뀌면 DNS 이름과 두 URL 환경 변수도 함께 변경해야 합니다.
 
 ## 실행

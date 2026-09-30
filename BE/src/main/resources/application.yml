@@ -1,6 +1,20 @@
 spring:
   application:
     name: excel-ai-agent-backend
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    default-encoding: UTF-8
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    test-connection: false
+    properties:
+      "[mail.smtp.auth]": ${SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${SMTP_STARTTLS_ENABLED:true}
+      "[mail.smtp.starttls.required]": ${SMTP_STARTTLS_REQUIRED:true}
+      "[mail.smtp.connectiontimeout]": ${SMTP_CONNECTION_TIMEOUT_MS:3000}
+      "[mail.smtp.timeout]": ${SMTP_READ_TIMEOUT_MS:10000}
+      "[mail.smtp.writetimeout]": ${SMTP_WRITE_TIMEOUT_MS:10000}
   config:
     import: optional:file:.env[.properties]
   datasource:
@@ -41,6 +55,9 @@ server:
     include-stacktrace: never
 
 management:
+  health:
+    mail:
+      enabled: ${EMAIL_ENABLED:false}
   endpoints:
     web:
       exposure:
@@ -84,6 +101,9 @@ app:
     connect-timeout: ${TELEGRAM_CONNECT_TIMEOUT:3s}
     read-timeout: ${TELEGRAM_READ_TIMEOUT:10s}
     invitation-ttl: ${TELEGRAM_INVITATION_TTL:24h}
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    from-address: ${EMAIL_FROM_ADDRESS:}
   analysis-public-share:
     ttl: ${ANALYSIS_PUBLIC_SHARE_TTL:7d}
   auth:

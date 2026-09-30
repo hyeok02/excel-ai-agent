@@ -18,6 +18,8 @@ import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisResultRepository;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
 import com.hyeok02.excelaiagent.common.config.AnalysisPublicShareProperties;
+import com.hyeok02.excelaiagent.email.domain.EmailRecipient;
+import com.hyeok02.excelaiagent.email.domain.EmailRecipientRepository;
 import com.hyeok02.excelaiagent.sharing.domain.AnalysisPublicShare;
 import com.hyeok02.excelaiagent.sharing.domain.AnalysisPublicShareRepository;
 import com.hyeok02.excelaiagent.sharing.error.AnalysisPublicShareNotFoundException;
@@ -38,6 +40,7 @@ public class AnalysisPublicShareService {
 	private final AnalysisResultRepository analysisResultRepository;
 	private final AnalysisResultReader analysisResultReader;
 	private final TelegramRecipientRepository recipientRepository;
+	private final EmailRecipientRepository emailRecipientRepository;
 	private final AnalysisPublicShareProperties properties;
 	private final SecureRandom secureRandom = new SecureRandom();
 
@@ -48,6 +51,7 @@ public class AnalysisPublicShareService {
 			AnalysisResultRepository analysisResultRepository,
 			AnalysisResultReader analysisResultReader,
 			TelegramRecipientRepository recipientRepository,
+			EmailRecipientRepository emailRecipientRepository,
 			AnalysisPublicShareProperties properties) {
 		this.shareRepository = shareRepository;
 		this.analysisAccessService = analysisAccessService;
@@ -55,6 +59,7 @@ public class AnalysisPublicShareService {
 		this.analysisResultRepository = analysisResultRepository;
 		this.analysisResultReader = analysisResultReader;
 		this.recipientRepository = recipientRepository;
+		this.emailRecipientRepository = emailRecipientRepository;
 		this.properties = properties;
 	}
 
@@ -76,6 +81,25 @@ public class AnalysisPublicShareService {
 		return new IssuedAnalysisPublicShare(share.getShareId(), token, expiresAt);
 	}
 
+	@Transactional
+	public IssuedAnalysisPublicShare issueForEmail(
+			UUID analysisId, UUID emailRecipientId, String ownerUsername) {
+		AnalysisJob job = analysisAccessService.requireOwned(analysisId, ownerUsername);
+		if (!analysisResultRepository.existsById(analysisId)) {
+			throw new AnalysisResultNotReadyException(analysisId, job.getStatus());
+		}
+		emailRecipientRepository.findByOwnerUsernameAndRecipientIdAndActiveTrue(
+				ownerUsername, emailRecipientId)
+				.orElseThrow(AnalysisPublicShareNotFoundException::new);
+
+		Instant now = Instant.now();
+		Instant expiresAt = now.plus(properties.ttl());
+		String token = uniqueToken();
+		AnalysisPublicShare share = shareRepository.save(AnalysisPublicShare.issueForEmail(
+				analysisId, emailRecipientId, hash(token), now, expiresAt));
+		return new IssuedAnalysisPublicShare(share.getShareId(), token, expiresAt);
+	}
+
 	@Transactional(readOnly = true)
 	public AnalysisPublicShareView resolve(String token) {
 		if (!validToken(token)) {
@@ -84,12 +108,10 @@ public class AnalysisPublicShareService {
 		AnalysisPublicShare share = shareRepository.findByTokenHash(hash(token))
 				.filter(candidate -> candidate.isAccessibleAt(Instant.now()))
 				.orElseThrow(AnalysisPublicShareNotFoundException::new);
-		TelegramRecipient recipient = recipientRepository.findById(share.getRecipientId())
-				.filter(TelegramRecipient::isActive)
-				.orElseThrow(AnalysisPublicShareNotFoundException::new);
+		String recipientOwner = recipientOwner(share);
 		AnalysisJob job = analysisJobRepository.findById(share.getAnalysisId())
 				.filter(candidate -> candidate.getOwnerUsername() != null)
-				.filter(candidate -> candidate.getOwnerUsername().equals(recipient.getOwnerUsername()))
+				.filter(candidate -> candidate.getOwnerUsername().equals(recipientOwner))
 				.orElseThrow(AnalysisPublicShareNotFoundException::new);
 		AnalysisResultDetails result = analysisResultReader.getResult(
 				share.getAnalysisId(), job.getOwnerUsername());
@@ -106,6 +128,30 @@ public class AnalysisPublicShareService {
 		Instant now = Instant.now();
 		shareRepository.findAllByRecipientIdAndRevokedAtIsNull(recipientId)
 				.forEach(share -> share.revoke(now));
+	}
+
+	@Transactional
+	public void revokeForEmailRecipient(UUID emailRecipientId) {
+		Instant now = Instant.now();
+		shareRepository.findAllByEmailRecipientIdAndRevokedAtIsNull(emailRecipientId)
+				.forEach(share -> share.revoke(now));
+	}
+
+	private String recipientOwner(AnalysisPublicShare share) {
+		if (share.getRecipientId() != null && share.getEmailRecipientId() == null) {
+			TelegramRecipient recipient = recipientRepository.findById(share.getRecipientId())
+					.filter(TelegramRecipient::isActive)
+					.orElseThrow(AnalysisPublicShareNotFoundException::new);
+			return recipient.getOwnerUsername();
+		}
+		if (share.getRecipientId() == null && share.getEmailRecipientId() != null) {
+			EmailRecipient recipient = emailRecipientRepository
+					.findById(share.getEmailRecipientId())
+					.filter(EmailRecipient::isActive)
+					.orElseThrow(AnalysisPublicShareNotFoundException::new);
+			return recipient.getOwnerUsername();
+		}
+		throw new AnalysisPublicShareNotFoundException();
 	}
 
 	private String uniqueToken() {

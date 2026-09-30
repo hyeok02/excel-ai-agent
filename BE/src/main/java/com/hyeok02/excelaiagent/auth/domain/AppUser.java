@@ -99,6 +99,14 @@ public class AppUser {
 		this.updatedAt = now;
 	}
 
+	public void updateEnabled(boolean enabled, Instant now) {
+		if (this.enabled == enabled) {
+			return;
+		}
+		this.enabled = enabled;
+		this.updatedAt = now;
+	}
+
 	public UUID getUserId() {
 		return userId;
 	}

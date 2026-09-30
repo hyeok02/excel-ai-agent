@@ -29,6 +29,10 @@ export interface CreateUserRequest {
   role: UserRole
 }
 
+export interface UpdateUserStatusRequest {
+  enabled: boolean
+}
+
 export const initializeCsrf = async () => {
   await apiClient.get('/api/v1/auth/csrf')
 }
@@ -64,5 +68,16 @@ export const listUsers = async () => {
 
 export const createUser = async (request: CreateUserRequest) => {
   const { data } = await apiClient.post<ManagedUser>('/api/v1/admin/users', request)
+  return data
+}
+
+export const updateUserStatus = async (
+  userId: string,
+  request: UpdateUserStatusRequest,
+) => {
+  const { data } = await apiClient.patch<ManagedUser>(
+    `/api/v1/admin/users/${encodeURIComponent(userId)}/status`,
+    request,
+  )
   return data
 }

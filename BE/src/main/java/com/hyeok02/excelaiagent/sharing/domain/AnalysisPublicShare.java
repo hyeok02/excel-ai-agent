@@ -19,8 +19,11 @@ public class AnalysisPublicShare {
 	@Column(name = "analysis_id", nullable = false, updatable = false)
 	private UUID analysisId;
 
-	@Column(name = "recipient_id", nullable = false, updatable = false)
+	@Column(name = "recipient_id", updatable = false)
 	private UUID recipientId;
+
+	@Column(name = "email_recipient_id", updatable = false)
+	private UUID emailRecipientId;
 
 	@Column(name = "token_hash", nullable = false, updatable = false, unique = true, length = 64)
 	private String tokenHash;
@@ -41,12 +44,14 @@ public class AnalysisPublicShare {
 			UUID shareId,
 			UUID analysisId,
 			UUID recipientId,
+			UUID emailRecipientId,
 			String tokenHash,
 			Instant createdAt,
 			Instant expiresAt) {
 		this.shareId = shareId;
 		this.analysisId = analysisId;
 		this.recipientId = recipientId;
+		this.emailRecipientId = emailRecipientId;
 		this.tokenHash = tokenHash;
 		this.createdAt = createdAt;
 		this.expiresAt = expiresAt;
@@ -59,7 +64,19 @@ public class AnalysisPublicShare {
 			Instant createdAt,
 			Instant expiresAt) {
 		return new AnalysisPublicShare(
-				UUID.randomUUID(), analysisId, recipientId, tokenHash, createdAt, expiresAt);
+				UUID.randomUUID(), analysisId, recipientId, null,
+				tokenHash, createdAt, expiresAt);
+	}
+
+	public static AnalysisPublicShare issueForEmail(
+			UUID analysisId,
+			UUID emailRecipientId,
+			String tokenHash,
+			Instant createdAt,
+			Instant expiresAt) {
+		return new AnalysisPublicShare(
+				UUID.randomUUID(), analysisId, null, emailRecipientId,
+				tokenHash, createdAt, expiresAt);
 	}
 
 	public boolean isAccessibleAt(Instant now) {
@@ -82,6 +99,10 @@ public class AnalysisPublicShare {
 
 	public UUID getRecipientId() {
 		return recipientId;
+	}
+
+	public UUID getEmailRecipientId() {
+		return emailRecipientId;
 	}
 
 	public String getTokenHash() {

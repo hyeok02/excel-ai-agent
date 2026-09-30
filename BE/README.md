@@ -39,6 +39,18 @@ curl http://localhost:8080/actuator/health
 | `TELEGRAM_WEBHOOK_SECRET` | 빈 값 | Telegram webhook 요청 검증용 임의 비밀 문자열 |
 | `TELEGRAM_WEBHOOK_URL` | 빈 값 | 외부에서 접근 가능한 HTTPS webhook 전체 URL |
 | `TELEGRAM_INVITATION_TTL` | `24h` | 일회용 수신자 초대 링크 유효 시간 |
+| `EMAIL_ENABLED` | `false` | 분석 결과 이메일 전송 활성화 |
+| `EMAIL_FROM_ADDRESS` | 빈 값 | 발신자로 사용할 검증된 이메일 주소 |
+| `SMTP_HOST` | `localhost` | SMTP 서버 호스트 |
+| `SMTP_PORT` | `587` | SMTP 서버 포트 |
+| `SMTP_USERNAME` | 빈 값 | SMTP 인증 사용자 이름 |
+| `SMTP_PASSWORD` | 빈 값 | SMTP 인증 비밀번호 또는 앱 비밀번호 |
+| `SMTP_AUTH` | `true` | SMTP 인증 사용 여부 |
+| `SMTP_STARTTLS_ENABLED` | `true` | STARTTLS 사용 여부 |
+| `SMTP_STARTTLS_REQUIRED` | `true` | STARTTLS 협상 실패 시 평문 전송 차단 여부 |
+| `SMTP_CONNECTION_TIMEOUT_MS` | `3000` | SMTP 연결 제한 시간(ms) |
+| `SMTP_READ_TIMEOUT_MS` | `10000` | SMTP 응답 제한 시간(ms) |
+| `SMTP_WRITE_TIMEOUT_MS` | `10000` | SMTP 전송 제한 시간(ms) |
 | `ANALYSIS_PUBLIC_SHARE_TTL` | `7d` | 수신자용 읽기 전용 분석 링크 유효 시간 |
 | `AUTH_SECURITY_ENABLED` | `true` | API 로그인 보호 활성화 |
 | `FRONTEND_BASE_URL` | `http://localhost:5173` | SSO 완료 후 돌아갈 Frontend 주소 |
@@ -50,7 +62,14 @@ curl http://localhost:8080/actuator/health
 
 ## 로그인
 
-최초 실행 시 `admin / admin1234` 관리자 계정이 생성됩니다. 운영 환경에서는 `BOOTSTRAP_ADMIN_PASSWORD`를 반드시 변경해야 합니다. 관리자는 `/api/v1/admin/users`를 통해 별도의 회원가입 없이 사내 계정을 발급할 수 있습니다.
+최초 실행 시 `admin / admin1234` 관리자 계정이 생성됩니다. 운영 환경에서는
+`BOOTSTRAP_ADMIN_PASSWORD`를 반드시 변경해야 합니다. 관리자는 `/api/v1/admin/users`를
+통해 별도의 회원가입 없이 사내 계정을 발급하고,
+`PATCH /api/v1/admin/users/{userId}/status`에 `{ "enabled": false }` 또는
+`{ "enabled": true }`를 보내 계정을 비활성화하거나 다시 활성화할 수 있습니다. 현재
+로그인한 관리자 자신과 마지막 활성 관리자는 비활성화할 수 없습니다. 비활성화된
+로컬·SSO 계정은 새 로그인이 차단되며 기존 로그인 세션도 다음 보호 API 요청에서 즉시
+종료됩니다.
 
 회사 SSO는 OpenID Connect 공급자를 사용합니다. `SSO_ENABLED=true`와 함께 `.env.example`의 `SPRING_SECURITY_OAUTH2_CLIENT_*` 값을 회사 인증 서버 정보로 설정합니다.
 
@@ -90,3 +109,20 @@ BotFather에서 봇을 만든 뒤 `TELEGRAM_ENABLED=true`, `TELEGRAM_BOT_TOKEN`,
 등록된 수신자에게 전송되는 상세 결과 주소는 기본 7일 동안 유효한 읽기 전용 링크입니다.
 링크 원문은 데이터베이스에 저장하지 않으며, 수신자를 연결 해제하면 발급된 링크도 즉시
 폐기됩니다. 공유 화면에는 질문·Excel 수정·내보내기·재전송 기능이 노출되지 않습니다.
+
+## 이메일 공유
+
+`EMAIL_ENABLED=true`, `EMAIL_FROM_ADDRESS`와 SMTP 접속 정보를 설정하면 로그인한 사용자가
+이메일 주소와 선택적인 표시 이름을 수신자로 등록할 수 있습니다. 이메일 주소는 소문자로
+정규화되고 사용자별로 관리되며, 연결 해제한 주소를 다시 등록하면 기존 수신자 ID를
+활성화합니다.
+
+분석 결과 전송은 등록된 수신자 UUID를 최대 50개까지 받습니다. 각 수신자에게 별도
+메일을 보내므로 다른 수신자의 주소는 노출되지 않으며, 수신자별 성공·실패 결과를
+반환합니다. 메일에는 기본 7일 동안 유효한 읽기 전용 상세 결과 링크가 포함됩니다.
+발송에 실패한 링크와 수신자 연결 해제 시 해당 수신자의 기존 링크는 즉시 폐기됩니다.
+
+기본 SMTP 설정은 포트 587의 STARTTLS이며 `SMTP_STARTTLS_REQUIRED=true`라서 TLS 협상에
+실패하면 평문으로 전송하지 않습니다. 465번 implicit TLS(SMTPS)는 이 설정의 단순 포트
+변경 대상이 아니므로 공급자 문서에 맞는 SSL 속성을 별도로 구성해야 합니다. SMTP
+비밀번호와 앱 비밀번호는 `.env` 또는 운영 secret에만 두고 Git에 커밋하지 않습니다.

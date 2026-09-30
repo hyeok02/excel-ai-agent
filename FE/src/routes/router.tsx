@@ -9,6 +9,7 @@ import {
   AnalysisPage,
   AuthCallbackPage,
   DashboardPage,
+  EmailRecipientsPage,
   LoginPage,
   NewsCollectionPage,
   NotFoundPage,
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
       {
         path: ROUTES.telegramRecipients.slice(1),
         element: page(<TelegramRecipientsPage />),
+      },
+      {
+        path: ROUTES.emailRecipients.slice(1),
+        element: page(<EmailRecipientsPage />),
       },
       { path: '*', element: page(<NotFoundPage />) },
     ],

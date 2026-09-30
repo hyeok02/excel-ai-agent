@@ -1,10 +1,24 @@
 import ManagedUserTable from '@/components/admin/users/ManagedUserTable'
 import UserAccountForm from '@/components/admin/users/UserAccountForm'
+import UserStatusNotice from '@/components/admin/users/UserStatusNotice'
 import useUserManagement from '@/hooks/admin/useUserManagement'
 
 const UserManagementPage = () => {
-  const { error, form, handleSubmit, isLoading, isSubmitting, setForm, success, users } =
-    useUserManagement()
+  const {
+    currentUserId,
+    dismissStatusNotice,
+    error,
+    form,
+    handleStatusChange,
+    handleSubmit,
+    isLoading,
+    isSubmitting,
+    setForm,
+    statusNotice,
+    success,
+    updatingUserId,
+    users,
+  } = useUserManagement()
 
   return (
     <div className="space-y-7">
@@ -30,7 +44,23 @@ const UserManagementPage = () => {
           onSubmit={handleSubmit}
           success={success}
         />
-        <ManagedUserTable isLoading={isLoading} users={users} />
+        <div className="min-w-0 space-y-3">
+          <ManagedUserTable
+            currentUserId={currentUserId}
+            isLoading={isLoading}
+            isUpdatePending={updatingUserId !== null}
+            onStatusChange={handleStatusChange}
+            updatingUserId={updatingUserId}
+            users={users}
+          />
+          {statusNotice && (
+            <UserStatusNotice
+              key={statusNotice.id}
+              notice={statusNotice}
+              onDismiss={dismissStatusNotice}
+            />
+          )}
+        </div>
       </div>
     </div>
   )

@@ -18,6 +18,8 @@ import com.hyeok02.excelaiagent.sharing.application.AnalysisPublicShareService;
 import com.hyeok02.excelaiagent.sharing.application.IssuedAnalysisPublicShare;
 import com.hyeok02.excelaiagent.sharing.domain.AnalysisPublicShare;
 import com.hyeok02.excelaiagent.sharing.domain.AnalysisPublicShareRepository;
+import com.hyeok02.excelaiagent.email.domain.EmailRecipient;
+import com.hyeok02.excelaiagent.email.domain.EmailRecipientRepository;
 import com.hyeok02.excelaiagent.telegram.domain.TelegramRecipient;
 import com.hyeok02.excelaiagent.telegram.domain.TelegramRecipientRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -29,11 +31,13 @@ class AnalysisPublicShareControllerTests extends AnalysisControllerTestSupport {
 	@Autowired AnalysisPublicShareService publicShareService;
 	@Autowired AnalysisPublicShareRepository publicShareRepository;
 	@Autowired TelegramRecipientRepository recipientRepository;
+	@Autowired EmailRecipientRepository emailRecipientRepository;
 
 	@AfterEach
 	void removeShares() {
 		publicShareRepository.deleteAll();
 		recipientRepository.deleteAll();
+		emailRecipientRepository.deleteAll();
 	}
 
 	@Test
@@ -102,6 +106,24 @@ class AnalysisPublicShareControllerTests extends AnalysisControllerTestSupport {
 				.andExpect(status().isNoContent());
 
 		assertThat(publicShareRepository.findById(issued.shareId())).isEmpty();
+		assertUnavailable(issued.token());
+	}
+
+	@Test
+	void returnsEmailShareWhileRecipientIsActiveAndRejectsItAfterDeactivation()
+			throws Exception {
+		UUID analysisId = UUID.fromString(submit("email-shared.xlsx", "system"));
+		EmailRecipient recipient = emailRecipientRepository.save(EmailRecipient.registered(
+				"system", "reader@example.com", "이메일 독자", Instant.now()));
+		IssuedAnalysisPublicShare issued = publicShareService.issueForEmail(
+				analysisId, recipient.getRecipientId(), "system");
+
+		mockMvc.perform(get("/api/v1/public/analysis-shares/{token}", issued.token()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.workbook.filename").value("sales.xlsx"));
+
+		recipient.deactivate(Instant.now());
+		emailRecipientRepository.save(recipient);
 		assertUnavailable(issued.token());
 	}
 
