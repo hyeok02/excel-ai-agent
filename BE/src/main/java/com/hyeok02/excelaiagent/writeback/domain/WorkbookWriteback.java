@@ -33,12 +33,15 @@ public class WorkbookWriteback {
 	private Instant createdAt;
 	@Column(name = "updated_at", nullable = false)
 	private Instant updatedAt;
+	/** 이 변경을 쌓아 올린 직전 수정본. 원본에서 바로 시작했으면 비어 있다. */
+	@Column(name = "base_writeback_id")
+	private UUID baseWritebackId;
 
 	protected WorkbookWriteback() {}
 
 	public static WorkbookWriteback proposed(
 			UUID analysisId, String instruction, String proposalJson,
-			boolean blocked, String actor, Instant now) {
+			boolean blocked, String actor, Instant now, UUID baseWritebackId) {
 		WorkbookWriteback item = new WorkbookWriteback();
 		item.writebackId = UUID.randomUUID();
 		item.analysisId = analysisId;
@@ -48,12 +51,16 @@ public class WorkbookWriteback {
 		item.requestedBy = actor;
 		item.createdAt = now;
 		item.updatedAt = now;
+		item.baseWritebackId = baseWritebackId;
 		return item;
 	}
 
-	public void apply(String verificationJson, String actor, Instant now) {
+	public void apply(
+			String verificationJson, String actor, Instant now, UUID baseWritebackId) {
 		require(WritebackStatus.PROPOSED);
 		status = WritebackStatus.APPLIED;
+		// 제안한 뒤 다른 수정본이 적용됐을 수 있어, 실제로 올려 쌓은 것을 다시 적는다.
+		this.baseWritebackId = baseWritebackId;
 		this.verificationJson = verificationJson;
 		approvedBy = actor;
 		updatedAt = now;
@@ -85,5 +92,9 @@ public class WorkbookWriteback {
 	public String getRequestedBy() { return requestedBy; }
 	public String getApprovedBy() { return approvedBy; }
 	public Instant getCreatedAt() { return createdAt; }
+	public UUID getBaseWritebackId() {
+		return baseWritebackId;
+	}
+
 	public Instant getUpdatedAt() { return updatedAt; }
 }

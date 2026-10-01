@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, RefreshCw } from 'lucide-react'
+import { Ban, CheckCircle2, Layers, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 
 import type { WorkbookWriteback } from '@/api/analysis'
@@ -47,6 +47,11 @@ const WritebackProposalCard = ({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold text-slate-400">요청: {item.instruction}</p>
+          {item.baseWritebackId && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-brand-700">
+              <Layers size={13} /> 직전 수정본에 이어서 고칩니다
+            </p>
+          )}
           <h3 className="mt-1 text-base font-extrabold text-slate-900">
             {item.proposal.summary}
           </h3>
