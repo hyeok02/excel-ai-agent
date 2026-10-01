@@ -27,19 +27,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-class AnalysisPublicShareControllerTests extends AnalysisControllerTestSupport {
-	@Autowired AnalysisPublicShareService publicShareService;
-	@Autowired AnalysisPublicShareRepository publicShareRepository;
-	@Autowired TelegramRecipientRepository recipientRepository;
-	@Autowired EmailRecipientRepository emailRecipientRepository;
-
-	@AfterEach
-	void removeShares() {
-		publicShareRepository.deleteAll();
-		recipientRepository.deleteAll();
-		emailRecipientRepository.deleteAll();
-	}
-
+class AnalysisPublicShareControllerTests extends AnalysisPublicShareTestSupport {
 	@Test
 	void returnsReadOnlyResultForValidBearerToken() throws Exception {
 		UUID analysisId = UUID.fromString(submit("shared.xlsx", "system"));
@@ -125,32 +113,5 @@ class AnalysisPublicShareControllerTests extends AnalysisControllerTestSupport {
 		recipient.deactivate(Instant.now());
 		emailRecipientRepository.save(recipient);
 		assertUnavailable(issued.token());
-	}
-
-	private TelegramRecipient recipient(String owner, String chatId) {
-		return recipientRepository.save(TelegramRecipient.connected(
-				owner, chatId, chatId, null, "공유", "수신자", null, Instant.now()));
-	}
-
-	private void assertUnavailable(String token) throws Exception {
-		mockMvc.perform(get("/api/v1/public/analysis-shares/{token}", token))
-				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.code").value("ANALYSIS_SHARE_NOT_FOUND"))
-				.andExpect(jsonPath("$.message").value("공유 링크를 사용할 수 없습니다."));
-	}
-
-	private String submit(String filename, String owner) throws Exception {
-		String body = mockMvc.perform(org.springframework.test.web.servlet.request
-				.MockMvcRequestBuilders.multipart("/api/v1/analyses")
-				.file(excel(filename)).param("mode", "LLM")
-				.with(org.springframework.security.test.web.servlet.request
-						.SecurityMockMvcRequestPostProcessors.user(owner)))
-				.andReturn().getResponse().getContentAsString();
-		return JsonPath.read(body, "$.analysisId");
-	}
-
-	private String hash(String token) throws Exception {
-		return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-				.digest(token.getBytes(StandardCharsets.UTF_8)));
 	}
 }
