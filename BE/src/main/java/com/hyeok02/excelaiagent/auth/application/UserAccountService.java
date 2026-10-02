@@ -3,7 +3,6 @@ package com.hyeok02.excelaiagent.auth.application;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 import com.hyeok02.excelaiagent.auth.domain.AppUser;
@@ -11,10 +10,6 @@ import com.hyeok02.excelaiagent.auth.domain.AppUserRepository;
 import com.hyeok02.excelaiagent.auth.domain.AuthProvider;
 import com.hyeok02.excelaiagent.auth.domain.UserRole;
 import com.hyeok02.excelaiagent.auth.error.DuplicateUsernameException;
-import com.hyeok02.excelaiagent.auth.error.LastActiveAdminException;
-import com.hyeok02.excelaiagent.auth.error.SelfDeactivationException;
-import com.hyeok02.excelaiagent.auth.error.SsoAccessDeniedException;
-import com.hyeok02.excelaiagent.auth.error.UserAccountNotFoundException;
 import com.hyeok02.excelaiagent.common.config.AuthProperties;
 import jakarta.transaction.Transactional;
 
@@ -33,8 +28,9 @@ public class UserAccountService implements UserDetailsService {
 
 	private final AppUserRepository appUserRepository;
 	private final PasswordEncoder passwordEncoder;
-	private final AuthProperties authProperties;
 	private final Clock clock;
+	private final SsoUserAccounts ssoAccounts;
+	private final UserStatusChanges statusChanges;
 
 	@Autowired
 	public UserAccountService(
@@ -51,8 +47,19 @@ public class UserAccountService implements UserDetailsService {
 			Clock clock) {
 		this.appUserRepository = appUserRepository;
 		this.passwordEncoder = passwordEncoder;
-		this.authProperties = authProperties;
 		this.clock = clock;
+		this.ssoAccounts = new SsoUserAccounts(appUserRepository, authProperties, clock);
+		this.statusChanges = new UserStatusChanges(appUserRepository, clock);
+	}
+
+	@Transactional
+	public AppUser findOrProvisionSsoUser(String email, String displayName) {
+		return ssoAccounts.findOrProvision(email, displayName);
+	}
+
+	@Transactional
+	public AppUser updateUserStatus(UUID userId, boolean enabled, UUID actorUserId) {
+		return statusChanges.apply(userId, enabled, actorUserId);
 	}
 
 	@Transactional
@@ -61,7 +68,7 @@ public class UserAccountService implements UserDetailsService {
 			String rawPassword,
 			String displayName,
 			UserRole role) {
-		String normalizedUsername = normalizeUsername(username);
+		String normalizedUsername = SsoUserAccounts.normalizeUsername(username);
 		if (appUserRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
 			throw new DuplicateUsernameException(normalizedUsername);
 		}
@@ -72,24 +79,6 @@ public class UserAccountService implements UserDetailsService {
 				role,
 				Instant.now(clock));
 		return appUserRepository.save(user);
-	}
-
-	@Transactional
-	public AppUser findOrProvisionSsoUser(String email, String displayName) {
-		String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
-		validateSsoDomain(normalizedEmail);
-		return appUserRepository.findByEmailIgnoreCase(normalizedEmail)
-				.map(user -> {
-					if (!user.isEnabled()) {
-						throw new SsoAccessDeniedException("비활성화된 계정입니다. 관리자에게 문의해주세요.");
-					}
-					String safeDisplayName = displayName == null || displayName.isBlank()
-							? user.getDisplayName()
-							: displayName.trim();
-					user.updateSsoProfile(safeDisplayName, Instant.now(clock));
-					return user;
-				})
-				.orElseGet(() -> provisionSsoUser(normalizedEmail, displayName));
 	}
 
 	public AppUser requireByUsername(String username) {
@@ -104,34 +93,6 @@ public class UserAccountService implements UserDetailsService {
 
 	public List<AppUser> listUsers() {
 		return appUserRepository.findAllByOrderByCreatedAtDesc();
-	}
-
-	@Transactional
-	public AppUser updateUserStatus(UUID userId, boolean enabled, UUID actorUserId) {
-		if (!enabled && userId.equals(actorUserId)) {
-			throw new SelfDeactivationException();
-		}
-
-		AppUser target;
-		if (!enabled && appUserRepository.findRoleByUserId(userId)
-				.orElseThrow(() -> new UserAccountNotFoundException(userId)) == UserRole.ADMIN) {
-			List<AppUser> admins = appUserRepository.findAllByRoleForUpdate(UserRole.ADMIN);
-			target = admins.stream()
-					.filter(user -> user.getUserId().equals(userId))
-					.findFirst()
-					.orElseThrow(() -> new UserAccountNotFoundException(userId));
-			if (target.isEnabled()
-					&& admins.stream().filter(AppUser::isEnabled).count() <= 1) {
-				throw new LastActiveAdminException();
-			}
-		}
-		else {
-			target = appUserRepository.findByUserIdForUpdate(userId)
-					.orElseThrow(() -> new UserAccountNotFoundException(userId));
-		}
-
-		target.updateEnabled(enabled, Instant.now(clock));
-		return target;
 	}
 
 	public AppUser requireAuthenticatedUser(Authentication authentication) {
@@ -163,41 +124,5 @@ public class UserAccountService implements UserDetailsService {
 				.roles(user.getRole().name())
 				.disabled(!user.isEnabled())
 				.build();
-	}
-
-	private AppUser provisionSsoUser(String email, String displayName) {
-		if (!authProperties.sso().autoProvision()) {
-			throw new SsoAccessDeniedException("관리자에게 SSO 계정 등록을 요청해주세요.");
-		}
-		String baseUsername = email.substring(0, email.indexOf('@'));
-		String username = uniqueUsername(baseUsername);
-		return appUserRepository.save(AppUser.sso(
-				username,
-				displayName == null || displayName.isBlank() ? username : displayName.trim(),
-				email,
-				Instant.now(clock)));
-	}
-
-	private void validateSsoDomain(String email) {
-		if (!email.contains("@")) {
-			throw new SsoAccessDeniedException("SSO 공급자가 이메일 정보를 제공하지 않았습니다.");
-		}
-		String allowedDomain = authProperties.sso().allowedDomain();
-		if (!allowedDomain.isBlank() && !email.endsWith("@" + allowedDomain)) {
-			throw new SsoAccessDeniedException("허용된 회사 이메일 계정이 아닙니다.");
-		}
-	}
-
-	private String uniqueUsername(String baseUsername) {
-		String candidate = normalizeUsername(baseUsername);
-		int suffix = 1;
-		while (appUserRepository.existsByUsernameIgnoreCase(candidate)) {
-			candidate = normalizeUsername(baseUsername) + suffix++;
-		}
-		return candidate;
-	}
-
-	private static String normalizeUsername(String username) {
-		return username.trim().toLowerCase(Locale.ROOT);
 	}
 }

@@ -1,5 +1,7 @@
 package com.hyeok02.excelaiagent.telegram.domain;
 
+import static com.hyeok02.excelaiagent.telegram.domain.TelegramDisplayName.normalize;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -84,7 +86,7 @@ public class TelegramRecipient {
 		return new TelegramRecipient(
 				UUID.randomUUID(), ownerUsername, chatId, telegramUserId,
 				normalize(telegramUsername), normalize(firstName), normalize(lastName),
-				displayName(invitationLabel, telegramUsername, firstName, lastName), now);
+				TelegramDisplayName.of(invitationLabel, telegramUsername, firstName, lastName), now);
 	}
 
 	public void reconnect(
@@ -98,7 +100,8 @@ public class TelegramRecipient {
 		this.telegramUsername = normalize(telegramUsername);
 		this.firstName = normalize(firstName);
 		this.lastName = normalize(lastName);
-		this.displayName = displayName(invitationLabel, telegramUsername, firstName, lastName);
+		this.displayName = TelegramDisplayName.of(
+				invitationLabel, telegramUsername, firstName, lastName);
 		this.active = true;
 		this.updatedAt = now;
 	}
@@ -106,25 +109,6 @@ public class TelegramRecipient {
 	public void deactivate(Instant now) {
 		this.active = false;
 		this.updatedAt = now;
-	}
-
-	private static String displayName(
-			String invitationLabel, String username, String firstName, String lastName) {
-		String label = normalize(invitationLabel);
-		if (label != null) {
-			return label;
-		}
-		String fullName = ((normalize(firstName) == null ? "" : firstName.trim()) + " "
-				+ (normalize(lastName) == null ? "" : lastName.trim())).trim();
-		if (!fullName.isBlank()) {
-			return fullName;
-		}
-		String normalizedUsername = normalize(username);
-		return normalizedUsername == null ? "Telegram 사용자" : "@" + normalizedUsername;
-	}
-
-	private static String normalize(String value) {
-		return value == null || value.isBlank() ? null : value.trim();
 	}
 
 	public UUID getRecipientId() {

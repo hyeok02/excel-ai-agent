@@ -65,4 +65,6 @@ export interface WorkbookWriteback {
   createdAt: string
   updatedAt: string
   downloadable: boolean
+  /** 이 수정이 올라탄 직전 수정본. 원본에서 바로 시작했으면 없다. */
+  baseWritebackId?: string | null
 }

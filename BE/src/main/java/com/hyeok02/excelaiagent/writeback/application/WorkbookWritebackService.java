@@ -12,7 +12,6 @@ import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import com.hyeok02.excelaiagent.integration.ai.AiWritebackClient;
 import com.hyeok02.excelaiagent.integration.ai.AiWritebackPackage;
 import com.hyeok02.excelaiagent.integration.ai.AiWritebackProposal;
-import com.hyeok02.excelaiagent.integration.ai.NamedResource;
 import com.hyeok02.excelaiagent.writeback.domain.WorkbookWriteback;
 import com.hyeok02.excelaiagent.writeback.domain.WorkbookWritebackRepository;
 import com.hyeok02.excelaiagent.writeback.domain.WritebackStatus;
@@ -30,6 +29,7 @@ public class WorkbookWritebackService {
 	private final AnalysisFileStorage fileStorage;
 	private final AiWritebackClient aiClient;
 	private final WritebackJson json;
+	private final WritebackSources sources;
 
 	public WorkbookWritebackService(
 			AnalysisAccessService accessService,
@@ -41,15 +41,17 @@ public class WorkbookWritebackService {
 		this.fileStorage = fileStorage;
 		this.aiClient = aiClient;
 		this.json = new WritebackJson(objectMapper);
+		this.sources = new WritebackSources(writebackRepository, fileStorage);
 	}
 
 	@Transactional
 	public WritebackView propose(UUID analysisId, String instruction, String actor) {
 		AnalysisJob job = completedJobWithSource(analysisId, actor);
-		AiWritebackProposal proposal = aiClient.propose(original(job), instruction.trim());
+		UUID base = sources.latestApplied(analysisId);
+		AiWritebackProposal proposal = aiClient.propose(sources.of(job, base), instruction.trim());
 		WorkbookWriteback item = WorkbookWriteback.proposed(
 				analysisId, instruction.trim(), json.proposal(proposal),
-				proposal.blocked(), actor, Instant.now());
+				proposal.blocked(), actor, Instant.now(), base);
 		return WritebackView.from(writebackRepository.save(item), json);
 	}
 
@@ -71,10 +73,13 @@ public class WorkbookWritebackService {
 		WorkbookWriteback item = find(analysisId, writebackId);
 		requireProposed(item);
 		AiWritebackProposal proposal = json.proposal(item.getProposalJson());
+		// 제안한 뒤 다른 수정본이 적용됐을 수 있어 승인 시점의 최신본 위에 쌓는다.
+		// 그 사이 같은 셀이 바뀌었다면 AI 서비스가 기존 값 불일치로 걸러낸다.
+		UUID base = sources.latestApplied(analysisId);
 		AiWritebackPackage result = aiClient.apply(
-				original(job), WritebackApprovalScope.select(proposal.changes(), approvedCells));
+				sources.of(job, base), WritebackApprovalScope.select(proposal.changes(), approvedCells));
 		fileStorage.storeWriteback(analysisId, writebackId, job.getFileExtension(), result.workbook());
-		item.apply(json.manifest(result.manifest()), actor, Instant.now());
+		item.apply(json.manifest(result.manifest()), actor, Instant.now(), base);
 		return WritebackView.from(item, json);
 	}
 
@@ -116,11 +121,6 @@ public class WorkbookWritebackService {
 				.orElseThrow(() -> new WritebackNotFoundException(id));
 		if (!item.getAnalysisId().equals(analysisId)) throw new WritebackNotFoundException(id);
 		return item;
-	}
-
-	private Resource original(AnalysisJob job) {
-		return new NamedResource(fileStorage.load(job.getAnalysisId(), job.getFileExtension()),
-				job.getOriginalFilename());
 	}
 
 	private void requireProposed(WorkbookWriteback item) {

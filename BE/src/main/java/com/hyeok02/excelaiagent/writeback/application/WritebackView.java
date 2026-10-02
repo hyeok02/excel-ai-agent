@@ -19,7 +19,8 @@ public record WritebackView(
 		String approvedBy,
 		Instant createdAt,
 		Instant updatedAt,
-		boolean downloadable) {
+		boolean downloadable,
+		UUID baseWritebackId) {
 
 	static WritebackView from(WorkbookWriteback item, WritebackJson json) {
 		return new WritebackView(
@@ -27,6 +28,7 @@ public record WritebackView(
 				item.getInstruction(), json.proposal(item.getProposalJson()),
 				json.manifestOrNull(item.getVerificationJson()), item.getRequestedBy(),
 				item.getApprovedBy(), item.getCreatedAt(), item.getUpdatedAt(),
-				item.getStatus() == WritebackStatus.APPLIED);
+				item.getStatus() == WritebackStatus.APPLIED,
+				item.getBaseWritebackId());
 	}
 }
