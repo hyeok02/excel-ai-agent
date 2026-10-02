@@ -16,11 +16,13 @@ export const submitAnalysis = async (
   file: File,
   mode: AnalysisMode,
   depth: AnalysisDepth,
+  includeHiddenSheets: boolean,
 ) => {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('mode', mode)
   formData.append('depth', depth)
+  formData.append('includeHiddenSheets', String(includeHiddenSheets))
 
   const { data } = await apiClient.post<AnalysisSubmission>('/api/v1/analyses', formData)
   return data
@@ -75,10 +77,11 @@ export const analyzeWorkbook = async (
   file: File,
   mode: AnalysisMode,
   depth: AnalysisDepth,
+  includeHiddenSheets: boolean,
   onStatusChange?: (status: AnalysisStatus) => void,
   onSubmitted?: (submission: AnalysisSubmission) => void,
 ): Promise<CompletedAnalysis> => {
-  const submission = await submitAnalysis(file, mode, depth)
+  const submission = await submitAnalysis(file, mode, depth, includeHiddenSheets)
   onSubmitted?.(submission)
   onStatusChange?.(submission.status)
   await waitForAnalysis(submission.analysisId, onStatusChange)

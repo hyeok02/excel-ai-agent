@@ -62,6 +62,7 @@ public class AnalysisHistoryService {
 		return new AnalysisDetails(
 				job.getAnalysisId(), job.getStatus(), job.getMode(), job.getOriginalFilename(),
 				job.getFileExtension(), job.getFileSizeBytes(), accessService.sourceAvailable(job),
-				job.getCreatedAt(), job.getUpdatedAt(), job.getFailureMessage());
+				job.isIncludeHiddenSheets(), job.getCreatedAt(), job.getUpdatedAt(),
+				job.getFailureMessage());
 	}
 }

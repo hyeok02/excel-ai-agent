@@ -1,6 +1,7 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -19,8 +20,8 @@ import org.springframework.http.MediaType;
 class WorkbookWritebackControllerTests extends WorkbookWritebackTestSupport {
 	@Test
 	void createsProposalOnlyThenAppliesVerifiedCopyAfterExplicitApproval() throws Exception {
-		when(aiWritebackClient.propose(any(), anyString())).thenReturn(proposal(false));
-		when(aiWritebackClient.apply(any(), any())).thenReturn(packageResult());
+		when(aiWritebackClient.propose(any(), anyString(), anyBoolean())).thenReturn(proposal(false));
+		when(aiWritebackClient.apply(any(), any(), anyBoolean())).thenReturn(packageResult());
 		String analysisId = submitCompleted();
 		String response = mockMvc.perform(post("/api/v1/analyses/{id}/writebacks", analysisId)
 					.contentType(MediaType.APPLICATION_JSON)
@@ -48,7 +49,7 @@ class WorkbookWritebackControllerTests extends WorkbookWritebackTestSupport {
 
 	@Test
 	void storesBlockedProposalWithoutApprovalAction() throws Exception {
-		when(aiWritebackClient.propose(any(), anyString())).thenReturn(proposal(true));
+		when(aiWritebackClient.propose(any(), anyString(), anyBoolean())).thenReturn(proposal(true));
 		String analysisId = submitCompleted();
 		String response = mockMvc.perform(post("/api/v1/analyses/{id}/writebacks", analysisId)
 					.contentType(MediaType.APPLICATION_JSON)

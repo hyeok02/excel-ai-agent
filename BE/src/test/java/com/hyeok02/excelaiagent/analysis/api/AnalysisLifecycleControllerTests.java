@@ -2,6 +2,7 @@ package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -33,7 +34,7 @@ class AnalysisLifecycleControllerTests extends AnalysisControllerTestSupport {
 	void deletesAnalysisById() throws Exception {
 		AnalysisJob job = analysisJobRepository.save(AnalysisJob.queued(
 				UUID.randomUUID(), AnalysisMode.BFS, "sales.xlsx", "xlsx", 100L,
-				"system", Instant.now()));
+				"system", false, Instant.now()));
 		mockMvc.perform(delete("/api/v1/analyses/{analysisId}", job.getAnalysisId()))
 				.andExpect(status().isNoContent());
 		mockMvc.perform(get("/api/v1/analyses/{analysisId}", job.getAnalysisId()))
@@ -56,7 +57,7 @@ class AnalysisLifecycleControllerTests extends AnalysisControllerTestSupport {
 
 	@Test
 	void savesFailedStatusWhenAiServiceCannotAnalyzeWorkbook() throws Exception {
-		when(aiServiceClient.summarizeWorkbook(any(Resource.class)))
+		when(aiServiceClient.summarizeWorkbook(any(Resource.class), anyBoolean()))
 				.thenThrow(new AiServiceUnavailableException());
 		mockMvc.perform(multipart("/api/v1/analyses").file(excel("sales.xlsx")).param("mode", "BFS"))
 				.andExpect(status().isAccepted());
@@ -67,7 +68,7 @@ class AnalysisLifecycleControllerTests extends AnalysisControllerTestSupport {
 
 	@Test
 	void savesFailedStatusWhenInsightGenerationFails() throws Exception {
-		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any()))
+		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any(), anyBoolean()))
 				.thenThrow(new AiServiceUnavailableException());
 		mockMvc.perform(multipart("/api/v1/analyses").file(excel("sales.xlsx")).param("mode", "LLM"))
 				.andExpect(status().isAccepted());
@@ -79,9 +80,9 @@ class AnalysisLifecycleControllerTests extends AnalysisControllerTestSupport {
 	@ParameterizedTest
 	@EnumSource(AnalysisMode.class)
 	void persistsSafeFileErrorForStatusAndHistoryAfterAsyncFailure(AnalysisMode mode) throws Exception {
-		when(aiServiceClient.summarizeWorkbook(any(Resource.class)))
+		when(aiServiceClient.summarizeWorkbook(any(Resource.class), anyBoolean()))
 				.thenThrow(new UnreadableExcelFileException());
-		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any()))
+		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any(), anyBoolean()))
 				.thenThrow(new UnreadableExcelFileException());
 		String response = mockMvc.perform(multipart("/api/v1/analyses")
 					.file(excel("styles.xlsx")).param("mode", mode.name()))
@@ -105,7 +106,7 @@ class AnalysisLifecycleControllerTests extends AnalysisControllerTestSupport {
 
 	@Test
 	void doesNotPersistUnexpectedExceptionDetails() throws Exception {
-		when(aiServiceClient.summarizeWorkbook(any(Resource.class)))
+		when(aiServiceClient.summarizeWorkbook(any(Resource.class), anyBoolean()))
 				.thenThrow(new RuntimeException("private api_key=secret /srv/uploads/file.xlsx"));
 		String response = mockMvc.perform(multipart("/api/v1/analyses")
 					.file(excel("failed.xlsx")).param("mode", "BFS"))
@@ -125,7 +126,7 @@ class AnalysisLifecycleControllerTests extends AnalysisControllerTestSupport {
 	@Test
 	void returnsLegacyFailedRecordWithoutSpecificMessage() throws Exception {
 		AnalysisJob job = AnalysisJob.queued(UUID.randomUUID(), AnalysisMode.BFS,
-				"legacy.xlsx", "xlsx", 100, "system", Instant.now());
+				"legacy.xlsx", "xlsx", 100, "system", false, Instant.now());
 		job.markProcessing(Instant.now());
 		job.markFailed(Instant.now());
 		analysisJobRepository.saveAndFlush(job);

@@ -20,7 +20,8 @@ class AiWorkbookInsightClientTests extends AiServiceClientTestSupport {
 				.andExpect(content().string(containsString("sales.xlsx")))
 				.andExpect(content().string(containsString("PRECISE")))
 				.andRespond(withSuccess(fixture("workbook-insights.json"), MediaType.APPLICATION_JSON));
-		AiWorkbookInsights response = client.generateWorkbookInsights(workbook(), AnalysisDepth.PRECISE);
+		AiWorkbookInsights response = client.generateWorkbookInsights(
+				workbook(), AnalysisDepth.PRECISE, false);
 		assertThat(response.workbook().filename()).isEqualTo("sales.xlsx");
 		assertThat(response.report().insights()).singleElement().satisfies(insight -> {
 			assertThat(insight.category()).isEqualTo("formula");
@@ -37,7 +38,7 @@ class AiWorkbookInsightClientTests extends AiServiceClientTestSupport {
 	void throwsUnavailableExceptionWhenWorkbookInsightRequestFails() {
 		server.expect(once(), requestTo("http://localhost:8000/api/v1/workbooks/insights"))
 				.andExpect(method(POST)).andRespond(withServerError());
-		assertThatThrownBy(() -> client.generateWorkbookInsights(workbook(), AnalysisDepth.AUTO))
+		assertThatThrownBy(() -> client.generateWorkbookInsights(workbook(), AnalysisDepth.AUTO, false))
 				.isInstanceOf(AiServiceUnavailableException.class);
 		server.verify();
 	}

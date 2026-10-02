@@ -22,9 +22,11 @@ public class AiWritebackClient {
 		this.jsonMapper = jsonMapper;
 	}
 
-	public AiWritebackProposal propose(Resource file, String instruction) {
+	public AiWritebackProposal propose(
+			Resource file, String instruction, boolean includeHiddenSheets) {
 		MultiValueMap<String, Object> body = multipart(file);
 		body.add("instruction", instruction);
+		body.add("include_hidden_sheets", String.valueOf(includeHiddenSheets));
 		try {
 			AiWritebackProposal response = restClient.post()
 					.uri("/api/v1/workbooks/writeback-proposals")
@@ -38,8 +40,10 @@ public class AiWritebackClient {
 		}
 	}
 
-	public AiWritebackPackage apply(Resource file, List<AiWritebackProposal.Change> changes) {
+	public AiWritebackPackage apply(
+			Resource file, List<AiWritebackProposal.Change> changes, boolean includeHiddenSheets) {
 		MultiValueMap<String, Object> body = multipart(file);
+		body.add("include_hidden_sheets", String.valueOf(includeHiddenSheets));
 		body.add("changes", jsonMapper.writeValueAsString(
 				changes.stream().map(AiWritebackApplyChange::from).toList()));
 		try {

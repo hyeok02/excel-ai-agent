@@ -16,6 +16,7 @@ export interface AnalysisSubmission {
 
 export interface AnalysisDetails extends AnalysisSubmission {
   fileExtension: string
+  includeHiddenSheets: boolean
   sourceAvailable: boolean
   updatedAt: string
   failureMessage?: string | null

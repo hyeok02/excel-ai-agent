@@ -18,7 +18,9 @@ from app.services.workbook_loading import (
 SUPPORTED_EXTENSIONS = {".xlsx", ".xlsm"}
 
 
-def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
+def parse_workbook(
+    filename: str, content: bytes, include_hidden: bool = False
+) -> WorkbookSummary:
     extension = Path(filename).suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
         raise InvalidWorkbookError(".xlsx 또는 .xlsm 파일만 업로드할 수 있습니다.")
@@ -26,7 +28,7 @@ def parse_workbook(filename: str, content: bytes) -> WorkbookSummary:
     try:
         total_sheet_count = len(workbook.sheetnames)
         inclusions = {
-            sheet.title: evaluate_worksheet_inclusion(sheet)
+            sheet.title: evaluate_worksheet_inclusion(sheet, include_hidden)
             for sheet in workbook.worksheets
         }
         formulas = {

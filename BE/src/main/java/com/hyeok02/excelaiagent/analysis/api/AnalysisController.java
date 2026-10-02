@@ -54,9 +54,11 @@ public class AnalysisController {
 			@RequestParam("mode") AnalysisMode mode,
 			@Parameter(description = "LLM 분석 깊이: AUTO, FAST, PRECISE")
 			@RequestParam(defaultValue = "AUTO") AnalysisDepth depth,
+			@Parameter(description = "숨김 시트도 분석에 포함")
+			@RequestParam(defaultValue = "false") boolean includeHiddenSheets,
 			Principal principal) {
 		AnalysisSubmission response = analysisSubmissionService.submit(
-				file, mode, depth, actor(principal));
+				file, mode, depth, includeHiddenSheets, actor(principal));
 		return ResponseEntity.accepted().body(response);
 	}
 

@@ -15,7 +15,7 @@ from app.agent.writeback import (
     apply_writeback,
 )
 from app.agent.writeback.editor import UnsafeWritebackError
-from app.api.workbooks import parse_or_bad_request, read_upload
+from app.api.workbooks import HIDDEN_SHEETS, parse_or_bad_request, read_upload
 from app.services.insights.models import InsightConfigurationError, InsightGenerationError
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
@@ -33,9 +33,12 @@ async def propose_writeback(
     instruction: Annotated[str, Form(min_length=2, max_length=1000)],
     file: Annotated[UploadFile, File(description="수정할 원본 Excel 파일")],
     generator: Annotated[LangChainWritebackGenerator, Depends(get_writeback_generator)],
+    include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
 ) -> WritebackProposal:
     content = await read_upload(file)
-    summary = await parse_or_bad_request(file.filename or "", content)
+    summary = await parse_or_bad_request(
+        file.filename or "", content, include_hidden_sheets
+    )
     included = {sheet.name for sheet in summary.sheets}
     index = await run_in_threadpool(
         build_workbook_data_index, summary.filename, content, included
@@ -50,9 +53,10 @@ async def propose_writeback(
 async def apply_approved_writeback(
     changes: Annotated[str, Form(min_length=2)],
     file: Annotated[UploadFile, File(description="수정할 원본 Excel 파일")],
+    include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
 ):
     content = await read_upload(file)
-    await parse_or_bad_request(file.filename or "", content)
+    await parse_or_bad_request(file.filename or "", content, include_hidden_sheets)
     try:
         parsed = TypeAdapter(list[WritebackChange]).validate_json(changes)
         archive = await run_in_threadpool(

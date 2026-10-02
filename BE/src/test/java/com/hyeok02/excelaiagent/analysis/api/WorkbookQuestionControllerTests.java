@@ -1,6 +1,7 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,7 +26,8 @@ import org.springframework.http.MediaType;
 class WorkbookQuestionControllerTests extends AnalysisControllerTestSupport {
 	@Test
 	void asksQuestionAgainstStoredAnalysisSource() throws Exception {
-		when(aiServiceClient.askWorkbook(any(Resource.class), eq("노트북의 1월 값은 얼마야?")))
+		when(aiServiceClient.askWorkbook(
+				any(Resource.class), eq("노트북의 1월 값은 얼마야?"), anyBoolean()))
 				.thenReturn(answer());
 		String submission = mockMvc.perform(multipart("/api/v1/analyses")
 					.file(excel("sales.xlsx")).param("mode", "BFS"))
@@ -42,7 +44,8 @@ class WorkbookQuestionControllerTests extends AnalysisControllerTestSupport {
 				.andExpect(jsonPath("$.evidence[0].reference").value("B2"))
 				.andExpect(jsonPath("$.evidence[0].value").value(10));
 
-		verify(aiServiceClient).askWorkbook(any(Resource.class), eq("노트북의 1월 값은 얼마야?"));
+		verify(aiServiceClient).askWorkbook(
+				any(Resource.class), eq("노트북의 1월 값은 얼마야?"), anyBoolean());
 	}
 
 	@Test
@@ -58,7 +61,7 @@ class WorkbookQuestionControllerTests extends AnalysisControllerTestSupport {
 	void rejectsQuestionBeforeAnalysisCompletes() throws Exception {
 		AnalysisJob queued = AnalysisJob.queued(
 				UUID.randomUUID(), AnalysisMode.BFS, "queued.xlsx", "xlsx", 100,
-				"system", Instant.now());
+				"system", false, Instant.now());
 		analysisJobRepository.save(queued);
 
 		mockMvc.perform(post("/api/v1/analyses/{analysisId}/questions", queued.getAnalysisId())
@@ -85,7 +88,7 @@ class WorkbookQuestionControllerTests extends AnalysisControllerTestSupport {
 
 	@Test
 	void returnsActionableBadRequestWhenStoredWorkbookCannotBeRead() throws Exception {
-		when(aiServiceClient.askWorkbook(any(Resource.class), any()))
+		when(aiServiceClient.askWorkbook(any(Resource.class), any(), anyBoolean()))
 				.thenThrow(new UnreadableExcelFileException());
 		String submission = mockMvc.perform(multipart("/api/v1/analyses")
 					.file(excel("styles.xlsx")).param("mode", "BFS"))
@@ -102,7 +105,7 @@ class WorkbookQuestionControllerTests extends AnalysisControllerTestSupport {
 
 	@Test
 	void keepsOutagesUnavailableWithoutReturningInternalDetails() throws Exception {
-		when(aiServiceClient.askWorkbook(any(Resource.class), any()))
+		when(aiServiceClient.askWorkbook(any(Resource.class), any(), anyBoolean()))
 				.thenThrow(new AiServiceUnavailableException(new RuntimeException("private api_key=secret")));
 		String submission = mockMvc.perform(multipart("/api/v1/analyses")
 					.file(excel("sales.xlsx")).param("mode", "BFS"))

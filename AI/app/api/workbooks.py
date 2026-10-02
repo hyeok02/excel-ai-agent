@@ -26,6 +26,7 @@ from app.services.workbook_parsing.models import WorkbookSummary
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
+HIDDEN_SHEETS = "숨김 시트도 분석에 포함할지 여부"
 READ_CHUNK_SIZE = 1024 * 1024
 
 
@@ -61,8 +62,11 @@ async def read_upload(upload: UploadFile) -> bytes:
 @router.post("/summary", response_model=WorkbookSummaryResponse)
 async def summarize_workbook(
     file: Annotated[UploadFile, File(description="분석할 Excel 파일")],
+    include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
 ) -> WorkbookSummaryResponse:
-    summary = await parse_or_bad_request(file.filename or "", await read_upload(file))
+    summary = await parse_or_bad_request(
+        file.filename or "", await read_upload(file), include_hidden_sheets
+    )
     return WorkbookSummaryResponse.model_validate(summary)
 
 
@@ -74,8 +78,11 @@ async def generate_workbook_insights(
         AnalysisDepth,
         Form(description="분석 깊이: AUTO, FAST, PRECISE"),
     ] = AnalysisDepth.AUTO,
+    include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
 ) -> WorkbookInsightsResponse:
-    summary = await parse_or_bad_request(file.filename or "", await read_upload(file))
+    summary = await parse_or_bad_request(
+        file.filename or "", await read_upload(file), include_hidden_sheets
+    )
     try:
         report = await insight_generator.generate(summary, depth)
     except InsightGenerationError as exception:
@@ -97,9 +104,11 @@ def _verify_insights(
     return validate_workbook_insights(report, build_workbook_context(summary, profile))
 
 
-def _parse_workbook_or_bad_request(filename: str, content: bytes) -> WorkbookSummary:
+def _parse_workbook_or_bad_request(
+    filename: str, content: bytes, include_hidden: bool
+) -> WorkbookSummary:
     try:
-        return parse_workbook(filename, content)
+        return parse_workbook(filename, content, include_hidden)
     except InvalidWorkbookError as exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -107,9 +116,13 @@ def _parse_workbook_or_bad_request(filename: str, content: bytes) -> WorkbookSum
         ) from exception
 
 
-async def parse_or_bad_request(filename: str, content: bytes) -> WorkbookSummary:
+async def parse_or_bad_request(
+    filename: str, content: bytes, include_hidden: bool = False
+) -> WorkbookSummary:
     """워크북 파싱은 CPU 작업이라, 이벤트 루프를 막지 않도록 워커 스레드에서 실행한다."""
-    return await run_in_threadpool(_parse_workbook_or_bad_request, filename, content)
+    return await run_in_threadpool(
+        _parse_workbook_or_bad_request, filename, content, include_hidden
+    )
 
 
 __all__ = [

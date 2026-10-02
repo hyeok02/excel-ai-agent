@@ -1,24 +1,23 @@
 import { useEffect, useState } from 'react'
 
 import type { AnalysisDepth, AnalysisMode } from '@/api/analysis'
+import {
+  type AnalysisViewStatus,
+  viewStatusOf,
+  viewStatusText,
+} from '@/hooks/analysis/analysisViewStatus'
 import { useAnalysisProgress } from '@/hooks/analysis/useAnalysisProgress'
 import { useAnalysisRun } from '@/hooks/analysis/useAnalysisRun'
 import { validateAnalysisFile } from '@/utils/analysis/analysisFile'
 
 export type AnalysisFeedback = 'success' | 'error'
-export type AnalysisViewStatus = 'idle' | 'pending' | 'success' | 'error'
-
-const STATUS_TEXT: Record<AnalysisViewStatus, string> = {
-  idle: '파일 업로드 대기',
-  pending: '분석 진행 중',
-  success: '분석 완료',
-  error: '분석 실패',
-}
+export type { AnalysisViewStatus }
 
 export const useWorkbookAnalysis = () => {
   const [mode, setMode] = useState<AnalysisMode>('BFS')
   const [viewMode, setViewMode] = useState<AnalysisMode | null>(null)
   const [depth, setDepth] = useState<AnalysisDepth>('AUTO')
+  const [includeHiddenSheets, setIncludeHiddenSheets] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [clientError, setClientError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<AnalysisFeedback | null>(null)
@@ -37,13 +36,7 @@ export const useWorkbookAnalysis = () => {
     return () => window.clearTimeout(timeoutId)
   }, [feedback])
 
-  const status: AnalysisViewStatus = run.isPending
-    ? 'pending'
-    : run.completed
-      ? 'success'
-      : run.isError
-        ? 'error'
-        : 'idle'
+  const status = viewStatusOf(run)
 
   const executedMode = run.completed?.submission.mode ?? null
   // 복원된 분석은 결과만 남고 File 객체가 없다. 업로드 칸이 비어 보이지
@@ -84,7 +77,7 @@ export const useWorkbookAnalysis = () => {
     setClientError(null)
     setFeedback(null)
     progress.begin()
-    run.start(selectedFile, mode, depth)
+    run.start(selectedFile, mode, depth, includeHiddenSheets)
   }
 
   const changeMode = (nextMode: AnalysisMode) => {
@@ -105,12 +98,20 @@ export const useWorkbookAnalysis = () => {
     resetView(Boolean(selectedFile))
   }
 
+  // 읽어 들이는 시트가 달라지므로, 켜고 끄면 결과를 비우고 다시 분석하게 한다.
+  const changeHiddenSheets = (next: boolean) => {
+    if (next === includeHiddenSheets) return
+    setIncludeHiddenSheets(next)
+    resetView(Boolean(selectedFile))
+  }
+
   return {
     activeAnalysisId: run.analysisId,
     activeStep: progress.activeStep,
     analysisResult: run.completed?.result ?? null,
     analysisResultMode: executedMode,
     changeDepth,
+    changeHiddenSheets,
     changeMode,
     clearFile: () => {
       setSelectedFile(null)
@@ -119,6 +120,7 @@ export const useWorkbookAnalysis = () => {
     depth,
     errorMessage: clientError ?? run.errorMessage,
     feedback,
+    includeHiddenSheets,
     insightsNeedReanalysis: Boolean(executedMode) && !canShowInsights,
     isPending: run.isPending,
     mode: displayMode,
@@ -135,9 +137,6 @@ export const useWorkbookAnalysis = () => {
     selectedFile,
     startAnalysis,
     status,
-    statusText:
-      status === 'pending' && progress.processingStatus === 'QUEUED'
-        ? '분석 대기 중'
-        : STATUS_TEXT[status],
+    statusText: viewStatusText(status, progress.processingStatus),
   }
 }

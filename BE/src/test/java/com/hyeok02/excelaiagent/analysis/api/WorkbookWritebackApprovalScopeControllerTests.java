@@ -2,6 +2,7 @@ package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,8 +24,8 @@ class WorkbookWritebackApprovalScopeControllerTests extends WorkbookWritebackTes
 
 	@BeforeEach
 	void stubProposal() {
-		when(aiWritebackClient.propose(any(), anyString())).thenReturn(dependentProposal());
-		when(aiWritebackClient.apply(any(), any())).thenReturn(packageResult());
+		when(aiWritebackClient.propose(any(), anyString(), anyBoolean())).thenReturn(dependentProposal());
+		when(aiWritebackClient.apply(any(), any(), anyBoolean())).thenReturn(packageResult());
 	}
 
 	@Test
@@ -82,7 +83,7 @@ class WorkbookWritebackApprovalScopeControllerTests extends WorkbookWritebackTes
 	private List<String> appliedReferences() {
 		ArgumentCaptor<List<AiWritebackProposal.Change>> captor =
 				ArgumentCaptor.forClass(List.class);
-		verify(aiWritebackClient).apply(any(Resource.class), captor.capture());
+		verify(aiWritebackClient).apply(any(Resource.class), captor.capture(), anyBoolean());
 		return captor.getValue().stream().map(AiWritebackProposal.Change::reference).toList();
 	}
 }

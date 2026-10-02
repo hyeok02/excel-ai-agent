@@ -39,27 +39,32 @@ public class AiServiceClient {
 		}
 	}
 
-	public AiWorkbookSummary summarizeWorkbook(MultipartFile file) {
-		return summarizeWorkbook(new NamedResource(file.getResource(), file.getOriginalFilename()));
+	public AiWorkbookSummary summarizeWorkbook(MultipartFile file, boolean includeHiddenSheets) {
+		return summarizeWorkbook(named(file), includeHiddenSheets);
 	}
 
-	public AiWorkbookInsights generateWorkbookInsights(MultipartFile file, AnalysisDepth depth) {
-		return generateWorkbookInsights(
-				new NamedResource(file.getResource(), file.getOriginalFilename()), depth);
+	public AiWorkbookInsights generateWorkbookInsights(
+			MultipartFile file, AnalysisDepth depth, boolean includeHiddenSheets) {
+		return generateWorkbookInsights(named(file), depth, includeHiddenSheets);
 	}
 
-	public AiWorkbookSummary summarizeWorkbook(Resource file) {
-		return postWorkbook(file, "/api/v1/workbooks/summary", AiWorkbookSummary.class, null);
+	public AiWorkbookSummary summarizeWorkbook(Resource file, boolean includeHiddenSheets) {
+		return postWorkbook(file, "/api/v1/workbooks/summary", AiWorkbookSummary.class,
+				null, includeHiddenSheets);
 	}
 
-	public AiWorkbookInsights generateWorkbookInsights(Resource file, AnalysisDepth depth) {
-		return postWorkbook(file, "/api/v1/workbooks/insights", AiWorkbookInsights.class, depth);
+	public AiWorkbookInsights generateWorkbookInsights(
+			Resource file, AnalysisDepth depth, boolean includeHiddenSheets) {
+		return postWorkbook(file, "/api/v1/workbooks/insights", AiWorkbookInsights.class,
+				depth, includeHiddenSheets);
 	}
 
-	public AiWorkbookQuestion askWorkbook(Resource file, String question) {
+	public AiWorkbookQuestion askWorkbook(
+			Resource file, String question, boolean includeHiddenSheets) {
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 		body.add("file", namedFile(file));
 		body.add("question", question);
+		body.add("include_hidden_sheets", String.valueOf(includeHiddenSheets));
 		try {
 			AiWorkbookQuestion response = restClient.post()
 					.uri("/api/v1/workbooks/questions")
@@ -81,9 +86,11 @@ public class AiServiceClient {
 			Resource file,
 			String uri,
 			Class<T> responseType,
-			AnalysisDepth depth) {
+			AnalysisDepth depth,
+			boolean includeHiddenSheets) {
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 		body.add("file", namedFile(file));
+		body.add("include_hidden_sheets", String.valueOf(includeHiddenSheets));
 		if (depth != null) {
 			body.add("depth", depth.name());
 		}
@@ -103,6 +110,10 @@ public class AiServiceClient {
 		catch (RestClientException exception) {
 			throw AiWorkbookErrorMapper.translate(exception);
 		}
+	}
+
+	private Resource named(MultipartFile file) {
+		return new NamedResource(file.getResource(), file.getOriginalFilename());
 	}
 
 	private HttpEntity<Resource> namedFile(Resource file) {

@@ -38,6 +38,10 @@ public class AnalysisJob {
 	@Column(name = "owner_username", length = 100)
 	private String ownerUsername;
 
+	/** 숨김 시트까지 분석에 넣을지. 질문과 수정도 같은 기준을 따라야 한다. */
+	@Column(name = "include_hidden_sheets", nullable = false, updatable = false)
+	private boolean includeHiddenSheets;
+
 	@Column(name = "failure_message", length = 500)
 	private String failureMessage;
 
@@ -50,35 +54,22 @@ public class AnalysisJob {
 	protected AnalysisJob() {
 	}
 
-	private AnalysisJob(
-			UUID analysisId,
-			AnalysisMode mode,
-			String originalFilename,
-			String fileExtension,
-			long fileSizeBytes,
-			String ownerUsername,
-			Instant now) {
-		this.analysisId = analysisId;
-		this.status = AnalysisStatus.QUEUED;
-		this.mode = mode;
-		this.originalFilename = originalFilename;
-		this.fileExtension = fileExtension;
-		this.fileSizeBytes = fileSizeBytes;
-		this.ownerUsername = ownerUsername;
-		this.createdAt = now;
-		this.updatedAt = now;
-	}
-
 	public static AnalysisJob queued(
-			UUID analysisId,
-			AnalysisMode mode,
-			String originalFilename,
-			String fileExtension,
-			long fileSizeBytes,
-			String ownerUsername,
-			Instant now) {
-		return new AnalysisJob(analysisId, mode, originalFilename, fileExtension,
-				fileSizeBytes, ownerUsername, now);
+			UUID analysisId, AnalysisMode mode, String originalFilename,
+			String fileExtension, long fileSizeBytes, String ownerUsername,
+			boolean includeHiddenSheets, Instant now) {
+		AnalysisJob job = new AnalysisJob();
+		job.analysisId = analysisId;
+		job.status = AnalysisStatus.QUEUED;
+		job.mode = mode;
+		job.originalFilename = originalFilename;
+		job.fileExtension = fileExtension;
+		job.fileSizeBytes = fileSizeBytes;
+		job.ownerUsername = ownerUsername;
+		job.includeHiddenSheets = includeHiddenSheets;
+		job.createdAt = now;
+		job.updatedAt = now;
+		return job;
 	}
 
 	public void markProcessing(Instant now) {
@@ -137,6 +128,10 @@ public class AnalysisJob {
 
 	public String getFailureMessage() {
 		return failureMessage;
+	}
+
+	public boolean isIncludeHiddenSheets() {
+		return includeHiddenSheets;
 	}
 
 	public Instant getCreatedAt() {

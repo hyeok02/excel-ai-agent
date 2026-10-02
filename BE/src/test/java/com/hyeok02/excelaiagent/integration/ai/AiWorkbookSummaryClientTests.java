@@ -20,7 +20,7 @@ class AiWorkbookSummaryClientTests extends AiServiceClientTestSupport {
 				.andExpect(header("Content-Type", startsWith("multipart/form-data")))
 				.andExpect(content().string(containsString("sales.xlsx")))
 				.andRespond(withSuccess(fixture("workbook-summary.json"), MediaType.APPLICATION_JSON));
-		AiWorkbookSummary response = client.summarizeWorkbook(workbook());
+		AiWorkbookSummary response = client.summarizeWorkbook(workbook(), false);
 		assertThat(response.filename()).isEqualTo("sales.xlsx");
 		assertThat(response.excludedSheets()).singleElement().satisfies(sheet -> {
 			assertThat(sheet.analysisInclusion().decision()).isEqualTo(AnalysisDecision.EXCLUDE);
@@ -50,10 +50,21 @@ class AiWorkbookSummaryClientTests extends AiServiceClientTestSupport {
 	}
 
 	@Test
+	void sendsHiddenSheetInclusionAsFormField() {
+		server.expect(once(), requestTo("http://localhost:8000/api/v1/workbooks/summary"))
+				.andExpect(method(POST))
+				.andExpect(content().string(containsString("include_hidden_sheets")))
+				.andExpect(content().string(containsString("true")))
+				.andRespond(withSuccess(fixture("workbook-summary.json"), MediaType.APPLICATION_JSON));
+		client.summarizeWorkbook(workbook(), true);
+		server.verify();
+	}
+
+	@Test
 	void throwsUnavailableExceptionWhenWorkbookSummaryRequestFails() {
 		server.expect(once(), requestTo("http://localhost:8000/api/v1/workbooks/summary"))
 				.andExpect(method(POST)).andRespond(withServerError());
-		assertThatThrownBy(() -> client.summarizeWorkbook(workbook()))
+		assertThatThrownBy(() -> client.summarizeWorkbook(workbook(), false))
 				.isInstanceOf(AiServiceUnavailableException.class);
 		server.verify();
 	}

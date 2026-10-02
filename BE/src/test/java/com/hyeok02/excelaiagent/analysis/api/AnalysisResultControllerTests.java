@@ -74,7 +74,7 @@ class AnalysisResultControllerTests extends AnalysisControllerTestSupport {
 		UUID id = UUID.randomUUID();
 		Instant now = Instant.now();
 		analysisJobRepository.save(AnalysisJob.queued(
-				id, AnalysisMode.BFS, "legacy.xlsx", "xlsx", 100L, "system", now));
+				id, AnalysisMode.BFS, "legacy.xlsx", "xlsx", 100L, "system", false, now));
 		analysisResultRepository.save(AnalysisResult.completed(id,
 				"{\"filename\":\"legacy.xlsx\",\"sheet_count\":1,\"sheets\":[]}", now));
 		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", id))
@@ -87,7 +87,7 @@ class AnalysisResultControllerTests extends AnalysisControllerTestSupport {
 	void returnsConflictWhenAnalysisResultIsNotReady() throws Exception {
 		AnalysisJob job = AnalysisJob.queued(
 				UUID.randomUUID(), AnalysisMode.BFS, "queued.xlsx", "xlsx", 100L,
-				"system", Instant.now());
+				"system", false, Instant.now());
 		analysisJobRepository.save(job);
 		mockMvc.perform(get("/api/v1/analyses/{analysisId}/result", job.getAnalysisId()))
 				.andExpect(status().isConflict())

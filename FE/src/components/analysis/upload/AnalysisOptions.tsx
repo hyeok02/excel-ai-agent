@@ -1,12 +1,15 @@
 import type { AnalysisDepth, AnalysisMode } from '@/api/analysis'
+import HiddenSheetToggle from '@/components/analysis/upload/HiddenSheetToggle'
 import { cn } from '@/utils/cn'
 
 interface AnalysisOptionsProps {
   depth: AnalysisDepth
+  includeHiddenSheets: boolean
   insightsNeedReanalysis: boolean
   isPending: boolean
   mode: AnalysisMode
   onDepthChange: (depth: AnalysisDepth) => void
+  onHiddenSheetsChange: (includeHiddenSheets: boolean) => void
   onModeChange: (mode: AnalysisMode) => void
 }
 
@@ -18,10 +21,12 @@ const DEPTH_OPTIONS = [
 
 const AnalysisOptions = ({
   depth,
+  includeHiddenSheets,
   insightsNeedReanalysis,
   isPending,
   mode,
   onDepthChange,
+  onHiddenSheetsChange,
   onModeChange,
 }: AnalysisOptionsProps) => (
   <div className="mt-7 flex flex-wrap items-center gap-3 rounded-2xl bg-slate-50 p-2.5">
@@ -98,6 +103,12 @@ const AnalysisOptions = ({
         ))}
       </div>
     </fieldset>
+
+    <HiddenSheetToggle
+      includeHiddenSheets={includeHiddenSheets}
+      isPending={isPending}
+      onChange={onHiddenSheetsChange}
+    />
   </div>
 )
 

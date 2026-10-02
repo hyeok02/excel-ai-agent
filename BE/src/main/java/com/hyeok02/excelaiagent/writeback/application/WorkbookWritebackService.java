@@ -48,7 +48,8 @@ public class WorkbookWritebackService {
 	public WritebackView propose(UUID analysisId, String instruction, String actor) {
 		AnalysisJob job = completedJobWithSource(analysisId, actor);
 		UUID base = sources.latestApplied(analysisId);
-		AiWritebackProposal proposal = aiClient.propose(sources.of(job, base), instruction.trim());
+		AiWritebackProposal proposal = aiClient.propose(
+				sources.of(job, base), instruction.trim(), job.isIncludeHiddenSheets());
 		WorkbookWriteback item = WorkbookWriteback.proposed(
 				analysisId, instruction.trim(), json.proposal(proposal),
 				proposal.blocked(), actor, Instant.now(), base);
@@ -77,7 +78,9 @@ public class WorkbookWritebackService {
 		// 그 사이 같은 셀이 바뀌었다면 AI 서비스가 기존 값 불일치로 걸러낸다.
 		UUID base = sources.latestApplied(analysisId);
 		AiWritebackPackage result = aiClient.apply(
-				sources.of(job, base), WritebackApprovalScope.select(proposal.changes(), approvedCells));
+				sources.of(job, base),
+				WritebackApprovalScope.select(proposal.changes(), approvedCells),
+				job.isIncludeHiddenSheets());
 		fileStorage.storeWriteback(analysisId, writebackId, job.getFileExtension(), result.workbook());
 		item.apply(json.manifest(result.manifest()), actor, Instant.now(), base);
 		return WritebackView.from(item, json);

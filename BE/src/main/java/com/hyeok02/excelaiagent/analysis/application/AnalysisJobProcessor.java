@@ -61,7 +61,8 @@ public class AnalysisJobProcessor {
 
 			Resource file = analysisFileStorage.load(analysisId, analysisJob.getFileExtension());
 			Resource namedFile = new NamedResource(file, analysisJob.getOriginalFilename());
-			AiWorkbookInsights workbookAnalysis = analyzeWorkbook(namedFile, analysisJob.getMode(), depth);
+			AiWorkbookInsights workbookAnalysis = analyzeWorkbook(
+					namedFile, analysisJob.getMode(), depth, analysisJob.isIncludeHiddenSheets());
 			AnalysisResult analysisResult = AnalysisResult.completed(
 					analysisId,
 					serializeResult(workbookAnalysis),
@@ -78,11 +79,13 @@ public class AnalysisJobProcessor {
 	private AiWorkbookInsights analyzeWorkbook(
 			Resource file,
 			AnalysisMode mode,
-			AnalysisDepth depth) {
+			AnalysisDepth depth,
+			boolean includeHiddenSheets) {
 		if (mode == AnalysisMode.LLM) {
-			return aiServiceClient.generateWorkbookInsights(file, depth);
+			return aiServiceClient.generateWorkbookInsights(file, depth, includeHiddenSheets);
 		}
-		return AiWorkbookInsights.summaryOnly(aiServiceClient.summarizeWorkbook(file));
+		return AiWorkbookInsights.summaryOnly(
+				aiServiceClient.summarizeWorkbook(file, includeHiddenSheets));
 	}
 
 	private String serializeResult(AiWorkbookInsights workbookAnalysis) {
