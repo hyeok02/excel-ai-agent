@@ -15,11 +15,13 @@ const AnalysisPage = () => {
     analysisResult,
     analysisResultMode,
     changeDepth,
+    changeHiddenSheets,
     changeMode,
     clearFile,
     depth,
     errorMessage,
     feedback,
+    includeHiddenSheets,
     insightsNeedReanalysis,
     isPending,
     mode,
@@ -45,11 +47,13 @@ const AnalysisPage = () => {
         <AnalysisUploadPanel
           errorMessage={errorMessage}
           depth={depth}
+          includeHiddenSheets={includeHiddenSheets}
           insightsNeedReanalysis={insightsNeedReanalysis}
           isPending={isPending}
           mode={mode}
           onClearFile={clearFile}
           onDepthChange={changeDepth}
+          onHiddenSheetsChange={changeHiddenSheets}
           onModeChange={changeMode}
           onSelectFile={selectFile}
           onStartAnalysis={startAnalysis}

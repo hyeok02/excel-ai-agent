@@ -1,6 +1,7 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,7 +19,7 @@ class WorkbookWritebackErrorControllerTests extends WorkbookWritebackTestSupport
 
 	@Test
 	void returnsSafeFileErrorForWritebackProposal() throws Exception {
-		when(aiWritebackClient.propose(any(), anyString()))
+		when(aiWritebackClient.propose(any(), anyString(), anyBoolean()))
 				.thenThrow(new UnreadableExcelFileException());
 		String analysisId = submitCompleted();
 
@@ -32,8 +33,9 @@ class WorkbookWritebackErrorControllerTests extends WorkbookWritebackTestSupport
 
 	@Test
 	void keepsApprovalPendingWhenTheOriginalCannotBeRead() throws Exception {
-		when(aiWritebackClient.propose(any(), anyString())).thenReturn(proposal(false));
-		when(aiWritebackClient.apply(any(), any())).thenThrow(new UnreadableExcelFileException());
+		when(aiWritebackClient.propose(any(), anyString(), anyBoolean())).thenReturn(proposal(false));
+		when(aiWritebackClient.apply(any(), any(), anyBoolean()))
+				.thenThrow(new UnreadableExcelFileException());
 		String analysisId = submitCompleted();
 		String response = mockMvc.perform(post("/api/v1/analyses/{id}/writebacks", analysisId)
 					.contentType(MediaType.APPLICATION_JSON)
@@ -54,7 +56,7 @@ class WorkbookWritebackErrorControllerTests extends WorkbookWritebackTestSupport
 
 	@Test
 	void keepsWritebackOutagesUnavailable() throws Exception {
-		when(aiWritebackClient.propose(any(), anyString()))
+		when(aiWritebackClient.propose(any(), anyString(), anyBoolean()))
 				.thenThrow(new AiServiceUnavailableException(new RuntimeException("private detail")));
 		String analysisId = submitCompleted();
 

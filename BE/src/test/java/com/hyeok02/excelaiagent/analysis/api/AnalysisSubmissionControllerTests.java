@@ -1,6 +1,7 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -45,7 +46,29 @@ class AnalysisSubmissionControllerTests extends AnalysisControllerTestSupport {
 		mockMvc.perform(multipart("/api/v1/analyses").file(excel("finance.xlsx"))
 					.param("mode", "LLM").param("depth", "PRECISE"))
 				.andExpect(status().isAccepted());
-		verify(aiServiceClient).generateWorkbookInsights(any(Resource.class), eq(AnalysisDepth.PRECISE));
+		verify(aiServiceClient).generateWorkbookInsights(
+				any(Resource.class), eq(AnalysisDepth.PRECISE), anyBoolean());
+	}
+
+	@Test
+	void excludesHiddenSheetsUnlessRequested() throws Exception {
+		mockMvc.perform(multipart("/api/v1/analyses").file(excel("finance.xlsx"))
+					.param("mode", "LLM"))
+				.andExpect(status().isAccepted());
+		verify(aiServiceClient).generateWorkbookInsights(any(Resource.class), any(), eq(false));
+	}
+
+	@Test
+	void forwardsHiddenSheetInclusionToAiService() throws Exception {
+		String body = mockMvc.perform(multipart("/api/v1/analyses").file(excel("finance.xlsx"))
+					.param("mode", "LLM").param("includeHiddenSheets", "true"))
+				.andExpect(status().isAccepted())
+				.andReturn().getResponse().getContentAsString();
+		verify(aiServiceClient).generateWorkbookInsights(any(Resource.class), any(), eq(true));
+		String id = JsonPath.read(body, "$.analysisId");
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+					.get("/api/v1/analyses/{analysisId}", id))
+				.andExpect(jsonPath("$.includeHiddenSheets").value(true));
 	}
 
 	@Test

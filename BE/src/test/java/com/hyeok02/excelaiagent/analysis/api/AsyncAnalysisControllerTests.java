@@ -3,6 +3,7 @@ package com.hyeok02.excelaiagent.analysis.api;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -75,13 +76,14 @@ class AsyncAnalysisControllerTests {
 	@Test
 	void returnsQueuedBeforeAsynchronousAiAnalysisCompletes() throws Exception {
 		CountDownLatch analysisStarted = new CountDownLatch(1);
-		when(aiServiceClient.summarizeWorkbook(any(Resource.class))).thenAnswer(invocation -> {
-			analysisStarted.countDown();
-			if (!releaseAnalysis.await(5, SECONDS)) {
-				throw new IllegalStateException("테스트 분석 대기 시간이 초과되었습니다.");
-			}
-			return new AiWorkbookSummary("async.xlsx", 0, List.of());
-		});
+		when(aiServiceClient.summarizeWorkbook(any(Resource.class), anyBoolean()))
+				.thenAnswer(invocation -> {
+					analysisStarted.countDown();
+					if (!releaseAnalysis.await(5, SECONDS)) {
+						throw new IllegalStateException("테스트 분석 대기 시간이 초과되었습니다.");
+					}
+					return new AiWorkbookSummary("async.xlsx", 0, List.of());
+				});
 
 		String responseBody = mockMvc.perform(multipart("/api/v1/analyses")
 					.file(new MockMultipartFile("file", "async.xlsx", null, ZIP_FILE))

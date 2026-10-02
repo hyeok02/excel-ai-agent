@@ -48,7 +48,7 @@ class AiWritebackClientTests {
 				"매출현황", "B2", 12, "정정", 10, List.of(),
 				"value", "number", List.of("매출현황!D2"), "medium");
 
-		AiWritebackPackage result = client.apply(workbook().getResource(), List.of(change));
+		AiWritebackPackage result = client.apply(workbook().getResource(), List.of(change), false);
 
 		assertThat(result.workbook()).containsExactly(1, 2, 3);
 		assertThat(result.manifest().verified()).isTrue();
@@ -70,7 +70,7 @@ class AiWritebackClientTests {
 				.andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
 
 		AiWritebackProposal proposal = client.propose(
-				workbook().getResource(), "B2를 12로 수정");
+				workbook().getResource(), "B2를 12로 수정", false);
 
 		assertThat(proposal.blocked()).isFalse();
 		assertThat(proposal.changes()).singleElement().satisfies(change -> {

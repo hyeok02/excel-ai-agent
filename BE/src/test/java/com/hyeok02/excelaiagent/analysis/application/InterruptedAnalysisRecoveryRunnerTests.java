@@ -65,7 +65,8 @@ class InterruptedAnalysisRecoveryRunnerTests {
 	private AnalysisJob save(AnalysisStatus status) {
 		Instant now = Instant.now();
 		AnalysisJob job = AnalysisJob.queued(
-				UUID.randomUUID(), AnalysisMode.BFS, "sales.xlsx", "xlsx", 100L, "system", now);
+				UUID.randomUUID(), AnalysisMode.BFS, "sales.xlsx", "xlsx", 100L, "system",
+				false, now);
 		if (status != AnalysisStatus.QUEUED) {
 			job.markProcessing(now);
 		}

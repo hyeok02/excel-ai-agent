@@ -37,6 +37,7 @@ public class WorkbookQuestionService {
 		accessService.requireSourceAvailable(job);
 		Resource source = fileStorage.load(analysisId, job.getFileExtension());
 		Resource namedSource = new NamedResource(source, job.getOriginalFilename());
-		return aiServiceClient.askWorkbook(namedSource, question.trim());
+		return aiServiceClient.askWorkbook(
+				namedSource, question.trim(), job.isIncludeHiddenSheets());
 	}
 }

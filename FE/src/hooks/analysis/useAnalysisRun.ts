@@ -42,15 +42,18 @@ export const useAnalysisRun = (
       file,
       analysisMode,
       analysisDepth,
+      includeHiddenSheets,
     }: {
       file: File
       analysisMode: AnalysisMode
       analysisDepth: AnalysisDepth
+      includeHiddenSheets: boolean
     }) =>
       analyzeWorkbook(
         file,
         analysisMode,
         analysisDepth,
+        includeHiddenSheets,
         progress.updateStatus,
         (submission) =>
           setSearchParams(
@@ -105,7 +108,11 @@ export const useAnalysisRun = (
       mutation.reset()
       forgetOpenAnalysis()
     },
-    start: (file: File, analysisMode: AnalysisMode, analysisDepth: AnalysisDepth) =>
-      mutation.mutate({ file, analysisMode, analysisDepth }),
+    start: (
+      file: File,
+      analysisMode: AnalysisMode,
+      analysisDepth: AnalysisDepth,
+      includeHiddenSheets: boolean,
+    ) => mutation.mutate({ analysisDepth, analysisMode, file, includeHiddenSheets }),
   }
 }

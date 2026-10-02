@@ -9,11 +9,13 @@ import type { AnalysisViewStatus } from '@/hooks/analysis/useWorkbookAnalysis'
 interface AnalysisUploadPanelProps {
   depth: AnalysisDepth
   errorMessage: string | null
+  includeHiddenSheets: boolean
   insightsNeedReanalysis: boolean
   isPending: boolean
   mode: AnalysisMode
   onClearFile: () => void
   onDepthChange: (depth: AnalysisDepth) => void
+  onHiddenSheetsChange: (includeHiddenSheets: boolean) => void
   onModeChange: (mode: AnalysisMode) => void
   onOpenHistory: () => void
   onSelectFile: (file: File) => void
@@ -26,11 +28,13 @@ interface AnalysisUploadPanelProps {
 const AnalysisUploadPanel = ({
   depth,
   errorMessage,
+  includeHiddenSheets,
   insightsNeedReanalysis,
   isPending,
   mode,
   onClearFile,
   onDepthChange,
+  onHiddenSheetsChange,
   onModeChange,
   onOpenHistory,
   onSelectFile,
@@ -60,10 +64,12 @@ const AnalysisUploadPanel = ({
 
     <AnalysisOptions
       depth={depth}
+      includeHiddenSheets={includeHiddenSheets}
       insightsNeedReanalysis={insightsNeedReanalysis}
       isPending={isPending}
       mode={mode}
       onDepthChange={onDepthChange}
+      onHiddenSheetsChange={onHiddenSheetsChange}
       onModeChange={onModeChange}
     />
     <AnalysisFileDropZone

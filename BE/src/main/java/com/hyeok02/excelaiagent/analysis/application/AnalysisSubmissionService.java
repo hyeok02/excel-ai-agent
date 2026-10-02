@@ -40,12 +40,13 @@ public class AnalysisSubmissionService {
 	}
 
 	public AnalysisSubmission submit(
-			MultipartFile file, AnalysisMode mode, AnalysisDepth depth, String ownerUsername) {
+			MultipartFile file, AnalysisMode mode, AnalysisDepth depth,
+			boolean includeHiddenSheets, String ownerUsername) {
 		ValidatedExcelFile validatedFile = excelFileValidator.validate(file);
 		UUID analysisId = UUID.randomUUID();
 		AnalysisJob job = AnalysisJob.queued(
 				analysisId, mode, validatedFile.originalFilename(), validatedFile.extension(),
-				validatedFile.sizeBytes(), ownerUsername, Instant.now());
+				validatedFile.sizeBytes(), ownerUsername, includeHiddenSheets, Instant.now());
 		analysisFileStorage.store(analysisId, validatedFile.extension(), file);
 		try {
 			job = analysisJobRepository.saveAndFlush(job);

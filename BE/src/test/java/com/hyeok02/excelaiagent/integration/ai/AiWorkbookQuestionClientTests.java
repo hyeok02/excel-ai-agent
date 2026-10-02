@@ -22,7 +22,7 @@ class AiWorkbookQuestionClientTests extends AiServiceClientTestSupport {
 				.andRespond(withSuccess(fixture("workbook-question.json"), MediaType.APPLICATION_JSON));
 
 		AiWorkbookQuestion response = client.askWorkbook(
-				workbook().getResource(), "노트북의 1월 값은 얼마야?");
+				workbook().getResource(), "노트북의 1월 값은 얼마야?", false);
 
 		assertThat(response.status()).isEqualTo("answered");
 		assertThat(response.selectedTools()).containsExactly("search_workbook_data");

@@ -2,6 +2,7 @@ package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,8 +32,8 @@ class WorkbookWritebackChainControllerTests extends WorkbookWritebackTestSupport
 
 	@BeforeEach
 	void stubProposal() {
-		when(aiWritebackClient.propose(any(), anyString())).thenReturn(proposal(false));
-		when(aiWritebackClient.apply(any(), any())).thenReturn(
+		when(aiWritebackClient.propose(any(), anyString(), anyBoolean())).thenReturn(proposal(false));
+		when(aiWritebackClient.apply(any(), any(), anyBoolean())).thenReturn(
 				new AiWritebackPackage(FIRST_RESULT, manifest()));
 	}
 
@@ -93,14 +94,14 @@ class WorkbookWritebackChainControllerTests extends WorkbookWritebackTestSupport
 	private byte[] lastProposedSource() throws Exception {
 		ArgumentCaptor<Resource> captor = ArgumentCaptor.forClass(Resource.class);
 		verify(aiWritebackClient, org.mockito.Mockito.atLeastOnce())
-				.propose(captor.capture(), anyString());
+				.propose(captor.capture(), anyString(), anyBoolean());
 		return captor.getValue().getContentAsByteArray();
 	}
 
 	private byte[] lastAppliedSource() throws Exception {
 		ArgumentCaptor<Resource> captor = ArgumentCaptor.forClass(Resource.class);
 		verify(aiWritebackClient, org.mockito.Mockito.atLeastOnce())
-				.apply(captor.capture(), any());
+				.apply(captor.capture(), any(), anyBoolean());
 		return captor.getValue().getContentAsByteArray();
 	}
 

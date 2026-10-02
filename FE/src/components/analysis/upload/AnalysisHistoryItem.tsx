@@ -37,6 +37,7 @@ const AnalysisHistoryItem = ({ isActive, item, onOpen }: AnalysisHistoryItemProp
         <span>
           {formatAnalyzedAt(item.createdAt)} · {item.mode} ·{' '}
           {formatFileSize(item.sizeBytes)}
+          {item.includeHiddenSheets && ' · 숨김 시트 포함'}
         </span>
         <span className="flex shrink-0 items-center gap-2">
           {!item.sourceAvailable && item.status === 'COMPLETED' && (

@@ -79,13 +79,13 @@ class AiWorkbookFileErrorClientTests extends AiServiceClientTestSupport {
 	private void invoke(Endpoint endpoint) {
 		var file = workbook().getResource();
 		switch (endpoint) {
-			case SUMMARY -> client.summarizeWorkbook(file);
-			case INSIGHTS -> client.generateWorkbookInsights(file, AnalysisDepth.AUTO);
-			case QUESTIONS -> client.askWorkbook(file, "합계를 알려줘");
+			case SUMMARY -> client.summarizeWorkbook(file, false);
+			case INSIGHTS -> client.generateWorkbookInsights(file, AnalysisDepth.AUTO, false);
+			case QUESTIONS -> client.askWorkbook(file, "합계를 알려줘", false);
 			case PROPOSE -> new AiWritebackClient(restClient, JsonMapper.builder().build())
-					.propose(file, "B2를 12로 수정");
+					.propose(file, "B2를 12로 수정", false);
 			case APPLY -> new AiWritebackClient(restClient, JsonMapper.builder().build())
-					.apply(file, List.of());
+					.apply(file, List.of(), false);
 		}
 	}
 

@@ -12,17 +12,25 @@ SYSTEM_SHEET_NAMES = {
 }
 
 
-def is_business_worksheet(worksheet: Worksheet) -> bool:
+def is_business_worksheet(worksheet: Worksheet, include_hidden: bool = False) -> bool:
     """Return whether a worksheet should be included in user-facing analysis."""
     return (
-        evaluate_worksheet_inclusion(worksheet).decision
+        evaluate_worksheet_inclusion(worksheet, include_hidden).decision
         is AnalysisDecision.INCLUDE
     )
 
 
-def evaluate_worksheet_inclusion(worksheet: Worksheet) -> AnalysisInclusion:
-    """Return the analysis policy decision and a user-facing reason."""
-    if worksheet.sheet_state != "visible":
+def evaluate_worksheet_inclusion(
+    worksheet: Worksheet, include_hidden: bool = False
+) -> AnalysisInclusion:
+    """
+    분석에 넣을지 판단하고 그 이유를 돌려준다.
+
+    숨김 시트는 기본적으로 뺀다. 다만 계산 과정을 숨겨 두는 실무 파일이 있어,
+    사용자가 켜면 보이는 시트와 똑같이 다룬다. 애드인이 만든 캐시 시트는
+    사용자가 만든 내용이 아니므로 켜도 계속 뺀다.
+    """
+    if not include_hidden and worksheet.sheet_state != "visible":
         return AnalysisInclusion(
             decision=AnalysisDecision.EXCLUDE,
             reason_code="hidden_worksheet",

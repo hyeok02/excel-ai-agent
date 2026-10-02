@@ -1,6 +1,7 @@
 package com.hyeok02.excelaiagent.analysis.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
@@ -39,9 +40,9 @@ abstract class AnalysisControllerTestSupport {
 		workbookWritebackRepository.deleteAll();
 		analysisJobRepository.deleteAll();
 		reset(aiServiceClient, aiWritebackClient);
-		when(aiServiceClient.summarizeWorkbook(any(Resource.class)))
+		when(aiServiceClient.summarizeWorkbook(any(Resource.class), anyBoolean()))
 				.thenReturn(AnalysisWorkbookFixture.summary());
-		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any()))
+		when(aiServiceClient.generateWorkbookInsights(any(Resource.class), any(), anyBoolean()))
 				.thenReturn(AnalysisWorkbookFixture.insights());
 	}
 

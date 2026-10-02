@@ -121,6 +121,6 @@ class AnalysisHistoryControllerTests extends AnalysisControllerTestSupport {
 			String filename, AnalysisMode mode, String ownerUsername, Instant createdAt) {
 		return AnalysisJob.queued(UUID.randomUUID(), mode, filename,
 				filename.endsWith("xlsm") ? "xlsm" : "xlsx", 100L,
-				ownerUsername, createdAt);
+				ownerUsername, false, createdAt);
 	}
 }

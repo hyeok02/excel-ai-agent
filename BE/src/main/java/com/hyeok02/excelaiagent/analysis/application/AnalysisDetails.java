@@ -14,6 +14,7 @@ public record AnalysisDetails(
 		String fileExtension,
 		long sizeBytes,
 		boolean sourceAvailable,
+		boolean includeHiddenSheets,
 		Instant createdAt,
 		Instant updatedAt,
 		String failureMessage) {

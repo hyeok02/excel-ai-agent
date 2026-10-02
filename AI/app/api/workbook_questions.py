@@ -11,7 +11,7 @@ from app.agent.query import (
 )
 from app.agent.query.generator import LangChainQuestionAnswerGenerator
 from app.api.agent_tools import get_agent_tool_registry
-from app.api.workbooks import parse_or_bad_request, read_upload
+from app.api.workbooks import HIDDEN_SHEETS, parse_or_bad_request, read_upload
 from app.services.insights.models import (
     InsightConfigurationError,
     InsightGenerationError,
@@ -35,9 +35,12 @@ async def ask_workbook_question(
     file: Annotated[UploadFile, File(description="질문할 Excel 파일")],
     generator: Annotated[LangChainQuestionAnswerGenerator, Depends(get_question_answer_generator)],
     registry: Annotated[AgentToolRegistry, Depends(get_agent_tool_registry)],
+    include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
 ) -> QuestionAnswer:
     content = await read_upload(file)
-    summary = await parse_or_bad_request(file.filename or "", content)
+    summary = await parse_or_bad_request(
+        file.filename or "", content, include_hidden_sheets
+    )
     included_sheets = {sheet.name for sheet in summary.sheets}
     data_index = await run_in_threadpool(
         build_workbook_data_index, summary.filename, content, included_sheets
