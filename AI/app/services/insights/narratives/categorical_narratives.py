@@ -1,9 +1,4 @@
-"""Summarise record tables by counting, not by reading rows back to the user.
-
-Lists of events, applications or people carry no measured series, so the trend
-and table narratives find nothing and fall back to reciting a row. What such a
-table actually says is how its records are distributed.
-"""
+"""Summarise record tables by their full distribution instead of reciting rows."""
 from app.services.insights.facts.categorical_columns import (
     category_column, date_column, header_index, header_like, measurable,
 )
@@ -38,6 +33,9 @@ def _candidates(sheets):
         facts = sheet.get("business_facts", {})
         carried, heading, heading_cell = None, "", None
         for region in narrative_regions(facts):
+            if region.get("rows_complete") is False:
+                carried, heading, heading_cell = None, "", None
+                continue
             rows = region.get("rows", [])
             report = _region_report(
                 str(sheet.get("name", "")), rows, heading, carried, heading_cell,
@@ -74,7 +72,7 @@ def _region_report(sheet, rows, title, carried=None, heading_cell=None):
     top_value, top_count = counts[0]
     kind = readable(_title(title) or name)
     header_ref = next((reference(sheet, cell["cell"]) for cell in header
-                       if " ".join(str(cell.get("value", "")).split()) == name), None)
+                       if _flat(cell.get("value")) == _flat(name)), None)
     cited = [*([header_ref] if header_ref else []), *_evidence(sheet, cells)]
     if heading_cell and heading_cell.get("cell") and _title(title):
         cited.insert(0, reference(sheet, heading_cell["cell"]))
@@ -101,8 +99,9 @@ def _region_report(sheet, rows, title, carried=None, heading_cell=None):
 
 
 def _title(value):
-    text = " ".join(str(value or "").split())
-    return text if 2 <= len(text) <= 40 and not text.replace(".", "").isdigit() else ""
+    raw = str(value or "").strip()
+    text = _flat(raw)
+    return raw if 2 <= len(text) <= 40 and not text.replace(".", "").isdigit() else ""
 
 
 def _distribution(name, counts, total):
@@ -130,7 +129,7 @@ def _dates(sheet, header, records):
         f"{readable(name)} 분포",
         f"기록은 {span} 모두 {number(len(counts))}개 시점에 걸쳐 있습니다.{detail}",
         [*([reference(sheet, cell["cell"]) for cell in header
-            if " ".join(str(cell.get("value", "")).split()) == name][:1]),
+            if _flat(cell.get("value")) == _flat(name)][:1]),
          *_evidence(sheet, cells)], topic=source_topic(name),
     )
 
@@ -143,3 +142,7 @@ def _evidence(sheet, cells):
     if len(cells) > 1:
         span = f"{span}:{cells[-1]['cell']}"
     return [reference(sheet, span)]
+
+
+def _flat(value):
+    return " ".join(str(value or "").split())

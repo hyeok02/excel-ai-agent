@@ -3,7 +3,7 @@ import re
 
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.models import ValidatedWorkbookInsightReport
-from app.services.insights.narratives.narrative_values import workbook_identity
+from app.services.insights.narratives.subject_scope import visible_subject
 from app.services.insights.verification.reference_matching import matching_references
 from app.services.insights.verification.validation_index import extract_references
 
@@ -11,7 +11,7 @@ from app.services.insights.verification.validation_index import extract_referenc
 def structured_lead(
     context: dict[str, object], report: ValidatedWorkbookInsightReport
 ) -> str:
-    return _with_subject(context, (
+    return _with_subject(context, report, (
         _comparison_lead(context, report)
         or _record_lead(report)
         or _change_lead(report)
@@ -20,13 +20,13 @@ def structured_lead(
     ))
 
 
-def _with_subject(context, lead):
+def _with_subject(context, report, lead):
     """Name the subject once it is known, whichever narrative wrote the lead."""
-    holder, _ = workbook_identity(context)
+    visible = _visible_references(report)
+    holder = visible_subject(context, visible)
     if not lead.startswith("이 파일은 ") or not holder or holder in lead:
         return lead
     return lead.replace("이 파일은 ", f"이 파일은 {holder}의 ", 1)
-
 
 def _comparison_lead(context, report):
     visible = _visible_references(report)
@@ -124,9 +124,12 @@ def _ranked_lead(report):
 
 
 def _visible_references(report):
-    return set().union(*(
-        extract_references(ref) for item in report.insights for ref in item.evidence
-    ))
+    return {
+        found
+        for item in report.insights
+        for evidence in item.evidence
+        for found in extract_references(evidence)
+    }
 
 
 def _same_scope(value, visible):

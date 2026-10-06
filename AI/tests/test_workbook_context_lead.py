@@ -1,5 +1,6 @@
 from app.services.insights.narratives.comparable_narratives import comparable_transaction_report
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
+from app.services.insights.narratives.subject_scope import visible_subject
 from app.services.insights.narratives.trend_narratives import trend_report
 from app.services.insights.verification.validator import validate_workbook_insights
 from tests.support.narrative_contexts import trend_context
@@ -80,3 +81,39 @@ def test_generic_context_rejects_a_name_missing_from_the_source():
 
     assert "Fabricated Corp." not in result.overview
     assert result.overview.startswith("이 파일은 푸른연구원의 전체 인원 변동을 다룹니다.")
+
+
+def test_subject_selection_skips_distant_identity_and_finds_nearby_one():
+    def sheet(location, subject):
+        start, end = location.split("!", 1)[1].split(":")
+        return {"business_facts": {"selected_records": [{
+            "location": location,
+            "values": [
+                {"cell": start, "value": "분석 대상"},
+                {"cell": end, "value": subject},
+            ],
+        }]}}
+
+    context = {"sheets": [
+        sheet("현황!Y1:AB1", "다른 설비"),
+        sheet("현황!A1:B1", "푸른연구원"),
+    ]}
+
+    assert visible_subject(context, {"현황!D5:D10"}) == "푸른연구원"
+    assert visible_subject({"sheets": context["sheets"][:1]}, {"현황!D5:D10"}) == ""
+    assert visible_subject({"sheets": context["sheets"][1:]}, {"현황!D100:D120"}) == ""
+
+
+def test_subject_selection_checks_every_identity_on_the_same_sheet():
+    context = {"sheets": [{"business_facts": {"selected_records": [
+        {"location": "현황!Y1:Z1", "values": [
+            {"cell": "Y1", "value": "분석 대상"},
+            {"cell": "Z1", "value": "다른 설비"},
+        ]},
+        {"location": "현황!A1:B1", "values": [
+            {"cell": "A1", "value": "분석 대상"},
+            {"cell": "B1", "value": "푸른연구원"},
+        ]},
+    ]}}]}
+
+    assert visible_subject(context, {"현황!D5:D10"}) == "푸른연구원"

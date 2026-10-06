@@ -1,7 +1,8 @@
-"""Column roles for record tables, decided by shape rather than by wording."""
+"""Column roles for record tables, using table shape and generic header roles."""
 import re
 from collections import Counter
 
+from app.services.insights.facts.categorical_headers import header_index, header_like
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.narratives.narrative_values import finite
 from app.services.insights.narratives.table_dates import column as col
@@ -13,26 +14,11 @@ MAX_CATEGORIES = 12
 MAX_CATEGORY_SHARE = 0.6
 MAX_LABEL_LENGTH = 60
 IDENTIFIER_NAME = re.compile(r"\b(?:id|oid|no|code|key|seq)\b|번호|코드|일련", re.I)
+CLASSIFICATION_NAME = re.compile(
+    r"\b(?:type|category|class(?:ification)?|kind|group)\b|분류|구분|유형|항목", re.I
+)
+STATE_NAME = re.compile(r"\b(?:status|state|stage|phase)\b|상태|단계|현황", re.I)
 IDENTIFIER_DIGITS = 6
-
-
-def header_index(rows):
-    """The first row that names columns: a name is never a date or a number."""
-    for index, row in enumerate(rows[:6]):
-        if len(rows) - index - 1 >= MIN_RECORDS and header_like(row):
-            return index
-    return None
-
-
-def header_like(row):
-    """Region detection often leaves a header on its own, above its records."""
-    filled = [cell for cell in row if cell.get("value") not in (None, "")]
-    texts = [cell for cell in filled
-             if isinstance(cell.get("value"), str) and cell["value"].strip()]
-    if len(texts) < 2 or len(texts) != len(filled):
-        return False
-    return not any(finite(cell.get("value")) or is_date(cell.get("value"))
-                   for cell in filled)
 
 
 def measurable(header_row, records):
@@ -61,12 +47,16 @@ def category_column(header, records):
             continue
         if len(counts) > len(values) * MAX_CATEGORY_SHARE:
             continue
-        candidate = (len(counts), -len(cells), position, name, counts, cells)
-        if best is None or candidate[:3] < best[:3]:
+        dominant = counts.most_common(1)[0][1] / len(values) > 0.9
+        candidate = (
+            _role_priority(name), dominant, len(counts), -len(cells), position,
+            name, counts, cells,
+        )
+        if best is None or candidate[:5] < best[:5]:
             best = candidate
     if best is None:
         return None
-    _, _, _, name, counts, cells = best
+    _, _, _, _, _, name, counts, cells = best
     return name, counts.most_common(), cells
 
 
@@ -84,11 +74,18 @@ def date_column(header, records):
 
 def _named_columns(header):
     return {
-        col(cell): " ".join(str(cell["value"]).split())
+        col(cell): str(cell["value"]).strip()
         for cell in header
         if isinstance(cell.get("value"), str) and cell["value"].strip()
     }
 
+
+def _role_priority(name):
+    if CLASSIFICATION_NAME.search(name):
+        return 0
+    if STATE_NAME.search(name):
+        return 1
+    return 2
 
 def _column_cells(position, records):
     found = []

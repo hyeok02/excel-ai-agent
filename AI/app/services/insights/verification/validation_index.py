@@ -31,6 +31,13 @@ def workbook_evidence_index(context: dict[str, object]) -> EvidenceIndex:
     index = EvidenceIndex()
     for sheet in context.get("sheets", []):
         _index_workbook_sheet(index, sheet)
+    if any(
+        sheet.get("business_facts", {}).get("table_analysis_complete") is False
+        for sheet in context.get("sheets", []) if isinstance(sheet, dict)
+    ):
+        index.limitations.append(
+            "일부 큰 표는 전체 집계가 아닌 확인 가능한 원본 셀만 분석했습니다."
+        )
     if int(context.get("omitted_sheet_count", 0)) > 0:
         index.limitations.append("일부 시트는 인사이트 입력 범위에서 제외되었습니다.")
     return index
