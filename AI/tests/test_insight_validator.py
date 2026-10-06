@@ -136,3 +136,12 @@ def test_removes_cause_without_direct_formula_or_metadata_evidence() -> None:
     assert insight.cause is None
     assert insight.validation_status == "limited"
     assert insight.confidence == 0.95
+
+
+def test_reports_when_a_table_was_too_large_for_complete_aggregation() -> None:
+    source = context()
+    source["sheets"][0]["business_facts"]["table_analysis_complete"] = False
+
+    result = validate_workbook_insights(report(), source)
+
+    assert any("읽지 못한 시트가 1개" in item for item in result.limitations)

@@ -31,6 +31,16 @@ def workbook_evidence_index(context: dict[str, object]) -> EvidenceIndex:
     index = EvidenceIndex()
     for sheet in context.get("sheets", []):
         _index_workbook_sheet(index, sheet)
+    partial = sum(
+        sheet.get("business_facts", {}).get("table_analysis_complete") is False
+        for sheet in context.get("sheets", []) if isinstance(sheet, dict)
+    )
+    if partial:
+        # 몇 개인지 말해야 "한 시트 결과를 파일 전체로 읽어도 되는지" 판단할 수 있다.
+        index.limitations.append(
+            f"표가 커서 전체를 읽지 못한 시트가 {partial}개 있습니다. "
+            "아래 수치는 읽은 범위에서만 집계한 값입니다."
+        )
     if int(context.get("omitted_sheet_count", 0)) > 0:
         index.limitations.append("일부 시트는 인사이트 입력 범위에서 제외되었습니다.")
     return index

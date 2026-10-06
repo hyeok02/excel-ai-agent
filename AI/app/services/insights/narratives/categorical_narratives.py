@@ -1,15 +1,14 @@
-"""Summarise record tables by counting, not by reading rows back to the user.
-
-Lists of events, applications or people carry no measured series, so the trend
-and table narratives find nothing and fall back to reciting a row. What such a
-table actually says is how its records are distributed.
-"""
+"""Summarise record tables by their full distribution instead of reciting rows."""
 from app.services.insights.facts.categorical_columns import (
-    category_column, date_column, header_index, header_like, measurable,
+    category_column, header_index, header_like, measurable,
 )
+from app.services.insights.narratives.categorical_dates import (
+    counted_range, date_spread,
+)
+from app.services.insights.narratives.categorical_scope import scope_prefix
 from app.services.insights.display.glossary import readable, translate
 from app.services.insights.narratives.narrative_values import (
-    insight, number, period, reference, subject_particle,
+    insight, number, reference, subject_particle,
 )
 from app.services.insights.narratives.topic_labels import source_topic
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
@@ -34,13 +33,18 @@ def categorical_report(context):
 
 def _candidates(sheets):
     results = []
+    qualify = len(sheets) > 1
     for source_order, sheet in sheets:
         facts = sheet.get("business_facts", {})
         carried, heading, heading_cell = None, "", None
         for region in narrative_regions(facts):
+            if region.get("rows_complete") is False:
+                carried, heading, heading_cell = None, "", None
+                continue
             rows = region.get("rows", [])
             report = _region_report(
                 str(sheet.get("name", "")), rows, heading, carried, heading_cell,
+                qualify,
             )
             if report:
                 results.append((source_order, *report))
@@ -57,7 +61,7 @@ def _heading(rows):
     return _title(rows[0][0].get("value"))
 
 
-def _region_report(sheet, rows, title, carried=None, heading_cell=None):
+def _region_report(sheet, rows, title, carried=None, heading_cell=None, qualify=False):
     index = header_index(rows)
     header, records = (rows[index], rows[index + 1:]) if index is not None else (
         carried, rows
@@ -74,8 +78,8 @@ def _region_report(sheet, rows, title, carried=None, heading_cell=None):
     top_value, top_count = counts[0]
     kind = readable(_title(title) or name)
     header_ref = next((reference(sheet, cell["cell"]) for cell in header
-                       if " ".join(str(cell.get("value", "")).split()) == name), None)
-    cited = [*([header_ref] if header_ref else []), *_evidence(sheet, cells)]
+                       if _flat(cell.get("value")) == _flat(name)), None)
+    cited = [*([header_ref] if header_ref else []), *counted_range(sheet, cells)]
     if heading_cell and heading_cell.get("cell") and _title(title):
         cited.insert(0, reference(sheet, heading_cell["cell"]))
     topic = source_topic(title) if heading_cell else source_topic(name)
@@ -86,23 +90,24 @@ def _region_report(sheet, rows, title, carried=None, heading_cell=None):
     headline = readable(top_value)
     items = [insight(
         f"{kind} 구성",
-        f"‘{headline}’{subject_particle(headline)} {number(total)}건 중 "
-        f"{number(top_count)}건({share}%)으로 가장 많고{tail}.",
+        f"{scope_prefix(sheet, qualify)}‘{headline}’{subject_particle(headline)} "
+        f"{number(total)}건 중 {number(top_count)}건({share}%)으로 가장 많고{tail}.",
         cited, topic=topic,
     )]
     listed = _distribution(name, counts, total)
     if listed:
         items.append(insight(f"{readable(name)} 분포", listed,
                              cited, topic=source_topic(name)))
-    dated = _dates(sheet, header, records)
+    dated = date_spread(sheet, header, records)
     if dated:
         items.append(dated)
     return items, items[0].fact, total + (10 if dated else 0)
 
 
 def _title(value):
-    text = " ".join(str(value or "").split())
-    return text if 2 <= len(text) <= 40 and not text.replace(".", "").isdigit() else ""
+    raw = str(value or "").strip()
+    text = _flat(raw)
+    return raw if 2 <= len(text) <= 40 and not text.replace(".", "").isdigit() else ""
 
 
 def _distribution(name, counts, total):
@@ -116,30 +121,5 @@ def _distribution(name, counts, total):
             f"{', '.join(parts)}{tail}입니다.")
 
 
-def _dates(sheet, header, records):
-    found = date_column(header, records)
-    if not found:
-        return None
-    name, ordered, counts, cells = found
-    peak_value, peak_count = counts[0]
-    span = (f"{period(ordered[0])}부터 {period(ordered[-1])}까지"
-            if ordered[0] != ordered[-1] else period(ordered[0]))
-    detail = (f" 가장 많은 날은 {period(peak_value)}로 {number(peak_count)}건입니다."
-              if peak_count > 1 else "")
-    return insight(
-        f"{readable(name)} 분포",
-        f"기록은 {span} 모두 {number(len(counts))}개 시점에 걸쳐 있습니다.{detail}",
-        [*([reference(sheet, cell["cell"]) for cell in header
-            if " ".join(str(cell.get("value", "")).split()) == name][:1]),
-         *_evidence(sheet, cells)], topic=source_topic(name),
-    )
-
-
-def _evidence(sheet, cells):
-    """Cite the counted range itself: a count of 18 must not point at 10 cells."""
-    if not cells:
-        return []
-    span = cells[0]["cell"]
-    if len(cells) > 1:
-        span = f"{span}:{cells[-1]['cell']}"
-    return [reference(sheet, span)]
+def _flat(value):
+    return " ".join(str(value or "").split())

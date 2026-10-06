@@ -61,6 +61,9 @@ class RegionSummary:
     analysis_inclusion: AnalysisInclusion = INCLUDED_POPULATED_REGION
     semantic: SemanticClassification | None = None
     analysis_rows: list[list[dict[str, CellValue]]] = field(default_factory=list)
+    analysis_complete: bool = False
+    hidden_rows: list[int] = field(default_factory=list)
+    hidden_columns: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

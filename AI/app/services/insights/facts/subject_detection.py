@@ -21,21 +21,29 @@ def spanning_subject(context) -> tuple[str, list[str]]:
     Among the survivors the longest is taken: a workbook usually carries both a
     ticker and a full name, and the full name is the one a reader can use.
     """
+    ranked = spanning_subjects(context)
+    return (ranked[0][0], ranked[0][1][:1]) if ranked else ("", [])
+
+
+def spanning_subjects(context) -> list[tuple[str, list[str]]]:
+    """Return every repeated source subject so locality can choose among them."""
     found: dict[str, list] = {}
     for sheet in context.get("sheets", []):
         if not isinstance(sheet, dict):
             continue
         name = str(sheet.get("name", ""))
         for value, cell in _spans(sheet):
-            entry = found.setdefault(value, [set(), reference(name, cell)])
+            entry = found.setdefault(value, [set(), []])
             entry[0].add(name)
-    ranked = sorted(
+            cited = reference(name, cell)
+            if cited not in entry[1]:
+                entry[1].append(cited)
+    return sorted(
         ((value, entry[1]) for value, entry in found.items()
          if len(entry[0]) >= MIN_SHEETS),
         key=lambda item: len(item[0]),
         reverse=True,
     )
-    return (ranked[0][0], [ranked[0][1]]) if ranked else ("", [])
 
 
 def _spans(sheet):

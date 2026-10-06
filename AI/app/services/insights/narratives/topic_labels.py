@@ -8,13 +8,14 @@ from app.services.insights.facts.fact_trends import date_value
 
 def source_topic(value):
     """Keep only a bounded textual source label suitable for a section heading."""
-    text = " ".join(str(value or "").split()).strip(" \"'.,:;")
+    raw = str(value or "")
+    text = " ".join(raw.split()).strip(" \"'.,:;")
     if (not 2 <= len(text) <= 60 or not is_presentable_label(text)
             or text.startswith("=") or date_value(text)
             or re.search(r"https?://|\\\\", text, re.I)
             or not re.search(r"[A-Za-z가-힣]", text)):
         return None
-    displayed = readable(text)
+    displayed = readable(raw)
     return displayed if len(displayed) <= 70 else text
 
 

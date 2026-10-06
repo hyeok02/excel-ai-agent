@@ -23,7 +23,14 @@ def subject_particle(text):
         return "가"
     if "가" <= last <= "힣":
         return "이" if (ord(last) - 0xAC00) % 28 else "가"
+    if re.fullmatch(r"[A-Z][A-Z0-9._-]*", spoken):
+        return "이" if last in "LMNRSX" else "가"
     return "가" if last in "aeiouyAEIOUY0123456789" else "이"
+
+
+def topic_particle(text):
+    """은/는 for the word the reader says, matching subject_particle's reading."""
+    return "은" if subject_particle(text) == "이" else "는"
 
 
 def workbook_identity(context):
@@ -72,6 +79,10 @@ def metric_name(metric):
 
 
 def identity(sheet):
+    return next(identities(sheet), ("", []))
+
+
+def identities(sheet):
     for record in sheet.get("business_facts", {}).get("selected_records", []):
         values = record.get("values", [])
         labels = " ".join(str(value.get("value", "")) for value in values[:-1])
@@ -80,8 +91,7 @@ def identity(sheet):
         ))
         if (explicit and is_identity_row(values) and record.get("location")
                 and values[-1].get("cell")):
-            return str(values[-1]["value"]).strip(), [str(record["location"])]
-    return "", []
+            yield str(values[-1]["value"]).strip(), [str(record["location"])]
 
 
 def metric_unit(metric, records):
