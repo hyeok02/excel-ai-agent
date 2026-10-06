@@ -2,6 +2,7 @@
 import re
 
 from app.services.insights.facts.fact_trends import date_value
+from app.services.insights.narratives.flag_narratives import checklist_lead
 from app.services.insights.models import ValidatedWorkbookInsightReport
 from app.services.insights.narratives.subject_scope import visible_subject
 from app.services.insights.verification.reference_matching import matching_references
@@ -13,6 +14,7 @@ def structured_lead(
 ) -> str:
     return _with_subject(context, report, (
         _comparison_lead(context, report)
+        or checklist_lead(report)
         or _record_lead(report)
         or _change_lead(report)
         or _event_lead(context, report)

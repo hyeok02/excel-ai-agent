@@ -144,4 +144,4 @@ def test_reports_when_a_table_was_too_large_for_complete_aggregation() -> None:
 
     result = validate_workbook_insights(report(), source)
 
-    assert any("일부 큰 표" in item for item in result.limitations)
+    assert any("읽지 못한 시트가 1개" in item for item in result.limitations)

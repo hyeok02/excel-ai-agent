@@ -28,6 +28,11 @@ def subject_particle(text):
     return "가" if last in "aeiouyAEIOUY0123456789" else "이"
 
 
+def topic_particle(text):
+    """은/는 for the word the reader says, matching subject_particle's reading."""
+    return "은" if subject_particle(text) == "이" else "는"
+
+
 def workbook_identity(context):
     """The subject can sit on a sheet other than the one being narrated."""
     for sheet in context.get("sheets", []):
