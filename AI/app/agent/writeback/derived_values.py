@@ -8,15 +8,18 @@
 import re
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP
 
+from app.agent.writeback.change_direction import direction_after
 from app.agent.writeback.value_authorization import as_number, value_is_authorized
 
-DIRECTION_WINDOW = 12
-UP = ("올려", "올리", "인상", "증가", "늘려", "늘리", "상향", "더해", "더하", "추가",
-      "increase", "raise", "up", "add")
-DOWN = ("내려", "내리", "인하", "감소", "줄여", "줄이", "하향", "삭감", "빼", "차감",
-        "decrease", "reduce", "cut", "down", "less")
 PERCENT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s*(?:%|퍼센트|프로|퍼)")
-AMOUNT = re.compile(r"(?<![\w$.:%])(\d[\d,]*(?:\.\d+)?)\s*(?:명|개|원|건|점|시간|만큼)?")
+# "1억 줄여줘"의 1은 1이 아니라 1e8이다. 단위를 빼고 읽으면 요청대로 계산한
+# 값은 거절되고, 1만 뺀 엉뚱한 값이 계산 근거까지 달고 승인 화면에 오른다.
+MAGNITUDE = {"조": Decimal("1e12"), "백만": Decimal("1e6"), "억": Decimal("1e8"),
+             "만": Decimal("1e4"), "천": Decimal("1e3")}
+AMOUNT = re.compile(
+    r"(?<![\w$.:%])(\d[\d,]*(?:\.\d+)?)(?!\s*(?:%|퍼센트|프로|퍼))"
+    r"\s*(백만|조|억|만(?!큼)|천)?\s*(?:명|개|원|건|점|시간|만큼)?"
+)
 # "두 배로", "3배로". 배정·배분 같은 낱말이 걸리지 않게 뒤 글자를 제한한다.
 MULTIPLE = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?|두|세|네|다섯|열)\s*배(?=로|만|$|[\s.,!?])")
 KOREAN_MULTIPLE = {"두": 2, "세": 3, "네": 4, "다섯": 5, "열": 10}
@@ -25,14 +28,6 @@ HALF = ("절반", "반으로", "1/2")
 TRANSITION = re.compile(
     r"\d[\d,]*(?:\.\d+)?\s*[가-힣]{0,3}\s*(?:에서|부터|->|→|~)\s*-?\d"
 )
-
-
-def _direction(instruction: str, end: int) -> int:
-    """숫자 바로 뒤에 붙은 증감 표현. 멀리 떨어진 낱말은 보지 않는다."""
-    tail = instruction[end : end + DIRECTION_WINDOW].casefold()
-    if any(word in tail for word in DOWN):
-        return -1
-    return 1 if any(word in tail for word in UP) else 0
 
 
 def _rounded(result: Decimal, current: Decimal) -> set[Decimal]:
@@ -55,7 +50,7 @@ def _plain(value: Decimal) -> str:
 
 def _percent(instruction: str, current: Decimal, target: Decimal) -> str | None:
     for match in PERCENT.finditer(instruction):
-        sign = _direction(instruction, match.end())
+        sign = direction_after(instruction, match.end())
         if sign == 0:
             continue
         rate = Decimal(match.group(1)) / 100
@@ -72,8 +67,10 @@ def _percent(instruction: str, current: Decimal, target: Decimal) -> str | None:
 
 def _amount(instruction: str, current: Decimal, target: Decimal) -> str | None:
     for match in AMOUNT.finditer(instruction):
-        sign = _direction(instruction, match.end())
+        sign = direction_after(instruction, match.end())
         amount = as_number(match.group(1))
+        if amount is not None:
+            amount *= MAGNITUDE.get(match.group(2) or "", 1)
         if sign == 0 or amount is None or amount == 0:
             continue
         result = current + sign * amount

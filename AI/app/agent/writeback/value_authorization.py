@@ -2,6 +2,7 @@ import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
+from app.agent.writeback.change_direction import direction_after
 from app.services.insights.verification.numeric_validation import numbers
 
 # "1081에서 981로", "1,081 → 981", "from 1081 to 981"처럼
@@ -22,11 +23,32 @@ def value_is_authorized(value: object, instruction: str) -> bool:
         labels = ("true", "참", "예") if value else ("false", "거짓", "아니오")
         return any(label in normalized for label in labels)
     if isinstance(value, (int, float)):
-        return bool(numbers(str(value)) & numbers(instruction))
+        return bool(numbers(str(value)) & _stated_numbers(instruction))
     text = str(value).strip().casefold()
     if text and text in normalized:
         return True
     return _iso_date(text) and numbers(text) <= numbers(instruction)
+
+
+AMOUNT_TOKEN = re.compile(r"(?<![\w$.:])-?\d[\d,]*(?:\.\d+)?\s*(?:백만|조|억|만(?!큼)|천)?")
+
+
+def _stated_numbers(instruction: str) -> set:
+    """
+    "1억 줄여줘"의 1억은 바꿀 값이 아니라 뺄 양이다.
+
+    그 숫자를 목표값으로 받아 주면, 5억을 1억으로 덮어쓰는 변경안이 "요청에
+    적힌 값"이라는 이유로 승인 화면에 오른다. 앞뒤 값을 함께 밝힌 요청의
+    바꿀 값(1081에서 1000으로)은 증감 표현이 뒤따라도 그대로 둔다.
+    """
+    stated = [match.span("next") for match in VALUE_TRANSITION.finditer(instruction)]
+    deltas = set()
+    for match in AMOUNT_TOKEN.finditer(instruction):
+        if any(low <= match.start() < high for low, high in stated):
+            continue
+        if direction_after(instruction, match.end()):
+            deltas |= numbers(match.group())
+    return numbers(instruction) - deltas
 
 
 def _iso_date(value: str) -> bool:

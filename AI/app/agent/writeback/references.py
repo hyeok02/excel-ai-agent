@@ -3,6 +3,7 @@ import re
 from openpyxl.utils.cell import get_column_letter, range_boundaries
 
 from app.agent.query.index import WorkbookDataIndex
+from app.agent.writeback.formula_ranges import covers, plain_ranges, sheet_ranges
 from app.agent.writeback.models import WritebackContextCell
 
 MAX_CHANGES = 50
@@ -56,23 +57,18 @@ def _formula_references(
     )
     if any(item in normalized.casefold() for item in qualified):
         return True
+    column, row = column_number(target), int(re.search(r"\d+", target).group())
+    # 다른 시트의 범위를 가리키는 수식이 가장 흔한 합계다. 시트 이름이 앞에
+    # 붙은 범위는 수식이 어느 시트에 있든 대상 시트와 맞춰 봐야 한다.
+    for sheet, span in sheet_ranges(normalized):
+        if sheet.casefold() == target_sheet.casefold() and covers(span, column, row):
+            return True
     if formula_sheet.casefold() != target_sheet.casefold():
         return False
-    pattern = rf"(?<![A-Z0-9_]){re.escape(target)}(?![A-Z0-9_])"
+    pattern = rf"(?<![A-Z0-9_!]){re.escape(target)}(?![A-Z0-9_])"
     if re.search(pattern, normalized, re.I):
         return True
-    target_column = column_number(target)
-    target_row = int(re.search(r"\d+", target).group())
-    ranges = re.findall(
-        r"([A-Z]{1,3}[1-9][0-9]{0,6}):([A-Z]{1,3}[1-9][0-9]{0,6})",
-        normalized,
-        re.I,
-    )
-    for start, end in ranges:
-        min_col, min_row, max_col, max_row = range_boundaries(f"{start}:{end}")
-        if min_col <= target_column <= max_col and min_row <= target_row <= max_row:
-            return True
-    return False
+    return any(covers(span, column, row) for span in plain_ranges(normalized))
 
 
 def context_cells(data_index, target) -> list[WritebackContextCell]:
