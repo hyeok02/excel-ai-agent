@@ -28,6 +28,7 @@ public class WorkbookWritebackService {
 	private final WorkbookWritebackRepository writebackRepository;
 	private final AnalysisFileStorage fileStorage;
 	private final AiWritebackClient aiClient;
+	private final WritebackCommits commits;
 	private final WritebackJson json;
 	private final WritebackSources sources;
 
@@ -35,16 +36,17 @@ public class WorkbookWritebackService {
 			AnalysisAccessService accessService,
 			WorkbookWritebackRepository writebackRepository,
 			AnalysisFileStorage fileStorage, AiWritebackClient aiClient,
-			ObjectMapper objectMapper) {
+			WritebackCommits commits, ObjectMapper objectMapper) {
 		this.accessService = accessService;
 		this.writebackRepository = writebackRepository;
 		this.fileStorage = fileStorage;
 		this.aiClient = aiClient;
+		this.commits = commits;
 		this.json = new WritebackJson(objectMapper);
 		this.sources = new WritebackSources(writebackRepository, fileStorage);
 	}
 
-	@Transactional
+	/** AI 호출이 끝난 뒤에만 쓰기 트랜잭션을 연다. 이유는 {@link WritebackCommits}. */
 	public WritebackView propose(UUID analysisId, String instruction, String actor) {
 		AnalysisJob job = completedJobWithSource(analysisId, actor);
 		UUID base = sources.latestApplied(analysisId);
@@ -53,7 +55,7 @@ public class WorkbookWritebackService {
 		WorkbookWriteback item = WorkbookWriteback.proposed(
 				analysisId, instruction.trim(), json.proposal(proposal),
 				proposal.blocked(), actor, Instant.now(), base);
-		return WritebackView.from(writebackRepository.save(item), json);
+		return WritebackView.from(commits.save(item), json);
 	}
 
 	@Transactional(readOnly = true)
@@ -63,7 +65,6 @@ public class WorkbookWritebackService {
 				.stream().map(item -> WritebackView.from(item, json)).toList();
 	}
 
-	@Transactional
 	public WritebackView approve(
 			UUID analysisId, UUID writebackId, boolean confirmed,
 			List<String> approvedCells, String actor) {
@@ -82,8 +83,9 @@ public class WorkbookWritebackService {
 				WritebackApprovalScope.select(proposal.changes(), approvedCells),
 				job.isIncludeHiddenSheets());
 		fileStorage.storeWriteback(analysisId, writebackId, job.getFileExtension(), result.workbook());
-		item.apply(json.manifest(result.manifest()), actor, Instant.now(), base);
-		return WritebackView.from(item, json);
+		return WritebackView.from(
+				commits.applyVerified(writebackId, json.manifest(result.manifest()), actor, base),
+				json);
 	}
 
 	@Transactional

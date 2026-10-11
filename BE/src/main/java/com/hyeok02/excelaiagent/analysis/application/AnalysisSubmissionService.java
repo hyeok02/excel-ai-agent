@@ -2,11 +2,13 @@ package com.hyeok02.excelaiagent.analysis.application;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.RejectedExecutionException;
 
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import com.hyeok02.excelaiagent.analysis.error.AnalysisQueueFullException;
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,8 +60,27 @@ public class AnalysisSubmissionService {
 		AnalysisSubmission submission = new AnalysisSubmission(
 				job.getAnalysisId(), job.getStatus(), job.getMode(),
 				job.getOriginalFilename(), job.getFileSizeBytes(), job.getCreatedAt());
-		analysisJobProcessor.process(analysisId, depth);
+		queue(analysisId, depth, job);
 		return submission;
+	}
+
+	/**
+	 * 대기열이 가득 차면 접수 자체를 되돌린다.
+	 *
+	 * 작업 행과 업로드 파일은 이 시점에 이미 저장돼 있다. 거부를 그대로 흘려보내면
+	 * 아무도 처리하지 않는 QUEUED 행과 파일이 남아, 서버를 다시 띄울 때까지
+	 * 이력에 "분석 대기 중"으로 걸려 있는다.
+	 */
+	private void queue(UUID analysisId, AnalysisDepth depth, AnalysisJob job) {
+		try {
+			analysisJobProcessor.process(analysisId, depth);
+		}
+		catch (RejectedExecutionException exception) {
+			analysisJobRepository.delete(job);
+			analysisJobRepository.flush();
+			analysisFileStorage.delete(analysisId);
+			throw new AnalysisQueueFullException(exception);
+		}
 	}
 
 	public AnalysisResultDetails getResult(UUID analysisId, String ownerUsername) {
