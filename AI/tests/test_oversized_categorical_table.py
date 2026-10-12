@@ -4,6 +4,7 @@ from dataclasses import asdict
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+from app.services.insights.facts import table_inputs
 from app.services.insights.facts.business_facts import build_business_facts
 from app.services.insights.narratives.categorical_narratives import categorical_report
 from app.services.insights.narratives.source_narratives import source_narrative_report
@@ -42,10 +43,12 @@ def test_wide_sparse_region_is_counted_from_all_visible_rows() -> None:
         workbook.close()
 
 
-def test_table_budget_clipping_never_publishes_partial_counts() -> None:
+def test_table_budget_clipping_never_publishes_partial_counts(monkeypatch) -> None:
+    # 상한 숫자에 묶이지 않게, 현재 상한을 넘기는 크기를 테스트가 직접 만든다.
+    monkeypatch.setattr(table_inputs, "MAX_TABLE_CELLS", 120)
     rows = [
         [_cell(f"{column}{row}", f"값-{row % 3}") for column in "ABCDEFGHIJ"]
-        for row in range(1, 301)
+        for row in range(1, 31)
     ]
     region = {
         "analysis_rows": rows, "analysis_complete": True,

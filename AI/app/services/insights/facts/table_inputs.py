@@ -2,11 +2,14 @@
 from typing import Any, Iterable
 
 from app.services.insights.facts.region_rows import normalized_region_rows
+from app.services.workbook_details.analysis_samples import MAX_ANALYSIS_SHEET_CELLS
 
 
 MAX_TABLE_REGIONS = 24
 MAX_LEGACY_ROWS = 48
-MAX_TABLE_CELLS = 2048
+# 수집 상한보다 작으면 완전히 읽어 온 표도 여기서 잘려 불완전으로 표시되고,
+# 서술 경로가 그 표를 빈 표로 버린다. 두 상한은 같이 움직여야 한다.
+MAX_TABLE_CELLS = MAX_ANALYSIS_SHEET_CELLS
 MAX_ROWS_PER_REGION = MAX_TABLE_CELLS
 
 

@@ -4,6 +4,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 from app.services.region_detector import CellRegion
+from app.services.workbook_details import analysis_samples
 from app.services.workbook_details.analysis_samples import (
     collect_analysis_rows,
     collect_analysis_sample,
@@ -82,7 +83,9 @@ def test_sparse_scan_uses_visible_existing_cells_without_creating_blanks() -> No
         workbook.close()
 
 
-def test_total_compact_samples_are_bounded_per_sheet() -> None:
+def test_total_compact_samples_are_bounded_per_sheet(monkeypatch) -> None:
+    monkeypatch.setattr(analysis_samples, "MAX_ANALYSIS_SHEET_CELLS", 2048)
+    monkeypatch.setattr(analysis_samples, "MAX_ANALYSIS_REGION_CELLS", 2048)
     workbook = Workbook()
     sheet = workbook.active
     regions = []

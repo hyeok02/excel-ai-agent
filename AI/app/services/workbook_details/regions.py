@@ -10,8 +10,8 @@ from app.services.provenance import (
     evidence_from_reference,
 )
 from app.services.semantic_models import SemanticClassification
+from app.services.workbook_details import analysis_samples
 from app.services.workbook_details.analysis_samples import (
-    MAX_ANALYSIS_SHEET_CELLS,
     analysis_cell_index,
     collect_analysis_sample,
 )
@@ -31,7 +31,7 @@ def summarize_regions(
     value_worksheet: Worksheet | None = None,
 ) -> list[RegionSummary]:
     summaries: list[RegionSummary] = []
-    remaining_analysis_cells = MAX_ANALYSIS_SHEET_CELLS
+    remaining_analysis_cells = analysis_samples.MAX_ANALYSIS_SHEET_CELLS
     cell_index = analysis_cell_index(worksheet)
     cached_cells = (
         getattr(value_worksheet, "_cells", {})
