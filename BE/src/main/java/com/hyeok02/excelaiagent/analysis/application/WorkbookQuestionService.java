@@ -11,7 +11,6 @@ import com.hyeok02.excelaiagent.integration.ai.AiWorkbookQuestion;
 import com.hyeok02.excelaiagent.integration.ai.NamedResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class WorkbookQuestionService {
@@ -28,7 +27,13 @@ public class WorkbookQuestionService {
 		this.aiServiceClient = aiServiceClient;
 	}
 
-	@Transactional(readOnly = true)
+	/**
+	 * 트랜잭션을 열어 두지 않는다.
+	 *
+	 * AI 응답은 최대 150초가 걸리는데 그동안 DB 커넥션을 쥐고 있으면 질문 몇 건이
+	 * 풀을 모두 가져가 로그인까지 막힌다. 소유권 확인이 그 자체로 짧은 트랜잭션을
+	 * 열고 닫으며, 그 뒤로는 읽어 둔 값만 쓰므로 트랜잭션이 필요 없다.
+	 */
 	public AiWorkbookQuestion ask(UUID analysisId, String question, String ownerUsername) {
 		AnalysisJob job = accessService.requireOwned(analysisId, ownerUsername);
 		if (job.getStatus() != AnalysisStatus.COMPLETED) {

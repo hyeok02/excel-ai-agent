@@ -8,6 +8,7 @@ from app.services.insights.display.display_quality import (
     is_machine_value,
 )
 from app.services.insights.narratives.event_narrative import build_event_insight
+from app.services.insights.display.percent_format import scales_by_percent
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.models import WorkbookInsight
 from app.services.insights.narratives.narrative_values import finite, number, period, reference
@@ -121,7 +122,7 @@ def _display_value(cell):
         label = str(cell.get("label", ""))
         number_format = str(cell.get("number_format", ""))
         if "%" in number_format:
-            display = raw if "\\%" in number_format else float(raw) * 100
+            display = float(raw) * 100 if scales_by_percent(number_format) else raw
             return f"{number(display)}%"
         return f"{number(raw)}{'%' if '%' in label else ''}"
     return _text(raw)

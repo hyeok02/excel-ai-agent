@@ -2,6 +2,7 @@ package com.hyeok02.excelaiagent.common.error;
 
 import com.hyeok02.excelaiagent.analysis.error.AnalysisFileStorageException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
+import com.hyeok02.excelaiagent.analysis.error.AnalysisQueueFullException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultNotReadyException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisResultPersistenceException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisSourceUnavailableException;
@@ -31,6 +32,13 @@ public class AnalysisExceptionHandler {
 	public ResponseEntity<ApiError> handleAnalysisNotFound(
 			AnalysisNotFoundException exception, HttpServletRequest request) {
 		return error(HttpStatus.NOT_FOUND, "ANALYSIS_NOT_FOUND", exception.getMessage(), request);
+	}
+
+	@ExceptionHandler(AnalysisQueueFullException.class)
+	public ResponseEntity<ApiError> handleAnalysisQueueFull(
+			AnalysisQueueFullException exception, HttpServletRequest request) {
+		return error(HttpStatus.SERVICE_UNAVAILABLE, "ANALYSIS_QUEUE_FULL",
+				exception.getMessage(), request);
 	}
 
 	@ExceptionHandler(AnalysisSourceUnavailableException.class)
