@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from openpyxl.formula.tokenizer import Tokenizer, TokenizerError
 from openpyxl.worksheet.worksheet import Worksheet
 
+from app.services.external_links import references_other_file
 from app.services.provenance import (
     Provenance,
     build_provenance,
@@ -101,7 +102,8 @@ def _extract_references(formula: str) -> list[str]:
 def _classify_formula(formula: str) -> str:
     upper_formula = formula.upper()
 
-    if "[" in formula or "_XLL." in upper_formula or "OFFICE.EXCEL.FUNCTIONS" in upper_formula:
+    if (references_other_file(formula) or "_XLL." in upper_formula
+            or "OFFICE.EXCEL.FUNCTIONS" in upper_formula):
         return "external"
 
     lookup_functions = (

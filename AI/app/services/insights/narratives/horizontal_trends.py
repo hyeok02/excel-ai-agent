@@ -2,9 +2,9 @@
 from app.services.insights.display.derived_metrics import derived_metric
 from app.services.insights.display.glossary import readable
 from app.services.insights.display.display_quality import business_priority, metric_family
+from app.services.insights.display.percent_format import scales_by_percent
 from app.services.insights.models import WorkbookInsight
 from datetime import date
-
 from app.services.insights.display.amount_units import PER_SHARE, amount_unit
 from app.services.insights.narratives.narrative_values import (
     number, period, reference, workbook_identity,
@@ -133,7 +133,7 @@ def _percentage(points):
 
 def _percent(value, point):
     number_format = str(point.get("number_format", ""))
-    display = value if "\\%" in number_format else value * 100
+    display = value * 100 if scales_by_percent(number_format) else value
     return f"{number(display)}%"
 
 

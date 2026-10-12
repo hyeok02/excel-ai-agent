@@ -2,6 +2,7 @@ from collections.abc import Iterable
 
 from openpyxl.formula.tokenizer import Tokenizer, TokenizerError
 
+from app.services.external_links import references_other_file
 from app.services.formula_analyzer import FormulaAnalysis
 from app.services.formula_risks.finding_factory import build_formula_finding
 from app.services.formula_risks.models import FormulaRiskFinding
@@ -52,7 +53,7 @@ def _detect_formula(
         if token.type != "OPERAND" or token.subtype != "RANGE":
             continue
         reference = token.value
-        if "[" in reference:
+        if references_other_file(reference):
             key = ("external_reference", reference)
             if key not in seen:
                 seen.add(key)

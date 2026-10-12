@@ -24,7 +24,7 @@ def numeric_changes(records: list[dict[str, object]]) -> list[dict[str, object]]
     old_by_label = _numbers_by_label(earliest)
     new_by_label = _numbers_by_label(latest)
     changes = []
-    for label in old_by_label.keys() & new_by_label.keys():
+    for label in [name for name in old_by_label if name in new_by_label]:
         old, new = old_by_label[label], new_by_label[label]
         if old == 0 or old == new:
             continue
@@ -40,8 +40,11 @@ def numeric_changes(records: list[dict[str, object]]) -> list[dict[str, object]]
                 "evidence": [earliest["location"], latest["location"]],
             }
         )
+    # 수치가 똑같은 항목이 둘 있으면 어느 쪽을 쓸지 정렬만으로는 갈리지 않는다.
+    # 이름으로 먼저 줄을 세워 두면, 같은 파일을 다시 돌려도 같은 항목이 뽑힌다.
+    named = sorted(changes, key=lambda item: item["metric"])
     return sorted(
-        changes, key=lambda item: (
+        named, key=lambda item: (
             not derived_metric(item["metric"]),
             bool(re.search(r"\btotal\b|전체|합계|총합", item["metric"], re.I)),
             magnitude_weight(item["latest_value"]),
