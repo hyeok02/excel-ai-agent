@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class AdminUserControllerTests extends AuthControllerTestSupport {
 	@Test
 	void adminCreatesLocalUser() throws Exception {
-		MockHttpSession adminSession = login("admin", "admin1234");
+		MockHttpSession adminSession = login("admin", ADMIN_PASSWORD);
 		String username = "employee-" + UUID.randomUUID().toString().substring(0, 8);
 
 		mockMvc.perform(post("/api/v1/admin/users")
@@ -51,7 +51,7 @@ class AdminUserControllerTests extends AuthControllerTestSupport {
 
 	@Test
 	void validatesUserStatusRequests() throws Exception {
-		MockHttpSession adminSession = login("admin", "admin1234");
+		MockHttpSession adminSession = login("admin", ADMIN_PASSWORD);
 
 		mockMvc.perform(patch("/api/v1/admin/users/not-a-uuid/status")
 					.session(adminSession)

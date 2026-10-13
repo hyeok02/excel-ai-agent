@@ -49,6 +49,10 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
       login: async (username, password) => {
         await initializeCsrf()
         const authenticatedUser = await loginWithCredentials(username, password)
+        // 로그인에 성공하면 서버가 세션 ID와 CSRF 토큰을 모두 새로 발급한다.
+        // 새 토큰은 다음 요청에서야 쿠키에 담기므로, 여기서 한 번 받아 두지
+        // 않으면 로그인 직후의 첫 쓰기 요청이 CSRF 검증에서 막힌다.
+        await initializeCsrf()
         setUser(authenticatedUser)
         return authenticatedUser
       },

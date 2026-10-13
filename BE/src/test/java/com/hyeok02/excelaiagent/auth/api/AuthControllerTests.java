@@ -55,7 +55,7 @@ class AuthControllerTests extends AuthControllerTestSupport {
 
 	@Test
 	void logsInWithBootstrapAdminAccount() throws Exception {
-		MockHttpSession session = login("admin", "admin1234");
+		MockHttpSession session = login("admin", ADMIN_PASSWORD);
 
 		mockMvc.perform(get("/api/v1/auth/me").session(session))
 				.andExpect(status().isOk())

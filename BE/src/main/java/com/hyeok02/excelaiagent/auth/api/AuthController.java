@@ -17,6 +17,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,16 +32,19 @@ public class AuthController {
 
 	private final AuthenticationManager authenticationManager;
 	private final SecurityContextRepository securityContextRepository;
+	private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
 	private final UserAccountService userAccountService;
 	private final AuthProperties authProperties;
 
 	public AuthController(
 			AuthenticationManager authenticationManager,
 			SecurityContextRepository securityContextRepository,
+			SessionAuthenticationStrategy sessionAuthenticationStrategy,
 			UserAccountService userAccountService,
 			AuthProperties authProperties) {
 		this.authenticationManager = authenticationManager;
 		this.securityContextRepository = securityContextRepository;
+		this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
 		this.userAccountService = userAccountService;
 		this.authProperties = authProperties;
 	}
@@ -54,6 +58,9 @@ public class AuthController {
 			Authentication authentication = authenticationManager.authenticate(
 					UsernamePasswordAuthenticationToken.unauthenticated(
 							loginRequest.username().trim(), loginRequest.password()));
+			// 세션 ID와 CSRF 토큰을 갈아 끼운 뒤에 인증 정보를 저장해야,
+			// 로그인 전에 발급된 식별자로는 이 세션에 들어올 수 없다.
+			sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
 			SecurityContext context = SecurityContextHolder.createEmptyContext();
 			context.setAuthentication(authentication);
 			SecurityContextHolder.setContext(context);

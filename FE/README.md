@@ -54,6 +54,6 @@ VITE_ANALYSIS_POLL_INTERVAL=1000
 
 - `/login`: 사내 계정 및 회사 SSO 로그인
 - `/admin/users`: 관리자 전용 사내 계정 발급과 사용자 목록
-- 기본 관리자: `admin / admin1234`
+- 관리자 계정: 아이디는 `BOOTSTRAP_ADMIN_USERNAME`(기본값 `admin`), 비밀번호는 백엔드에 설정한 `BOOTSTRAP_ADMIN_PASSWORD`
 
 API 인증은 HttpOnly 세션 쿠키를 사용하며 Axios는 CSRF 쿠키와 자격 증명을 함께 전달합니다.

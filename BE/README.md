@@ -55,15 +55,16 @@ curl http://localhost:8080/actuator/health
 | `AUTH_SECURITY_ENABLED` | `true` | API 로그인 보호 활성화 |
 | `FRONTEND_BASE_URL` | `http://localhost:5173` | SSO 완료 후 돌아갈 Frontend 주소 |
 | `BOOTSTRAP_ADMIN_USERNAME` | `admin` | 최초 관리자 아이디 |
-| `BOOTSTRAP_ADMIN_PASSWORD` | `admin1234` | 최초 관리자 비밀번호 |
+| `BOOTSTRAP_ADMIN_PASSWORD` | 없음 (필수) | 최초 관리자 비밀번호. 12자 이상. 없으면 서버가 뜨지 않습니다 |
 | `SSO_ENABLED` | `false` | 회사 OIDC SSO 활성화 |
 | `SSO_ALLOWED_DOMAIN` | 빈 값 | 허용할 회사 이메일 도메인 |
 | `SSO_AUTO_PROVISION` | `true` | 최초 SSO 로그인 시 사용자 자동 생성 |
 
 ## 로그인
 
-최초 실행 시 `admin / admin1234` 관리자 계정이 생성됩니다. 운영 환경에서는
-`BOOTSTRAP_ADMIN_PASSWORD`를 반드시 변경해야 합니다. 관리자는 `/api/v1/admin/users`를
+최초 실행 시 `BOOTSTRAP_ADMIN_PASSWORD`로 설정한 비밀번호의 관리자 계정이
+생성됩니다. 이 값은 기본값이 없으며, 비어 있거나 12자보다 짧으면 서버가 뜨지 않고
+무엇을 설정해야 하는지 알려 줍니다. 관리자는 `/api/v1/admin/users`를
 통해 별도의 회원가입 없이 사내 계정을 발급하고,
 `PATCH /api/v1/admin/users/{userId}/status`에 `{ "enabled": false }` 또는
 `{ "enabled": true }`를 보내 계정을 비활성화하거나 다시 활성화할 수 있습니다. 현재

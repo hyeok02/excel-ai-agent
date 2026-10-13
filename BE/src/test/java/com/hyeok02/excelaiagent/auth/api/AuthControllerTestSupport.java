@@ -27,10 +27,14 @@ import org.springframework.test.web.servlet.MockMvc;
 		properties = {
 				"app.auth.security-enabled=true",
 				"app.auth.sso.enabled=false",
+				"app.auth.bootstrap.password=test-admin-password",
 				"app.storage.upload-dir=build/test-auth-uploads"
 		})
 @AutoConfigureMockMvc
 abstract class AuthControllerTestSupport {
+	/** 코드에 박힌 기본 비밀번호를 없앴으므로, 테스트도 쓸 값을 직접 정한다. */
+	static final String ADMIN_PASSWORD = "test-admin-password";
+
 	@Autowired
 	protected MockMvc mockMvc;
 

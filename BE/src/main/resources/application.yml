@@ -113,7 +113,7 @@ app:
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
     bootstrap:
       username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
-      password: ${BOOTSTRAP_ADMIN_PASSWORD:admin1234}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:}
       display-name: ${BOOTSTRAP_ADMIN_DISPLAY_NAME:System Administrator}
     sso:
       enabled: ${SSO_ENABLED:false}

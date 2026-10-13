@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class AdminUserStatusTests extends AuthControllerTestSupport {
 	@Test
 	void adminDeactivatesAndReactivatesUserAndExistingSessionIsRevoked() throws Exception {
-		MockHttpSession adminSession = login("admin", "admin1234");
+		MockHttpSession adminSession = login("admin", ADMIN_PASSWORD);
 		String username = "status-" + UUID.randomUUID().toString().substring(0, 8);
 		String userId = createUser(adminSession, username, "USER");
 		MockHttpSession employeeSession = login(username, "employee1234");
@@ -50,7 +50,7 @@ class AdminUserStatusTests extends AuthControllerTestSupport {
 					.session(accountSwitchSession)
 					.with(csrf())
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"username\":\"admin\",\"password\":\"admin1234\"}"))
+					.content("{\"username\":\"admin\",\"password\":\"" + ADMIN_PASSWORD + "\"}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.username").value("admin"));
 
@@ -83,7 +83,7 @@ class AdminUserStatusTests extends AuthControllerTestSupport {
 
 	@Test
 	void adminCannotDeactivateOwnAccount() throws Exception {
-		MockHttpSession adminSession = login("admin", "admin1234");
+		MockHttpSession adminSession = login("admin", ADMIN_PASSWORD);
 		String adminId = appUserRepository.findByUsernameIgnoreCase("admin").orElseThrow()
 				.getUserId().toString();
 

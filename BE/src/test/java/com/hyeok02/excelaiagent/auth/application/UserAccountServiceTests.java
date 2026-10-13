@@ -36,7 +36,7 @@ class UserAccountServiceTests {
 			new AuthProperties(
 					true,
 					"http://localhost:5173",
-					new AuthProperties.Bootstrap("admin", "admin1234", "Admin"),
+					new AuthProperties.Bootstrap("admin", "test-admin-password", "Admin"),
 					new AuthProperties.Sso(true, "company", "example.com", true)),
 			Clock.fixed(NOW, ZoneOffset.UTC));
 

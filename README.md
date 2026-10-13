@@ -235,14 +235,12 @@ http://localhost:5173
 
 ## 로컬 관리자 계정
 
-최초 실행 시 개발용 관리자 계정이 생성됩니다.
+최초 실행 시 관리자 계정이 생성됩니다. 아이디는 `BOOTSTRAP_ADMIN_USERNAME`
+(기본값 `admin`), 비밀번호는 `BOOTSTRAP_ADMIN_PASSWORD`를 그대로 씁니다.
 
-```text
-아이디: admin
-비밀번호: admin1234
-```
-
-운영 환경에서는 반드시 `BOOTSTRAP_ADMIN_PASSWORD`를 변경해야 합니다.
+비밀번호에는 기본값이 없습니다. 비어 있거나 12자보다 짧으면 서버가 뜨지 않고,
+무엇을 설정해야 하는지 알려 줍니다. 기본값을 두면 설정을 잊은 배포가 문서에
+적힌 비밀번호로 열린 채 떠 있게 되기 때문입니다.
 
 ## 주요 환경 변수
 
@@ -286,7 +284,7 @@ http://localhost:5173
 | `SMTP_STARTTLS_REQUIRED` | `true` | TLS 협상 실패 시 평문 전송 차단 |
 | `ANALYSIS_PUBLIC_SHARE_TTL` | `7d` | 수신자용 읽기 전용 분석 링크 유효 시간 |
 | `BOOTSTRAP_ADMIN_USERNAME` | `admin` | 최초 관리자 아이디 |
-| `BOOTSTRAP_ADMIN_PASSWORD` | `admin1234` | 최초 관리자 비밀번호 |
+| `BOOTSTRAP_ADMIN_PASSWORD` | 없음 (필수) | 최초 관리자 비밀번호. 12자 이상. 없으면 서버가 뜨지 않습니다 |
 
 ## 도메인 교차 회귀 테스트
 
