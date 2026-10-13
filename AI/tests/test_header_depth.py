@@ -50,3 +50,45 @@ def test_the_nearest_header_line_wins() -> None:
 
     assert header_for(context, SHEET, 3, "B2") == "Services"
     assert header_for(context, SHEET, 3, "A2") == "Date"
+
+
+def test_a_row_of_marks_is_not_a_header() -> None:
+    # o/x 만 적힌 점검표는 데이터 행도 전부 글자다. 글자 비율만 보면 바로 윗
+    # 데이터 행이 머리글이 되어 'IP' 자리에 '10.1.7.70'이 붙었다.
+    rows = [
+        _row(5, {"C": "IP", "D": "장비", "E": "작업", "F": "네트워크"}),
+        *(
+            _row(number, {"C": f"10.1.7.{number}", "D": f"CVD #{number}",
+                          "E": "o", "F": "x"})
+            for number in range(6, 12)
+        ),
+    ]
+    context = build_header_context(tuple(rows), rows)
+
+    assert header_for(context, SHEET, 7, "C7") == "IP"
+    assert header_for(context, SHEET, 11, "C11") == "IP"
+    assert header_for(context, SHEET, 11, "F11") == "네트워크"
+
+
+def test_a_sparse_row_inside_a_block_is_not_a_header() -> None:
+    # 표가 4열을 쓰는데 2칸만 적힌 줄은 머리글이 아니라 띄엄띄엄한 데이터다.
+    # 아래 행들이 머리글을 잃지 않아야 한다.
+    rows = [
+        _row(5, {"C": "IP", "D": "장비", "E": "작업", "F": "네트워크"}),
+        *(
+            _row(number, {"C": f"10.1.7.{number}", "D": f"CVD #{number}",
+                          "E": "o", "F": "x"})
+            for number in (6, 7)
+        ),
+        _row(8, {"C": "10.1.7.8", "D": "CVD #8"}),
+        *(
+            _row(number, {"C": f"10.1.7.{number}", "D": f"CVD #{number}",
+                          "E": "o", "F": "x"})
+            for number in (9, 10, 11)
+        ),
+    ]
+    context = build_header_context(tuple(rows), rows)
+
+    assert header_for(context, SHEET, 9, "C9") == "IP"
+    assert header_for(context, SHEET, 11, "D11") == "장비"
+    assert header_for(context, SHEET, 11, "F11") == "네트워크"
