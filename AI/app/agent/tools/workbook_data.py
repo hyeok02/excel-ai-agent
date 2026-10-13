@@ -33,6 +33,7 @@ from app.agent.tools.workbook_headers import (
     evidence_with_header,
 )
 from app.agent.tools.workbook_data_payload import row_payload
+from app.agent.tools.workbook_row_lists import build_row_list
 
 
 class WorkbookDataSearchTool:
@@ -84,6 +85,8 @@ class WorkbookDataSearchTool:
             series_rows, series_headers, intent,
             scope.metric_group, scope.columns_by_sheet,
         )
+        # 목록도 검색 결과가 아니라 시트 전체를 훑어야 한 건도 빠지지 않는다.
+        row_list = build_row_list(series_rows, series_headers, intent)
         calculations = [
             *verified["calculations"],
             *time_series_calculations(comparison),
@@ -120,6 +123,7 @@ class WorkbookDataSearchTool:
                     context.data_index, rows, query, summary_question
                 ),
                 "time_series_comparison": comparison,
+                "row_list": row_list,
                 "verified_overview": verified["overview"],
                 "verified_insights": verified["insights"],
                 "calculations": calculations,
