@@ -7,28 +7,57 @@ from app.services.provenance import AnalysisEvidence
 
 HeaderContext = dict[tuple[str, int, str], str]
 HEADER_LOOKBACK_ROWS = 12
+# 머리글이 설명할 수 있는 최대 깊이. 빈 줄을 만나면 그 전에 멈추므로
+# 이 값은 끝없이 거슬러 올라가지 않게 막는 안전장치일 뿐이다.
+MAX_HEADER_DISTANCE = 400
 
 
 def build_header_context(
     all_rows: tuple[IndexedRow, ...], selected_rows: list[IndexedRow]
 ) -> HeaderContext:
-    candidates: dict[str, list[IndexedRow]] = defaultdict(list)
+    sheets: dict[str, dict[int, IndexedRow]] = defaultdict(dict)
+    header_rows: dict[str, set[int]] = defaultdict(set)
     for row in all_rows:
+        sheets[row.sheet_name][row.row_number] = row
         if _is_header_row(row):
-            candidates[row.sheet_name].append(row)
+            header_rows[row.sheet_name].add(row.row_number)
     context: HeaderContext = {}
     for row in selected_rows:
-        preceding = [
-            candidate
-            for candidate in candidates[row.sheet_name]
-            if 0 < row.row_number - candidate.row_number <= HEADER_LOOKBACK_ROWS
-        ]
-        for candidate in reversed(preceding):
+        for candidate in _governing_headers(
+            sheets[row.sheet_name], header_rows[row.sheet_name], row.row_number
+        ):
             for cell in candidate.cells:
                 if isinstance(cell.value, str) and cell.value.strip():
                     key = (row.sheet_name, row.row_number, _column(cell.address))
                     context.setdefault(key, cell.value.strip()[:120])
     return context
+
+
+def _governing_headers(
+    rows: dict[int, IndexedRow], header_rows: set[int], row_number: int
+) -> list[IndexedRow]:
+    """
+    머리글은 바로 아래 이어지는 데이터 블록 전체를 설명한다.
+
+    12행으로 끊어 두면 분기 20행짜리 표의 아래 8행이 머리글을 잃는다. 실제로
+    그 때문에 비교 구간이 2022년부터로 잘려, 2023년에 있던 최고점을 놓치고
+    "가장 많이 감소한 부서"의 답이 달라졌다.
+
+    빈 줄은 다른 블록의 시작이므로 거기서 멈춘다. 가까운 머리글부터 돌려주어
+    여러 줄짜리 머리글에서 아래쪽 줄이 이기게 한다.
+    """
+    found: list[IndexedRow] = []
+    current = row_number - 1
+    while current > 0 and row_number - current <= MAX_HEADER_DISTANCE:
+        row = rows.get(current)
+        if row is None:
+            break
+        if current in header_rows:
+            found.append(row)
+        elif found:
+            break
+        current -= 1
+    return found
 
 
 def header_for(

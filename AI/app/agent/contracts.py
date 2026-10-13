@@ -43,6 +43,9 @@ class AgentToolMetadata:
 class AgentToolContext:
     workbook: WorkbookSummary
     data_index: WorkbookDataIndex | None = None
+    # 사용자가 실제로 한 질문. 도구가 받는 query는 모델이 바꿔 쓴 검색어라
+    # 증감 방향·기간 같은 조건이 지워져 있을 수 있다.
+    question: str = ""
 
 
 @dataclass(frozen=True)

@@ -34,7 +34,7 @@ class WorkbookQuestionService:
             return clarification
         plan = build_question_plan(question)
         execution = self._executor.execute(
-            plan, AgentToolContext(summary, data_index), self._registry
+            plan, AgentToolContext(summary, data_index, question), self._registry
         )
         truncated = _search_scope_truncated(execution)
         if canonical := validated_comparison_answer(question, execution, truncated):

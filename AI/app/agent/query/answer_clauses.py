@@ -26,3 +26,20 @@ def stated_direction(text: str) -> str | None:
     if increase == decrease:
         return None
     return "increase" if increase else "decrease"
+
+
+def supported_clauses(text: str, verified) -> tuple[str, bool]:
+    """확인된 절만 남긴 답변과, 덜어낸 절이 있었는지 돌려준다.
+
+    수치 하나를 확인하지 못했다고 답변 전체를 버리면 근거가 있는 문장까지
+    함께 사라진다. "연구개발이 가장 많이 줄었습니다. 143명 감소했습니다."에서
+    143을 확인하지 못하면, 앞 문장까지 묻히고 사용자는 아무것도 못 본다.
+    """
+    parts = clauses(text) or [text]
+    kept = [part.strip() for part in parts if verified(part)]
+    if len(kept) == len(parts):
+        return text, False
+    sentence = " ".join(part for part in kept if part)
+    if sentence and not sentence.endswith((".", "!", "?")):
+        sentence += "."
+    return sentence, True

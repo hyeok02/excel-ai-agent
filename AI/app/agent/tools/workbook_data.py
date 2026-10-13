@@ -24,6 +24,10 @@ from app.agent.tools.workbook_comparisons import (
     build_time_series_comparison,
     time_series_calculations,
 )
+from app.agent.tools.workbook_evidence import (
+    comparison_reference_order,
+    missing_reference_evidence,
+)
 from app.agent.tools.workbook_headers import (
     build_header_context,
     evidence_with_header,
@@ -64,9 +68,21 @@ class WorkbookDataSearchTool:
         verified = build_verified_question_context(context.workbook)
         rows = with_relevant_priority_rows(context.data_index.rows, rows, verified)
         headers = build_header_context(context.data_index.rows, rows)
-        scope = comparison_scope(context.workbook, query)
+        # 증감 방향·기간·부서 범위는 사용자가 한 질문에서 읽는다. 모델이
+        # "headcount by department"처럼 바꿔 부르면 '감소'가 사라져, 도구가
+        # 이미 계산해 둔 결정적 비교 답변이 통째로 꺼지고 모델 추측이 나갔다.
+        intent = context.question or query
+        scope = comparison_scope(context.workbook, intent)
+        # 시계열은 검색이 가져온 행이 아니라 그 시트 전체에서 모은다. 검색
+        # 결과에 따라 비교 기간이 달라지면 같은 질문의 답이 매번 바뀐다.
+        searched_sheets = {row.sheet_name for row in rows}
+        series_rows = [
+            row for row in context.data_index.rows if row.sheet_name in searched_sheets
+        ]
+        series_headers = build_header_context(context.data_index.rows, series_rows)
         comparison = build_time_series_comparison(
-            rows, headers, query, scope.metric_group, scope.columns_by_sheet
+            series_rows, series_headers, intent,
+            scope.metric_group, scope.columns_by_sheet,
         )
         calculations = [
             *verified["calculations"],
@@ -76,7 +92,14 @@ class WorkbookDataSearchTool:
         all_evidence = [
             evidence_with_header(row, cell, headers) for row in rows for cell in row.cells
         ]
-        priority = _comparison_reference_order(comparison)
+        priority = comparison_reference_order(comparison)
+        # 비교가 근거로 드는 셀이 검색 행 밖에 있으면, 그 하나 때문에 비교
+        # 답변이 통째로 버려진다. 헤더 띠(106행)가 실제로 그렇게 빠졌다.
+        all_evidence.extend(
+            missing_reference_evidence(
+                priority, all_evidence, series_rows, series_headers
+            )
+        )
         ordinary = sorted(
             all_evidence,
             key=lambda item: priority.get(
@@ -104,31 +127,3 @@ class WorkbookDataSearchTool:
             },
             evidence=evidence,
         )
-
-
-def _comparison_reference_order(
-    comparison: dict[str, object] | None,
-) -> dict[str, int]:
-    if not comparison:
-        return {}
-    references = {
-        reference: index
-        for index, key in enumerate(("start_reference", "end_reference"))
-        if isinstance((reference := comparison.get(key)), str)
-    }
-    groups = (
-        comparison.get("ranked_changes"),
-        comparison.get("largest_absolute_changes"),
-        comparison.get("metrics"),
-    )
-    for metrics in groups:
-        if not isinstance(metrics, list):
-            continue
-        for metric in metrics:
-            if not isinstance(metric, dict):
-                continue
-            for key in ("start_reference", "end_reference"):
-                reference = metric.get(key)
-                if isinstance(reference, str) and reference not in references:
-                    references[reference] = len(references)
-    return references

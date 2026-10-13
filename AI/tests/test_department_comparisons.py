@@ -45,6 +45,8 @@ def test_department_decrease_excludes_total_and_role_columns() -> None:
         "header_references": ["Metrics!W106", "Metrics!W107"],
         "start_reference": "Metrics!W115",
         "end_reference": "Metrics!W108",
+        # 지표마다 최고점 시점이 다르므로 그 지표의 시작 시점을 함께 싣는다.
+        "start_date": "2023-09-01",
     }
 
 

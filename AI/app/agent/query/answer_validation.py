@@ -1,5 +1,5 @@
 from app.agent.execution import AgentExecution, AgentStepStatus
-from app.agent.query.answer_clauses import clauses
+from app.agent.query.answer_clauses import clauses, supported_clauses
 from app.agent.query.answer_grounding import (
     answer_is_grounded,
     verified_fallback_answer,
@@ -55,8 +55,14 @@ def validate_answer(
             "현재 확인된 원본 셀 근거만으로는 이 질문에 답할 수 없습니다.",
         )
     answer = draft.answer
-    # 절 단위로 본다. 답변 전체로 보면 한 절에서 만들어진 근거가
-    # 다른 절의 주장을 통과시킨다.
+
+    def _verified(part: str) -> bool:
+        # 절 단위로 본다. 답변 전체로 보면 한 절에서 만들어진 근거가
+        # 다른 절의 주장을 통과시킨다.
+        return not unmatched_numbers(
+            part, supported_answer_numbers(question, matched, execution, part)
+        ) and answer_units_supported(part, matched, execution)
+
     parts = clauses(answer) or [answer]
     number_error = any(
         unmatched_numbers(part, supported_answer_numbers(question, matched, execution, part))
@@ -65,11 +71,14 @@ def validate_answer(
     unit_error = any(
         not answer_units_supported(part, matched, execution) for part in parts
     )
-    meaning_error = not answer_is_grounded(
+    trimmed = False
+    if number_error or unit_error:
+        answer, trimmed = supported_clauses(answer, _verified)
+    meaning_error = bool(answer) and (not answer_is_grounded(
         answer, matched, execution, question
-    ) or not answer_bindings_supported(answer, matched)
-    direction_error = not answer_directions_supported(answer, matched)
-    if number_error or unit_error or meaning_error or direction_error:
+    ) or not answer_bindings_supported(answer, matched))
+    direction_error = bool(answer) and not answer_directions_supported(answer, matched)
+    if not answer or meaning_error or direction_error:
         answer = verified_fallback_answer(question, matched, execution) or ""
         if not answer:
             if number_error:
@@ -84,6 +93,8 @@ def validate_answer(
                 question, execution, matched, limitations,
                 "답변 내용을 원본 셀과 대조하지 못해 결과를 표시하지 않았습니다.",
             )
+    elif trimmed:
+        limitations.append("원본에서 확인하지 못한 수치가 있어 그 문장은 빼고 보여줍니다.")
     verification_limited = bool(unknown or failed)
     limited = verification_limited or index_truncated
     return QuestionAnswer(
