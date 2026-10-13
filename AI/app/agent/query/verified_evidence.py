@@ -63,7 +63,12 @@ def merge_evidence(
         *priority[priority_head_size:],
         *ordinary,
     ]
-    return tuple(_unique_evidence(candidates)[:limit])
+    # 검증된 답변이 근거로 드는 셀은 상한 때문에 잘리면 안 된다. 21개 중 하나가
+    # 빠져 요약 답변이 통째로 버려지고, 사용자는 "근거 부족"만 본 적이 있다.
+    # 앞쪽 예비 자리만큼은 더 잡아야 한다. 그러지 않으면 질의용으로 끼워 넣은
+    # 근거가 우선 근거의 꼬리를 상한 밖으로 밀어낸다.
+    reserved = len(priority) + QUERY_EVIDENCE_RESERVE
+    return tuple(_unique_evidence(candidates)[: max(limit, reserved)])
 
 
 def _unique_evidence(items: list[AnalysisEvidence]) -> list[AnalysisEvidence]:

@@ -5,6 +5,7 @@ from app.agent.query.comparison_scope import (
 )
 from app.agent.query.index import IndexedRow
 from app.agent.tools.workbook_comparison_metrics import metric_changes
+from app.agent.tools.workbook_comparison_peaks import peak_adjusted_metrics
 from app.agent.tools.workbook_comparison_series import time_series_candidates
 from app.agent.tools.workbook_headers import HeaderContext
 
@@ -26,6 +27,7 @@ def build_time_series_comparison(
     start_date, start_row = points[0]
     end_date, end_row = points[-1]
     direction = requested_change_direction(query)
+    metrics = peak_adjusted_metrics(metrics, points, direction)
     ranked = rank_changes(metrics, direction)
     return {
         "sheet_name": sheet_name,

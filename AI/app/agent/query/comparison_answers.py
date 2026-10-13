@@ -111,8 +111,10 @@ def _answer(question: str, comparison: object) -> VerifiedComparisonAnswer | Non
     change = comparison_number(abs(float(metric["change"])), unit)
     verb = "감소" if direction == "decrease" else "증가"
     subject = readable(header)
+    # 지표마다 최고점 시점이 다르므로 그 지표의 시작 시점을 쓴다.
+    start_date = metric.get("start_date") or comparison.get("start_date")
     text = (
-        f"{comparison_period(comparison.get('start_date'))}부터 "
+        f"{comparison_period(start_date)}부터 "
         f"{comparison_period(comparison.get('end_date'))}까지 가장 많이 {verb}한 "
         f"{GROUP_NAMES[group]}는 {subject}입니다. "
         f"{start}에서 {end}으로 {change} {verb}했습니다."
