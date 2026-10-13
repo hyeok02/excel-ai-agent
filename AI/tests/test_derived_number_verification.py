@@ -99,13 +99,20 @@ def test_ratio_binds_its_numerator_and_denominator() -> None:
 
 
 def test_one_clause_does_not_vouch_for_another() -> None:
-    """앞 절에서 만들어진 근거로 뒤 절의 주장을 통과시키지 않는다."""
+    """앞 절에서 만들어진 근거로 뒤 절의 주장을 통과시키지 않는다.
+
+    확인하지 못한 절은 덜어내고 확인된 절만 남긴다. 예전에는 답변 전체를
+    버렸는데, 그러면 근거가 있는 문장까지 사용자가 보지 못했다.
+    """
     answer = _answer(
         "5,417명은 6,101명의 88.79%이고, "
         "일반관리는 1,018명에서 904명으로 88.79% 감소했습니다."
     )
 
-    assert answer.status is QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+    assert "일반관리" not in answer.answer
+    assert "904" not in answer.answer
+    assert "5,417명은 6,101명의 88.79%" in answer.answer
+    assert any("빼고 보여줍니다" in item for item in answer.limitations)
 
 
 def test_date_cell_is_not_treated_as_a_row_label() -> None:
