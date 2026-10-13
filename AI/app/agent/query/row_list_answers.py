@@ -18,9 +18,13 @@ def validated_row_list_answer(
     available: dict[str, object] | None = None,
 ) -> QuestionAnswer | None:
     found = _row_list(execution)
-    if found is None:
-        return None
-    text, references = _answer(found)
+    if found is not None:
+        text, references = _answer(found)
+    else:
+        found = _row_count(execution)
+        if found is None:
+            return None
+        text, references = _count_answer(found)
     if not text:
         return None
     available = available if available is not None else available_evidence(execution)
@@ -41,6 +45,27 @@ def validated_row_list_answer(
         evidence=[present_comparison_evidence(item) for item in evidence],
         limitations=limitations,
     )
+
+
+def _row_count(execution: AgentExecution) -> dict | None:
+    for step in execution.steps:
+        if step.status is not AgentStepStatus.SUCCEEDED or not step.result:
+            continue
+        found = step.result.data.get("row_count")
+        if isinstance(found, dict) and found.get("count"):
+            return found
+    return None
+
+
+def _count_answer(found: dict) -> tuple[str, list[str]]:
+    subject = readable(found.get("header") or "항목")
+    text = f"{subject}는 모두 {found['count']}건입니다."
+    references = [
+        found.get("header_reference"),
+        found.get("first_reference"),
+        found.get("last_reference"),
+    ]
+    return text, [value for value in references if isinstance(value, str)]
 
 
 def _row_list(execution: AgentExecution) -> dict | None:

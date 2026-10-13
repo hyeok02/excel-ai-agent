@@ -64,3 +64,28 @@ def test_cites_both_the_name_and_the_mark_of_every_listed_row() -> None:
 def test_ignores_a_question_without_a_clear_condition() -> None:
     assert _built("장비가 총 몇 대야?") is None
     assert _built("네트워크 안정 상태를 알려줘") is None
+
+
+def _counted(question: str):
+    from app.agent.tools.workbook_row_counts import build_row_count
+
+    rows = _rows()
+    return build_row_count(rows, build_header_context(tuple(rows), rows), question)
+
+
+def test_counts_the_named_column() -> None:
+    found = _counted("장비가 총 몇 대야?")
+
+    assert found["header"] == "장비"
+    assert found["count"] == len(MARKS)
+    assert found["header_reference"] == f"{SHEET}!D5"
+
+
+def test_does_not_count_a_column_the_question_never_names() -> None:
+    # '몇'만 보고 아무 열이나 세면 엉뚱한 수가 근거 확인 딱지를 달고 나간다.
+    assert _counted("몇 개야?") is None
+    assert _counted("IP가 몇 개야?") is None
+
+
+def test_ignores_a_question_that_is_not_about_counting() -> None:
+    assert _counted("네트워크가 불안정한 장비는?") is None
