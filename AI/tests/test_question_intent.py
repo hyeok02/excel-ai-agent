@@ -92,3 +92,12 @@ async def _answered_with(classifier) -> None:
 class _Generator:
     async def generate(self, *args, **kwargs):
         raise AssertionError("결정적 경로가 답해야 한다")
+
+
+def test_a_summary_does_not_stand_in_for_a_calculation_the_code_could_not_do() -> None:
+    # 모델이 '세어야 하는 질문'이라고 했는데 코드가 세지 못했으면, 파일 전체
+    # 요약을 대신 내보내면 안 된다. 틀린 답이 '근거 확인'을 달고 나간다.
+    assert not QuestionIntent(True, "row_count").wants_a_summary
+    assert not QuestionIntent(True, "comparison").wants_a_summary
+    assert QuestionIntent(True, "summary").wants_a_summary
+    assert QuestionIntent(True, "brief").wants_a_summary

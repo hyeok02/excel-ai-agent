@@ -67,6 +67,7 @@ def _verified_summary_source(
             or step.tool_name != "search_workbook_data"
             or not step.result
             or step.result.data.get("workbook_summary_query") is not True
+            or step.result.data.get("summary_answer_allowed") is False
         ):
             continue
         overview = str(step.result.data.get("verified_overview") or "").strip()

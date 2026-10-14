@@ -95,3 +95,21 @@ def test_lists_by_the_name_column_the_question_asks_for() -> None:
 
     assert found["label_header"] == "장비"
     assert [item["label"] for item in found["matches"]][:2] == ["CVD #1", "CVD #2"]
+
+
+def _peaked(question: str):
+    from app.agent.tools.workbook_mark_peaks import build_mark_peak
+
+    return built(build_mark_peak, question)
+
+
+def test_names_the_column_with_the_most_of_a_mark() -> None:
+    found = _peaked("x가 제일 많은 항목은?")
+
+    assert found["header"] == "네트워크 안정"
+    assert found["count"] == 3
+
+
+def test_ignores_a_question_that_is_not_asking_for_the_most() -> None:
+    assert _peaked("네트워크 안정이 x인 장비는?") is None
+    assert _peaked("제일 중요한 게 뭐야?") is None

@@ -14,10 +14,11 @@ from app.agent.tools.workbook_headers import (
     build_header_context,
     detect_header_rows,
 )
+from app.agent.tools.workbook_mark_peaks import build_mark_peak
 from app.agent.tools.workbook_row_counts import build_row_count
 from app.agent.tools.workbook_row_lists import build_row_list
 
-KEYS = ("row_list", "cell_lookup", "row_count")
+KEYS = ("row_list", "cell_lookup", "row_count", "mark_peak")
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,7 @@ def _built(rows, headers, question) -> dict[str, object]:
         "row_list": build_row_list(rows, headers, question),
         "cell_lookup": build_cell_lookup(rows, headers, question),
         "row_count": build_row_count(rows, headers, question),
+        "mark_peak": build_mark_peak(rows, headers, question),
     }
 
 
