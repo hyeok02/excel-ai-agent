@@ -48,8 +48,10 @@ def stalled_check(run, mark="x"):
         return ""
     written = next(key for key in counts if mark_of(key) == mark)
     name = _short(cell.get("value"))
-    return (f"‘{name}’{subject_particle(name)} {written}인 건이 "
-            f"{number(count)}건으로 가장 많습니다.")
+    # 범위를 밝힌다. 한 가지 표식만 적힌 항목은 애초에 빼고 세므로, 그냥
+    # "가장 많습니다"라고 하면 전체에서 센 답과 수가 어긋나 보인다.
+    return (f"표시가 갈리는 항목 중에서는 ‘{name}’{subject_particle(name)} "
+            f"{written}인 건이 {number(count)}건으로 가장 많습니다.")
 
 
 def _negative(counts, mark):
