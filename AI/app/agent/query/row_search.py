@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from app.agent.query.index import IndexedRow
 from app.agent.query.search_terms import relevance, search_terms
 
@@ -7,16 +9,38 @@ NEIGHBOR_OFFSETS = (0, 1, 2, 3, 4, 8, 7, 6, 5, -1, -2, -3)
 SUPPORT_SHEET_MARKERS = ("intermediate", "chart_data", "cache", "lookup", "definition")
 
 
-def search_rows(
+@dataclass(frozen=True)
+class RowSearch:
+    """찾은 행과, 질문의 낱말이 실제로 걸렸는지."""
+
+    rows: list[IndexedRow]
+    matched: bool
+
+
+def search_matched(
     rows: tuple[IndexedRow, ...], query: str, limit: int
-) -> list[IndexedRow]:
+) -> RowSearch:
+    """
+    빈손일 때를 부르는 쪽이 알 수 있어야 한다.
+
+    '이 파일은 뭐에 관련된 얘기야?'의 검색어는 '관련된', '얘기야'다. 1508행 중
+    한 행도 걸리지 않았는데 가장 넓은 행 20개를 조용히 돌려줬고, 모델은 질문과
+    무관한 행을 받아 답을 썼다. 검증에 걸리는 건 당연한 결과였다.
+    """
     if limit <= 0:
-        return []
+        return RowSearch([], False)
     terms = search_terms(query)
     anchors = _ranked_anchors(rows, terms)
     if not anchors:
-        return sorted(rows, key=lambda row: len(row.cells), reverse=True)[: min(limit, 20)]
-    return _round_robin_neighbors(rows, anchors, limit)
+        widest = sorted(rows, key=lambda row: len(row.cells), reverse=True)
+        return RowSearch(widest[: min(limit, 20)], False)
+    return RowSearch(_round_robin_neighbors(rows, anchors, limit), True)
+
+
+def search_rows(
+    rows: tuple[IndexedRow, ...], query: str, limit: int
+) -> list[IndexedRow]:
+    return search_matched(rows, query, limit).rows
 
 
 def _ranked_anchors(

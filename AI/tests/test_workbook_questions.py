@@ -4,7 +4,7 @@ from app.agent import AgentToolContext, create_default_tool_registry
 from app.agent.query import QuestionAnswerDraft, build_workbook_data_index
 from app.agent.query.index import IndexedCell, IndexedRow
 from app.agent.query.router import build_question_plan
-from app.agent.tools.workbook_data import _search_rows
+from app.agent.query.row_search import search_rows
 from app.api.workbook_questions import get_question_answer_generator
 from app.main import app
 from app.services.workbook_parser import parse_workbook
@@ -131,7 +131,7 @@ def test_korean_business_question_prioritizes_semantically_matching_sheet() -> N
         _row("Detailed_Headcount_Analytics", 108, "2024-12-01 5428"),
     )
 
-    result = _search_rows(
+    result = search_rows(
         rows,
         "Riot Games의 직원 수는 2024년 12월 이후 부문별로 어떻게 변했어?",
         10,

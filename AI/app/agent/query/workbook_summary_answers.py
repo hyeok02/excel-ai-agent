@@ -5,7 +5,6 @@ from app.agent.query.comparison_evidence import (
     present_comparison_evidence,
 )
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
-from app.agent.query.workbook_summary_rows import is_workbook_summary_question
 
 MAX_PRESENTED_EVIDENCE = 120
 
@@ -15,8 +14,9 @@ def validated_workbook_summary_answer(
     execution: AgentExecution,
     index_truncated: bool,
 ) -> QuestionAnswer | None:
-    if not is_workbook_summary_question(question):
-        return None
+    # 질문 문구를 다시 보지 않는다. 도구가 실제로 워크북 전체를 읽었는지
+    # (workbook_summary_query)가 판단 근거다. 문구 목록으로 한 번 더 거르면
+    # 목록에 없는 표현은 전체를 읽고도 답을 못 내고 버린다.
     source = _verified_summary_source(execution)
     if source is None:
         return None
