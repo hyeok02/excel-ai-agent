@@ -7,7 +7,7 @@
 from app.agent.query.index import IndexedRow
 from app.agent.query.search_terms import search_terms
 from app.agent.tools.workbook_headers import HeaderContext, header_for
-from app.agent.tools.workbook_row_conditions import labelled_column
+from app.agent.tools.workbook_label_columns import column_of, labelled_column
 
 COUNT_WORDS = ("몇", "개수", "건수", "총", "how many", "count")
 MIN_ROWS = 2
@@ -40,7 +40,7 @@ def _counted(rows, headers, sheet_name, question):
         for row in rows
         if row.sheet_name == sheet_name
         for cell in row.cells
-        if _column(cell.address) == column
+        if column_of(cell.address) == column
         and isinstance(cell.value, str)
         and cell.value.strip()
         and cell.reference != reference
@@ -72,16 +72,12 @@ def _marked_column(rows, headers, sheet_name) -> str | None:
             continue
         for cell in row.cells:
             if isinstance(cell.value, str) and len(cell.value.strip()) <= 2:
-                counts.setdefault(_column(cell.address), []).append(cell.value.strip())
+                counts.setdefault(column_of(cell.address), []).append(cell.value.strip())
     repeated = [
         column for column, values in counts.items()
         if len(values) >= MIN_ROWS and len(set(values)) < len(values)
     ]
     return min(repeated, key=_index) if repeated else None
-
-
-def _column(address: str) -> str:
-    return "".join(character for character in address if character.isalpha()).upper()
 
 
 def _index(column: str) -> int:

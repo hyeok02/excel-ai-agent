@@ -89,3 +89,28 @@ def test_does_not_count_a_column_the_question_never_names() -> None:
 
 def test_ignores_a_question_that_is_not_about_counting() -> None:
     assert _counted("네트워크가 불안정한 장비는?") is None
+
+
+def _looked_up(question: str):
+    from app.agent.tools.workbook_cell_lookups import build_cell_lookup
+
+    rows = _rows()
+    return build_cell_lookup(rows, build_header_context(tuple(rows), rows), question)
+
+
+def test_reads_one_cell_when_the_question_names_one_row() -> None:
+    found = _looked_up("CVD #2 IP가 뭐야?")
+
+    assert found["label"] == "CVD #2"
+    assert found["header"] == "IP"
+    assert found["value"] == "10.1.7.7"
+    assert found["value_reference"] == f"{SHEET}!C7"
+
+
+def test_does_not_confuse_rows_that_share_a_word() -> None:
+    # 'CVD'는 모든 행이 함께 쓴다. 한 행에만 있는 낱말로 가리켰을 때만 짚는다.
+    assert _looked_up("CVD IP가 뭐야?") is None
+
+
+def test_does_not_read_a_cell_without_a_named_row() -> None:
+    assert _looked_up("IP가 뭐야?") is None

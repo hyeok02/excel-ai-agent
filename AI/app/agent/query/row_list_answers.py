@@ -20,6 +20,8 @@ def validated_row_list_answer(
     found = _row_list(execution)
     if found is not None:
         text, references = _answer(found)
+    elif (found := _cell_lookup(execution)) is not None:
+        text, references = _lookup_answer(found)
     else:
         found = _row_count(execution)
         if found is None:
@@ -45,6 +47,32 @@ def validated_row_list_answer(
         evidence=[present_comparison_evidence(item) for item in evidence],
         limitations=limitations,
     )
+
+
+def _cell_lookup(execution: AgentExecution) -> dict | None:
+    return _step_data(execution, "cell_lookup", "value_reference")
+
+
+def _lookup_answer(found: dict) -> tuple[str, list[str]]:
+    subject = found.get("label") or readable(found.get("label_header") or "항목")
+    column = readable(found.get("header") or "값")
+    text = f"{subject}의 ‘{column}’은(는) {found['value']}입니다."
+    references = [
+        found.get("header_reference"),
+        found.get("label_reference"),
+        found.get("value_reference"),
+    ]
+    return text, [value for value in references if isinstance(value, str)]
+
+
+def _step_data(execution: AgentExecution, key: str, required: str) -> dict | None:
+    for step in execution.steps:
+        if step.status is not AgentStepStatus.SUCCEEDED or not step.result:
+            continue
+        found = step.result.data.get(key)
+        if isinstance(found, dict) and found.get(required):
+            return found
+    return None
 
 
 def _row_count(execution: AgentExecution) -> dict | None:

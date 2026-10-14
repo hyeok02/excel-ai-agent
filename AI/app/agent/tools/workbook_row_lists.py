@@ -7,10 +7,10 @@
 """
 from app.agent.query.index import IndexedRow
 from app.agent.tools.workbook_headers import HeaderContext, header_for
+from app.agent.tools.workbook_label_columns import column_of, labelled_column
 from app.agent.tools.workbook_row_conditions import (
     NEGATIVE_MARKS,
     POSITIVE_MARKS,
-    labelled_column,
     requested_condition,
 )
 from app.services.insights.facts.flag_columns import mark_of
@@ -68,10 +68,6 @@ def build_row_list(
 
 def _cell(row: IndexedRow, column: str):
     for cell in row.cells:
-        if _column(cell.address) == column:
+        if column_of(cell.address) == column:
             return cell
     return None
-
-
-def _column(address: str) -> str:
-    return "".join(character for character in address if character.isalpha()).upper()

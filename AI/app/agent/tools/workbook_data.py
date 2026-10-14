@@ -33,6 +33,7 @@ from app.agent.tools.workbook_headers import (
     evidence_with_header,
 )
 from app.agent.tools.workbook_data_payload import row_payload
+from app.agent.tools.workbook_cell_lookups import build_cell_lookup
 from app.agent.tools.workbook_row_counts import build_row_count
 from app.agent.tools.workbook_row_lists import build_row_list
 
@@ -89,6 +90,7 @@ class WorkbookDataSearchTool:
         # 목록도 검색 결과가 아니라 시트 전체를 훑어야 한 건도 빠지지 않는다.
         row_list = build_row_list(series_rows, series_headers, intent)
         row_count = build_row_count(series_rows, series_headers, intent)
+        cell_lookup = build_cell_lookup(series_rows, series_headers, intent)
         calculations = [
             *verified["calculations"],
             *time_series_calculations(comparison),
@@ -127,6 +129,7 @@ class WorkbookDataSearchTool:
                 "time_series_comparison": comparison,
                 "row_list": row_list,
                 "row_count": row_count,
+                "cell_lookup": cell_lookup,
                 "verified_overview": verified["overview"],
                 "verified_insights": verified["insights"],
                 "calculations": calculations,

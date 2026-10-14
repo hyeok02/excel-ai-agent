@@ -1,6 +1,12 @@
 """질문이 가리키는 열과 조건을 읽는다."""
+from collections import Counter, defaultdict
 from app.agent.query.index import IndexedRow
 from app.agent.tools.workbook_headers import HeaderContext, header_for
+from app.agent.tools.workbook_label_columns import (
+    column_of,
+    header_reference,
+    labelled_column,
+)
 
 NEGATIVE_MARKS = {"x"}
 POSITIVE_MARKS = {"o", "v"}
@@ -14,7 +20,7 @@ def requested_condition(
     question: str, rows: list[IndexedRow], headers: HeaderContext
 ):
     """(시트, 열, 머리글, 머리글 셀, 극성) 또는 질문이 분명하지 않으면 None."""
-    best = _matched_column(question, rows, headers)
+    best = matched_column(question, rows, headers)
     if best is None:
         return None
     sheet_name, column, header, reference = best
@@ -24,23 +30,49 @@ def requested_condition(
     return sheet_name, column, header, reference, polarity
 
 
-def _matched_column(question: str, rows: list[IndexedRow], headers: HeaderContext):
-    """질문에 이름이 나온 열. 머리글과 가장 길게 겹치는 쪽을 고른다."""
+def matched_column(question: str, rows: list[IndexedRow], headers: HeaderContext):
+    """
+    질문에 이름이 나온 열. 머리글과 가장 길게 겹치는 쪽을 고른다.
+
+    셀마다 따로 보면, 머리글을 잘못 물려받은 몇 줄이 표 전체를 대표해 버린다.
+    실제로 'CVD #1 IP가 뭐야?'가 '장비'가 아니라 'CVD #13' 열로 갔다. 열마다
+    가장 많은 줄이 쓰는 머리글 하나로 추려 두고 견준다.
+    """
+    found = matched_columns(question, rows, headers)
+    return found[0] if found else None
+
+
+def matched_columns(question: str, rows: list[IndexedRow], headers: HeaderContext):
+    """겹치는 정도가 큰 순서로 후보 열을 모두 돌려준다.
+
+    한 시트만 보면 가장 잘 맞는 열 하나로 충분하지만, 여러 시트를 함께 보면
+    엉뚱한 시트의 열이 1위를 차지하고 거기서 막혀 버린다. 부르는 쪽이 차례로
+    시도할 수 있게 순서대로 내놓는다.
+    """
     normalized = question.casefold()
-    best = None
+    ranked = []
+    for (sheet_name, column), header in _column_headers(rows, headers).items():
+        overlap = _overlap(normalized, header.casefold())
+        if overlap >= MIN_TERM:
+            ranked.append((overlap, sheet_name, column, header))
+    ranked.sort(key=lambda item: (-item[0], item[1], item[2]))
+    found = []
+    for _, sheet_name, column, header in ranked:
+        reference = header_reference(rows, headers, sheet_name, column, header)
+        if reference:
+            found.append((sheet_name, column, header, reference))
+    return found
+
+
+def _column_headers(rows, headers) -> dict[tuple[str, str], str]:
+    """열마다 가장 많은 줄이 쓰는 머리글."""
+    counts: dict[tuple[str, str], Counter] = defaultdict(Counter)
     for row in rows:
         for cell in row.cells:
             header = header_for(headers, row.sheet_name, row.row_number, cell.address)
-            if not header:
-                continue
-            overlap = _overlap(normalized, header.casefold())
-            if overlap >= MIN_TERM and (best is None or overlap > best[0]):
-                best = (overlap, row.sheet_name, _column(cell.address), header)
-    if best is None:
-        return None
-    _, sheet_name, column, header = best
-    reference = _header_reference(rows, headers, sheet_name, column, header)
-    return (sheet_name, column, header, reference) if reference else None
+            if header:
+                counts[(row.sheet_name, column_of(cell.address))][header] += 1
+    return {key: found.most_common(1)[0][0] for key, found in counts.items()}
 
 
 def _overlap(question: str, header: str) -> int:
@@ -68,57 +100,3 @@ def _polarity(question: str, header: str) -> str | None:
     if any(stem in residue for stem in POSITIVE_STEMS):
         return "positive"
     return None
-
-
-def labelled_column(
-    rows: list[IndexedRow], headers: HeaderContext, sheet_name: str, column: str
-):
-    """무엇을 나열할지. 표시 열 왼쪽에서 값이 서로 다른 가장 가까운 글자 열."""
-    candidates: dict[str, list] = {}
-    for row in rows:
-        if row.sheet_name != sheet_name:
-            continue
-        for cell in row.cells:
-            found = _column(cell.address)
-            if _index(found) < _index(column) and isinstance(cell.value, str):
-                candidates.setdefault(found, []).append(cell)
-    for found in sorted(candidates, key=_index, reverse=True):
-        values = [str(cell.value).strip() for cell in candidates[found]]
-        values = [value for value in values if value]
-        if len(values) < 4 or len(set(values)) <= len(values) / 2:
-            continue
-        header = next(
-            (
-                header
-                for row in rows
-                for cell in row.cells
-                if _column(cell.address) == found
-                and (header := header_for(headers, sheet_name, row.row_number, cell.address))
-            ),
-            None,
-        )
-        reference = _header_reference(rows, headers, sheet_name, found, header)
-        if header and reference:
-            return found, header, reference
-    return None
-
-
-def _header_reference(rows, headers, sheet_name, column, header):
-    for row in rows:
-        if row.sheet_name != sheet_name:
-            continue
-        for cell in row.cells:
-            if _column(cell.address) == column and str(cell.value or "").strip() == header:
-                return cell.reference
-    return None
-
-
-def _column(address: str) -> str:
-    return "".join(character for character in address if character.isalpha()).upper()
-
-
-def _index(column: str) -> int:
-    value = 0
-    for character in column:
-        value = value * 26 + (ord(character) - 64)
-    return value
