@@ -13,13 +13,14 @@ COUNT_WORDS = ("몇", "개수", "건수", "how many", "count")
 GROUP_NAMES = {"department": "부서", "role": "직무"}
 
 
-def comparison_payload(
-    comparison: object, question: str, targets: tuple[str, ...] = ()
-) -> dict[str, object]:
+def comparison_payload(comparison: object, question: str, intent) -> dict[str, object]:
+    """비교에서 나오는 값과, 답변 쪽이 어떤 질문인지 알기 위해 필요한 표시."""
+    targets = tuple(getattr(intent, "targets", ()) or ())
     return {
         "time_series_comparison": comparison,
         "named_metric_change": build_metric_change(comparison, question, targets),
         "metric_count": build_metric_count(comparison, question),
+        "answer_kind": getattr(intent, "kind", ""),
     }
 
 

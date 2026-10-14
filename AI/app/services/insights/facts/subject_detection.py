@@ -4,6 +4,8 @@ Some workbooks name the company in a labelled row; others repeat it as the
 header spanning every period column of each sheet. Both are written in the
 file, so both may be cited. A filename is not a source and is never read here.
 """
+import re
+
 from app.services.insights.narratives.narrative_values import reference
 from app.services.insights.narratives.table_dates import column as col
 from app.services.insights.facts.table_inputs import narrative_regions
@@ -17,6 +19,8 @@ MAX_LENGTH = 80
 # 'U.S. GAAP'이 여러 시트에 반복된다는 이유로 주어 자리를 가져갔다.
 TOP_ROWS = 12
 TITLE_WORDS = 2
+# 값을 늘어놓은 줄은 이름이 아니다.
+MAX_LISTED_SHARE = 0.2
 
 
 def spanning_subject(context) -> tuple[str, list[str]]:
@@ -65,10 +69,20 @@ def _title_cell(region, title) -> str:
 
 
 def _looks_titled(title: str) -> bool:
+    """제목은 이름이다. 메모 한 줄이 주어 자리에 들어가면 안 된다.
+
+    TCK 자료의 2행에 적힌 '네트워크 불안정한 장비 : 1, 2, 3, 4, 7, 11, 16호기'가
+    회사 이름 자리를 차지한 적이 있다. 콜론 뒤에 값을 늘어놓은 메모이지 이름이
+    아니다. 괄호 안 티커는 이름의 일부이므로 먼저 걷어내고 본다.
+    """
+    bare = re.sub(r"[(（][^)）]*[)）]", " ", title)
+    if ":" in bare or "：" in bare:
+        return False
+    listed = sum(character.isdigit() or character == "," for character in bare)
     return (
         MIN_LENGTH <= len(title) <= MAX_LENGTH
         and len(title.split()) >= TITLE_WORDS
-        and not title.endswith(":")
+        and listed <= len(bare) * MAX_LISTED_SHARE
     )
 
 

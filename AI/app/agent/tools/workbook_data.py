@@ -139,7 +139,7 @@ class WorkbookDataSearchTool:
                 "index_truncated": query_scope_truncated(
                     context.data_index, rows, query, summary_question
                 ),
-                **comparison_payload(comparison, asked, intent.targets),
+                **comparison_payload(comparison, asked, intent),
                 **lookups.data,
                 "verified_overview": verified["overview"],
                 "verified_insights": verified["insights"],
