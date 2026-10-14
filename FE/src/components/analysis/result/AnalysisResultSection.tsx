@@ -4,6 +4,7 @@ import AnalysisResultHeader from '@/components/analysis/result/AnalysisResultHea
 import AnalysisResultSummary from '@/components/analysis/result/AnalysisResultSummary'
 import BfsAnalysisWorkspace from '@/components/analysis/result/bfs/BfsAnalysisWorkspace'
 import InsightReportSection from '@/components/analysis/result/InsightReportSection'
+import { buildQuestionSuggestions } from '@/components/analysis/result/questions/questionPresentation'
 import WorkbookQuestionSection from '@/components/analysis/result/questions/WorkbookQuestionSection'
 import WorkbookWritebackSection from '@/components/analysis/result/writeback/WorkbookWritebackSection'
 import WorkbookExplorer from '@/components/analysis/workbook/explorer/WorkbookExplorer'
@@ -35,6 +36,7 @@ const AnalysisResultSection = ({
         <WorkbookQuestionSection
           analysisId={result.analysisId}
           sourceAvailable={result.sourceAvailable}
+          suggestions={buildQuestionSuggestions(result.insightReport)}
         />
       )}
 
