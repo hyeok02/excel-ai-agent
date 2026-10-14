@@ -7,7 +7,8 @@
 """
 from app.agent.query.index import IndexedRow
 from app.agent.tools.workbook_headers import HeaderContext, header_for
-from app.agent.tools.workbook_label_columns import column_of, labelled_column
+from app.agent.tools.workbook_label_choice import label_column
+from app.agent.tools.workbook_label_columns import column_of
 from app.agent.tools.workbook_row_conditions import (
     NEGATIVE_MARKS,
     POSITIVE_MARKS,
@@ -27,16 +28,16 @@ def build_row_list(
         return None
     sheet_name, column, header, header_reference, polarity = found
     wanted = NEGATIVE_MARKS if polarity == "negative" else POSITIVE_MARKS
-    label = labelled_column(rows, headers, sheet_name, column)
+    label = label_column(rows, headers, sheet_name, column, question)
     if label is None:
         return None
-    label_column, label_header, label_reference = label
+    name_column, label_header, label_reference = label
     matches, others, blank = [], 0, 0
     for row in sorted(rows, key=lambda item: item.row_number):
         if row.sheet_name != sheet_name:
             continue
         cell = _cell(row, column)
-        name = _cell(row, label_column)
+        name = _cell(row, name_column)
         if name is None or not str(getattr(name, "value", "") or "").strip():
             continue
         if cell is None or not str(cell.value or "").strip():

@@ -1,37 +1,15 @@
 """조건에 맞는 행을 코드가 직접 골라 나열하는지."""
-from app.agent.query.index import IndexedCell, IndexedRow
-from app.agent.tools.workbook_headers import build_header_context
+from app.agent.tools.workbook_row_counts import build_row_count
 from app.agent.tools.workbook_row_lists import build_row_list
-
-SHEET = "작업현황"
-HEADERS = {"C": "IP", "D": "장비", "E": "TCK 작업", "F": "네트워크 안정"}
-MARKS = {6: "x", 7: "x", 8: "o", 9: "x", 10: "o", 11: "?", 12: None}
-
-
-def _row(number: int, values: dict[str, object]) -> IndexedRow:
-    return IndexedRow(
-        SHEET, number,
-        tuple(
-            IndexedCell(SHEET, f"{column}{number}", value, None)
-            for column, value in values.items()
-            if value is not None
-        ),
-    )
-
-
-def _rows() -> list[IndexedRow]:
-    rows = [_row(5, HEADERS)]
-    for number, mark in MARKS.items():
-        rows.append(_row(number, {
-            "C": f"10.1.7.{number}", "D": f"CVD #{number - 5}",
-            "E": "o", "F": mark,
-        }))
-    return rows
+from tests.support.checklist_rows import MARKS, SHEET, built
 
 
 def _built(question: str):
-    rows = _rows()
-    return build_row_list(rows, build_header_context(tuple(rows), rows), question)
+    return built(build_row_list, question)
+
+
+def _counted(question: str):
+    return built(build_row_count, question)
 
 
 def test_lists_the_rows_marked_negative() -> None:
@@ -66,13 +44,6 @@ def test_ignores_a_question_without_a_clear_condition() -> None:
     assert _built("네트워크 안정 상태를 알려줘") is None
 
 
-def _counted(question: str):
-    from app.agent.tools.workbook_row_counts import build_row_count
-
-    rows = _rows()
-    return build_row_count(rows, build_header_context(tuple(rows), rows), question)
-
-
 def test_counts_the_named_column() -> None:
     found = _counted("장비가 총 몇 대야?")
 
@@ -84,33 +55,43 @@ def test_counts_the_named_column() -> None:
 def test_does_not_count_a_column_the_question_never_names() -> None:
     # '몇'만 보고 아무 열이나 세면 엉뚱한 수가 근거 확인 딱지를 달고 나간다.
     assert _counted("몇 개야?") is None
-    assert _counted("IP가 몇 개야?") is None
+    assert _counted("상태가 몇 개야?") is None
+
+
+def test_counts_the_column_the_question_names_even_if_it_is_not_the_nearest() -> None:
+    # 표시 열 왼쪽의 가장 가까운 글자 열만 세면, 질문이 부른 열이 무시된다.
+    found = _counted("IP가 몇 개야?")
+
+    assert found["header"] == "IP"
+    assert found["count"] == len(MARKS)
 
 
 def test_ignores_a_question_that_is_not_about_counting() -> None:
     assert _counted("네트워크가 불안정한 장비는?") is None
 
 
-def _looked_up(question: str):
-    from app.agent.tools.workbook_cell_lookups import build_cell_lookup
+def test_lists_the_rows_when_the_question_names_the_mark() -> None:
+    # 표에 적힌 x·o를 질문에 그대로 쓰는 사람이 많다. 어간만 보면 아무 극성도
+    # 읽히지 않아 목록이 꺼지고 모델 추측이 나갔다.
+    negative = _built("네트워크 안정이 x인 장비는?")
+    positive = _built("네트워크 안정이 o인 장비 알려줘")
 
-    rows = _rows()
-    return build_cell_lookup(rows, build_header_context(tuple(rows), rows), question)
-
-
-def test_reads_one_cell_when_the_question_names_one_row() -> None:
-    found = _looked_up("CVD #2 IP가 뭐야?")
-
-    assert found["label"] == "CVD #2"
-    assert found["header"] == "IP"
-    assert found["value"] == "10.1.7.7"
-    assert found["value_reference"] == f"{SHEET}!C7"
+    assert [item["label"] for item in negative["matches"]] == [
+        "CVD #1", "CVD #2", "CVD #4",
+    ]
+    assert [item["label"] for item in positive["matches"]] == ["CVD #3", "CVD #5"]
 
 
-def test_does_not_confuse_rows_that_share_a_word() -> None:
-    # 'CVD'는 모든 행이 함께 쓴다. 한 행에만 있는 낱말로 가리켰을 때만 짚는다.
-    assert _looked_up("CVD IP가 뭐야?") is None
+def test_does_not_read_an_english_word_as_a_mark() -> None:
+    # 'ok'나 'vs'의 첫 글자를 표시로 읽으면 조건 없는 질문에 목록이 나간다.
+    assert _built("네트워크 안정 ok야?") is None
+    assert _built("네트워크 안정 vs 다른 항목") is None
 
 
-def test_does_not_read_a_cell_without_a_named_row() -> None:
-    assert _looked_up("IP가 뭐야?") is None
+def test_lists_by_the_name_column_the_question_asks_for() -> None:
+    # 표시 열 왼쪽의 가장 가까운 글자 열만 쓰면, 질문이 '장비'를 물어도 그 옆
+    # 'IP' 열이 나열될 수 있다.
+    found = _built("TCK 작업이 o인 장비는?")
+
+    assert found["label_header"] == "장비"
+    assert [item["label"] for item in found["matches"]][:2] == ["CVD #1", "CVD #2"]

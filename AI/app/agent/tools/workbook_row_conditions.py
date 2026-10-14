@@ -2,9 +2,11 @@
 from collections import Counter, defaultdict
 from app.agent.query.index import IndexedRow
 from app.agent.tools.workbook_headers import HeaderContext, header_for
+from app.services.insights.facts.flag_columns import mark_of
 from app.agent.tools.workbook_label_columns import (
     column_of,
     header_reference,
+    is_hangul,
     labelled_column,
 )
 
@@ -14,6 +16,7 @@ POSITIVE_MARKS = {"o", "v"}
 NEGATIVE_STEMS = ("안", "못", "없", "불", "미", "아닌", "아직")
 POSITIVE_STEMS = ("된", "됨", "완료", "있", "정상", "끝난")
 MIN_TERM = 2
+MAX_PARTICLE = 2
 
 
 def requested_condition(
@@ -95,8 +98,31 @@ def _polarity(question: str, header: str) -> str | None:
     for word in header.casefold().replace("(", " ").replace(",", " ").split():
         if len(word) >= MIN_TERM:
             residue = residue.replace(word, " ")
+    if marked := _mark_polarity(residue):
+        return marked
     if any(stem in residue for stem in NEGATIVE_STEMS):
         return "negative"
     if any(stem in residue for stem in POSITIVE_STEMS):
         return "positive"
+    return None
+
+
+def _mark_polarity(residue: str) -> str | None:
+    """질문이 표시를 그대로 부르는 경우. "'네트워크 안정'이 x인 장비"가 그렇다.
+
+    표에 적힌 x·o를 질문에 그대로 쓰는 사람이 많은데, 어간만 보면 아무 극성도
+    읽히지 않아 목록 답변이 꺼졌다. 낱말이 표시 한 글자로 시작하고 뒤에 조사만
+    붙었을 때로 한정한다. 'ok'나 'vs'가 긍정으로 읽히면 안 된다.
+    """
+    for word in residue.split():
+        token = word.strip(".,:;?!()'\"‘’“”")
+        if not token or token[0].isdigit():
+            continue
+        suffix = token[1:]
+        if len(suffix) > MAX_PARTICLE or not all(is_hangul(ch) for ch in suffix):
+            continue
+        if (mark := mark_of(token)) in NEGATIVE_MARKS:
+            return "negative"
+        if mark in POSITIVE_MARKS:
+            return "positive"
     return None

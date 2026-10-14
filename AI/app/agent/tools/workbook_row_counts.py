@@ -7,7 +7,8 @@
 from app.agent.query.index import IndexedRow
 from app.agent.query.search_terms import search_terms
 from app.agent.tools.workbook_headers import HeaderContext, header_for
-from app.agent.tools.workbook_label_columns import column_of, labelled_column
+from app.agent.tools.workbook_label_choice import label_column
+from app.agent.tools.workbook_label_columns import column_of
 
 COUNT_WORDS = ("몇", "개수", "건수", "총", "how many", "count")
 MIN_ROWS = 2
@@ -31,7 +32,7 @@ def _counted(rows, headers, sheet_name, question):
     marked = _marked_column(rows, headers, sheet_name)
     if marked is None:
         return None
-    label = labelled_column(rows, headers, sheet_name, marked)
+    label = label_column(rows, headers, sheet_name, marked, question)
     if label is None:
         return None
     column, header, reference = label

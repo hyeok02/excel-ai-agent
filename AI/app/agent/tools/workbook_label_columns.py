@@ -57,3 +57,7 @@ def _index(column: str) -> int:
     for character in column:
         value = value * 26 + (ord(character) - 64)
     return value
+
+
+def is_hangul(character: str) -> bool:
+    return "가" <= character <= "힣"
