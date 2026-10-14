@@ -132,6 +132,7 @@ class WorkbookDataSearchTool:
             data={
                 "query": query,
                 "workbook_summary_query": summary_question,
+                "brief_answer": bool(intent.brief),
                 "returned_row_count": len(rows),
                 "index_truncated": query_scope_truncated(
                     context.data_index, rows, query, summary_question

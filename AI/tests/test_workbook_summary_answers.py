@@ -105,3 +105,25 @@ def test_does_not_read_a_question_about_one_thing_as_a_whole_file_question() -> 
     assert not is_workbook_summary_question("이 파일 어떤 장비가 문제야?")
     assert not is_workbook_summary_question("이 파일은 어떤 시트로 구성돼 있어?")
     assert not is_workbook_summary_question("장비가 총 몇 대야?")
+
+
+def test_a_brief_answer_keeps_what_the_file_is_and_one_fact() -> None:
+    from app.agent.query.workbook_summary_answers import _shortened
+
+    overview = (
+        "이 파일은 CVD 장비 17건을 점검한 표입니다. "
+        "12건이 점검됐고 5건은 비어 있습니다. "
+        "‘네트워크 안정’이 x인 건이 7건으로 가장 많습니다."
+    )
+
+    assert _shortened(overview) == (
+        "이 파일은 CVD 장비 17건을 점검한 표입니다. 12건이 점검됐고 5건은 비어 있습니다."
+    )
+
+
+def test_a_short_overview_is_left_alone() -> None:
+    from app.agent.query.workbook_summary_answers import _shortened
+
+    overview = "이 파일은 CVD 장비 17건을 점검한 표입니다."
+
+    assert _shortened(overview) == overview

@@ -20,7 +20,7 @@ def validated_workbook_summary_answer(
     source = _verified_summary_source(execution)
     if source is None:
         return None
-    overview, references = source
+    overview, references, brief = source
     evidence, missing = matched_comparison_evidence(
         references, available_evidence(execution)
     )
@@ -35,7 +35,7 @@ def validated_workbook_summary_answer(
     limited = bool(limitations)
     return QuestionAnswer(
         question=question,
-        answer=overview,
+        answer=_shortened(overview) if brief else overview,
         status=QuestionAnswerStatus.LIMITED if limited else QuestionAnswerStatus.ANSWERED,
         confidence=0.7 if limited else 1.0,
         selected_tools=[step.tool_name for step in execution.steps],
@@ -47,9 +47,20 @@ def validated_workbook_summary_answer(
     )
 
 
+def _shortened(overview: str) -> str:
+    """"결론만 말해줘"에 통계를 줄줄이 늘어놓지 않는다.
+
+    무슨 파일인지와 가장 두드러진 사실 하나면 된다. 근거는 그대로 둔다.
+    """
+    sentences = [part.strip() for part in overview.split("니다.") if part.strip()]
+    if len(sentences) <= 2:
+        return overview
+    return "니다. ".join(sentences[:2]) + "니다."
+
+
 def _verified_summary_source(
     execution: AgentExecution,
-) -> tuple[str, list[str]] | None:
+) -> tuple[str, list[str], bool] | None:
     for step in execution.steps:
         if (
             step.status is not AgentStepStatus.SUCCEEDED
@@ -61,7 +72,7 @@ def _verified_summary_source(
         overview = str(step.result.data.get("verified_overview") or "").strip()
         references = _support_references(step.result.data.get("verified_insights"))
         if overview and references:
-            return overview, references
+            return overview, references, bool(step.result.data.get("brief_answer"))
     return None
 
 

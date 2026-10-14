@@ -20,6 +20,7 @@ scope는 질문이 무엇을 묻는지로 정합니다.
 
 kind는 무엇을 계산해야 하는지입니다. 확신이 없으면 other를 고르세요.
 - summary: 파일 전체 설명 / structure: 시트 구성과 역할
+- brief: 전체를 묻되 짧게 원하는 질문. "결론만 말해줘", "핵심만", "한 줄로"
 - comparison: 기간이나 항목 사이의 증감·비교
 - row_list: 조건에 맞는 항목 나열 / row_count: 건수
 - cell_lookup: 한 항목의 한 값 / formula_risk: 수식 오류·위험

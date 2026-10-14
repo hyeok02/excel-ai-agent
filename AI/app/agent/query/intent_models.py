@@ -18,6 +18,7 @@ class QuestionIntentDraft(BaseModel):
     scope: Literal["whole_workbook", "specific"]
     kind: Literal[
         "summary",
+        "brief",
         "structure",
         "comparison",
         "row_list",
@@ -47,6 +48,10 @@ class QuestionIntent:
     def from_keywords(cls, question: str) -> "QuestionIntent":
         """모델을 부르지 못할 때. 서비스가 통째로 멈추는 것보다 낫다."""
         return cls(is_workbook_summary_question(question))
+
+    @property
+    def brief(self) -> bool:
+        return self.kind == "brief"
 
     def enriched(self, question: str) -> str:
         """열 이름을 맞출 때 쓰는 글. 모델이 짚은 대상을 질문에 더해 준다."""

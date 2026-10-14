@@ -32,7 +32,7 @@ def build_verified_question_context(summary: WorkbookSummary) -> dict[str, objec
     ]
     references = _priority_references(insights, calculations)
     return {
-        "overview": report.overview,
+        "overview": _leading_overview(context, report),
         "insights": insights,
         "calculations": calculations,
         "count_specs": comparable_count_specs(context),
@@ -98,6 +98,25 @@ def _build_context(summary):
     from app.services.insights.facts.context import build_workbook_context
 
     return build_workbook_context(summary)
+
+
+def _leading_overview(context, report) -> str:
+    """요약 앞에 '이 파일은 무엇이다'를 붙인다.
+
+    요약은 분석 리포트에서 리드 문장이 앞에 선다는 전제로 쓰였다. 점검표
+    요약이 "12건이 점검됐고…"로 시작하는 것도 그래서다. Q&A는 요약만 단독으로
+    보여주므로 무슨 파일인지가 통째로 빠졌다.
+    """
+    from app.services.insights.narratives.workbook_lead_rules import structured_lead
+
+    overview = str(report.overview or "").strip()
+    try:
+        lead = structured_lead(context, report)
+    except Exception:
+        return overview
+    if not lead or lead in overview:
+        return overview
+    return f"{lead} {overview}".strip()
 
 
 def _source_report(context):
