@@ -1,5 +1,5 @@
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import replace
 
 from app.agent.query.index import IndexedCell, IndexedRow
@@ -16,10 +16,15 @@ def build_header_context(
     all_rows: tuple[IndexedRow, ...], selected_rows: list[IndexedRow]
 ) -> HeaderContext:
     sheets: dict[str, dict[int, IndexedRow]] = defaultdict(dict)
-    header_rows: dict[str, set[int]] = defaultdict(set)
+    column_values: dict[tuple[str, str], Counter] = defaultdict(Counter)
     for row in all_rows:
         sheets[row.sheet_name][row.row_number] = row
-        if _is_header_row(row):
+        for cell in row.cells:
+            if isinstance(cell.value, str) and cell.value.strip():
+                column_values[(row.sheet_name, _column(cell.address))][cell.value] += 1
+    header_rows: dict[str, set[int]] = defaultdict(set)
+    for row in all_rows:
+        if _is_header_row(row, column_values, _block_width(sheets, row)):
             header_rows[row.sheet_name].add(row.row_number)
     context: HeaderContext = {}
     for row in selected_rows:
@@ -55,9 +60,28 @@ def _governing_headers(
         if current in header_rows:
             found.append(row)
         elif found:
-            break
+            # 머리글 바로 위의 좁은 띠(예: 여러 열을 묶는 '부서' 라벨)도
+            # 머리글의 일부다. 폭이 좁아 단독으로는 머리글로 뽑히지 않는다.
+            if not _is_banner_row(row):
+                break
+            found.append(row)
         current -= 1
     return found
+
+
+def _is_banner_row(row: IndexedRow) -> bool:
+    return any(isinstance(cell.value, str) and cell.value.strip() for cell in row.cells)
+
+
+def _block_width(sheets: dict[str, dict[int, IndexedRow]], row: IndexedRow) -> int:
+    """이 줄 주변 표가 쓰는 열 수. 머리글은 표만큼 넓어야 한다."""
+    nearby = sheets[row.sheet_name]
+    return max(
+        (len(found.cells)
+         for offset in range(-5, 6)
+         if (found := nearby.get(row.row_number + offset)) is not None),
+        default=len(row.cells),
+    )
 
 
 def header_for(
@@ -77,7 +101,18 @@ def evidence_with_header(
     return replace(evidence, description=f"{header}{format_hint}")
 
 
-def _is_header_row(row: IndexedRow) -> bool:
+def _is_header_row(
+    row: IndexedRow,
+    column_values: dict[tuple[str, str], Counter] | None = None,
+    block_width: int = 0,
+) -> bool:
+    """
+    머리글은 열의 이름을 적은 줄이다. 그 값은 아래에서 되풀이되지 않는다.
+
+    글자 비율만 보면 o/x 를 적어 둔 점검표의 데이터 행이 전부 머리글이 된다.
+    실제로 그 때문에 바로 윗 데이터 행이 머리글로 쓰여, 'IP' 자리에
+    '10.1.7.70' 이 머리글로 붙었다.
+    """
     text_cells = [
         cell
         for cell in row.cells
@@ -85,7 +120,18 @@ def _is_header_row(row: IndexedRow) -> bool:
         and cell.value.strip()
         and not _looks_like_date(cell.value)
     ]
-    return len(text_cells) >= 2 and len(text_cells) / len(row.cells) >= 0.5
+    if len(text_cells) < 2 or len(text_cells) / len(row.cells) < 0.5:
+        return False
+    # 표가 7열을 쓰는데 2칸만 적힌 줄은 머리글이 아니라 띄엄띄엄한 데이터다.
+    if block_width and len(row.cells) < block_width * 0.6:
+        return False
+    if column_values is None:
+        return True
+    unique = sum(
+        column_values[(row.sheet_name, _column(cell.address))][cell.value] <= 1
+        for cell in text_cells
+    )
+    return unique > len(text_cells) / 2
 
 
 def _looks_like_date(value: str) -> bool:
