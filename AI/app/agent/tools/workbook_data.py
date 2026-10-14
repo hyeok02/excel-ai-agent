@@ -28,14 +28,12 @@ from app.agent.tools.workbook_evidence import (
     comparison_reference_order,
     missing_reference_evidence,
 )
+from app.agent.tools.workbook_lookups import build_lookups
 from app.agent.tools.workbook_headers import (
     build_header_context,
     evidence_with_header,
 )
 from app.agent.tools.workbook_data_payload import row_payload
-from app.agent.tools.workbook_cell_lookups import build_cell_lookup
-from app.agent.tools.workbook_row_counts import build_row_count
-from app.agent.tools.workbook_row_lists import build_row_list
 
 
 class WorkbookDataSearchTool:
@@ -88,9 +86,9 @@ class WorkbookDataSearchTool:
             scope.metric_group, scope.columns_by_sheet,
         )
         # 목록도 검색 결과가 아니라 시트 전체를 훑어야 한 건도 빠지지 않는다.
-        row_list = build_row_list(series_rows, series_headers, intent)
-        row_count = build_row_count(series_rows, series_headers, intent)
-        cell_lookup = build_cell_lookup(series_rows, series_headers, intent)
+        lookups = build_lookups(
+            series_rows, series_headers, context.data_index.rows, intent
+        )
         calculations = [
             *verified["calculations"],
             *time_series_calculations(comparison),
@@ -100,13 +98,24 @@ class WorkbookDataSearchTool:
             evidence_with_header(row, cell, headers) for row in rows for cell in row.cells
         ]
         priority = comparison_reference_order(comparison)
+        priority.update({
+            reference: len(priority) + offset
+            for offset, reference in enumerate(lookups.references)
+            if reference not in priority
+        })
         # 비교가 근거로 드는 셀이 검색 행 밖에 있으면, 그 하나 때문에 비교
         # 답변이 통째로 버려진다. 헤더 띠(106행)가 실제로 그렇게 빠졌다.
-        all_evidence.extend(
-            missing_reference_evidence(
-                priority, all_evidence, series_rows, series_headers
+        # 조회가 시트 전체로 넓혀 찾은 셀은 검색 행에 없다. 그 범위에서도
+        # 근거를 모아야 목록·조회 답변이 "근거 부족"으로 버려지지 않는다.
+        scopes = [(series_rows, series_headers)]
+        if lookups.widened:
+            scopes.append((lookups.rows, lookups.headers))
+        for scope_rows, scope_headers in scopes:
+            all_evidence.extend(
+                missing_reference_evidence(
+                    priority, list(all_evidence), scope_rows, scope_headers
+                )
             )
-        )
         ordinary = sorted(
             all_evidence,
             key=lambda item: priority.get(
@@ -127,9 +136,7 @@ class WorkbookDataSearchTool:
                     context.data_index, rows, query, summary_question
                 ),
                 "time_series_comparison": comparison,
-                "row_list": row_list,
-                "row_count": row_count,
-                "cell_lookup": cell_lookup,
+                **lookups.data,
                 "verified_overview": verified["overview"],
                 "verified_insights": verified["insights"],
                 "calculations": calculations,
