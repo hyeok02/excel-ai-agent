@@ -1,8 +1,8 @@
-import re
 from collections import Counter, defaultdict
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from app.agent.query.index import IndexedCell, IndexedRow
+from app.agent.tools.workbook_header_rows import column_of, is_header_row
 from app.services.provenance import AnalysisEvidence
 
 HeaderContext = dict[tuple[str, int, str], str]
@@ -10,11 +10,24 @@ HEADER_LOOKBACK_ROWS = 12
 # 머리글이 설명할 수 있는 최대 깊이. 빈 줄을 만나면 그 전에 멈추므로
 # 이 값은 끝없이 거슬러 올라가지 않게 막는 안전장치일 뿐이다.
 MAX_HEADER_DISTANCE = 400
+# 머리글 위의 띠는 묶음 이름 한두 줄이다. '글자가 있으면 띠'로 두면 위쪽
+# 모든 줄을 머리글 후보로 끌고 올라가, 행마다 백여 줄을 복사하게 된다.
+MAX_BANNER_ROWS = 2
 
 
-def build_header_context(
-    all_rows: tuple[IndexedRow, ...], selected_rows: list[IndexedRow]
-) -> HeaderContext:
+@dataclass(frozen=True)
+class HeaderIndex:
+    """어느 줄이 머리글인지 한 번만 가려 둔다.
+
+    한 질문에 머리글 계산이 세 번 넘게 돌고, 그때마다 워크북 전체를 다시
+    훑었다. 1500행짜리 파일에서 그 한 번이 1.9초였다.
+    """
+
+    sheets: dict[str, dict[int, IndexedRow]]
+    header_rows: dict[str, set[int]]
+
+
+def detect_header_rows(all_rows: tuple[IndexedRow, ...]) -> HeaderIndex:
     sheets: dict[str, dict[int, IndexedRow]] = defaultdict(dict)
     column_values: dict[tuple[str, str], Counter] = defaultdict(Counter)
     for row in all_rows:
@@ -23,19 +36,49 @@ def build_header_context(
             if isinstance(cell.value, str) and cell.value.strip():
                 column_values[(row.sheet_name, _column(cell.address))][cell.value] += 1
     header_rows: dict[str, set[int]] = defaultdict(set)
+    scores: dict[tuple[str, int], object] = {}
     for row in all_rows:
-        if _is_header_row(row, column_values, _block_width(sheets, row)):
-            header_rows[row.sheet_name].add(row.row_number)
-    context: HeaderContext = {}
-    for row in selected_rows:
-        for candidate in _governing_headers(
-            sheets[row.sheet_name], header_rows[row.sheet_name], row.row_number
+        below = sheets[row.sheet_name].get(row.row_number + 1)
+        if is_header_row(
+            row, column_values, _block_width(sheets, row), below, scores
         ):
+            header_rows[row.sheet_name].add(row.row_number)
+    return HeaderIndex(sheets, header_rows)
+
+
+def build_header_context(
+    all_rows: tuple[IndexedRow, ...],
+    selected_rows: list[IndexedRow],
+    detected: HeaderIndex | None = None,
+) -> HeaderContext:
+    found = detected or detect_header_rows(all_rows)
+    context: HeaderContext = {}
+    previous: dict[str, tuple[int, list[IndexedRow]]] = {}
+    for row in sorted(selected_rows, key=lambda item: (item.sheet_name, item.row_number)):
+        for candidate in _governing_for(found, previous, row):
             for cell in candidate.cells:
                 if isinstance(cell.value, str) and cell.value.strip():
                     key = (row.sheet_name, row.row_number, _column(cell.address))
                     context.setdefault(key, cell.value.strip()[:120])
     return context
+
+
+def _governing_for(found, previous, row) -> list[IndexedRow]:
+    """바로 윗줄과 같은 블록이면 그 줄의 머리글을 그대로 쓴다.
+
+    줄마다 최대 400행을 거슬러 올라가느라, 1400행짜리 워크북에서 머리글을
+    붙이는 데만 1.9초가 걸렸다. 윗줄이 머리글이 아니고 빈 줄도 아니면 머리글은
+    달라지지 않는다.
+    """
+    header_rows = found.header_rows[row.sheet_name]
+    number = row.row_number
+    seen = previous.get(row.sheet_name)
+    if seen and seen[0] == number - 1 and number - 1 not in header_rows:
+        previous[row.sheet_name] = (number, seen[1])
+        return seen[1]
+    governing = _governing_headers(found.sheets[row.sheet_name], header_rows, number)
+    previous[row.sheet_name] = (number, governing)
+    return governing
 
 
 def _governing_headers(
@@ -52,6 +95,7 @@ def _governing_headers(
     여러 줄짜리 머리글에서 아래쪽 줄이 이기게 한다.
     """
     found: list[IndexedRow] = []
+    banners = 0
     current = row_number - 1
     while current > 0 and row_number - current <= MAX_HEADER_DISTANCE:
         row = rows.get(current)
@@ -62,8 +106,9 @@ def _governing_headers(
         elif found:
             # 머리글 바로 위의 좁은 띠(예: 여러 열을 묶는 '부서' 라벨)도
             # 머리글의 일부다. 폭이 좁아 단독으로는 머리글로 뽑히지 않는다.
-            if not _is_banner_row(row):
+            if banners >= MAX_BANNER_ROWS or not _is_banner_row(row):
                 break
+            banners += 1
             found.append(row)
         current -= 1
     return found
@@ -101,43 +146,5 @@ def evidence_with_header(
     return replace(evidence, description=f"{header}{format_hint}")
 
 
-def _is_header_row(
-    row: IndexedRow,
-    column_values: dict[tuple[str, str], Counter] | None = None,
-    block_width: int = 0,
-) -> bool:
-    """
-    머리글은 열의 이름을 적은 줄이다. 그 값은 아래에서 되풀이되지 않는다.
-
-    글자 비율만 보면 o/x 를 적어 둔 점검표의 데이터 행이 전부 머리글이 된다.
-    실제로 그 때문에 바로 윗 데이터 행이 머리글로 쓰여, 'IP' 자리에
-    '10.1.7.70' 이 머리글로 붙었다.
-    """
-    text_cells = [
-        cell
-        for cell in row.cells
-        if isinstance(cell.value, str)
-        and cell.value.strip()
-        and not _looks_like_date(cell.value)
-    ]
-    if len(text_cells) < 2 or len(text_cells) / len(row.cells) < 0.5:
-        return False
-    # 표가 7열을 쓰는데 2칸만 적힌 줄은 머리글이 아니라 띄엄띄엄한 데이터다.
-    if block_width and len(row.cells) < block_width * 0.6:
-        return False
-    if column_values is None:
-        return True
-    unique = sum(
-        column_values[(row.sheet_name, _column(cell.address))][cell.value] <= 1
-        for cell in text_cells
-    )
-    return unique > len(text_cells) / 2
-
-
-def _looks_like_date(value: str) -> bool:
-    return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:T.*)?", value.strip()))
-
-
 def _column(address: str) -> str:
-    match = re.match(r"[A-Z]+", address.upper())
-    return match.group(0) if match else address
+    return column_of(address)
