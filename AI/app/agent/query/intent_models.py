@@ -57,11 +57,14 @@ class QuestionIntent:
     def wants_a_summary(self) -> bool:
         """요약 문장으로 답해도 되는 질문인지.
 
-        모델이 '세어야 하는 질문'이라고 했는데 코드가 세지 못했다면, 파일
-        전체 요약으로 때우면 안 된다. 특정 질문에 엉뚱한 답이 '근거 확인'
-        딱지를 달고 나간 적이 있다.
+        묻는 범위가 파일 전체면 요약이 맞는 답이다. 'kind'로 막으면 안 된다.
+        "이 파일은 무엇을 비교하고 있어?"가 comparison으로 분류되는 바람에
+        앱이 추천으로 띄우는 질문이 "근거 부족"으로 나갔다.
+
+        범위가 틀리게 분류되면 그건 프롬프트에서 고칠 일이지, 여기서 조건을
+        덧붙여 막을 일이 아니다. 덧붙일수록 멀쩡한 질문이 같이 막힌다.
         """
-        return self.kind in ("summary", "brief", "structure", "other")
+        return self.whole_workbook
 
     def enriched(self, question: str) -> str:
         """열 이름을 맞출 때 쓰는 글. 모델이 짚은 대상을 질문에 더해 준다."""
