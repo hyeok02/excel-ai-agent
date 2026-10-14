@@ -5,6 +5,7 @@ from app.agent.query.comparison_answers import validated_comparison_answer
 from app.agent.query.row_list_answers import validated_row_list_answer
 from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
+from app.agent.query.intent_models import QuestionIntent, QuestionIntentClassifier
 from app.agent.query.models import (
     QuestionAnswer,
     QuestionAnswerGenerator,
@@ -23,19 +24,24 @@ class WorkbookQuestionService:
         generator: QuestionAnswerGenerator,
         registry: AgentToolRegistry,
         executor: AgentToolExecutor | None = None,
+        classifier: QuestionIntentClassifier | None = None,
     ) -> None:
         self._generator = generator
         self._registry = registry
         self._executor = executor or AgentToolExecutor()
+        self._classifier = classifier
 
     async def answer(
         self, question: str, summary: WorkbookSummary, data_index: WorkbookDataIndex
     ) -> QuestionAnswer:
         if clarification := vague_question_answer(question, data_index):
             return clarification
+        intent = await self._question_intent(question, summary)
         plan = build_question_plan(question)
         execution = self._executor.execute(
-            plan, AgentToolContext(summary, data_index, question), self._registry
+            plan,
+            AgentToolContext(summary, data_index, question, intent),
+            self._registry,
         )
         truncated = _search_scope_truncated(execution)
         if canonical := validated_comparison_answer(question, execution, truncated):
@@ -52,6 +58,18 @@ class WorkbookQuestionService:
         if clarification := unclear_draft_answer(question, draft):
             return clarification
         return validate_answer(question, draft, execution, truncated)
+
+
+    async def _question_intent(
+        self, question: str, summary: WorkbookSummary
+    ) -> QuestionIntent:
+        """의도 판별이 실패해도 질문에는 답한다. 분류는 힌트일 뿐이다."""
+        if self._classifier is None:
+            return QuestionIntent.from_keywords(question)
+        try:
+            return await self._classifier.classify(question, summary)
+        except Exception:
+            return QuestionIntent.from_keywords(question)
 
 
 def _search_scope_truncated(execution) -> bool:

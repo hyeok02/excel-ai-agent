@@ -46,6 +46,8 @@ class AgentToolContext:
     # 사용자가 실제로 한 질문. 도구가 받는 query는 모델이 바꿔 쓴 검색어라
     # 증감 방향·기간 같은 조건이 지워져 있을 수 있다.
     question: str = ""
+    # 질문이 무엇을 묻는지. 모델이 고르고, 부르지 못하면 낱말 규칙이 채운다.
+    intent: Any = None
 
 
 @dataclass(frozen=True)
