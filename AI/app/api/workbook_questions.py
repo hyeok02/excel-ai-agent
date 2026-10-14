@@ -10,6 +10,7 @@ from app.agent.query import (
     build_workbook_data_index,
 )
 from app.agent.query.generator import LangChainQuestionAnswerGenerator
+from app.agent.query.intent_classifier import LangChainQuestionIntentClassifier
 from app.api.agent_tools import get_agent_tool_registry
 from app.api.workbooks import HIDDEN_SHEETS, parse_or_bad_request, read_upload
 from app.services.insights.models import (
@@ -18,6 +19,8 @@ from app.services.insights.models import (
 )
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
+# 분류기는 질문마다 새로 만들 이유가 없다. 캐시를 같이 쓴다.
+_intent_classifier = LangChainQuestionIntentClassifier.from_environment()
 
 
 def get_question_answer_generator() -> LangChainQuestionAnswerGenerator:
@@ -46,9 +49,9 @@ async def ask_workbook_question(
         build_workbook_data_index, summary.filename, content, included_sheets
     )
     try:
-        return await WorkbookQuestionService(generator, registry).answer(
-            question, summary, data_index
-        )
+        return await WorkbookQuestionService(
+            generator, registry, classifier=_intent_classifier
+        ).answer(question, summary, data_index)
     except InsightGenerationError as exception:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exception)

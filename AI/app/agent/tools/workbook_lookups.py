@@ -8,11 +8,17 @@ from dataclasses import dataclass
 
 from app.agent.query.index import IndexedRow
 from app.agent.tools.workbook_cell_lookups import build_cell_lookup
-from app.agent.tools.workbook_headers import HeaderContext, build_header_context
+from app.agent.tools.workbook_headers import (
+    HeaderContext,
+    HeaderIndex,
+    build_header_context,
+    detect_header_rows,
+)
+from app.agent.tools.workbook_mark_peaks import build_mark_peak
 from app.agent.tools.workbook_row_counts import build_row_count
 from app.agent.tools.workbook_row_lists import build_row_list
 
-KEYS = ("row_list", "cell_lookup", "row_count")
+KEYS = ("row_list", "cell_lookup", "row_count", "mark_peak")
 
 
 @dataclass(frozen=True)
@@ -44,15 +50,33 @@ def build_lookups(
     headers: HeaderContext,
     all_rows: tuple[IndexedRow, ...],
     question: str,
+    detected: HeaderIndex | None = None,
 ) -> LookupResult:
     found = _built(rows, headers, question)
     if any(found.values()) or len(all_rows) == len(rows):
         return LookupResult(found, rows, headers)
-    widened = list(all_rows)
-    widened_headers = build_header_context(all_rows, widened)
-    return LookupResult(
-        _built(widened, widened_headers, question), widened, widened_headers, True
-    )
+    return _widened(all_rows, question, detected)
+
+
+def _widened(
+    all_rows: tuple[IndexedRow, ...], question: str, detected: HeaderIndex | None
+) -> LookupResult:
+    """시트를 한 장씩 본다.
+
+    워크북 전체를 한 덩어리로 보면 열 후보가 열두 시트에서 섞여, 정작 표가
+    있는 시트가 상위 후보 밖으로 밀렸다. 'CVD #1 IP가 뭐야?'가 그렇게 답을
+    잃었다. 시트마다 따로 보고 먼저 나오는 결과를 쓴다.
+    """
+    found = detected or detect_header_rows(all_rows)
+    searched = {row.sheet_name for row in all_rows}
+    empty = _built([], {}, question)
+    for sheet_name in sorted(searched):
+        sheet_rows = [row for row in all_rows if row.sheet_name == sheet_name]
+        sheet_headers = build_header_context(all_rows, sheet_rows, found)
+        built = _built(sheet_rows, sheet_headers, question)
+        if any(built.values()):
+            return LookupResult(built, sheet_rows, sheet_headers, True)
+    return LookupResult(empty, [], {}, True)
 
 
 def _built(rows, headers, question) -> dict[str, object]:
@@ -60,6 +84,7 @@ def _built(rows, headers, question) -> dict[str, object]:
         "row_list": build_row_list(rows, headers, question),
         "cell_lookup": build_cell_lookup(rows, headers, question),
         "row_count": build_row_count(rows, headers, question),
+        "mark_peak": build_mark_peak(rows, headers, question),
     }
 
 

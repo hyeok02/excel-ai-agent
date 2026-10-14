@@ -13,6 +13,23 @@ def missing_reference_evidence(priority, present, rows, headers):
     ]
 
 
+def widened_scope_evidence(priority, present, rows, headers, lookups):
+    """조회가 시트 전체로 넓혀 찾은 셀은 검색 행에 없다. 그 범위에서도 근거를
+    모아야 목록·조회 답변이 "근거 부족"으로 버려지지 않는다."""
+    scopes = [(rows, headers)]
+    if lookups.widened:
+        scopes.append((lookups.rows, lookups.headers))
+    collected = list(present)
+    added = []
+    for scope_rows, scope_headers in scopes:
+        found = missing_reference_evidence(
+            priority, collected, scope_rows, scope_headers
+        )
+        collected.extend(found)
+        added.extend(found)
+    return added
+
+
 def comparison_reference_order(
     comparison: dict[str, object] | None,
 ) -> dict[str, int]:
