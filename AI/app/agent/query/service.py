@@ -2,6 +2,7 @@ from app.agent.contracts import AgentToolContext
 from app.agent.execution import AgentToolExecutor
 from app.agent.query.answer_validation import validate_answer
 from app.agent.query.comparison_answers import validated_comparison_answer
+from app.agent.query.metric_change_answers import validated_metric_change_answer
 from app.agent.query.row_list_answers import validated_row_list_answer
 from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
@@ -45,6 +46,8 @@ class WorkbookQuestionService:
         )
         truncated = _search_scope_truncated(execution)
         if canonical := validated_comparison_answer(question, execution, truncated):
+            return canonical
+        if canonical := validated_metric_change_answer(question, execution, truncated):
             return canonical
         if canonical := validated_row_list_answer(question, execution, truncated):
             return canonical

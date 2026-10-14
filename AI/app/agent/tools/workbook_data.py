@@ -29,6 +29,7 @@ from app.agent.tools.workbook_evidence import (
     widened_scope_evidence,
 )
 from app.agent.tools.workbook_lookups import build_lookups
+from app.agent.tools.workbook_metric_changes import comparison_payload
 from app.agent.tools.workbook_headers import (
     build_header_context,
     detect_header_rows,
@@ -138,7 +139,7 @@ class WorkbookDataSearchTool:
                 "index_truncated": query_scope_truncated(
                     context.data_index, rows, query, summary_question
                 ),
-                "time_series_comparison": comparison,
+                **comparison_payload(comparison, asked, intent.targets),
                 **lookups.data,
                 "verified_overview": verified["overview"],
                 "verified_insights": verified["insights"],

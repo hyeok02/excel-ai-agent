@@ -42,8 +42,9 @@ def test_time_series_answer_accepts_period_and_calculated_change() -> None:
     body = response.json()
     assert body["status"] == "answered"
     assert "684명(11.2%) 감소" in body["answer"]
+    # 답변이 지표 이름을 말하므로 그 이름이 적힌 칸(B1)도 근거로 든다.
     assert {item["reference"] for item in body["evidence"]} == {
-        "A2", "B2", "A3", "B3",
+        "A2", "B1", "B2", "A3", "B3",
     }
 
 
