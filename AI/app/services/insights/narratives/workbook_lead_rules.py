@@ -4,6 +4,7 @@ import re
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.narratives.flag_narratives import checklist_lead
 from app.services.insights.models import ValidatedWorkbookInsightReport
+from app.services.insights.narratives.narrative_values import joining_particle
 from app.services.insights.narratives.subject_scope import visible_subject
 from app.services.insights.verification.reference_matching import matching_references
 from app.services.insights.verification.validation_index import extract_references
@@ -95,7 +96,8 @@ def _change_lead(report):
             topics.append(topic)
     owner = f"{owners.pop()}의 " if len(owners) == 1 else ""
     when = "기간별 " if any(item.category == "trend" for item in items) else ""
-    return (f"이 파일은 {owner}{'와 '.join(topics[:2])} 등 "
+    joined = f"{topics[0]}{joining_particle(topics[0])} {topics[1]}" if len(topics) > 1 else topics[0]
+    return (f"이 파일은 {owner}{joined} 등 "
             f"주요 수치의 {when}변동을 다룹니다.")
 
 
