@@ -9,6 +9,7 @@ from app.agent.query.service import WorkbookQuestionService
 from app.agent.query.workbook_summary_answers import (
     validated_workbook_summary_answer,
 )
+from app.agent.query.workbook_summary_rows import is_workbook_summary_question
 from app.services.provenance import EvidenceKind
 from app.services.workbook_parsing.models import WorkbookSummary
 
@@ -89,3 +90,18 @@ class _StubExecutor:
 
     def execute(self, *_args, **_kwargs):
         return self.execution
+
+
+def test_reads_a_whole_file_question_however_it_is_worded() -> None:
+    # 정해 둔 표현 목록만 보면 같은 질문도 조금만 달리 쓰면 빗나간다.
+    assert is_workbook_summary_question("이 파일은 뭐에 관련된 얘기야?")
+    assert is_workbook_summary_question("이 파일 뭐야?")
+    assert is_workbook_summary_question("무슨 자료야?")
+    assert is_workbook_summary_question("이 엑셀 어떤 내용이야?")
+
+
+def test_does_not_read_a_question_about_one_thing_as_a_whole_file_question() -> None:
+    # 파일을 가리키는 말이 있어도 다른 대상이 남으면 전체 질문이 아니다.
+    assert not is_workbook_summary_question("이 파일 어떤 장비가 문제야?")
+    assert not is_workbook_summary_question("이 파일은 어떤 시트로 구성돼 있어?")
+    assert not is_workbook_summary_question("장비가 총 몇 대야?")

@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 
 from app.agent.query.index import IndexedRow
@@ -17,6 +18,16 @@ SUMMARY_PHRASES = (
     "가장 중요한",
     "summary",
     "overview",
+)
+WHOLE_FILE_SUBJECTS = (
+    "파일", "워크북", "엑셀", "문서", "자료", "데이터",
+    "workbook", "spreadsheet", "file",
+)
+WHOLE_FILE_ASKS = ("뭐", "무슨", "무엇", "어떤", "what", "about")
+# 파일 자체를 묻는 질문에 흔히 붙는 말. 이것만 남으면 다른 대상이 없는 것이다.
+WHOLE_FILE_FILLERS = (
+    "관련", "얘기", "이야기", "내용", "담긴", "들어", "있어", "있나", "구성",
+    "설명", "정리", "대해", "대한", "이거", "이건", "거야", "뭔가", "말하",
 )
 BUSINESS_TERMS = (
     "focus company",
@@ -44,7 +55,29 @@ SUPPORT_SHEET_TERMS = (
 
 def is_workbook_summary_question(query: str) -> bool:
     normalized = " ".join(query.casefold().split())
-    return any(phrase in normalized for phrase in SUMMARY_PHRASES)
+    if any(phrase in normalized for phrase in SUMMARY_PHRASES):
+        return True
+    return _asks_about_the_whole_file(normalized)
+
+
+def _asks_about_the_whole_file(normalized: str) -> bool:
+    """'이 파일은 뭐에 관련된 얘기야?'처럼 파일 자체를 물을 때.
+
+    정해 둔 표현 목록만 보면 같은 질문도 조금만 달리 쓰면 빗나간다. 파일을
+    가리키는 말과 묻는 말이 함께 있고, 그 둘을 걷어낸 자리에 다른 대상이
+    남지 않을 때만 워크북 전체 질문으로 본다. '이 파일 어떤 장비가 문제야?'는
+    '장비'가 남으므로 전체 질문이 아니다.
+    """
+    if not any(term in normalized for term in WHOLE_FILE_SUBJECTS):
+        return False
+    if not any(ask in normalized for ask in WHOLE_FILE_ASKS):
+        return False
+    remaining = normalized
+    for word in (*WHOLE_FILE_SUBJECTS, *WHOLE_FILE_ASKS, *WHOLE_FILE_FILLERS):
+        remaining = remaining.replace(word, " ")
+    return not any(
+        len(token) >= 2 for token in re.findall(r"[0-9a-z]+|[가-힣]+", remaining)
+    )
 
 
 def select_workbook_summary_rows(
