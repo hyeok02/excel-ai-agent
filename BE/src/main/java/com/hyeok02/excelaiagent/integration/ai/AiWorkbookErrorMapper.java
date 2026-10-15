@@ -19,12 +19,17 @@ final class AiWorkbookErrorMapper {
 
 	static RuntimeException translate(RestClientException exception) {
 		if (exception instanceof RestClientResponseException response
-				&& response.getStatusCode().value() == 400) {
+				&& (response.getStatusCode().value() == 400 || response.getStatusCode().value() == 502)) {
 			String body = response.getResponseBodyAsString();
 			if (body.length() <= 2048) {
 				try {
 					Map<?, ?> error = JSON.readValue(body, Map.class);
 					Object detail = error == null ? null : error.get("detail");
+					if (response.getStatusCode().value() == 502) {
+						return AiServiceUnavailableException.QUOTA_MESSAGE.equals(detail)
+								? AiServiceUnavailableException.quotaExceeded()
+								: new AiServiceUnavailableException(exception);
+					}
 					if (UnreadableExcelFileException.STYLE_MESSAGE.equals(detail)
 							|| COMPATIBILITY_MESSAGE.equals(detail)) {
 						return new UnreadableExcelFileException();

@@ -41,7 +41,7 @@ def source_bound_context(context, summary, index) -> list[dict]:
                                      if (ref := normalize_reference(
                                          f"{table.sheet_name}!{column.id}{cell_box.min_row}"
                                      )) in cells and ref not in matched)
-        unique = {cell.reference: cell for cell in [*selected[:8], *headers[:8], *neighbors[:8]]}
+        unique = {cell.reference: cell for cell in [*selected[:12], *headers[:6], *neighbors[:6]]}
         entry = {
             "id": key,
             "hint": item.model_dump(exclude={"evidence"}),

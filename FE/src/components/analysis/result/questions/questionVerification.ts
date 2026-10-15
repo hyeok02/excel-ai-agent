@@ -1,4 +1,5 @@
 import type { WorkbookQuestionAnswer } from '../../../../api/analysis/questionTypes.ts'
+import { boundedQuestionVerification } from './questionBoundedVerification.ts'
 
 /** Answer availability and source citations are not a correctness certificate. */
 export const questionVerificationPresentation = (answer: WorkbookQuestionAnswer) => {
@@ -38,6 +39,8 @@ export const questionVerificationPresentation = (answer: WorkbookQuestionAnswer)
         '파일 내부 입력으로 다시 계산한 값입니다. Excel이나 외부 서비스의 최신 저장값을 확인한 것은 아닙니다.',
     } as const
   }
+  const bounded = boundedQuestionVerification(answer, checks)
+  if (bounded) return bounded
   if (
     verification?.level === 'source_checked' &&
     ['cited_cells', 'header_labels', 'header_positions'].every((check) =>

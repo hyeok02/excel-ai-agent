@@ -5,6 +5,7 @@ from app.agent.query.index import WorkbookDataIndex
 from app.agent.query.metric_observation_periods import LATEST, requested_periods
 from app.agent.query.metric_observation_units import observation_unit
 from app.agent.query.metric_request_coverage import request_covered
+from app.agent.query.metric_premise_answers import metric_premise_answer
 from app.agent.query.metric_observations import _normal, dated_record_observations, horizontal_observations
 from app.agent.query.metric_observation_scope import _bind_entity_scope
 from app.agent.query.metric_observation_guards import _scope_references, _multiple_named_metrics
@@ -20,6 +21,8 @@ _CHANGE = re.compile(r"증가|감소|증감|변화|변동|얼마나|차이|비�
 
 
 def metric_observation_answer(question, summary, index: WorkbookDataIndex, intent=None) -> QuestionAnswer | None:
+    if premise := metric_premise_answer(question, summary, index, intent):
+        return premise
     requests = requested_periods(question)
     latest = bool(LATEST.search(question))
     if not (requests or latest) or _UNSUPPORTED.search(question):

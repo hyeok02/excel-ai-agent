@@ -1,0 +1,863 @@
+{
+  "description": "Real-file regression questions, original production audit plus explicit-scope and insight-context controls. File names and expected values are test data only, never application routing.",
+  "cases": [
+    {
+      "id": "key_growth",
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "IBM의 Total Revenue는 2024년에서 2025년으로 얼마나 증가했어? 금액과 증가율을 알려줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "62,?753",
+        "67,?535",
+        "4,?782",
+        "7\\.6"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "key_debt",
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "이 파일에서 IBM의 총부채(Total Debt)는 얼마야? 단위도 알려줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "64,?607",
+        "백만|Millions|\\$M"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "snapshot_debt",
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "Walmart의 총부채(Total Debt)는 얼마야? 단위도 알려줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "67,?095",
+        "백만|Millions|\\$M"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "key_forecast",
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "Key_Stats 시트에서 2025년 실제 매출과 2026년 예상 매출을 비교해줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "67,?535",
+        "71,?183",
+        "2025",
+        "2026"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "snapshot_growth",
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "Walmart의 매출(Revenue)이 2025년 1월 31일 종료 회계연도에서 2026년 1월 31일 종료 회계연도로 얼마나 증가했어?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "680,?985",
+        "713,?163",
+        "32,?178"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "snapshot_grain",
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "CompanySummary에서 2026년 1월 31일 종료 회계연도 순이익(Net Income)과 같은 날짜 종료 분기의 순이익을 구분해서 알려줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "21,?893",
+        "4,?237",
+        "연간|연도|annual|year",
+        "분기|quarter"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "event_lookup",
+      "file": "SPG_KeyDevelopments_Screening_v1.xlsm",
+      "question": "Key_Developments 시트에서 Key Development OID 39369589의 날짜, 유형과 제목을 알려줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "2025.{0,3}12.{0,3}11",
+        "Strategic Alliance",
+        "IBM and Pearson"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "event_id_count",
+      "file": "SPG_KeyDevelopments_Screening_v1.xlsm",
+      "question": "Key_Developments 시트에서 CIQ Pro ID가 3005566인 이벤트는 몇 건이야?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "7건"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ma_lookup",
+      "file": "SPG_MAIPOTransactionComparables_v1.xlsm",
+      "question": "M&A_Transaction_ID 시트의 SPTRD1439680 거래에서 인수자, 인수 대상과 총 거래금액을 단위와 함께 알려줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "Emirates NBD",
+        "DenizBank",
+        "832",
+        "\\$M|백만|Millions"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ipo_count",
+      "file": "SPG_MAIPOTransactionComparables_v1.xlsm",
+      "question": "IPO 시트에서 Funding Type이 Common Equity인 거래는 몇 건이야?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "9건"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ipo_sum",
+      "file": "SPG_MAIPOTransactionComparables_v1.xlsm",
+      "question": "IPO 시트의 Gross Amount Offered, Including Overallotment ($000) 열에 있는 전체 10건의 합계를 단위와 함께 알려줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "7,?545,?868",
+        "\\$000|천|Thousands"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "event_frequency",
+      "file": "SPG_KeyDevelopments_Screening_v1.xlsm",
+      "question": "Key_Developments 시트의 Key Development Type & Category별 건수를 요약해줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "Client Announcement.{0,8}2건",
+        "Strategic Alliance.{0,8}3건",
+        "Company Conference Presentation.{0,8}5건",
+        "총 18건"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "headcount_change",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "부서 등 항목별 전체 직원 수 변화를 시작 값과 마지막 값 기준으로 비교해줘",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "699",
+        "904",
+        "1,?145",
+        "1,?816",
+        "308",
+        "385",
+        "763",
+        "1,?081",
+        "1,?040",
+        "1,?231"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "headcount_country",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "대한민국(South Korea)의 직원 수는 몇 명이야?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "107"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ownership_lookup",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "TOP 30 HOLDERS에서 Berkshire Hathaway의 보유 주식 수와 지분율은 얼마야?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "후보|대상|항목|범위"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "insufficient_evidence"
+      ],
+      "reference_patterns_after_detailed_scope_selection": [
+        "680,?233,?587",
+        "8\\.94",
+        "%"
+      ],
+      "forbid_request_checked": true,
+      "expected_outcome": "clarify_unselected_company_scope"
+    },
+    {
+      "id": "headcount_latest",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "Riot Games의 최신 전체 직원 수와 기준일을 알려줘.",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "5,?411",
+        "2025.{0,3}0?7.{0,3}0?1"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ownership_top_sum",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "TOP 30 HOLDERS의 상위 3개 보유자 지분율 합계는 얼마야?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "후보|대상|항목|범위"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "insufficient_evidence"
+      ],
+      "reference_patterns_after_detailed_scope_selection": [
+        "24\\.45",
+        "%"
+      ],
+      "forbid_request_checked": true,
+      "expected_outcome": "clarify_unselected_company_scope"
+    },
+    {
+      "id": "ownership_count",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "TOP 30 HOLDERS에서 지분율이 1% 이상인 보유자는 몇 곳이야?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "후보|대상|항목|범위"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "insufficient_evidence"
+      ],
+      "reference_patterns_after_detailed_scope_selection": [
+        "11건|11곳"
+      ],
+      "forbid_request_checked": true,
+      "expected_outcome": "clarify_unselected_company_scope"
+    },
+    {
+      "id": "tck_frequency",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "작업현황 시트의 네트워크 안정 표시별 건수를 요약해줘",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "7건",
+        "4건",
+        "1건",
+        "5건"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "tck_relation",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "TCK와 성수계전 작업이 똑같은거야?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "하나의 열"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "tck_summary",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "CVD 장비 점검을 항목별로 요약해줘",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "TCK",
+        "네트워크",
+        "Detector"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "tck_machine",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "작업현황 시트에서 CVD #1의 네트워크 안정 표시는 뭐야?",
+      "parent": null,
+      "group": "baseline",
+      "required_patterns": [
+        "x"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "key_followup",
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "그럼 2027년 예상 매출은?",
+      "parent": "key_forecast",
+      "group": "followup",
+      "required_patterns": [
+        "74,?255",
+        "2027"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "snapshot_followup",
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "그럼 전년도 같은 분기 순이익은?",
+      "parent": "snapshot_grain",
+      "group": "followup",
+      "required_patterns": [
+        "5,?254",
+        "2025"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "key_false_actual",
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "2026년 실제 매출이 71,183백만 달러라는 거지?",
+      "parent": "key_forecast",
+      "group": "adversarial",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "snapshot_false_grain",
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "2026년 1월 31일 종료 분기 순이익이 21,893백만 달러 맞지?",
+      "parent": "snapshot_grain",
+      "group": "adversarial",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "event_false_acquisition",
+      "file": "SPG_KeyDevelopments_Screening_v1.xlsm",
+      "question": "그럼 IBM이 Pearson을 인수 완료했다는 뜻이야?",
+      "parent": "event_lookup",
+      "group": "adversarial",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "ipo_followup",
+      "file": "SPG_MAIPOTransactionComparables_v1.xlsm",
+      "question": "그 거래들의 Gross Amount Offered, Including Overallotment 합계는 얼마야? 단위도 알려줘.",
+      "parent": "ipo_count",
+      "group": "followup",
+      "required_patterns": [
+        "7,?515,?770",
+        "천|\\$000|Thousands"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "event_followup",
+      "file": "SPG_KeyDevelopments_Screening_v1.xlsm",
+      "question": "그중 Company Conference Presentation은 몇 건이야?",
+      "parent": "event_id_count",
+      "group": "followup",
+      "required_patterns": [
+        "3건"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ipo_false_all_equity",
+      "file": "SPG_MAIPOTransactionComparables_v1.xlsm",
+      "question": "IPO 시트의 10건 전부 Common Equity라는 뜻이야?",
+      "parent": "ipo_count",
+      "group": "adversarial",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "headcount_followup",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "그럼 일본은?",
+      "parent": "headcount_country",
+      "group": "followup",
+      "required_patterns": [
+        "29"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "headcount_false_date",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "대한민국 직원 107명은 2023년 9월 1일 기준이라는 뜻이야?",
+      "parent": "headcount_country",
+      "group": "adversarial",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "ownership_followup",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "그럼 Vanguard Group은?",
+      "parent": "ownership_lookup",
+      "group": "followup",
+      "required_patterns": [
+        "후보|대상|항목|범위"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "insufficient_evidence"
+      ],
+      "reference_patterns_after_detailed_scope_selection": [
+        "657,?834,?864",
+        "8\\.64"
+      ],
+      "forbid_request_checked": true,
+      "expected_outcome": "clarify_unselected_company_scope"
+    },
+    {
+      "id": "ownership_false_control",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "Berkshire Hathaway가 지분율 1위니까 과반 지분으로 경영권을 독점한다는 뜻이야?",
+      "parent": "ownership_lookup",
+      "group": "adversarial",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "tck_followup_filter",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "그중 x인 장비만 보여줘",
+      "parent": "tck_frequency",
+      "group": "followup",
+      "required_patterns": [
+        "#1\\b",
+        "#2\\b",
+        "#3\\b",
+        "#4\\b",
+        "#7\\b",
+        "#11\\b",
+        "#16\\b"
+      ],
+      "forbidden_patterns": [
+        "#(?:5|6|8|9|10|12|13|15|17|22)\\b"
+      ],
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "tck_false_all_stable",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "그럼 17대 모두 네트워크가 안정적이라는 뜻이야?",
+      "parent": "tck_frequency",
+      "group": "adversarial",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "tck_followup_subject",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "그럼 CVD #8은?",
+      "parent": "tck_machine",
+      "group": "followup",
+      "required_patterns": [
+        "o"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "tck_followup_filter2",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "그중 기존 작업일 대비 변경점이 신규인 장비만 보여줘",
+      "parent": "tck_followup_filter",
+      "group": "followup",
+      "required_patterns": [
+        "#2\\b",
+        "#7\\b"
+      ],
+      "forbidden_patterns": [
+        "#(?:1|3|4|5|6|8|9|10|11|12|13|15|16|17|22)\\b"
+      ],
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "tck_unknown_cause",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "왜 CVD #1의 네트워크가 불안정한 거야? 구체적인 고장 원인을 알려줘.",
+      "parent": "tck_machine",
+      "group": "adversarial",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "ownership_lookup_scoped",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "Detailed_Ownership 시트의 TOP 30 HOLDERS에서 Berkshire Hathaway의 보유 주식 수와 지분율은 얼마야?",
+      "parent": null,
+      "group": "control",
+      "required_patterns": [
+        "680,?233,?587",
+        "8\\.94",
+        "%"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ownership_top_sum_scoped",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "Detailed_Ownership 시트의 TOP 30 HOLDERS의 상위 3개 보유자 지분율 합계는 얼마야?",
+      "parent": null,
+      "group": "control",
+      "required_patterns": [
+        "24\\.45",
+        "%"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ownership_count_scoped",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "Detailed_Ownership 시트의 TOP 30 HOLDERS에서 지분율이 1% 이상인 보유자는 몇 곳이야?",
+      "parent": null,
+      "group": "control",
+      "required_patterns": [
+        "11건|11곳"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ownership_followup_scoped",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "그럼 Vanguard Group은?",
+      "parent": "ownership_lookup_scoped",
+      "group": "control",
+      "required_patterns": [
+        "657,?834,?864",
+        "8\\.64"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "key_false_actual_standalone",
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "Key_Stats 시트에서 IBM의 2026년 실제 매출은 71,183백만 달러가 맞아?",
+      "parent": null,
+      "group": "control",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "snapshot_false_grain_standalone",
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "CompanySummary 시트에서 Walmart의 2026년 1월 31일 종료 분기 순이익(Net Income)은 21,893백만 달러가 맞아?",
+      "parent": null,
+      "group": "control",
+      "required_patterns": [],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited",
+        "insufficient_evidence"
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "headcount_country_with_insight",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "대한민국(South Korea)의 직원 수는 몇 명이야?",
+      "parent": null,
+      "group": "control",
+      "required_patterns": [
+        "107"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ],
+      "insights": [
+        {
+          "title": "전체 직원 수 변화",
+          "topic": "전체 직원 수 추이",
+          "evidence": [
+            "'Detailed_Headcount_Analytics'!E108:F127"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "headcount_followup_with_insight",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "그럼 일본은?",
+      "parent": "headcount_country_with_insight",
+      "group": "control",
+      "required_patterns": [
+        "29"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "answered",
+        "limited"
+      ]
+    },
+    {
+      "id": "ownership_scope_selection",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "Detailed_Ownership 시트 기준으로 알려줘",
+      "parent": "ownership_lookup",
+      "group": "followup",
+      "statuses": [
+        "limited",
+        "answered"
+      ],
+      "required_patterns": [
+        "680,?233,?587",
+        "8\\.94"
+      ]
+    },
+    {
+      "id": "ownership_followup_after_selection",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "그럼 Vanguard Group은?",
+      "parent": "ownership_scope_selection",
+      "group": "followup",
+      "statuses": [
+        "limited",
+        "answered"
+      ],
+      "required_patterns": [
+        "657,?834,?864",
+        "8\\.64"
+      ]
+    },
+    {
+      "id": "headcount_korean_subject",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "대한민국 직원 수는 몇 명이야?",
+      "parent": null,
+      "group": "translation",
+      "required_patterns": [
+        "107"
+      ],
+      "forbidden_patterns": null,
+      "statuses": [
+        "limited"
+      ],
+      "insights": [
+        {
+          "title": "전체 직원 수 변화",
+          "topic": "전체 직원 수 추이",
+          "evidence": [
+            "'Detailed_Headcount_Analytics'!E108:F127"
+          ]
+        }
+      ],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "headcount_korean_followup",
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "그럼 일본은?",
+      "parent": "headcount_korean_subject",
+      "group": "followup",
+      "statuses": [
+        "limited"
+      ],
+      "required_patterns": [
+        "29"
+      ],
+      "forbid_request_checked": true
+    }
+  ]
+}

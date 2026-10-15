@@ -91,7 +91,8 @@ def test_standalone_misclassification_cannot_return_verified_whole_row(question)
 def test_complete_followup_standalone_still_runs_the_explicit_question():
     question = "그럼 Unit-B의 수량은?"
     answer, calls = run_question(question, Resolver())
-    assert calls == [question]
+    assert calls == ["Unit-B의 수량은?"]
+    assert answer.question == question
     assert answer.status == "answered"
     assert answer.verification.level == "request_checked"
     assert answer.resolved_question is None

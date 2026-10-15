@@ -6,6 +6,7 @@ from app.agent.query.answer_validation import validate_answer
 from app.agent.query.ambiguity_answers import ambiguous_source_answer
 from app.agent.query.comparison_answers import validated_comparison_answer
 from app.agent.query.conversation_answers import answer_in_conversation
+from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.conversation_models import QuestionConversation, QuestionContextResolver
 from app.agent.query.grouped_change_answers import validated_grouped_change_answer
 from app.agent.query.header_relation_answers import header_relation_answer
@@ -20,10 +21,7 @@ from app.agent.query.index import WorkbookDataIndex
 from app.agent.query.identifier_answers import missing_identifier_answer
 from app.agent.query.intent_models import QuestionIntent, QuestionIntentClassifier
 from app.agent.query.interpretation_answers import asks_interpretation, finish_interpretation_answer
-from app.agent.query.models import (
-    QuestionAnswer,
-    QuestionAnswerGenerator,
-)
+from app.agent.query.models import QuestionAnswer, QuestionAnswerGenerator
 from app.agent.query.question_validation import unclear_draft_answer, vague_question_answer
 from app.agent.query.question_formula_answers import direct_formula_answer, missing_formula_answer
 from app.agent.query.question_formula_evidence import finish_formula_answer
@@ -33,6 +31,7 @@ from app.agent.query.relational_routing import missing_relational_plan_answer
 from app.agent.query.router import build_question_plan
 from app.agent.query.structure_answers import validated_structure_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
+from app.agent.query.tabular_source_alias_resolution import resolved_source_label_alias_answer
 from app.agent.query.workbook_summary_answers import validated_workbook_summary_answer
 from app.agent.query.verified_insight_answers import validated_verified_insight_answer
 from app.agent.registry import AgentToolRegistry
@@ -76,7 +75,9 @@ class WorkbookQuestionService:
         if clarification := missing_relational_plan_answer(question, summary, intent):
             return clarification
         if clarification := ambiguous_source_answer(question, summary, data_index, intent):
-            return clarification
+            return await resolved_source_label_alias_answer(
+                question, summary, data_index, intent, clarification
+            ) or clarification
         if formula := direct_formula_answer(question, sources, intent):
             return formula
         if relational := relational_query_answer(intent.relational_query, summary, data_index, question, intent):
@@ -137,9 +138,9 @@ class WorkbookQuestionService:
             return QuestionIntent.from_keywords(question)
         try:
             return await self._classifier.classify(question, summary)
-        except Exception:
+        except Exception as exception:
+            raise_for_quota_exhaustion(exception)
             return QuestionIntent.from_keywords(question)
-
 
 def _search_scope_truncated(execution) -> bool:
     return any(

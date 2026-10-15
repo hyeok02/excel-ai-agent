@@ -12,6 +12,7 @@ class ConversationTurn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     question: Question
     evidence: list[Reference] = Field(default_factory=list, max_length=12)
+    needs_clarification: bool = False
 
 
 class ConversationInsight(BaseModel):

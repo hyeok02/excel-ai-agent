@@ -29,6 +29,6 @@ export interface WorkbookQuestionAnswer {
 }
 
 export interface WorkbookQuestionContext {
-  turns: { question: string; evidence: string[] }[]
+  turns: { question: string; evidence: string[]; needs_clarification?: boolean }[]
   insights: { title: string; topic: string | null; evidence: string[] }[]
 }

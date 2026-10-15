@@ -21,6 +21,7 @@ from app.agent.query.intent_models import (
     QuestionIntentDraft,
 )
 from app.agent.query.intent_prompts import SYSTEM_PROMPT, build_intent_prompt
+from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.services.workbook_parsing.models import WorkbookSummary
 
 DEFAULT_MODEL = "gpt-4.1-2025-04-14"
@@ -70,7 +71,8 @@ class LangChainQuestionIntentClassifier:
             intent = QuestionIntent.from_draft(
                 QuestionIntentDraft.model_validate(result)
             )
-        except Exception:
+        except Exception as exception:
+            raise_for_quota_exhaustion(exception)
             # 분류에 실패했다고 질문에 답하지 못할 이유는 없다.
             return QuestionIntent.from_keywords(question)
         self._cache[key] = intent

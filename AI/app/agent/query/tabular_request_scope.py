@@ -9,6 +9,7 @@ import re
 from openpyxl.utils import range_boundaries
 from app.agent.query.metric_observation_cells import metric_label_matches
 from app.agent.query.tabular_request_constraints import matches_constraints
+from app.agent.query.tabular_request_categories import value_matches
 
 
 def request_matches_plan(question, plan, table, tables, intent=None):
@@ -85,7 +86,13 @@ def request_matches_plan(question, plan, table, tables, intent=None):
                    and identifier.casefold() not in range_addresses]
     filters = {str(item.value).casefold() for item in plan.filters
                if item.operator == "equals"}
-    if any(identifier.casefold() not in filters for identifier in identifiers):
+    # Keep the full source value as the identity when the request contains a
+    # compound key (for example "Unit #21"), not just its regex ID fragment.
+    source_values = {str(value).casefold() for row in table.rows for value in row.values.values()}
+    bound_ids = {match.group().casefold() for value in filters & source_values
+                 if value_matches(question, value)
+                 for match in re.finditer(identifier_pattern, value)}
+    if any(identifier.casefold() not in filters | bound_ids for identifier in identifiers):
         return False
     return matches_constraints(question, plan, table, tables)
 

@@ -6,6 +6,7 @@
 세어 두면 모델이 어떻게 쓰든 답이 나온다.
 """
 from app.agent.query.index import IndexedRow
+from app.agent.query.interpretation_answers import asks_interpretation
 from app.agent.tools.workbook_headers import HeaderContext, header_for
 from app.agent.tools.workbook_label_choice import label_column
 from app.agent.tools.workbook_label_columns import column_of
@@ -23,6 +24,8 @@ MAX_LISTED_ROWS = 40
 def build_row_list(
     rows: list[IndexedRow], headers: HeaderContext, question: str
 ) -> dict[str, object] | None:
+    if asks_interpretation(question):
+        return None  # A list of marks cannot answer a causal or semantic question.
     found = requested_condition(question, rows, headers)
     if found is None:
         return None
@@ -38,6 +41,10 @@ def build_row_list(
             continue
         cell = _cell(row, column)
         name = _cell(row, name_column)
+        if (cell is not None and cell.reference == header_reference) or (
+            name is not None and name.reference == label_reference
+        ):
+            continue
         if name is None or not str(getattr(name, "value", "") or "").strip():
             continue
         if cell is None or not str(cell.value or "").strip():
