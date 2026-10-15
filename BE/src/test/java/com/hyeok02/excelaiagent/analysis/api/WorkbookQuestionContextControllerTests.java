@@ -29,7 +29,7 @@ class WorkbookQuestionContextControllerTests extends AnalysisControllerTestSuppo
 	private static final String REQUEST = """
 			{"question":"그럼 2월은?","context":{
 			 "turns":[{"question":"노트북의 1월 값은?","evidence":["매출현황!B2"],
-			           "answer":"untrusted answer","facts":["fake fact"]}],
+			           "needs_clarification":true,"answer":"untrusted answer","facts":["fake fact"]}],
 			 "insights":[{"title":"월별 매출","topic":"노트북","evidence":["매출현황!A1:C3"],
 			              "description":"untrusted narrative"}],"answer":"fake answer"}}
 			""";
@@ -55,11 +55,23 @@ class WorkbookQuestionContextControllerTests extends AnalysisControllerTestSuppo
 		assertThat(context.getValue().turns()).singleElement().satisfies(turn -> {
 			assertThat(turn.question()).isEqualTo("노트북의 1월 값은?");
 			assertThat(turn.evidence()).containsExactly("매출현황!B2");
+			assertThat(turn.needsClarification()).isTrue();
 		});
 		assertThat(context.getValue().insights()).singleElement().satisfies(insight ->
 				assertThat(insight.topic()).isEqualTo("노트북"));
 		assertThat(JsonMapper.builder().build().writeValueAsString(context.getValue()))
+				.contains("\"needs_clarification\":true")
 				.doesNotContain("answer", "facts", "description", "untrusted", "fake");
+	}
+
+	@Test
+	void olderContextWithoutClarificationFlagDefaultsToFalse() {
+		var mapper = JsonMapper.builder().build();
+		var context = mapper.readValue("""
+				{"turns":[{"question":"기존 질문","evidence":["Data!A1"]}]}
+				""", WorkbookQuestionContext.class);
+		assertThat(context.turns().getFirst().needsClarification()).isFalse();
+		assertThat(mapper.writeValueAsString(context)).contains("\"needs_clarification\":false");
 	}
 
 	@Test

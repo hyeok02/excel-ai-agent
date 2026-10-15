@@ -2,6 +2,8 @@
 import re
 
 from app.agent.query.references import extract_references
+from app.agent.query.conversation_language import contains_content_word, content_words, scope_only_followup
+from app.agent.query.conversation_periods import RELATIVE_YEAR, bound_relative_question
 
 CONTEXT_CUE = re.compile(
     r"그\s+|그(?:중|거|것|건|걸|게|럼|래|렇|쪽|대로|때|항목|값|표|둘)|"
@@ -22,10 +24,6 @@ _REFERENTS = {
     "위", "앞선", "방금", "이전", "나머지", "그쪽", "거기", "여기", "그때",
     "those", "these", "them", "it", "both", "former", "latter", "same", "among", "then",
 }
-_PARTICLES = ("으로", "에서", "까지", "부터", "보다", "에게", "은", "는", "이", "가",
-              "을", "를", "의", "에", "도", "만", "과", "와")
-
-
 def subject_only_followup(question: str, index) -> bool:
     """A source label alone does not say which previously requested value to use."""
     core = re.sub(r"^(?:그럼|그러면|그렇다면|그런데|그리고)\s*|"
@@ -33,20 +31,21 @@ def subject_only_followup(question: str, index) -> bool:
     core = core.rstrip(" ?？.!。 ").casefold()
     labels = {str(cell.value).strip().casefold() for row in index.rows for cell in row.cells
               if isinstance(cell.value, str) and len(cell.value.strip()) >= 2}
-    return any(core in {label, label + "은", label + "는", label + "도"} for label in labels)
+    return (any(core in {label, label + "은", label + "는", label + "도"} for label in labels)
+            or scope_only_followup(question, index)
+            or bool(re.fullmatch(r"[\w-]{2,40}(?:은|는|도)", core) and "의" not in core))
 
 
 def _content_preserved(original, rewritten):
     original = re.sub(r"(?:그|이|저|해당|위|앞선|방금|이전)\s*(?:항목|값|표|결과|내용|둘|질문)", " ", original)
-    for word in re.findall(r"[a-z][a-z0-9_-]*|[가-힣]+", original.casefold()):
-        stem = word
-        for suffix in _PARTICLES:
-            if word.endswith(suffix) and len(word) > len(suffix):
-                stem = word[:-len(suffix)]
-                break
-        if word in _REFERENTS or stem in _REFERENTS or word in _PARTICLES:
+    # Quoting a literal does not alter the attached Korean predicate: 신규인 == '신규'인.
+    dequoted = re.sub(r"[\"'‘’“”]", "", rewritten)
+    for word in content_words(original):
+        if word in _REFERENTS:
             continue
-        if word not in rewritten and stem not in rewritten:
+        if any(word in group and any(alias in rewritten for alias in group) for group in _OPERATIONS):
+            continue
+        if not contains_content_word(word, rewritten) and not contains_content_word(word, dequoted):
             return False
     return True
 
@@ -59,6 +58,11 @@ def resolution_is_safe(original: str, draft, context: list[dict]) -> bool:
         return False
     rewritten = draft.question.casefold()
     selected = [entries[key] for key in draft.context_ids]
+    if RELATIVE_YEAR.search(original):
+        bound = bound_relative_question(original, selected)
+        if bound is None:
+            return False
+        original = bound
     # Preserve explicit IDs, periods and filter numbers exactly; never "correct"
     # a missing requested ID to one found in a previous answer.
     numbers = re.findall(r"\d+(?:[.,]\d+)*", original)
@@ -91,6 +95,10 @@ def resolution_is_safe(original: str, draft, context: list[dict]) -> bool:
             return False
     # At least one actual source label or address must anchor the resolved referent.
     anchored = any(len(label) >= 2 and label.casefold() in rewritten for label in source_labels)
+    anchored = anchored or any(
+        contains_content_word(cell["reference"].rsplit("!", 1)[0].strip("'").casefold(), rewritten)
+        for entry in selected for cell in entry["source_cells"] if "!" in cell["reference"]
+    )
     return anchored or any(ref in extract_references(rewritten) for entry in selected
                            for cell in entry["source_cells"]
                            for ref in extract_references(cell["reference"]))

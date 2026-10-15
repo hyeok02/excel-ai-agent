@@ -26,6 +26,10 @@ _OPERATIONS = {
     "last", "most", "inc", "llc", "ltd", "return", "give", "has", "changed", "me", "since",
 }
 _STEMS = (*GENERIC_METRIC_STEMS, "비교", "구분", "알려", "보여", "말해", "증가", "감소", "어떻")
+_QUESTION_GRAMMAR = re.compile(
+    r"(?:얼마|무엇|뭐|몇|몇\s*(?:명|건|개|곳)|명|건|개|곳)"
+    r"(?:입니까|인가요|인지|인가|이야|야|이죠|이지요|이지|일까요|일까)?$"
+)
 
 
 def request_covered(question, observations, named_sheets):
@@ -62,6 +66,8 @@ def uncovered_request_tokens(question, observations, named_sheets):
     allowed = GENERIC_METRIC_WORDS | _OPERATIONS | set(KOREAN_SUFFIXES)
     missing = []
     for token in re.findall(r"[a-z0-9_가-힣]+", consumed):
+        if _QUESTION_GRAMMAR.fullmatch(token):
+            continue
         forms = {token}
         forms.add(re.sub(r"(?:인가요|인가|이야|야|이지|이지요|일까)$", "", token))
         for suffix in KOREAN_SUFFIXES:

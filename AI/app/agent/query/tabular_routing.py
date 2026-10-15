@@ -1,6 +1,7 @@
 """Do not replace a failed scoped query with an unrelated workbook overview."""
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
 from app.agent.query.tabular_execution import execute_tabular_query
+from app.agent.query.tabular_partial_categories import partial_category_answer
 
 
 def planned_tabular_answer(intent, summary, data_index, question):
@@ -9,6 +10,9 @@ def planned_tabular_answer(intent, summary, data_index, question):
     answer = execute_tabular_query(intent.tabular_query, summary, data_index, question, intent)
     if answer is not None:
         return answer
+    partial = partial_category_answer(intent, summary, data_index, question)
+    if partial is not None:
+        return partial
     return QuestionAnswer(
         question=question,
         answer=(

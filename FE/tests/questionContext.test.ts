@@ -37,6 +37,15 @@ test('multi-turn context retains the resolved question instead of an unresolved 
   )
 })
 
+test('an unanswered turn keeps its clarification state even with candidate evidence', () => {
+  const context = buildQuestionContext(
+    [questionAnswer({ status: 'insufficient_evidence' })],
+    null,
+  )
+  assert.equal(context.turns[0].needs_clarification, true)
+  assert.equal(context.turns[0].evidence.length, 1)
+})
+
 test('only six recent questions and six visible verified insights are sent', () => {
   const answers = Array.from({ length: 9 }, (_, i) =>
     questionAnswer({ question: `질문 ${i}` }),

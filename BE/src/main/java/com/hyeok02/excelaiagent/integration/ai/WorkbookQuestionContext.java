@@ -3,6 +3,7 @@ package com.hyeok02.excelaiagent.integration.ai;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,7 +23,15 @@ public record WorkbookQuestionContext(
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public record Turn(
 			@NotBlank @Size(max = 1000) String question,
-			@NotNull @Size(max = 12) List<@NotBlank @Size(max = 200) String> evidence) {
+			@NotNull @Size(max = 12) List<@NotBlank @Size(max = 200) String> evidence,
+			@JsonProperty("needs_clarification") Boolean needsClarification) {
+		public Turn {
+			if (needsClarification == null) needsClarification = false;
+		}
+
+		public Turn(String question, List<String> evidence) {
+			this(question, evidence, false);
+		}
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)

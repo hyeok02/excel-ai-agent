@@ -52,6 +52,9 @@ export const buildQuestionContext = (
         ? [
             {
               question,
+              ...(answer.status === 'insufficient_evidence'
+                ? { needs_clarification: true }
+                : {}),
               evidence: uniqueReferences(
                 answer.evidence.map((item) =>
                   qualifiedReference(item.sheetName, item.reference),
