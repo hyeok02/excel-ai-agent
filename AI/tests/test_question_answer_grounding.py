@@ -116,15 +116,15 @@ def test_unrelated_question_does_not_unlock_a_range_only_verified_fact() -> None
 
 
 def test_cited_english_header_allows_its_korean_glossary_name_only() -> None:
-    services = [_evidence("W107", "Department", "Services")]
-    research = [_evidence("N107", "Department", "Research & Development")]
+    services = [_evidence("W107", "Department", "Services"), _evidence("W108", "Headcount", 10)]
+    research = [_evidence("N107", "Department", "Research & Development"), _evidence("N108", "Headcount", 10)]
     question = "어느 부서가 가장 많이 감소했어?"
 
     assert answer_is_grounded(
-        "서비스 부서가 가장 많이 감소했습니다.", services, _execution(), question
+        "서비스 부서의 인원은 10명입니다.", services, _execution(), question
     )
     assert not answer_is_grounded(
-        "서비스 부서가 가장 많이 감소했습니다.", research, _execution(), question
+        "서비스 부서의 인원은 10명입니다.", research, _execution(), question
     )
 
 

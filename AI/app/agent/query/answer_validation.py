@@ -6,6 +6,7 @@ from app.agent.query.answer_grounding import (
     verified_support_references,
 )
 from app.agent.query.change_direction import answer_directions_supported
+from app.agent.query.claim_answers import validated_claim_answer
 from app.agent.query.claim_bindings import answer_bindings_supported
 from app.agent.query.comparison_answers import validated_comparison_answer
 from app.agent.query.comparison_evidence import available_evidence as _available_evidence
@@ -26,6 +27,8 @@ def validate_answer(
     index_truncated: bool,
 ) -> QuestionAnswer:
     available = _available_evidence(execution)
+    if draft.claims:
+        return validated_claim_answer(question, draft, execution, index_truncated, available)
     if canonical := validated_comparison_answer(
         question, execution, index_truncated, available
     ):
@@ -114,8 +117,6 @@ def validate_answer(
             checks=["cited_cells", "numbers", "units", "claim_bindings"],
         ),
     )
-
-
 def _match_evidence(citations, available):
     matched_keys, unknown = [], []
     keys = set(available)

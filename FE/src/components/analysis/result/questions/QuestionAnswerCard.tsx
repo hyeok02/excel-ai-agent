@@ -1,6 +1,7 @@
 import { Bot, CheckCircle2, CircleAlert, ShieldQuestion } from 'lucide-react'
 
 import type { WorkbookQuestionAnswer } from '@/api/analysis'
+import { resolvedQuestionLabel } from '@/components/analysis/result/questions/questionContext'
 import QuestionEvidenceList from '@/components/analysis/result/questions/QuestionEvidenceList'
 import { questionVerificationPresentation } from '@/components/analysis/result/questions/questionVerification'
 
@@ -10,6 +11,7 @@ const TOOL_LABELS: Record<string, string> = {
   tabular_query: '원본 표 범위 대조·집계',
   relational_query: '표 간 연결·원본 대조',
   clarify_source_scope: '모호한 원본 항목 확인',
+  clarify_question_context: '후속 질문이 가리키는 대상 확인',
   recover_formula_values: '원본 입력으로 수식 재계산',
   inspect_missing_formula_inputs: '누락된 수식 입력 확인',
   bind_metric_observations: '지표·기간·단위 원본 대조',
@@ -41,9 +43,15 @@ const QuestionAnswerCard = ({ answer }: { answer: WorkbookQuestionAnswer }) => {
   const presentation = questionVerificationPresentation(answer)
   const tone = TONE[presentation.tone]
   const StatusIcon = tone.icon
+  const resolvedQuestion = resolvedQuestionLabel(answer)
   return (
     <article className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
       <p className="text-sm font-extrabold text-slate-900">Q. {answer.question}</p>
+      {resolvedQuestion && (
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          해석한 질문: {resolvedQuestion}
+        </p>
+      )}
       <div className="mt-4 flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-600 text-white">
           <Bot aria-hidden="true" size={18} />

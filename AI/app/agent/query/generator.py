@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
 from app.agent.query.models import QuestionAnswerDraft
+from app.agent.query.claim_models import SourceClaim
 from app.agent.query.prompts import SYSTEM_PROMPT, build_question_prompt
 from app.services.insights.models import InsightConfigurationError, InsightGenerationError
 
@@ -56,7 +57,12 @@ class LangChainQuestionAnswerGenerator:
                     HumanMessage(content=build_question_prompt(question, filename, execution_context)),
                 ]
             )
-            return QuestionAnswerDraft.model_validate(result)
+            draft = QuestionAnswerDraft.model_validate(result)
+            # A schema-valid free-form answer is not a verified claim. Missing
+            # bindings must not silently fall back to vocabulary-only grounding.
+            return draft if draft.claims else draft.model_copy(update={
+                "claims": [SourceClaim(kind="unknown")],
+            })
         except Exception as exception:
             logger.exception("Excel Q&A 모델 응답 생성 실패")
             raise InsightGenerationError("Excel 질문에 대한 답변을 생성하지 못했습니다.") from exception

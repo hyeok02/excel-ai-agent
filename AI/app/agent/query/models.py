@@ -4,6 +4,7 @@ from typing import Protocol
 from pydantic import BaseModel, Field
 
 from app.agent.execution.models import AgentExecutionEvidence
+from app.agent.query.claim_models import SourceClaim
 
 
 class QuestionAnswerStatus(StrEnum):
@@ -36,6 +37,7 @@ class QuestionAnswerDraft(BaseModel):
     evidence: list[str] = Field(default_factory=list, max_length=12)
     confidence: float = Field(ge=0, le=1)
     limitations: list[str] = Field(default_factory=list, max_length=5)
+    claims: list[SourceClaim] = Field(default_factory=list, max_length=12)
 
 
 class QuestionAnswerEvidence(AgentExecutionEvidence):
@@ -44,6 +46,7 @@ class QuestionAnswerEvidence(AgentExecutionEvidence):
 
 class QuestionAnswer(BaseModel):
     question: str
+    resolved_question: str | None = None
     answer: str
     status: QuestionAnswerStatus
     confidence: float = Field(ge=0, le=1)

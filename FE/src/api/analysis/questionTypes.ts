@@ -18,6 +18,7 @@ export interface WorkbookQuestionEvidence {
 
 export interface WorkbookQuestionAnswer {
   question: string
+  resolvedQuestion?: string | null
   answer: string
   status: WorkbookQuestionStatus
   confidence: number
@@ -25,4 +26,9 @@ export interface WorkbookQuestionAnswer {
   evidence: WorkbookQuestionEvidence[]
   limitations: string[]
   verification?: WorkbookQuestionVerification
+}
+
+export interface WorkbookQuestionContext {
+  turns: { question: string; evidence: string[] }[]
+  insights: { title: string; topic: string | null; evidence: string[] }[]
 }

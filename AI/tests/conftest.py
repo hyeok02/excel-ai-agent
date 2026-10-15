@@ -10,3 +10,4 @@ import pytest
 @pytest.fixture(autouse=True)
 def offline_api_intent_classifier(monkeypatch):
     monkeypatch.setattr("app.api.workbook_questions._intent_classifier", None)
+    monkeypatch.setattr("app.api.workbook_questions._context_resolver", None)

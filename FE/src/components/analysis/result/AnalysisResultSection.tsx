@@ -34,7 +34,9 @@ const AnalysisResultSection = ({
 
       {mode === 'LLM' && (
         <WorkbookQuestionSection
+          key={result.analysisId}
           analysisId={result.analysisId}
+          insightReport={result.insightReport}
           sourceAvailable={result.sourceAvailable}
           suggestions={buildQuestionSuggestions(result.insightReport)}
         />
