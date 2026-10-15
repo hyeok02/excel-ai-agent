@@ -48,11 +48,12 @@ def test_answers_question_with_verified_source_cell() -> None:
     assert body["status"] == "answered"
     assert body["answer"] == "노트북의 1월 값은 10입니다."
     assert body["selected_tools"] == ["search_workbook_data"]
-    assert body["evidence"][1]["sheet_name"] == "매출현황"
-    assert body["evidence"][1]["reference"] == "B2"
-    assert body["evidence"][1]["value"] == 10
-    assert generator.context["steps"][0]["tool_name"] == "search_workbook_data"
-    assert "rows" not in generator.context["steps"][0]["data"]
+    value_evidence = next(
+        item for item in body["evidence"] if item["reference"] == "B2"
+    )
+    assert value_evidence["sheet_name"] == "매출현황"
+    assert value_evidence["value"] == 10
+    assert generator.context == {}
 
 
 def test_blocks_answer_when_model_cites_unknown_cell() -> None:
@@ -61,7 +62,7 @@ def test_blocks_answer_when_model_cites_unknown_cell() -> None:
     try:
         response = client.post(
             "/api/v1/workbooks/questions",
-            data={"question": "노트북의 1월 값은 얼마야?"},
+            data={"question": "노트북과 모니터의 1월 판매를 비교해줘"},
             files=upload("sales.xlsx", create_workbook_file()),
         )
     finally:
@@ -79,7 +80,7 @@ def test_blocks_answer_when_number_does_not_match_cited_cell() -> None:
     try:
         response = client.post(
             "/api/v1/workbooks/questions",
-            data={"question": "노트북의 1월 값은 얼마야?"},
+            data={"question": "노트북과 모니터의 1월 판매를 비교해줘"},
             files=upload("sales.xlsx", create_workbook_file()),
         )
     finally:
@@ -89,19 +90,18 @@ def test_blocks_answer_when_number_does_not_match_cited_cell() -> None:
     assert response.json()["status"] == "insufficient_evidence"
     assert response.json()["confidence"] == 0
     assert "999" not in response.json()["answer"]
+    assert any("수치를 원본 셀" in item for item in response.json()["limitations"])
 
 
 def test_data_search_tool_returns_question_related_rows_and_cells() -> None:
     content = create_workbook_file()
     summary = parse_workbook("sales.xlsx", content)
     index = build_workbook_data_index("sales.xlsx", content, {"매출현황", "요약"})
-
     result = create_default_tool_registry().execute(
         "search_workbook_data",
         AgentToolContext(summary, index),
         {"query": "노트북의 1월 값", "row_limit": 10},
     )
-
     references = {
         f"{item.sheet_name}!{item.reference}" for item in result.evidence
     }

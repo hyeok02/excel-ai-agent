@@ -44,7 +44,8 @@ def test_keeps_the_grounded_sentence_when_one_number_is_unverified() -> None:
 
     answer = validate_answer(QUESTION, draft, _execution(EVIDENCE), False)
 
-    assert answer.status is not QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+    assert answer.status is QuestionAnswerStatus.LIMITED
+    assert answer.confidence == 0.7
     assert "Research & Development" in answer.answer
     assert "143" not in answer.answer
     assert any("빼고 보여줍니다" in item for item in answer.limitations)
@@ -65,3 +66,64 @@ def test_keeps_the_whole_answer_when_both_endpoints_are_stated() -> None:
     assert answer.status is not QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
     assert "143" in answer.answer
     assert not any("빼고 보여줍니다" in item for item in answer.limitations)
+
+
+def test_keeps_grounded_clause_when_another_clause_has_unsupported_meaning() -> None:
+    evidence = [
+        _evidence("A2", "노트북", "상품"),
+        _evidence("B2", 10, "수량"),
+    ]
+    draft = QuestionAnswerDraft(
+        answer="노트북 수량은 10개입니다. 이 회사는 파산 위험이 높습니다.",
+        evidence=["인원!A2:B2"],
+        confidence=0.9,
+    )
+
+    answer = validate_answer("노트북 수량은?", draft, _execution(evidence), False)
+
+    assert answer.status is QuestionAnswerStatus.LIMITED
+    assert answer.confidence == 0.7
+    assert answer.answer == "노트북 수량은 10개입니다."
+    assert "파산" not in answer.answer
+    assert any("확인된 부분만" in item for item in answer.limitations)
+
+
+def test_keeps_correct_binding_when_another_clause_swaps_a_row_value() -> None:
+    evidence = [
+        _evidence("A2", "노트북", "상품"),
+        _evidence("B2", 10, "수량"),
+        _evidence("A3", "휴대폰", "상품"),
+        _evidence("B3", 20, "수량"),
+    ]
+    draft = QuestionAnswerDraft(
+        answer="노트북은 10개입니다. 휴대폰은 10개입니다.",
+        evidence=["인원!A2:B3"],
+        confidence=0.9,
+    )
+
+    answer = validate_answer("상품별 수량은?", draft, _execution(evidence), False)
+
+    assert (answer.status, answer.confidence) == (QuestionAnswerStatus.LIMITED, 0.7)
+    assert answer.answer == "노트북은 10개입니다."
+    assert "휴대폰" not in answer.answer
+
+
+def test_keeps_correct_direction_when_another_clause_reverses_it() -> None:
+    evidence = [
+        _evidence("B2", 10, "1월 수량"),
+        _evidence("B3", 20, "2월 수량"),
+    ]
+    draft = QuestionAnswerDraft(
+        answer=(
+            "1월 10개에서 2월 20개로 증가했습니다. "
+            "1월 10개에서 2월 20개로 감소했습니다."
+        ),
+        evidence=["인원!B2:B3"],
+        confidence=0.9,
+    )
+
+    answer = validate_answer("1월과 2월 수량 변화는?", draft, _execution(evidence), False)
+
+    assert (answer.status, answer.confidence) == (QuestionAnswerStatus.LIMITED, 0.7)
+    assert "증가" in answer.answer
+    assert "감소" not in answer.answer

@@ -5,10 +5,10 @@ import PromptComposerFrame, {
   promptComposerActionClassName,
   promptComposerTextareaClassName,
 } from '@/components/analysis/common/PromptComposerFrame'
-import { QUESTION_SUGGESTIONS } from '@/components/analysis/result/questions/questionPresentation'
 
 interface QuestionComposerProps {
   disabled?: boolean
+  suggestions: string[]
   isPending: boolean
   onAsk: (question: string) => Promise<boolean>
   onValidationClear: () => void
@@ -17,6 +17,7 @@ interface QuestionComposerProps {
 
 const QuestionComposer = ({
   disabled = false,
+  suggestions,
   isPending,
   onAsk,
   onValidationClear,
@@ -90,7 +91,7 @@ const QuestionComposer = ({
         </div>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
-        {QUESTION_SUGGESTIONS.map((suggestion) => (
+        {suggestions.map((suggestion) => (
           <button
             className="rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100 disabled:opacity-50"
             disabled={disabled || isPending}

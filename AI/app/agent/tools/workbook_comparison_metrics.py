@@ -48,6 +48,8 @@ def metric_changes(
                 "start_value": start.value,
                 "end_value": end.value,
                 "change": round(float(end.value) - float(start.value), 10),
+                "start_number_format": start.number_format,
+                "end_number_format": end.number_format,
                 **({"header_references": references} if references else {}),
                 "start_reference": start.reference,
                 "end_reference": end.reference,

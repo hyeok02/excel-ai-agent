@@ -27,6 +27,14 @@ def test_unsupported_non_numeric_claim_is_blocked() -> None:
     )
 
 
+def test_answer_cannot_ignore_an_explicit_hash_identifier() -> None:
+    evidence = [_evidence("A2", "CVD 장비", "CVD #1")]
+
+    assert not answer_is_grounded(
+        "CVD 장비 현황입니다.", evidence, _execution(), "CVD #99의 IP는?"
+    )
+
+
 def test_covered_verified_fact_supplies_safe_business_vocabulary() -> None:
     evidence = [
         _evidence("H70", "Company Name", "MTGE"),
@@ -62,6 +70,51 @@ def test_verified_fact_adds_omitted_range_support() -> None:
     assert verified_fallback_answer("EBITDA 비교", evidence, execution) is None
 
 
+def test_range_only_fact_is_discovered_from_two_cited_point_cells() -> None:
+    evidence = [
+        _evidence("W108", "2025-06 Services 인원", 5417, "인원"),
+        _evidence("N108", "2025-06 Research & Development 인원", 1816, "인원"),
+    ]
+    fact = {
+        "title": "부서별 인원 변화",
+        "fact": "Services 부서는 6,101명에서 5,417명으로 684명 감소했습니다.",
+        "support_references": ["인원!E127:AI127", "인원!E108:AI108"],
+    }
+
+    assert verified_support_references(
+        "부서별 인원 변화를 알려줘", evidence, _execution([fact])
+    ) == fact["support_references"]
+
+
+def test_one_point_does_not_unlock_a_range_only_verified_fact() -> None:
+    evidence = [_evidence("W108", "2025-06 Services 인원", 5417, "인원")]
+    fact = {
+        "title": "부서별 인원 변화",
+        "fact": "Services 부서는 6,101명에서 5,417명으로 684명 감소했습니다.",
+        "support_references": ["인원!E127:AI127", "인원!E108:AI108"],
+    }
+
+    assert verified_support_references(
+        "부서별 인원 변화를 알려줘", evidence, _execution([fact])
+    ) == []
+
+
+def test_unrelated_question_does_not_unlock_a_range_only_verified_fact() -> None:
+    evidence = [
+        _evidence("W108", "2025-06 Services 인원", 5417, "인원"),
+        _evidence("N108", "2025-06 Research & Development 인원", 1816, "인원"),
+    ]
+    fact = {
+        "title": "부서별 인원 변화",
+        "fact": "Services 부서는 6,101명에서 5,417명으로 684명 감소했습니다.",
+        "support_references": ["인원!E127:AI127", "인원!E108:AI108"],
+    }
+
+    assert verified_support_references(
+        "영업이익은 얼마야?", evidence, _execution([fact])
+    ) == []
+
+
 def test_cited_english_header_allows_its_korean_glossary_name_only() -> None:
     services = [_evidence("W107", "Department", "Services")]
     research = [_evidence("N107", "Department", "Research & Development")]
@@ -75,9 +128,13 @@ def test_cited_english_header_allows_its_korean_glossary_name_only() -> None:
     )
 
 
-def _evidence(reference: str, description: str, value: object):
+def _evidence(
+    reference: str, description: str, value: object, sheet_name: str | None = None
+):
     return SimpleNamespace(
-        sheet_name="거래" if reference != "A2" and reference != "B2" else "매출현황",
+        sheet_name=sheet_name or (
+            "거래" if reference != "A2" and reference != "B2" else "매출현황"
+        ),
         reference=reference,
         description=description,
         value=value,

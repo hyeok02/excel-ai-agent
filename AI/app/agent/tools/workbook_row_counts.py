@@ -9,8 +9,13 @@ from app.agent.query.search_terms import search_terms
 from app.agent.tools.workbook_headers import HeaderContext, header_for
 from app.agent.tools.workbook_label_choice import label_column
 from app.agent.tools.workbook_label_columns import column_of
+from app.agent.tools.workbook_metric_matching import contains_term
 
 COUNT_WORDS = ("몇", "개수", "건수", "총", "how many", "count")
+SUBSET_WORDS = (
+    "점검된", "완료된", "점검 완료", "기재된", "표시된", "비어", "미점검",
+    "completed", "checked", "marked", "blank", "missing",
+)
 MIN_ROWS = 2
 
 
@@ -18,7 +23,11 @@ def build_row_count(
     rows: list[IndexedRow], headers: HeaderContext, question: str
 ) -> dict[str, object] | None:
     """질문이 개수를 물을 때, 이름 열의 기재 건수를 센다."""
-    if not any(word in question.casefold() for word in COUNT_WORDS):
+    normalized = question.casefold()
+    if (
+        not any(contains_term(normalized, word) for word in COUNT_WORDS)
+        or any(word in normalized for word in SUBSET_WORDS)
+    ):
         return None
     best = None
     for sheet_name in {row.sheet_name for row in rows}:

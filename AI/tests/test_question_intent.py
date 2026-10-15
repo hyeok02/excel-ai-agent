@@ -67,6 +67,12 @@ def test_model_targets_are_added_to_the_question_for_column_matching() -> None:
     assert "네트워크 안정" in intent.enriched("불안정한 거 뭐 있어?")
 
 
+def test_model_target_cannot_replace_an_explicit_row_identifier() -> None:
+    intent = QuestionIntent(False, "cell_lookup", ("CVD #2",), True)
+
+    assert intent.enriched("CVD #99의 IP는?") == "CVD #99의 IP는?"
+
+
 def test_falls_back_to_keywords_when_the_model_cannot_be_reached() -> None:
     # 분류에 실패했다고 질문에 답하지 못할 이유는 없다.
     asyncio.run(_answered_with(_Classifier(None)))
@@ -94,10 +100,14 @@ class _Generator:
         raise AssertionError("결정적 경로가 답해야 한다")
 
 
-def test_a_summary_does_not_stand_in_for_a_calculation_the_code_could_not_do() -> None:
-    # 모델이 '세어야 하는 질문'이라고 했는데 코드가 세지 못했으면, 파일 전체
-    # 요약을 대신 내보내면 안 된다. 틀린 답이 '근거 확인'을 달고 나간다.
-    assert not QuestionIntent(True, "row_count").wants_a_summary
-    assert not QuestionIntent(True, "comparison").wants_a_summary
+def test_a_whole_file_question_gets_a_summary_whatever_the_kind() -> None:
+    # "이 파일은 무엇을 비교하고 있어?"는 comparison으로 분류되지만 묻는 범위는
+    # 파일 전체다. kind로 막으면 추천 질문이 "근거 부족"으로 나간다.
+    assert QuestionIntent(True, "comparison").wants_a_summary
     assert QuestionIntent(True, "summary").wants_a_summary
     assert QuestionIntent(True, "brief").wants_a_summary
+
+
+def test_a_specific_question_does_not_get_a_file_summary() -> None:
+    assert not QuestionIntent(False, "summary").wants_a_summary
+    assert not QuestionIntent(False, "row_count").wants_a_summary

@@ -1,3 +1,5 @@
+import pytest
+
 from app.agent.query.index import IndexedCell, IndexedRow
 from app.agent.tools.workbook_comparisons import build_time_series_comparison
 from app.agent.tools.workbook_headers import HeaderContext
@@ -31,6 +33,8 @@ def test_distant_tables_with_same_date_column_are_not_one_series() -> None:
             "start_value": 100,
             "end_value": 120,
             "change": 20.0,
+            "start_number_format": "General",
+            "end_number_format": "General",
             "start_reference": "Metrics!B30",
             "end_reference": "Metrics!B31",
         }
@@ -47,13 +51,46 @@ def test_nearby_rows_with_same_schema_remain_one_series() -> None:
     assert comparison["end_reference"] == "Metrics!A14"
 
 
-def _row(row_number: int, date: str, value: int) -> IndexedRow:
+def test_metric_comparison_preserves_each_endpoint_number_format() -> None:
+    rows = [
+        _row(2, "2025-01-01", 0.1, "0%"),
+        _row(3, "2025-02-01", 0.2, "0.0%"),
+    ]
+
+    comparison = build_time_series_comparison(rows, _headers(rows), "변화를 알려줘")
+
+    assert comparison is not None
+    assert comparison["metrics"][0]["start_number_format"] == "0%"
+    assert comparison["metrics"][0]["end_number_format"] == "0.0%"
+
+
+@pytest.mark.parametrize("date_header", ("Period", "기준월"))
+def test_common_period_headers_are_recognized(date_header: str) -> None:
+    rows = [_row(2, "2025-01-01", 100), _row(3, "2025-02-01", 120)]
+    headers = {
+        (row.sheet_name, row.row_number, column): header
+        for row in rows
+        for column, header in (("A", date_header), ("B", "Revenue"))
+    }
+
+    comparison = build_time_series_comparison(rows, headers, "변화를 알려줘")
+
+    assert comparison is not None
+    assert comparison["start_date"] == "2025-01-01"
+
+
+def _row(
+    row_number: int, date: str, value: int | float, number_format: str = "General"
+) -> IndexedRow:
     return IndexedRow(
         "Metrics",
         row_number,
         (
             IndexedCell("Metrics", f"A{row_number}", date, None),
-            IndexedCell("Metrics", f"B{row_number}", value, None),
+            IndexedCell(
+                "Metrics", f"B{row_number}", value, None,
+                number_format=number_format,
+            ),
         ),
     )
 

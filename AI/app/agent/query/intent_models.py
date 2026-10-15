@@ -1,9 +1,11 @@
 """질문의 의도. 모델이 고르고, 실패하면 낱말 규칙이 대신한다."""
+import re
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.agent.query.tabular_query_models import TabularQueryPlan
 from app.agent.query.workbook_summary_rows import is_workbook_summary_question
 from app.services.workbook_parsing.models import WorkbookSummary
 
@@ -11,7 +13,7 @@ MAX_TARGETS = 6
 
 
 class QuestionIntentDraft(BaseModel):
-    """모델이 돌려주는 값. 숫자도 셀 주소도 모델에게 맡기지 않는다."""
+    """모델은 연산과 카탈로그 ID만 선택하며 결과 숫자는 만들지 않는다."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -25,9 +27,11 @@ class QuestionIntentDraft(BaseModel):
         "row_count",
         "cell_lookup",
         "formula_risk",
+        "aggregation",
         "other",
     ]
     targets: list[str] = Field(default_factory=list, max_length=MAX_TARGETS)
+    tabular_query: TabularQueryPlan | None = None
 
 
 @dataclass(frozen=True)
@@ -36,13 +40,27 @@ class QuestionIntent:
     kind: str = "other"
     targets: tuple[str, ...] = ()
     from_model: bool = False
+    tabular_query: TabularQueryPlan | None = None
 
     @classmethod
     def from_draft(cls, draft: QuestionIntentDraft) -> "QuestionIntent":
         targets = tuple(
             text for value in draft.targets if (text := value.strip())
         )[:MAX_TARGETS]
-        return cls(draft.scope == "whole_workbook", draft.kind, targets, True)
+        query = draft.tabular_query
+        # A valid schema does not make an operation appropriate. A value lookup
+        # or comparison cannot be answered by replacing it with a distribution.
+        allowed = {
+            "frequencies": {"aggregation", "summary", "row_count"},
+            "numeric_summary": {"aggregation"},
+            "row_count": {"row_count", "aggregation"},
+        }
+        if query is not None and draft.kind not in allowed[query.operation]:
+            query = None
+        return cls(
+            draft.scope == "whole_workbook" and draft.tabular_query is None,
+            draft.kind, targets, True, query,
+        )
 
     @classmethod
     def from_keywords(cls, question: str) -> "QuestionIntent":
@@ -55,16 +73,15 @@ class QuestionIntent:
 
     @property
     def wants_a_summary(self) -> bool:
-        """요약 문장으로 답해도 되는 질문인지.
-
-        모델이 '세어야 하는 질문'이라고 했는데 코드가 세지 못했다면, 파일
-        전체 요약으로 때우면 안 된다. 특정 질문에 엉뚱한 답이 '근거 확인'
-        딱지를 달고 나간 적이 있다.
-        """
-        return self.kind in ("summary", "brief", "structure", "other")
+        """응답 문체가 아니라, 실제 요청 범위가 파일 전체인 경우만 허용한다."""
+        return self.whole_workbook and self.tabular_query is None
 
     def enriched(self, question: str) -> str:
         """열 이름을 맞출 때 쓰는 글. 모델이 짚은 대상을 질문에 더해 준다."""
+        # 사용자가 적은 식별자는 모델이 추측한 다른 행 이름으로 덮으면 안 된다.
+        # 실제로 CVD #99 질문에 분류기가 CVD #2를 보태 정확히 그 행을 골랐다.
+        if re.search(r"#\s*[0-9a-z]", question, re.I):
+            return question
         return " ".join([question, *self.targets]) if self.targets else question
 
 

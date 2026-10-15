@@ -5,29 +5,36 @@ from app.agent.query.index import IndexedRow
 from app.services.workbook_parsing.models import SheetSummary
 
 SUMMARY_PHRASES = (
-    "요약",
     "무슨 내용",
     "어떤 내용",
     "무엇을 담",
     "뭘 담",
+    "무엇을 다루",
+    "뭘 다루",
     "파일 내용",
     "워크북 내용",
     "무엇을 비교",
     "핵심 내용",
     "핵심 수치",
     "가장 중요한",
-    "summary",
     "overview",
 )
 WHOLE_FILE_SUBJECTS = (
     "파일", "워크북", "엑셀", "문서", "자료", "데이터",
     "workbook", "spreadsheet", "file",
 )
-WHOLE_FILE_ASKS = ("뭐", "무슨", "무엇", "어떤", "what", "about")
+WHOLE_FILE_ASKS = (
+    "요약해줘", "summarize", "뭐", "무슨", "무엇", "어떤", "요약", "what", "about",
+)
+STANDALONE_SUMMARIES = (
+    "요약해줘", "요약해 줘", "간단히 요약해줘", "핵심만 알려줘",
+    "결론만 말해줘", "summary", "summarize",
+)
 # 파일 자체를 묻는 질문에 흔히 붙는 말. 이것만 남으면 다른 대상이 없는 것이다.
 WHOLE_FILE_FILLERS = (
     "관련", "얘기", "이야기", "내용", "담긴", "들어", "있어", "있나", "구성",
-    "설명", "정리", "대해", "대한", "이거", "이건", "거야", "뭔가", "말하",
+    "설명", "정리", "다루", "대해", "대한", "이거", "이건", "거야", "뭔가", "말하",
+    "this", "that", "these", "those", "the", "does", "contain", "contains",
 )
 BUSINESS_TERMS = (
     "focus company",
@@ -55,6 +62,8 @@ SUPPORT_SHEET_TERMS = (
 
 def is_workbook_summary_question(query: str) -> bool:
     normalized = " ".join(query.casefold().split())
+    if normalized in STANDALONE_SUMMARIES:
+        return True
     if any(phrase in normalized for phrase in SUMMARY_PHRASES):
         return True
     return _asks_about_the_whole_file(normalized)

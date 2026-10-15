@@ -5,6 +5,7 @@ import QuestionEvidenceList from '@/components/analysis/result/questions/Questio
 
 const TOOL_LABELS: Record<string, string> = {
   search_workbook_data: '원본 셀 검색',
+  tabular_query: '원본 표 범위 대조·집계',
   inspect_semantic_structure: '시트 구조 확인',
   trace_formula_dependencies: '수식 참조 추적',
   detect_circular_references: '순환 참조 확인',

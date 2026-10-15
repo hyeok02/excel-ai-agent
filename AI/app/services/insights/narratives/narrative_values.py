@@ -33,6 +33,11 @@ def topic_particle(text):
     return "은" if subject_particle(text) == "이" else "는"
 
 
+def joining_particle(text):
+    """와/과. '총매출와 순이익'처럼 받침을 무시하면 회사 자료에서 눈에 띈다."""
+    return "과" if subject_particle(text) == "이" else "와"
+
+
 def workbook_identity(context):
     """The subject can sit on a sheet other than the one being narrated."""
     for sheet in context.get("sheets", []):

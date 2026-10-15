@@ -98,6 +98,10 @@ def test_reads_a_whole_file_question_however_it_is_worded() -> None:
     assert is_workbook_summary_question("이 파일 뭐야?")
     assert is_workbook_summary_question("무슨 자료야?")
     assert is_workbook_summary_question("이 엑셀 어떤 내용이야?")
+    assert is_workbook_summary_question("이 파일은 무엇을 다루고 있어?")
+    assert is_workbook_summary_question("Summarize this file")
+    assert is_workbook_summary_question("Summarize this workbook")
+    assert is_workbook_summary_question("What does this file contain?")
 
 
 def test_does_not_read_a_question_about_one_thing_as_a_whole_file_question() -> None:
@@ -105,6 +109,8 @@ def test_does_not_read_a_question_about_one_thing_as_a_whole_file_question() -> 
     assert not is_workbook_summary_question("이 파일 어떤 장비가 문제야?")
     assert not is_workbook_summary_question("이 파일은 어떤 시트로 구성돼 있어?")
     assert not is_workbook_summary_question("장비가 총 몇 대야?")
+    assert not is_workbook_summary_question("네트워크 안정의 표시별 건수를 요약해줘")
+    assert is_workbook_summary_question("이 파일을 요약해줘")
 
 
 def test_a_brief_answer_keeps_what_the_file_is_and_one_fact() -> None:

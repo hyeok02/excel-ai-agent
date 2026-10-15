@@ -20,7 +20,8 @@ def visible_subject(context, visible) -> str:
             _related(reference, visible) and not _overlapping(reference, visible)
             for reference in references
         ):
-            return holder
+            # 괄호 뒤 티커나 표 이름은 회사 이름이 아니다.
+            return holder.split(" (")[0].split(" - ")[0].strip()
     return ""
 
 

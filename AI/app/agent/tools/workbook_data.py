@@ -29,6 +29,7 @@ from app.agent.tools.workbook_evidence import (
     widened_scope_evidence,
 )
 from app.agent.tools.workbook_lookups import build_lookups
+from app.agent.tools.workbook_metric_changes import comparison_payload
 from app.agent.tools.workbook_headers import (
     build_header_context,
     detect_header_rows,
@@ -59,11 +60,13 @@ class WorkbookDataSearchTool:
         if query is None:
             raise InvalidToolArgumentsError("query는 필수입니다.")
         limit = bounded_integer(values, "row_limit", 24, 40)
-        intent = context.intent or QuestionIntent.from_keywords(context.question or query)
+        original = context.question or query
+        intent = context.intent or QuestionIntent.from_keywords(original)
+        asked = intent.enriched(original)
         found = selected_question_rows(
             context.data_index,
             context.workbook.sheets,
-            query,
+            asked,
             limit,
             intent.whole_workbook,
         )
@@ -72,13 +75,8 @@ class WorkbookDataSearchTool:
         rows = with_relevant_priority_rows(context.data_index.rows, rows, verified)
         detected = detect_header_rows(context.data_index.rows)
         headers = build_header_context(context.data_index.rows, rows, detected)
-        # 증감 방향·기간·부서 범위는 사용자가 한 질문에서 읽는다. 모델이
-        # "headcount by department"처럼 바꿔 부르면 '감소'가 사라져, 도구가
-        # 이미 계산해 둔 결정적 비교 답변이 통째로 꺼지고 모델 추측이 나갔다.
-        # 모델이 짚은 대상을 더해 열 이름을 맞춘다. 질문이 표의 말과 다르게
-        # 적혀 있어도 모델이 워크북에 적힌 이름으로 옮겨 준다.
-        asked = intent.enriched(context.question or query)
-        scope = comparison_scope(context.workbook, asked)
+        # 분류기 대상은 검색 힌트다. 계산 범위와 셀 선택은 원래 질문으로 정한다.
+        scope = comparison_scope(context.workbook, original)
         # 시계열은 검색이 가져온 행이 아니라 그 시트 전체에서 모은다. 검색
         # 결과에 따라 비교 기간이 달라지면 같은 질문의 답이 매번 바뀐다.
         searched_sheets = {row.sheet_name for row in rows}
@@ -89,12 +87,12 @@ class WorkbookDataSearchTool:
             context.data_index.rows, series_rows, detected
         )
         comparison = build_time_series_comparison(
-            series_rows, series_headers, asked,
+            series_rows, series_headers, original,
             scope.metric_group, scope.columns_by_sheet,
         )
         # 목록도 검색 결과가 아니라 시트 전체를 훑어야 한 건도 빠지지 않는다.
         lookups = build_lookups(
-            series_rows, series_headers, context.data_index.rows, asked, detected
+            series_rows, series_headers, context.data_index.rows, original, detected
         )
         calculations = [
             *verified["calculations"],
@@ -136,9 +134,9 @@ class WorkbookDataSearchTool:
                 "summary_answer_allowed": bool(intent.wants_a_summary),
                 "returned_row_count": len(rows),
                 "index_truncated": query_scope_truncated(
-                    context.data_index, rows, query, summary_question
+                    context.data_index, rows, asked, summary_question
                 ),
-                "time_series_comparison": comparison,
+                **comparison_payload(comparison, original, intent),
                 **lookups.data,
                 "verified_overview": verified["overview"],
                 "verified_insights": verified["insights"],

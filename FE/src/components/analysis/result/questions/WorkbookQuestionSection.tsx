@@ -7,11 +7,13 @@ import { useWorkbookQuestions } from '@/hooks/analysis/useWorkbookQuestions'
 interface WorkbookQuestionSectionProps {
   analysisId: string
   sourceAvailable: boolean
+  suggestions: string[]
 }
 
 const WorkbookQuestionSection = ({
   analysisId,
   sourceAvailable,
+  suggestions,
 }: WorkbookQuestionSectionProps) => {
   const questions = useWorkbookQuestions(analysisId)
   const latestAnswer = questions.answers.at(-1)
@@ -56,6 +58,7 @@ const WorkbookQuestionSection = ({
           disabled={!sourceAvailable}
           isPending={questions.isPending}
           onAsk={questions.ask}
+          suggestions={suggestions}
           onValidationClear={questions.clearValidation}
           validationMessage={questions.validationMessage}
         />

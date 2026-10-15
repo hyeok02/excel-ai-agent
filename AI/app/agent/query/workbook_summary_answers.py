@@ -20,7 +20,7 @@ def validated_workbook_summary_answer(
     source = _verified_summary_source(execution)
     if source is None:
         return None
-    overview, references, brief = source
+    overview, references, brief, _ = source
     evidence, missing = matched_comparison_evidence(
         references, available_evidence(execution)
     )
@@ -60,7 +60,7 @@ def _shortened(overview: str) -> str:
 
 def _verified_summary_source(
     execution: AgentExecution,
-) -> tuple[str, list[str], bool] | None:
+) -> tuple[str, list[str], bool, tuple[str, bool]] | None:
     for step in execution.steps:
         if (
             step.status is not AgentStepStatus.SUCCEEDED
@@ -73,7 +73,15 @@ def _verified_summary_source(
         overview = str(step.result.data.get("verified_overview") or "").strip()
         references = _support_references(step.result.data.get("verified_insights"))
         if overview and references:
-            return overview, references, bool(step.result.data.get("brief_answer"))
+            return (
+                overview,
+                references,
+                bool(step.result.data.get("brief_answer")),
+                (
+                    str(step.result.data.get("answer_kind") or ""),
+                    bool(step.result.data.get("has_comparison")),
+                ),
+            )
     return None
 
 
