@@ -67,6 +67,12 @@ def test_model_targets_are_added_to_the_question_for_column_matching() -> None:
     assert "네트워크 안정" in intent.enriched("불안정한 거 뭐 있어?")
 
 
+def test_model_target_cannot_replace_an_explicit_row_identifier() -> None:
+    intent = QuestionIntent(False, "cell_lookup", ("CVD #2",), True)
+
+    assert intent.enriched("CVD #99의 IP는?") == "CVD #99의 IP는?"
+
+
 def test_falls_back_to_keywords_when_the_model_cannot_be_reached() -> None:
     # 분류에 실패했다고 질문에 답하지 못할 이유는 없다.
     asyncio.run(_answered_with(_Classifier(None)))

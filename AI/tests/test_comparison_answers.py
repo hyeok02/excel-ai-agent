@@ -61,6 +61,44 @@ def test_comparison_requires_original_header_evidence() -> None:
     assert validated_comparison_answer(QUESTION, execution, False) is None
 
 
+def test_wrong_classifier_kind_cannot_hide_an_explicit_extreme_question() -> None:
+    execution = _execution()
+    execution.steps[0].result.data.update(
+        answer_scope="specific", answer_kind="structure"
+    )
+
+    assert validated_comparison_answer(QUESTION, execution, False) is not None
+
+
+def test_department_group_alone_does_not_imply_people_unit() -> None:
+    answer = validated_comparison_answer(
+        "제일 많이 감소한 부서는 어디야?", _execution(), False
+    )
+
+    assert answer is not None
+    assert "1,277에서 1,081으로 196 감소" in answer.answer
+    assert "명" not in answer.answer
+
+
+def test_comparison_answer_uses_source_percentage_format() -> None:
+    execution = _execution()
+    metric = execution.steps[0].result.data["time_series_comparison"]["ranked_changes"][0]
+    metric.update({
+        "start_value": 0.1, "end_value": 0.2, "change": 0.1,
+        "start_number_format": "0%", "end_number_format": "0%",
+    })
+    execution.steps[0].result.data["time_series_comparison"]["change_direction"] = "increase"
+    for evidence in execution.steps[0].result.evidence:
+        if evidence.reference in {"W115", "W108"}:
+            evidence.value = 0.1 if evidence.reference == "W115" else 0.2
+
+    answer = validated_comparison_answer("제일 많이 증가한 부서는?", execution, False)
+
+    assert answer is not None
+    assert "10%에서 20%으로 10%p 증가" in answer.answer
+    assert "명" not in answer.answer
+
+
 def _execution():
     values = {
         "W106": "Department", "W107": "Services",

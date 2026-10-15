@@ -38,6 +38,7 @@ def summarize_tables(
                 is_truncated=(
                     preview_max_row < max_row or preview_max_column < max_column
                 ),
+                totals_row_count=int(table.totalsRowCount or 0),
             )
         )
     return summaries

@@ -1,8 +1,8 @@
 import re
 from dataclasses import dataclass
-from datetime import datetime
 
 from app.agent.query.index import IndexedRow
+from app.agent.query.question_dates import question_date_bounds
 from app.services.workbook_parsing.models import WorkbookSummary
 
 
@@ -41,7 +41,7 @@ def comparison_scope(summary: WorkbookSummary, question: str) -> ComparisonScope
 def requested_metric_group(question: str) -> str | None:
     normalized = question.casefold()
     for group, aliases in GROUP_ALIASES.items():
-        if any(alias in normalized for alias in aliases):
+        if any(_contains_alias(normalized, alias) for alias in aliases):
             return group
     return None
 
@@ -65,18 +65,6 @@ def rank_changes(metrics: list[dict[str, object]], direction: str | None):
         candidates = [item for item in metrics if item["change"] > 0]
         return sorted(candidates, key=lambda item: item["change"], reverse=True)
     return sorted(metrics, key=lambda item: abs(item["change"]), reverse=True)
-
-
-def question_date_bounds(query: str) -> tuple[datetime | None, datetime | None]:
-    matches = list(re.finditer(r"(20\d{2})\s*년?\s*(\d{1,2})?\s*월?", query))
-    if len(matches) >= 2:
-        return _matched_date(matches[0]), _matched_date(matches[1], end=True)
-    if not matches:
-        return None, None
-    match = matches[0]
-    if "까지" in query[match.end() : match.end() + 5]:
-        return None, _matched_date(match, end=True)
-    return _matched_date(match), None
 
 
 def header_references(
@@ -104,6 +92,12 @@ def _normalized(value: object) -> str:
     return " ".join(str(value or "").casefold().split())
 
 
+def _contains_alias(text: str, alias: str) -> bool:
+    if re.fullmatch(r"[a-z]+", alias):
+        return alias in re.findall(r"[a-z]+", text)
+    return alias in text
+
+
 def column_from_address(address: str) -> str:
     match = re.match(r"[A-Z]+", address.upper())
     return match.group(0) if match else address
@@ -118,9 +112,3 @@ def column_number(column: str) -> int:
 
 def normalized_label(value: object) -> str:
     return _normalized(value)
-
-
-def _matched_date(match: re.Match, end: bool = False) -> datetime:
-    month = int(match.group(2) or (12 if end else 1))
-    day = 31 if end and match.group(2) is None else 1
-    return datetime(int(match.group(1)), month, day)

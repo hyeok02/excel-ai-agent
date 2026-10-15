@@ -76,6 +76,7 @@ class TableSummary:
     column_count: int
     preview_rows: list[list[CellSnapshot]]
     is_truncated: bool
+    totals_row_count: int = 0
 
 
 @dataclass(frozen=True)

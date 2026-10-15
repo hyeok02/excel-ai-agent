@@ -4,16 +4,13 @@ from app.agent.query.comparison_evidence import (
     available_evidence,
     comparison_change_matches,
     comparison_header_matches,
-    comparison_number,
     comparison_period,
     comparison_values_match,
     matched_comparison_evidence,
     present_comparison_evidence,
 )
-from app.agent.query.models import (
-    QuestionAnswer,
-    QuestionAnswerStatus,
-)
+from app.agent.query.comparison_value_format import comparison_values, people_unit
+from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
 from app.services.insights.display.glossary import readable
 
 
@@ -66,7 +63,10 @@ def verified_comparison_answer(
     for step in execution.steps:
         if step.status is not AgentStepStatus.SUCCEEDED or not step.result:
             continue
-        comparison = step.result.data.get("time_series_comparison")
+        data = step.result.data
+        if data.get("answer_scope") == "whole_workbook":
+            continue
+        comparison = data.get("time_series_comparison")
         answer = _answer(question, comparison)
         if answer:
             return answer
@@ -105,13 +105,13 @@ def _answer(question: str, comparison: object) -> VerifiedComparisonAnswer | Non
     references = _references(comparison, metric)
     if len(references) < 4:
         return None
-    unit = "명" if "명" in question or group in {"department", "role"} else ""
-    start = comparison_number(metric["start_value"], unit)
-    end = comparison_number(metric["end_value"], unit)
-    change = comparison_number(abs(float(metric["change"])), unit)
+    start, end, change = comparison_values(
+        metric["start_value"], metric["end_value"], metric["change"],
+        metric.get("start_number_format"), metric.get("end_number_format"),
+        people_unit(question, header),
+    )
     verb = "감소" if direction == "decrease" else "증가"
     subject = readable(header)
-    # 지표마다 최고점 시점이 다르므로 그 지표의 시작 시점을 쓴다.
     start_date = metric.get("start_date") or comparison.get("start_date")
     text = (
         f"{comparison_period(start_date)}부터 "

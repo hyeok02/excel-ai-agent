@@ -33,6 +33,7 @@ def build_time_series_comparison(
         "sheet_name": sheet_name,
         "start_date": start_date.date().isoformat(),
         "end_date": end_date.date().isoformat(),
+        "observation_count": len(points),
         "start_reference": f"{sheet_name}!{date_column}{start_row.row_number}",
         "end_reference": f"{sheet_name}!{date_column}{end_row.row_number}",
         "metric_group": metric_group if scoped else None,

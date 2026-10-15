@@ -14,7 +14,6 @@ from app.agent.tools.workbook_metric_changes import (
 from tests.support.series_rows import SHEET, rows
 
 NAMED_METRIC = (
-    "Services 인원 알려줘",
     "Services 어떻게 변했어?",
     "Services 얼마나 줄었어?",
     "Services 인원 변화 알려줘",
@@ -47,6 +46,15 @@ def test_every_wording_picks_the_named_metric(question: str) -> None:
     assert found["end_value"] == 1081
 
 
+def test_plain_named_value_uses_a_snapshot_instead_of_a_change() -> None:
+    from app.agent.tools.workbook_metric_snapshots import build_metric_snapshot
+
+    question = "Services 인원 알려줘"
+    assert build_metric_change(_comparison(question), question) is None
+    found = build_metric_snapshot(_comparison(question), question)
+    assert found is not None and found["metrics"][0]["value"] == 1081
+
+
 def test_a_question_naming_no_metric_is_left_alone() -> None:
     question = "이 파일 뭐야?"
 
@@ -57,10 +65,20 @@ def test_the_model_target_finds_a_metric_the_wording_misses() -> None:
     # 머리글이 'Services'인데 질문은 '서비스'라 글자로는 겹치지 않는다.
     question = "서비스 부서 인원 알려줘"
 
-    found = build_metric_change(_comparison(question), question, ("Services",))
+    from app.agent.tools.workbook_metric_snapshots import build_metric_snapshot
+
+    found = build_metric_snapshot(_comparison(question), question, ("Services",))
 
     assert found is not None
-    assert found["header"] == "Services"
+    assert found["metrics"][0]["header"] == "Services"
+
+
+def test_r_and_d_abbreviation_selects_research_and_development() -> None:
+    question = "R&D 직원 수 변화"
+    found = build_metric_change(_comparison(question), question)
+
+    assert found is not None
+    assert found["header"] == "Research & Development"
 
 
 def test_counts_the_metrics_when_the_question_asks_how_many() -> None:

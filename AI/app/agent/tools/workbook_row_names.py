@@ -59,9 +59,11 @@ def _without_particle(token: str) -> str | None:
     냈다. 한글만으로 된 낱말은 건드리지 않는다. '장비는'에서 '장'을 떼면
     엉뚱한 이름에 걸린다.
     """
-    if all(is_hangul(character) for character in token):
-        return None
     for particle in PARTICLES:
+        # 한글 명사 자체가 '이/가'로 끝날 수 있다(장비, 차이). 긴 조사와
+        # 목적·주제·소유격 조사는 두 글자 이상의 이름 뒤에서만 안전하게 뗀다.
+        if all(is_hangul(character) for character in token) and particle in {"이", "가"}:
+            continue
         if token.endswith(particle) and len(token) - len(particle) >= MIN_TOKEN:
             return token[: -len(particle)]
     return None

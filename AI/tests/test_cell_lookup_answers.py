@@ -1,6 +1,7 @@
 """한 항목의 한 값을 코드가 직접 짚는지."""
 from app.agent.tools.workbook_cell_lookups import build_cell_lookup
-from tests.support.checklist_rows import SHEET, built
+from app.agent.tools.workbook_headers import build_header_context
+from tests.support.checklist_rows import SHEET, built, row
 
 
 def _looked_up(question: str):
@@ -32,3 +33,29 @@ def test_reads_one_cell_when_the_row_name_carries_a_particle() -> None:
 
     assert found["label"] == "CVD #2"
     assert found["value_reference"] == f"{SHEET}!C7"
+
+
+def test_uses_an_explicit_code_instead_of_the_nearest_text_label() -> None:
+    source = [
+        row(5, {"A": "설비코드", "B": "점검항목", "C": "측정값", "D": "기준값"}),
+        row(6, {"A": "EX-101", "B": "진동", "C": 3.2, "D": 5.0}),
+        row(7, {"A": "EX-102", "B": "베어링 온도", "C": 68.4, "D": 80.0}),
+    ]
+    headers = build_header_context(tuple(source), source)
+
+    found = build_cell_lookup(source, headers, "EX-102의 측정값은?")
+
+    assert found["label"] == "EX-102"
+    assert found["header"] == "측정값"
+    assert found["value"] == 68.4
+
+
+def test_conflicting_names_from_two_label_columns_are_not_guessed() -> None:
+    source = [
+        row(5, {"A": "설비코드", "B": "점검항목", "C": "측정값"}),
+        row(6, {"A": "EX-101", "B": "진동", "C": 3.2}),
+        row(7, {"A": "EX-102", "B": "온도", "C": 68.4}),
+    ]
+    headers = build_header_context(tuple(source), source)
+
+    assert build_cell_lookup(source, headers, "EX-102 진동 측정값은?") is None

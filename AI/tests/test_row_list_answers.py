@@ -70,6 +70,11 @@ def test_ignores_a_question_that_is_not_about_counting() -> None:
     assert _counted("네트워크가 불안정한 장비는?") is None
 
 
+def test_does_not_report_all_rows_for_a_subset_count() -> None:
+    assert _counted("점검된 CVD 장비는 몇 건이야?") is None
+    assert _counted("표시된 장비 개수는?") is None
+
+
 def test_lists_the_rows_when_the_question_names_the_mark() -> None:
     # 표에 적힌 x·o를 질문에 그대로 쓰는 사람이 많다. 어간만 보면 아무 극성도
     # 읽히지 않아 목록이 꺼지고 모델 추측이 나갔다.

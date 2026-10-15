@@ -1,22 +1,20 @@
-"""답변을 절 단위로 나누고, 절이 말한 증감 방향을 읽는다.
-
-수치 검증을 답변 전체가 아니라 절 단위로 하기 위한 공통 도구다. 전체
-단위로 보면 한 절에서 만들어진 근거가 다른 절의 주장을 통과시킨다.
-
-천 단위 구분 기호와 소수점은 절 경계가 아니다. 숫자가 뒤따르는 쉼표와
-마침표를 경계로 보면 "6,101"과 "11.21"이 잘려 검사가 빗나간다.
-"""
+"""Validate small claims, but remove unsupported prose only as complete units."""
 import re
 
-CLAUSE = re.compile(
-    r"[!?;\n]|[.,](?!\d)|(?:이고|이며|반면|그리고)|\b(?:and|while)\b", re.I
-)
+from app.agent.query.answer_segments import TABLE_SEPARATOR, answer_units, validation_clauses
+
 INCREASE = re.compile(r"증가|증대|늘어|늘었|상승|increas|grew|rose|growth", re.I)
 DECREASE = re.compile(r"감소|축소|줄어|줄었|하락|decreas|fell|declin|drop", re.I)
+STRUCTURE = re.compile(r"^\s*#{1,6}\s+")
+PREDICATE = re.compile(r"(?:습니다|입니다|한다|된다|이다|했다|있다|없다)[.!?]?$")
+ENGLISH_PREDICATE = re.compile(
+    r"\S+\s+(?:is|are|was|were|has|have|had|contains?|equals?)\s+\w|"
+    r"\S+\s+(?:increased|decreased|grew|fell|rose|declined|changed|remained)\b", re.I
+)
 
 
 def clauses(text: str) -> list[str]:
-    return [part for part in CLAUSE.split(text) if part and part.strip()]
+    return validation_clauses(text)
 
 
 def stated_direction(text: str) -> str | None:
@@ -29,17 +27,39 @@ def stated_direction(text: str) -> str | None:
 
 
 def supported_clauses(text: str, verified) -> tuple[str, bool]:
-    """확인된 절만 남긴 답변과, 덜어낸 절이 있었는지 돌려준다.
-
-    수치 하나를 확인하지 못했다고 답변 전체를 버리면 근거가 있는 문장까지
-    함께 사라진다. "연구개발이 가장 많이 줄었습니다. 143명 감소했습니다."에서
-    143을 확인하지 못하면, 앞 문장까지 묻히고 사용자는 아무것도 못 본다.
-    """
-    parts = clauses(text) or [text]
-    kept = [part.strip() for part in parts if verified(part)]
-    if len(kept) == len(parts):
+    """Keep original complete claims; never turn label fragments into sentences."""
+    units = answer_units(text)
+    accepted = [all(verified(part) for part in clauses(unit)) for unit in units]
+    if all(accepted):
         return text, False
-    sentence = " ".join(part for part in kept if part)
-    if sentence and not sentence.endswith((".", "!", "?")):
-        sentence += "."
-    return sentence, True
+    kept = {
+        index for index, (unit, valid) in enumerate(zip(units, accepted))
+        if valid and _complete_claim(unit)
+    }
+    for index, unit in enumerate(units):
+        if not TABLE_SEPARATOR.match(unit) or not index:
+            continue
+        rows = []
+        for following in range(index + 1, len(units)):
+            if not units[following].lstrip().startswith("|"):
+                break
+            rows.append(following)
+        kept.discard(index - 1)
+        if accepted[index - 1] and any(row in kept for row in rows):
+            kept.update((index - 1, index))
+        else:
+            kept.difference_update(rows)
+    # Keep the original separators, punctuation, bullets and table formatting.
+    return "".join(unit for index, unit in enumerate(units) if index in kept).strip(), True
+
+
+def _complete_claim(unit: str) -> bool:
+    value = unit.strip()
+    if not value or STRUCTURE.match(value) or TABLE_SEPARATOR.match(value) or value.endswith(":"):
+        return False
+    if value.startswith("|"):
+        return len([cell for cell in value.strip("|").split("|") if cell.strip()]) > 1
+    value = re.sub(r"^\s*(?:[-+*]|\d+[.)])\s+", "", value)
+    if re.search(r"\S\s*[:：→]\s*\S", value):
+        return True
+    return bool(PREDICATE.search(value) or ENGLISH_PREDICATE.search(value))

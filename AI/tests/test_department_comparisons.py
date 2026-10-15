@@ -42,6 +42,8 @@ def test_department_decrease_excludes_total_and_role_columns() -> None:
         "start_value": 1277,
         "end_value": 1081,
         "change": -196.0,
+            "start_number_format": "General",
+            "end_number_format": "General",
         "header_references": ["Metrics!W106", "Metrics!W107"],
         "start_reference": "Metrics!W115",
         "end_reference": "Metrics!W108",

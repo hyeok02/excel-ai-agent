@@ -4,11 +4,12 @@
 '이 파일은 뭐에 관련된 얘기야?'가 목록에 없어 요약 경로가 꺼지고, 검색이
 '관련된', '얘기야'로 엉뚱한 행을 가져와 답변이 "근거 부족"으로 나갔다.
 
-고르는 일만 모델에게 맡기고, 계산과 셀 선택은 코드가 그대로 한다. 모델이
-틀리거나 부르지 못해도 아래 단계가 받아내도록 결과는 게이트가 아니라
-순위 힌트로만 쓴다.
+모델은 원본에서 만든 카탈로그의 표/열 ID와 연산을 고른다. 코드는 선택을
+검증하고 원본에서 계산한다. 분류기를 부르지 못하면 기존 검색을 사용한다.
 """
 import os
+from collections import OrderedDict
+from hashlib import sha256
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -22,8 +23,8 @@ from app.agent.query.intent_models import (
 from app.agent.query.intent_prompts import SYSTEM_PROMPT, build_intent_prompt
 from app.services.workbook_parsing.models import WorkbookSummary
 
-DEFAULT_MODEL = "gpt-4.1-nano"
-DEFAULT_TIMEOUT = 8.0
+DEFAULT_MODEL = "gpt-4.1-2025-04-14"
+DEFAULT_TIMEOUT = 30.0
 MAX_CACHED = 128
 
 
@@ -32,7 +33,7 @@ class LangChainQuestionIntentClassifier:
         self._api_key = api_key
         self._model = model
         self._timeout_seconds = timeout_seconds
-        self._cache: dict[tuple[str, str], QuestionIntent] = {}
+        self._cache: OrderedDict[bytes, QuestionIntent] = OrderedDict()
 
     @classmethod
     def from_environment(cls) -> "LangChainQuestionIntentClassifier | None":
@@ -43,7 +44,7 @@ class LangChainQuestionIntentClassifier:
             return None
         model = (
             os.getenv("OPENAI_INTENT_MODEL")
-            or os.getenv("OPENAI_FAST_MODEL")
+            or os.getenv("OPENAI_QA_MODEL")
             or DEFAULT_MODEL
         )
         return cls(api_key, model, _timeout())
@@ -51,14 +52,19 @@ class LangChainQuestionIntentClassifier:
     async def classify(
         self, question: str, summary: WorkbookSummary
     ) -> QuestionIntent:
-        key = (summary.filename, question.strip())
+        prompt = build_intent_prompt(question, summary)
+        # A filename is not a workbook identity. Different users commonly upload
+        # "report.xlsx", so caching on it can leak targets from an unrelated schema.
+        # Include the bounded source catalog, including category samples.
+        key = sha256(prompt.encode("utf-8")).digest()
         if found := self._cache.get(key):
+            self._cache.move_to_end(key)
             return found
         try:
             result = await self._build_model().ainvoke(
                 [
                     SystemMessage(content=SYSTEM_PROMPT),
-                    HumanMessage(content=build_intent_prompt(question, summary)),
+                    HumanMessage(content=prompt),
                 ]
             )
             intent = QuestionIntent.from_draft(
@@ -67,8 +73,10 @@ class LangChainQuestionIntentClassifier:
         except Exception:
             # 분류에 실패했다고 질문에 답하지 못할 이유는 없다.
             return QuestionIntent.from_keywords(question)
-        if len(self._cache) < MAX_CACHED:
-            self._cache[key] = intent
+        self._cache[key] = intent
+        self._cache.move_to_end(key)
+        if len(self._cache) > MAX_CACHED:
+            self._cache.popitem(last=False)
         return intent
 
     def _build_model(self):
@@ -77,7 +85,7 @@ class LangChainQuestionIntentClassifier:
             api_key=self._api_key,
             timeout=self._timeout_seconds,
             max_retries=1,
-            max_completion_tokens=200,
+            max_completion_tokens=1200,
         ).with_structured_output(QuestionIntentDraft, method="json_schema")
 
 

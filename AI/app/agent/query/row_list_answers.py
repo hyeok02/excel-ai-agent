@@ -6,6 +6,7 @@ from app.agent.query.comparison_evidence import (
     present_comparison_evidence,
 )
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
+from app.agent.query.cell_lookup_validation import valid_cell_lookup
 from app.services.insights.display.glossary import readable
 
 MAX_NAMED = 12
@@ -23,6 +24,8 @@ def validated_row_list_answer(
     elif (found := _step_data(execution, "mark_peak", "count")) is not None:
         text, references = _peak_answer(found)
     elif (found := _cell_lookup(execution)) is not None:
+        if not valid_cell_lookup(question, found, available or available_evidence(execution)):
+            return None
         text, references = _lookup_answer(found)
     else:
         found = _row_count(execution)
@@ -72,7 +75,7 @@ def _cell_lookup(execution: AgentExecution) -> dict | None:
 def _lookup_answer(found: dict) -> tuple[str, list[str]]:
     subject = found.get("label") or readable(found.get("label_header") or "항목")
     column = readable(found.get("header") or "값")
-    text = f"{subject}의 ‘{column}’은(는) {found['value']}입니다."
+    text = f"{subject}의 {column} 값은 {found['value']}입니다."
     references = [
         found.get("header_reference"),
         found.get("label_reference"),
@@ -127,8 +130,7 @@ def _answer(found: dict) -> tuple[str, list[str]]:
     names = [str(item["label"]).strip() for item in matches]
     marks = sorted({str(item["value"]).strip()[:1] for item in matches})
     listed = ", ".join(names[:MAX_NAMED])
-    if len(names) > MAX_NAMED:
-        listed += f" 등"
+    listed += " 등" if len(names) > MAX_NAMED else ""
     subject = readable(found.get("label_header") or "항목")
     column = readable(found.get("header") or "")
     text = (

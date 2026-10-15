@@ -255,6 +255,8 @@ http://localhost:5173
 | `OPENAI_STANDARD_MODEL` | 자동 분석 깊이에서 사용할 모델 |
 | `OPENAI_PRECISE_MODEL` | 정밀 분석 깊이에서 사용할 모델 |
 | `OPENAI_QA_MODEL` | Excel 질의응답 모델 |
+| `OPENAI_INTENT_MODEL` | 질문 범위·원본 표/열·집계 연산을 고르는 모델. 미설정 시 `OPENAI_QA_MODEL` 사용 |
+| `OPENAI_INTENT_TIMEOUT_SECONDS` | 질문 실행 계획의 요청 제한 시간(기본 30초) |
 | `OPENAI_WRITEBACK_MODEL` | Excel 수정안 생성 모델 |
 | `OPENAI_TIMEOUT_SECONDS` | OpenAI 요청 제한 시간 |
 | `OPENAI_MAX_COMPLETION_TOKENS` | 최대 응답 토큰 수 |

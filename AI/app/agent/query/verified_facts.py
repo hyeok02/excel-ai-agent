@@ -22,6 +22,9 @@ def build_verified_question_context(summary: WorkbookSummary) -> dict[str, objec
     insights = [
         {
             "title": item.title,
+            "topic": getattr(item, "topic", None),
+            "category": getattr(item, "category", "summary"),
+            "confidence": getattr(item, "confidence", 1.0),
             "fact": item.fact,
             "evidence": item.evidence,
             "required_references": _required_references(item.evidence),
@@ -120,6 +123,6 @@ def _leading_overview(context, report) -> str:
 
 
 def _source_report(context):
-    from app.services.insights.narratives.source_narratives import source_narrative_report
+    from app.services.insights.quality import build_source_report
 
-    return source_narrative_report(context)
+    return build_source_report(context)

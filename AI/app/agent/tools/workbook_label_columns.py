@@ -6,7 +6,11 @@ MIN_NAMES = 4
 
 
 def labelled_column(
-    rows: list[IndexedRow], headers: HeaderContext, sheet_name: str, column: str
+    rows: list[IndexedRow],
+    headers: HeaderContext,
+    sheet_name: str,
+    column: str,
+    minimum_names: int = MIN_NAMES,
 ):
     """무엇을 나열할지. 표시 열 왼쪽에서 값이 서로 다른 가장 가까운 글자 열."""
     candidates: dict[str, list] = {}
@@ -20,7 +24,7 @@ def labelled_column(
     for found in sorted(candidates, key=_index, reverse=True):
         values = [str(cell.value).strip() for cell in candidates[found]]
         values = [value for value in values if value]
-        if len(values) < MIN_NAMES or len(set(values)) <= len(values) / 2:
+        if len(values) < minimum_names or len(set(values)) <= len(values) / 2:
             continue
         header = next(
             (

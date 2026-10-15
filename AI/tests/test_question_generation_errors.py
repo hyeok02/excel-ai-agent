@@ -16,7 +16,7 @@ def test_returns_bad_gateway_when_model_generation_fails() -> None:
     try:
         response = TestClient(app).post(
             "/api/v1/workbooks/questions",
-            data={"question": "노트북의 1월 값은 얼마야?"},
+            data={"question": "노트북과 모니터의 1월 판매를 비교해줘"},
             files=upload("sales.xlsx", create_workbook_file()),
         )
     finally:
