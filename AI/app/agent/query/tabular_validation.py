@@ -1,6 +1,8 @@
 """Validate every table observation against the original workbook index."""
 from openpyxl.utils import coordinate_to_tuple, get_column_letter, range_boundaries
 
+from app.agent.query.tabular_filters import filtered_rows, ordered_rows, same_value as _same_value
+
 
 def query_columns(plan, table) -> list[str] | None:
     columns = [column.id for column in table.columns]
@@ -18,7 +20,8 @@ def query_columns(plan, table) -> list[str] | None:
             return None
         if len({(type(value).__name__, value) for value in values}) != len(values):
             return None
-    return [column for column in columns if column not in identity]
+    hidden = getattr(table, "hidden_columns", frozenset())
+    return [column for column in columns if column not in identity and column not in hidden]
 
 
 def validated_table(table, index, needed: set[str]) -> bool:
@@ -62,32 +65,3 @@ def validated_table(table, index, needed: set[str]) -> bool:
             if (cell.formula or cell.value not in (None, "")) and row not in source_rows:
                 return False
     return True
-
-
-def _same_value(expected, actual):
-    if expected in (None, "") and actual in (None, ""):
-        return True
-    if isinstance(expected, bool) != isinstance(actual, bool):
-        return False
-    return expected == actual
-
-
-def filtered_rows(table, filters):
-    rows = list(table.rows)
-    for condition in filters:
-        if condition.operator not in {"equals", "not_equals", "contains", "is_blank", "not_blank"}:
-            return None
-        rows = [row for row in rows if _matches(row.values[condition.column_id], condition)]
-    return rows
-
-
-def _matches(value, condition):
-    operator = condition.operator
-    if operator == "is_blank":
-        return value in (None, "")
-    if operator == "not_blank":
-        return value not in (None, "")
-    if operator == "contains":
-        return isinstance(value, str) and isinstance(condition.value, str) and condition.value in value
-    equal = _same_value(value, condition.value)
-    return equal if operator == "equals" else not equal

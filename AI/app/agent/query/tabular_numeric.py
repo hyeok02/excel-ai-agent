@@ -6,7 +6,7 @@ from decimal import Decimal, localcontext
 from app.agent.query.excel_number_formats import display_value, parse_number_format
 
 
-def numeric_summary(values, formats):
+def numeric_summary(values, formats, statistic="all"):
     entries = [(value, style) for value, style in zip(values, formats)
                if value not in (None, "")]
     if not entries or any(not isinstance(value, (int, float)) or isinstance(value, bool)
@@ -32,6 +32,13 @@ def numeric_summary(values, formats):
         total = sum(numbers, Decimal(0))
         average = total / len(numbers)
         rendered = [_render(value, spec) for value in (total, average, min(numbers), max(numbers))]
+    if statistic != "all":
+        positions = {"sum": (0, "합계"), "average": (1, "평균"),
+                     "min": (2, "최솟값"), "max": (3, "최댓값")}
+        if statistic not in positions:
+            return None, []
+        position, label = positions[statistic]
+        return f"{label} {rendered[position]} (숫자 {len(numbers)}건, 빈칸 {len(values) - len(numbers)}건)", []
     text = (
         f"숫자 {len(numbers)}건, 합계 {rendered[0]}, 평균 {rendered[1]}, "
         f"최솟값 {rendered[2]}, 최댓값 {rendered[3]}, 빈칸 {len(values) - len(numbers)}건"

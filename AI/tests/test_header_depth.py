@@ -92,3 +92,18 @@ def test_a_sparse_row_inside_a_block_is_not_a_header() -> None:
     assert header_for(context, SHEET, 9, "C9") == "IP"
     assert header_for(context, SHEET, 11, "D11") == "장비"
     assert header_for(context, SHEET, 11, "F11") == "네트워크"
+
+
+def test_text_record_uniqueness_cannot_replace_the_column_headers() -> None:
+    rows = [
+        _row(30, {"H": "Company", "I": "Event Date", "J": "Headline"}),
+        _row(31, {"H": "Alpha", "I": "2026-01-01", "J": "Unique event"}),
+        _row(32, {"H": "Beta", "I": "2026-01-02", "J": "Repeated event"}),
+        _row(33, {"H": "Beta", "I": "2026-01-03", "J": "Repeated event"}),
+        _row(34, {"H": "Gamma", "I": "2026-01-04", "J": "Target agreement"}),
+    ]
+    context = build_header_context(tuple(rows), rows)
+
+    assert header_for(context, SHEET, 32, "J32") == "Headline"
+    assert header_for(context, SHEET, 34, "H34") == "Company"
+    assert header_for(context, SHEET, 34, "J34") == "Headline"

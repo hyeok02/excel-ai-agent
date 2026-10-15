@@ -1,22 +1,16 @@
 from datetime import date, datetime
 
-from openpyxl.worksheet.formula import ArrayFormula, DataTableFormula
-
-
-def formula_text(value: object) -> str | None:
-    if isinstance(value, str) and value.startswith("="):
-        return value
-    if isinstance(value, ArrayFormula):
-        return value.text or "=ARRAY_FORMULA()"
-    if isinstance(value, DataTableFormula):
-        return "=DATA_TABLE()"
-    return None
+from app.services.workbook_details.cell_values import formula_text
 
 
 def safe_indexed_value(
     value: object, formula: str | None
 ) -> tuple[str | int | float | bool | None, str]:
     if formula:
+        if isinstance(value, datetime):
+            return value.isoformat(), "formula_datetime"
+        if isinstance(value, date):
+            return value.isoformat(), "formula_date"
         return value if isinstance(value, (str, int, float, bool)) else None, "formula"
     if value is None:
         return None, "blank"

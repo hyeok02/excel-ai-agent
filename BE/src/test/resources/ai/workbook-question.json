@@ -12,8 +12,13 @@
       "description": "질문과 관련해 원본 Excel에서 조회한 셀",
       "value": 10,
       "formula": null,
-      "label": "10"
+      "label": "10",
+      "number_format": "#,##0"
     }
   ],
-  "limitations": []
+  "limitations": [],
+  "verification": {
+    "level": "source_checked",
+    "checks": ["cited_cells", "numbers"]
+  }
 }

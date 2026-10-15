@@ -1,6 +1,7 @@
 """Format source-derived statistics without interpreting category symbols."""
 from collections import Counter
 
+from app.agent.query.excel_number_formats import display_value, parse_number_format
 from app.agent.query.models import QuestionAnswerEvidence
 from app.agent.query.tabular_numeric import numeric_summary
 from app.services.provenance import EvidenceKind
@@ -8,9 +9,27 @@ from app.services.provenance import EvidenceKind
 MAX_DISPLAY_CATEGORIES = 30
 
 
-def aggregate_text(operation, columns, rows):
+def aggregate_text(operation, columns, rows, statistic="all"):
     if operation == "row_count":
         return f"조건에 해당하는 행은 {len(rows)}건입니다.", []
+    if operation in {"lookup", "row_list"}:
+        if operation == "lookup" and len(rows) != 1:
+            return None, []
+        if not rows:
+            return "지정한 조건에 맞는 행이 없습니다.", []
+        lines = []
+        for row in rows[:50]:
+            parts = []
+            for column in columns:
+                value = row.values[column.id]
+                if value is None and row.formulas.get(column.id):
+                    return None, []
+                text = _display_cell(value, row.number_formats.get(column.id, "General"))
+                parts.append(f"{column.header}: {text}")
+            lines.append("; ".join(parts))
+        limitations = ([f"해당하는 {len(rows)}개 행 중 앞의 50개 행만 표시했습니다."]
+                       if len(rows) > 50 else [])
+        return "\n".join(lines), limitations
     lines, limitations = [], []
     for column in columns:
         values = [row.values[column.id] for row in rows]
@@ -18,7 +37,7 @@ def aggregate_text(operation, columns, rows):
             result, limited = _frequencies(values)
         elif operation == "numeric_summary":
             formats = [row.number_formats.get(column.id, "General") for row in rows]
-            result, limited = numeric_summary(values, formats)
+            result, limited = numeric_summary(values, formats, statistic)
             if result is None:
                 return None, []
         else:
@@ -26,6 +45,33 @@ def aggregate_text(operation, columns, rows):
         lines.append(f"‘{column.header}’: {result}.")
         limitations.extend(limited)
     return "\n".join(lines), list(dict.fromkeys(limitations))
+
+
+def _display_cell(value, number_format):
+    if value in (None, ""):
+        return "빈칸"
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return display_value(value, parse_number_format(number_format))
+    return str(value)
+
+
+def scope_description(plan, table):
+    columns = {column.id: column.header for column in table.columns}
+    operators = {"equals": "=", "not_equals": "≠", "contains": "포함",
+                 "is_blank": "빈칸", "not_blank": "비어 있지 않음",
+                 "greater_than": ">", "greater_than_or_equal": "≥",
+                 "less_than": "<", "less_than_or_equal": "≤"}
+    parts = []
+    for condition in plan.filters:
+        value = "" if condition.operator in {"is_blank", "not_blank"} else str(condition.value)
+        if condition.value_unit == "percent":
+            value += "%"
+        parts.append(f"{columns[condition.column_id]} {operators[condition.operator]} {value}".strip())
+    if plan.order_by:
+        parts.append(f"{columns[plan.order_by]} {'내림차순' if plan.descending else '오름차순'}")
+    if plan.limit:
+        parts.append(f"앞의 {plan.limit}개 행")
+    return "조건: " + ", ".join(parts) + "\n" if parts else ""
 
 
 def _frequencies(values):

@@ -32,6 +32,7 @@ def summarize_regions(
 ) -> list[RegionSummary]:
     summaries: list[RegionSummary] = []
     remaining_analysis_cells = analysis_samples.MAX_ANALYSIS_SHEET_CELLS
+    remaining_query_cells = analysis_samples.MAX_ANALYSIS_SHEET_CELLS
     cell_index = analysis_cell_index(worksheet)
     cached_cells = (
         getattr(value_worksheet, "_cells", {})
@@ -60,6 +61,16 @@ def summarize_regions(
         )
         analysis_cell_count = sum(len(row) for row in analysis_rows)
         remaining_analysis_cells -= analysis_cell_count
+        query_rows, query_complete = [], None
+        if region_hidden_columns:
+            query_rows, query_complete = collect_analysis_sample(
+                worksheet, value_worksheet,
+                (min_column, min_row, max_column, max_row), remaining_query_cells,
+                set(region_hidden_rows), set(), cell_index, cached_cells,
+            )
+            remaining_query_cells -= sum(len(row) for row in query_rows)
+        else:
+            remaining_query_cells -= analysis_cell_count
         summaries.append(
             RegionSummary(
                 start_cell=region.start_cell,
@@ -99,6 +110,8 @@ def summarize_regions(
                 analysis_complete=analysis_complete,
                 hidden_rows=region_hidden_rows,
                 hidden_columns=region_hidden_columns,
+                query_rows=query_rows,
+                query_complete=query_complete,
             )
         )
     return summaries

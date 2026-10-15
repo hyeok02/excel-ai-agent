@@ -62,3 +62,39 @@ def test_explicit_percent_result_allows_display_rounding() -> None:
     assert answer_units_supported(
         "약 20.2% 감소", evidence, _execution(-20.24, end=79.76)
     )
+
+
+def test_cited_percentage_header_supplies_missing_unit_context() -> None:
+    value = _evidence(8.94, "원본 셀")
+    value.reference = "H42"
+    value.number_format = "General"
+    header = _evidence("Shares Held (%)", "원본 셀")
+    header.reference = "H20"
+
+    assert answer_units_supported("보유 비율은 8.94%입니다.", [header, value], _execution())
+    assert not answer_units_supported("보유 비율은 894%입니다.", [header, value], _execution())
+
+
+def test_percentage_header_does_not_apply_to_another_column_or_sheet() -> None:
+    value = _evidence(8.94, "원본 셀")
+    value.reference = "H42"
+    header = _evidence("Shares Held (%)", "원본 셀")
+    header.reference = "G20"
+    assert not answer_units_supported("8.94%", [header, value], _execution())
+    header.reference = "H20"
+    header.sheet_name = "Other"
+    assert not answer_units_supported("8.94%", [header, value], _execution())
+
+
+def test_percentage_display_scale_comes_from_format_not_magnitude() -> None:
+    value = _evidence(0.4, "비율 (%)")
+    value.number_format = "General"
+    assert answer_units_supported("0.4%", [value], _execution())
+    assert not answer_units_supported("40%", [value], _execution())
+    value.value = 1.4
+    value.number_format = "0.0%"
+    assert answer_units_supported("140%", [value], _execution())
+    assert not answer_units_supported("1.4%", [value], _execution())
+    value.number_format = '0.0"%"'
+    assert answer_units_supported("1.4%", [value], _execution())
+    assert not answer_units_supported("140%", [value], _execution())

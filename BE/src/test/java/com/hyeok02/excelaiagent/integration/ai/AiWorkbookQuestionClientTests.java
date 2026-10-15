@@ -26,11 +26,24 @@ class AiWorkbookQuestionClientTests extends AiServiceClientTestSupport {
 
 		assertThat(response.status()).isEqualTo("answered");
 		assertThat(response.selectedTools()).containsExactly("search_workbook_data");
+		assertThat(response.verification().level()).isEqualTo("source_checked");
+		assertThat(response.verification().checks()).containsExactly("cited_cells", "numbers");
 		assertThat(response.evidence()).singleElement().satisfies(evidence -> {
 			assertThat(evidence.sheetName()).isEqualTo("매출현황");
 			assertThat(evidence.reference()).isEqualTo("B2");
 			assertThat(evidence.value()).isEqualTo(10);
+			assertThat(evidence.numberFormat()).isEqualTo("#,##0");
 		});
 		server.verify();
+	}
+
+	@Test
+	void oldAnswersDoNotGainARequestVerificationGuarantee() {
+		AiWorkbookQuestion response = new AiWorkbookQuestion(
+				"합계는?", "100", "answered", 1.0,
+				java.util.List.of(), java.util.List.of(), java.util.List.of());
+
+		assertThat(response.verification().level()).isEqualTo("unverified");
+		assertThat(response.verification().checks()).isEmpty();
 	}
 }

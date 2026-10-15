@@ -1,0 +1,262 @@
+{
+  "description": "User-requested 18-question regression fixture. Original workbook files are supplied externally and never bundled. Expected values are test oracles only; production code never loads this manifest.",
+  "cases": [
+    {
+      "id": "key_debt",
+      "evidence_targets": ["Key_Stats!E66"],
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "이 파일에서 IBM의 총부채(Total Debt)는 얼마야? 단위도 알려줘.",
+      "required_patterns": [
+        "64,?607",
+        "백만|Millions|\\$M"
+      ],
+      "expected_sources": [
+        "Key_Stats!E66",
+        "Key_Stats!F18:H18"
+      ]
+    },
+    {
+      "id": "key_growth",
+      "evidence_targets": ["Key_Stats!H33:I33"],
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "IBM의 Total Revenue는 2024년에서 2025년으로 얼마나 증가했어? 금액과 증가율을 알려줘.",
+      "required_patterns": [
+        "62,?753",
+        "67,?535",
+        "4,?782",
+        "7\\.6"
+      ],
+      "expected_sources": [
+        "Key_Stats!H31:I33"
+      ]
+    },
+    {
+      "id": "key_forecast",
+      "evidence_targets": ["Key_Stats!I33", "Key_Stats!N33"],
+      "file": "SPG_Company_KeyStats_v1.xlsm",
+      "question": "Key_Stats 시트에서 2025년 실제 매출과 2026년 예상 매출을 비교해줘.",
+      "required_patterns": [
+        "67,?535",
+        "71,?183",
+        "2025",
+        "2026"
+      ],
+      "expected_sources": [
+        "Key_Stats!I31:I33",
+        "Key_Stats!N30:N33"
+      ]
+    },
+    {
+      "id": "snapshot_debt",
+      "evidence_targets": ["CompanySummary!I76"],
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "Walmart의 총부채(Total Debt)는 얼마야? 단위도 알려줘.",
+      "required_patterns": [
+        "67,?095",
+        "백만|Millions|\\$M"
+      ],
+      "expected_sources": [
+        "CompanySummary!I76",
+        "CompanySummary!B51"
+      ]
+    },
+    {
+      "id": "snapshot_growth",
+      "evidence_targets": ["CompanySummary!E88:F88"],
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "Walmart의 매출(Revenue)이 2025년 1월 31일 종료 회계연도에서 2026년 1월 31일 종료 회계연도로 얼마나 증가했어?",
+      "required_patterns": [
+        "680,?985",
+        "713,?163",
+        "32,?178"
+      ],
+      "expected_sources": [
+        "CompanySummary!E87:F88"
+      ]
+    },
+    {
+      "id": "snapshot_grain",
+      "evidence_targets": ["CompanySummary!F143", "CompanySummary!I143"],
+      "file": "SPG_FinancialSnapshotTearsheet_v1.xlsm",
+      "question": "CompanySummary에서 2026년 1월 31일 종료 회계연도 순이익(Net Income)과 같은 날짜 종료 분기의 순이익을 구분해서 알려줘.",
+      "required_patterns": [
+        "21,?893",
+        "4,?237",
+        "연간|연도|annual|year",
+        "분기|quarter"
+      ],
+      "expected_sources": [
+        "CompanySummary!E141:I143"
+      ]
+    },
+    {
+      "id": "event_lookup",
+      "evidence_targets": ["Key_Developments!C11", "Key_Developments!E11:F11"],
+      "file": "SPG_KeyDevelopments_Screening_v1.xlsm",
+      "question": "Key_Developments 시트에서 Key Development OID 39369589의 날짜, 유형과 제목을 알려줘.",
+      "required_patterns": [
+        "2025.{0,3}12.{0,3}11",
+        "Strategic Alliance",
+        "IBM and Pearson"
+      ],
+      "expected_sources": [
+        "Key_Developments!C11:F11",
+        "Key_Developments!J11"
+      ]
+    },
+    {
+      "id": "event_id_count",
+      "evidence_targets": ["Key_Developments!I7:I24"],
+      "file": "SPG_KeyDevelopments_Screening_v1.xlsm",
+      "question": "Key_Developments 시트에서 CIQ Pro ID가 3005566인 이벤트는 몇 건이야?",
+      "required_patterns": [
+        "7건"
+      ],
+      "expected_sources": [
+        "Key_Developments!I7:I24"
+      ]
+    },
+    {
+      "id": "event_frequency",
+      "evidence_targets": ["Key_Developments!E7:E24"],
+      "file": "SPG_KeyDevelopments_Screening_v1.xlsm",
+      "question": "Key_Developments 시트의 Key Development Type & Category별 건수를 요약해줘.",
+      "required_patterns": [
+        "Client Announcement.{0,8}2건",
+        "Strategic Alliance.{0,8}3건",
+        "Company Conference Presentation.{0,8}5건",
+        "총 18건"
+      ],
+      "expected_sources": [
+        "Key_Developments!E7:E24"
+      ]
+    },
+    {
+      "id": "ma_lookup",
+      "evidence_targets": ["M&A_Transaction_ID!D54", "M&A_Transaction_ID!H54", "M&A_Transaction_ID!Z54"],
+      "file": "SPG_MAIPOTransactionComparables_v1.xlsm",
+      "question": "M&A_Transaction_ID 시트의 SPTRD1439680 거래에서 인수자, 인수 대상과 총 거래금액을 단위와 함께 알려줘.",
+      "required_patterns": [
+        "Emirates NBD",
+        "DenizBank",
+        "832",
+        "\\$M|백만|Millions"
+      ],
+      "expected_sources": [
+        "M&A_Transaction_ID!B54:Z54",
+        "M&A_Transaction_ID!J43:L43"
+      ]
+    },
+    {
+      "id": "ipo_count",
+      "evidence_targets": ["IPO!F36:F45"],
+      "file": "SPG_MAIPOTransactionComparables_v1.xlsm",
+      "question": "IPO 시트에서 Funding Type이 Common Equity인 거래는 몇 건이야?",
+      "required_patterns": [
+        "9건"
+      ],
+      "expected_sources": [
+        "IPO!F36:F45"
+      ]
+    },
+    {
+      "id": "ipo_sum",
+      "evidence_targets": ["IPO!Z36:Z45"],
+      "file": "SPG_MAIPOTransactionComparables_v1.xlsm",
+      "question": "IPO 시트의 Gross Amount Offered, Including Overallotment ($000) 열에 있는 전체 10건의 합계를 단위와 함께 알려줘.",
+      "required_patterns": [
+        "7,?545,?868",
+        "\\$000|천|Thousands"
+      ],
+      "expected_sources": [
+        "IPO!Z31:Z45"
+      ]
+    },
+    {
+      "id": "headcount_change",
+      "evidence_targets": ["Detailed_Headcount_Analytics!G127", "Detailed_Headcount_Analytics!G108", "Detailed_Headcount_Analytics!N127", "Detailed_Headcount_Analytics!N108", "Detailed_Headcount_Analytics!R127", "Detailed_Headcount_Analytics!R108", "Detailed_Headcount_Analytics!W127", "Detailed_Headcount_Analytics!W108", "Detailed_Headcount_Analytics!AH127", "Detailed_Headcount_Analytics!AH108"],
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "부서 등 항목별 전체 직원 수 변화를 시작 값과 마지막 값 기준으로 비교해줘",
+      "required_patterns": [
+        "699",
+        "904",
+        "1,?145",
+        "1,?816",
+        "308",
+        "385",
+        "763",
+        "1,?081",
+        "1,?040",
+        "1,?231"
+      ],
+      "expected_sources": [
+        "Detailed_Headcount_Analytics!E108:AH127"
+      ]
+    },
+    {
+      "id": "headcount_country",
+      "evidence_targets": ["Detailed_Headcount_Analytics!C115"],
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "대한민국(South Korea)의 직원 수는 몇 명이야?",
+      "required_patterns": [
+        "107"
+      ],
+      "expected_sources": [
+        "Detailed_Headcount_Analytics!B115:C115"
+      ]
+    },
+    {
+      "id": "headcount_latest",
+      "evidence_targets": ["Private_Companies_Overview!R29:S29"],
+      "file": "SPG_PrivateCompanyHeadcountAnalytics_v1.xlsm",
+      "question": "Riot Games의 최신 전체 직원 수와 기준일을 알려줘.",
+      "required_patterns": [
+        "5,?411",
+        "2025.{0,3}0?7.{0,3}0?1"
+      ],
+      "expected_sources": [
+        "Private_Companies_Overview!B29",
+        "Private_Companies_Overview!R29:S29"
+      ]
+    },
+    {
+      "id": "ownership_lookup",
+      "evidence_targets": ["Detailed_Ownership!D6:E6"],
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "TOP 30 HOLDERS에서 Berkshire Hathaway의 보유 주식 수와 지분율은 얼마야?",
+      "required_patterns": [
+        "680,?233,?587",
+        "8\\.94",
+        "%"
+      ],
+      "expected_sources": [
+        "Detailed_Ownership!C5:E6"
+      ]
+    },
+    {
+      "id": "ownership_top_sum",
+      "evidence_targets": ["Detailed_Ownership!D6:D8"],
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "TOP 30 HOLDERS의 상위 3개 보유자 지분율 합계는 얼마야?",
+      "required_patterns": [
+        "24\\.45",
+        "%"
+      ],
+      "expected_sources": [
+        "Detailed_Ownership!D6:D8"
+      ]
+    },
+    {
+      "id": "ownership_count",
+      "evidence_targets": ["Detailed_Ownership!D6:D35"],
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "TOP 30 HOLDERS에서 지분율이 1% 이상인 보유자는 몇 곳이야?",
+      "required_patterns": [
+        "11건|11곳"
+      ],
+      "expected_sources": [
+        "Detailed_Ownership!D6:D35"
+      ]
+    }
+  ]
+}

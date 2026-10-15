@@ -11,7 +11,7 @@ from app.agent.tools.workbook_label_choice import label_column
 from app.agent.tools.workbook_label_columns import column_of
 from app.agent.tools.workbook_metric_matching import contains_term
 
-COUNT_WORDS = ("몇", "개수", "건수", "총", "how many", "count")
+COUNT_WORDS = ("몇", "개수", "건수", "how many", "count")
 SUBSET_WORDS = (
     "점검된", "완료된", "점검 완료", "기재된", "표시된", "비어", "미점검",
     "completed", "checked", "marked", "blank", "missing",

@@ -37,6 +37,7 @@ class AgentExecutionEvidence(BaseModel):
     description: str
     value: str | int | float | bool | None = None
     formula: str | None = None
+    number_format: str | None = None
 
 
 class AgentToolExecutionResult(BaseModel):

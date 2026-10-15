@@ -34,6 +34,7 @@ class IndexedCell:
             description=f"질문과 관련해 원본 Excel에서 조회한 셀{format_hint}",
             value=self.value,
             formula=self.formula,
+            number_format=self.number_format,
         )
 
 

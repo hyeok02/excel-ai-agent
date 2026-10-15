@@ -1,5 +1,10 @@
 export type WorkbookQuestionStatus = 'answered' | 'limited' | 'insufficient_evidence'
 
+export interface WorkbookQuestionVerification {
+  level: 'unverified' | 'source_checked' | 'request_checked'
+  checks: string[]
+}
+
 export interface WorkbookQuestionEvidence {
   kind: string
   sheetName: string
@@ -8,6 +13,7 @@ export interface WorkbookQuestionEvidence {
   value: unknown
   formula: string | null
   label: string
+  numberFormat?: string | null
 }
 
 export interface WorkbookQuestionAnswer {
@@ -18,4 +24,5 @@ export interface WorkbookQuestionAnswer {
   selectedTools: string[]
   evidence: WorkbookQuestionEvidence[]
   limitations: string[]
+  verification?: WorkbookQuestionVerification
 }

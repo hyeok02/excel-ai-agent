@@ -41,6 +41,10 @@ def semantic_units(sources: list[str]) -> list[str]:
         (("transaction", "거래"), "거래"),
         (("multiple", "(x)", "배수"), "배 배수"),
         (("$m", "million", "백만 달러"), "백만 달러"),
+        (("usd", "u.s. dollar", "us dollar", "달러"), "달러 미국 달러"),
+        (("krw", "korean won", "원화"), "원 원화"),
+        (("eur", "euro", "유로"), "유로"),
+        (("shares", "주식", "주식수"), "주 주식 주식수"),
         (("event", "development", "announcement", "이벤트"),
          "이벤트 발표 공시 소식"),
     )

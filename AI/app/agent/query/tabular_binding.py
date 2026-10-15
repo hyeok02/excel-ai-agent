@@ -1,13 +1,13 @@
 """Bind exact source labels as well as catalog IDs; never guess fuzzy matches."""
+from app.agent.query.ambiguity_labels import resolve_unique_column
 
 
 def bind_tabular_plan(plan, table):
     def resolve(value):
-        matches = {column.id for column in table.columns
-                   if value == column.id or value == column.header}
-        if len(matches) != 1:
+        matched = resolve_unique_column(value, table)
+        if matched is None:
             raise ValueError("Missing or ambiguous source column")
-        return matches.pop()
+        return matched
 
     try:
         return plan.model_copy(update={
@@ -15,6 +15,7 @@ def bind_tabular_plan(plan, table):
             "identity_column_ids": [resolve(value) for value in plan.identity_column_ids],
             "filters": [condition.model_copy(update={"column_id": resolve(condition.column_id)})
                         for condition in plan.filters],
+            "order_by": resolve(plan.order_by) if plan.order_by else None,
         })
     except ValueError:
         return None

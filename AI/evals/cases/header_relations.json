@@ -1,0 +1,58 @@
+{
+  "cases": [
+    {
+      "id": "header-relation-original",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "TCK와 성수계전 작업이 똑같은거야?",
+      "statuses": ["limited"],
+      "required_patterns": ["TCK,성수계전 작업", "하나의 열", "단정할 수 없"],
+      "forbidden_patterns": ["같은 작업입니다", "결과를 표시하지 않았"],
+      "evidence_targets": ["작업현황!E5"]
+    },
+    {
+      "id": "header-relation-paraphrase",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "TCK랑 성수계전은 같은 작업을 가리키는 거야?",
+      "statuses": ["limited"],
+      "required_patterns": ["TCK,성수계전 작업", "하나의 열", "단정할 수 없"],
+      "forbidden_patterns": ["같은 작업입니다", "결과를 표시하지 않았"],
+      "evidence_targets": ["작업현황!E5"]
+    },
+    {
+      "id": "header-relation-separate-question",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "TCK하고 성수계전 작업을 따로 구분해 놓은거야?",
+      "statuses": ["limited"],
+      "required_patterns": ["TCK,성수계전 작업", "하나의 열", "단정할 수 없"],
+      "forbidden_patterns": ["같은 작업입니다", "결과를 표시하지 않았"],
+      "evidence_targets": ["작업현황!E5"]
+    },
+    {
+      "id": "header-relation-english",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "Are TCK and 성수계전 작업 the same?",
+      "statuses": ["limited"],
+      "required_patterns": ["TCK,성수계전 작업", "하나의 열", "단정할 수 없"],
+      "forbidden_patterns": ["같은 작업입니다", "결과를 표시하지 않았"],
+      "evidence_targets": ["작업현황!E5"]
+    },
+    {
+      "id": "header-relation-distinct-columns",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "네트워크 안정과 상위통신자료 유무는 같은 항목이야?",
+      "statuses": ["limited"],
+      "required_patterns": ["서로 다른 열", "단정할 수 없"],
+      "evidence_targets": ["작업현황!F5", "작업현황!G5"]
+    },
+    {
+      "id": "header-relation-frequency-regression",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "네트워크 안정의 표시별 건수를 요약해줘",
+      "statuses": ["answered"],
+      "required_patterns": ["x[^\\n]*7", "o[^\\n]*4", "\\?[^\\n]*1", "빈[^\\n]*5"],
+      "forbidden_patterns": ["하나의 열 이름에 두 명칭"],
+      "evidence_targets": ["작업현황!F5:F22"],
+      "verified": true
+    }
+  ]
+}

@@ -27,6 +27,7 @@ class AnalysisEvidence:
     description: str
     value: EvidenceValue = None
     formula: str | None = None
+    number_format: str | None = None
 
     def __post_init__(self) -> None:
         if not self.sheet_name.strip():

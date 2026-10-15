@@ -3,11 +3,15 @@ import asyncio
 from app.agent.contracts import AgentToolContext
 from app.agent.execution import AgentToolExecutor
 from app.agent.query.answer_validation import validate_answer
+from app.agent.query.ambiguity_answers import ambiguous_source_answer
 from app.agent.query.comparison_answers import validated_comparison_answer
 from app.agent.query.grouped_change_answers import validated_grouped_change_answer
+from app.agent.query.header_relation_answers import header_relation_answer
 from app.agent.query.metric_change_answers import validated_metric_change_answer
 from app.agent.query.metric_period_answers import validated_metric_period_answer
 from app.agent.query.metric_snapshot_answers import validated_metric_snapshot_answer
+from app.agent.query.metric_observation_answers import metric_observation_answer
+from app.agent.query.metric_scalar_answers import metric_scalar_answer
 from app.agent.query.row_list_answers import validated_row_list_answer
 from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
@@ -18,6 +22,11 @@ from app.agent.query.models import (
     QuestionAnswerGenerator,
 )
 from app.agent.query.question_validation import unclear_draft_answer, vague_question_answer
+from app.agent.query.question_formula_answers import direct_formula_answer, missing_formula_answer
+from app.agent.query.question_formula_evidence import finish_formula_answer
+from app.agent.query.question_formula_sources import prepare_formula_sources
+from app.agent.query.relational_execution import relational_query_answer
+from app.agent.query.relational_routing import missing_relational_plan_answer
 from app.agent.query.router import build_question_plan
 from app.agent.query.structure_answers import validated_structure_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
@@ -43,12 +52,40 @@ class WorkbookQuestionService:
     async def answer(
         self, question: str, summary: WorkbookSummary, data_index: WorkbookDataIndex
     ) -> QuestionAnswer:
+        sources = await asyncio.to_thread(prepare_formula_sources, summary, data_index)
+        answer = await self._answer_prepared(question, sources)
+        return finish_formula_answer(answer, sources)
+
+    async def _answer_prepared(self, question, sources) -> QuestionAnswer:
+        summary, data_index = sources.summary, sources.index
         if clarification := vague_question_answer(question, data_index):
             return clarification
         if missing := missing_identifier_answer(question, data_index):
             return missing
         intent = await self._question_intent(question, summary)
-        if tabular := planned_tabular_answer(intent, summary, data_index, question):
+        if relation := header_relation_answer(question, summary, data_index, intent):
+            return relation
+        if clarification := missing_relational_plan_answer(question, summary, intent):
+            return clarification
+        if clarification := ambiguous_source_answer(question, summary, data_index, intent):
+            return clarification
+        if formula := direct_formula_answer(question, sources, intent):
+            return formula
+        if relational := relational_query_answer(intent.relational_query, summary, data_index, question, intent):
+            return relational
+        if observed := metric_observation_answer(question, summary, data_index, intent):
+            return observed
+        scalar = metric_scalar_answer(question, summary, data_index, intent)
+        if scalar and scalar.status == "answered" and scalar.verification.level == "request_checked":
+            return scalar
+        tabular = planned_tabular_answer(intent, summary, data_index, question)
+        if tabular is not None and tabular.status != "insufficient_evidence":
+            return tabular
+        if scalar:
+            return scalar
+        if missing := missing_formula_answer(question, sources, intent):
+            return missing
+        if tabular is not None:
             return tabular
         plan = build_question_plan(question)
         execution = await asyncio.to_thread(
