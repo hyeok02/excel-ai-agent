@@ -8,6 +8,7 @@ from app.services.semantic_models import (
 )
 from app.services.workbook_details.cell_values import (
     cell_fill_color,
+    formula_text,
     is_merged_cell,
     json_value,
     string_or_none,
@@ -48,13 +49,12 @@ def _snapshot_cell(
 ) -> CellSnapshot:
     address = str(getattr(cell, "coordinate"))
     raw_value = getattr(cell, "value", None)
-    is_formula = getattr(cell, "data_type", None) == "f" and isinstance(
-        raw_value, str
-    )
+    formula = formula_text(raw_value)
+    is_formula = formula is not None
     return CellSnapshot(
         address=address,
         value=None if is_formula else json_value(raw_value),
-        formula=raw_value if is_formula else None,
+        formula=formula,
         cached_value=(
             json_value(getattr(value_cell, "value", None)) if is_formula else None
         ),

@@ -12,6 +12,25 @@ class QuestionAnswerStatus(StrEnum):
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
 
 
+class QuestionVerificationLevel(StrEnum):
+    UNVERIFIED = "unverified"
+    SOURCE_CHECKED = "source_checked"
+    REQUEST_CHECKED = "request_checked"
+
+
+class QuestionAnswerVerification(BaseModel):
+    """Record what was actually checked, independently of answer availability.
+
+    Cited cells existing does not prove that the requested table, period or
+    filters were selected. Only a deterministic, request-aligned execution may
+    set REQUEST_CHECKED. Generated prose and legacy responses default to no
+    such guarantee, including when their status is ``answered``.
+    """
+
+    level: QuestionVerificationLevel = QuestionVerificationLevel.UNVERIFIED
+    checks: list[str] = Field(default_factory=list)
+
+
 class QuestionAnswerDraft(BaseModel):
     answer: str = Field(min_length=1, max_length=4000)
     evidence: list[str] = Field(default_factory=list, max_length=12)
@@ -31,6 +50,7 @@ class QuestionAnswer(BaseModel):
     selected_tools: list[str]
     evidence: list[QuestionAnswerEvidence]
     limitations: list[str]
+    verification: QuestionAnswerVerification = Field(default_factory=QuestionAnswerVerification)
 
 
 class QuestionAnswerGenerator(Protocol):

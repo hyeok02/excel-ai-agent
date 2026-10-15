@@ -1,0 +1,29 @@
+{
+  "description": "Explicit-scope follow-ups to the unchanged original ownership questions. The workbook contains same-titled TOP 30 HOLDERS tables for multiple companies; selecting a company/table is necessary, not a production filename rule.",
+  "cases": [
+    {
+      "id": "ownership_lookup_scoped",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "Detailed_Ownership 시트의 TOP 30 HOLDERS에서 Berkshire Hathaway의 보유 주식 수와 지분율은 얼마야?",
+      "required_patterns": ["680,?233,?587", "8\\.94", "%"],
+      "evidence_targets": ["Detailed_Ownership!D6:E6"],
+      "verified": true
+    },
+    {
+      "id": "ownership_top_sum_scoped",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "Detailed_Ownership 시트의 TOP 30 HOLDERS 상위 3개 보유자 지분율 합계는 얼마야?",
+      "required_patterns": ["24\\.45", "%"],
+      "evidence_targets": ["Detailed_Ownership!D6:D8"],
+      "verified": true
+    },
+    {
+      "id": "ownership_count_scoped",
+      "file": "SPG_Worldwide_OwnershipDetail_v1.xlsm",
+      "question": "Detailed_Ownership 시트의 TOP 30 HOLDERS에서 지분율이 1% 이상인 보유자는 몇 곳이야?",
+      "required_patterns": ["11건|11곳"],
+      "evidence_targets": ["Detailed_Ownership!D6:D35"],
+      "verified": true
+    }
+  ]
+}

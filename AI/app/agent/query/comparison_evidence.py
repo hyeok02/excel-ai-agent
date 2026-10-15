@@ -61,9 +61,22 @@ def matched_comparison_evidence(references, available):
 
 
 def present_comparison_evidence(item) -> QuestionAnswerEvidence:
-    content = item.formula or (str(item.value) if item.value is not None else "")
-    label = f"{item.description}: {content}" if content else item.description
+    label = source_evidence_label(item)
     return QuestionAnswerEvidence(**item.model_dump(), label=label[:160])
+
+
+def source_evidence_label(item) -> str:
+    """Show the actual cached value, not an inferred label or formula result.
+
+    A guessed description is useful retrieval context, but must not be
+    presented as the cell's contents. The formula has its own disclosure UI.
+    """
+    value = getattr(item, "value", None)
+    if value is not None:
+        return f"원본 값: {value}"
+    if getattr(item, "formula", None):
+        return "원본 수식 (저장된 계산 값 없음)"
+    return str(getattr(item, "description", "원본 근거"))
 
 
 def comparison_number(value: object, unit: str) -> str:

@@ -51,15 +51,16 @@ def build_lookups(
     all_rows: tuple[IndexedRow, ...],
     question: str,
     detected: HeaderIndex | None = None,
+    intent=None,
 ) -> LookupResult:
-    found = _built(rows, headers, question)
+    found = _built(rows, headers, question, intent)
     if any(found.values()) or len(all_rows) == len(rows):
         return LookupResult(found, rows, headers)
-    return _widened(all_rows, question, detected)
+    return _widened(all_rows, question, detected, intent)
 
 
 def _widened(
-    all_rows: tuple[IndexedRow, ...], question: str, detected: HeaderIndex | None
+    all_rows: tuple[IndexedRow, ...], question: str, detected: HeaderIndex | None, intent=None
 ) -> LookupResult:
     """시트를 한 장씩 본다.
 
@@ -69,23 +70,35 @@ def _widened(
     """
     found = detected or detect_header_rows(all_rows)
     searched = {row.sheet_name for row in all_rows}
-    empty = _built([], {}, question)
+    empty = _built([], {}, question, intent)
     for sheet_name in sorted(searched):
         sheet_rows = [row for row in all_rows if row.sheet_name == sheet_name]
         sheet_headers = build_header_context(all_rows, sheet_rows, found)
-        built = _built(sheet_rows, sheet_headers, question)
+        built = _built(sheet_rows, sheet_headers, question, intent)
         if any(built.values()):
             return LookupResult(built, sheet_rows, sheet_headers, True)
     return LookupResult(empty, [], {}, True)
 
 
-def _built(rows, headers, question) -> dict[str, object]:
-    return {
+def _built(rows, headers, question, intent=None) -> dict[str, object]:
+    result = {
         "row_list": build_row_list(rows, headers, question),
         "cell_lookup": build_cell_lookup(rows, headers, question),
         "row_count": build_row_count(rows, headers, question),
         "mark_peak": build_mark_peak(rows, headers, question),
     }
+    if intent is not None and intent.from_model:
+        # A language classification is not a table boundary. The legacy count
+        # counts nonempty strings, including headings and neighboring tables;
+        # only the source-table executor may certify a scoped count/aggregate.
+        result["row_count"] = None
+        if intent.kind != "row_list":
+            result["row_list"] = None
+        if intent.kind != "cell_lookup":
+            result["cell_lookup"] = None
+        if intent.kind != "aggregation":
+            result["mark_peak"] = None
+    return result
 
 
 def _cell_values(item: dict) -> list[str]:

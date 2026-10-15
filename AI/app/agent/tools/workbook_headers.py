@@ -1,8 +1,8 @@
-from collections import Counter, defaultdict
-from dataclasses import dataclass, replace
+from dataclasses import replace
 
 from app.agent.query.index import IndexedCell, IndexedRow
-from app.agent.tools.workbook_header_rows import column_of, is_header_row
+from app.agent.tools.workbook_header_rows import column_of
+from app.agent.tools.workbook_header_index import HeaderIndex, detect_header_rows
 from app.services.provenance import AnalysisEvidence
 
 HeaderContext = dict[tuple[str, int, str], str]
@@ -13,37 +13,6 @@ MAX_HEADER_DISTANCE = 400
 # 머리글 위의 띠는 묶음 이름 한두 줄이다. '글자가 있으면 띠'로 두면 위쪽
 # 모든 줄을 머리글 후보로 끌고 올라가, 행마다 백여 줄을 복사하게 된다.
 MAX_BANNER_ROWS = 2
-
-
-@dataclass(frozen=True)
-class HeaderIndex:
-    """어느 줄이 머리글인지 한 번만 가려 둔다.
-
-    한 질문에 머리글 계산이 세 번 넘게 돌고, 그때마다 워크북 전체를 다시
-    훑었다. 1500행짜리 파일에서 그 한 번이 1.9초였다.
-    """
-
-    sheets: dict[str, dict[int, IndexedRow]]
-    header_rows: dict[str, set[int]]
-
-
-def detect_header_rows(all_rows: tuple[IndexedRow, ...]) -> HeaderIndex:
-    sheets: dict[str, dict[int, IndexedRow]] = defaultdict(dict)
-    column_values: dict[tuple[str, str], Counter] = defaultdict(Counter)
-    for row in all_rows:
-        sheets[row.sheet_name][row.row_number] = row
-        for cell in row.cells:
-            if isinstance(cell.value, str) and cell.value.strip():
-                column_values[(row.sheet_name, _column(cell.address))][cell.value] += 1
-    header_rows: dict[str, set[int]] = defaultdict(set)
-    scores: dict[tuple[str, int], object] = {}
-    for row in all_rows:
-        below = sheets[row.sheet_name].get(row.row_number + 1)
-        if is_header_row(
-            row, column_values, _block_width(sheets, row), below, scores
-        ):
-            header_rows[row.sheet_name].add(row.row_number)
-    return HeaderIndex(sheets, header_rows)
 
 
 def build_header_context(
@@ -116,17 +85,6 @@ def _governing_headers(
 
 def _is_banner_row(row: IndexedRow) -> bool:
     return any(isinstance(cell.value, str) and cell.value.strip() for cell in row.cells)
-
-
-def _block_width(sheets: dict[str, dict[int, IndexedRow]], row: IndexedRow) -> int:
-    """이 줄 주변 표가 쓰는 열 수. 머리글은 표만큼 넓어야 한다."""
-    nearby = sheets[row.sheet_name]
-    return max(
-        (len(found.cells)
-         for offset in range(-5, 6)
-         if (found := nearby.get(row.row_number + offset)) is not None),
-        default=len(row.cells),
-    )
 
 
 def header_for(

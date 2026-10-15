@@ -6,6 +6,8 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent.query.tabular_query_models import TabularQueryPlan
+from app.agent.query.relational_models import RelationalQueryPlan
+from app.agent.query.header_relation_models import HeaderRelationPlan
 from app.agent.query.workbook_summary_rows import is_workbook_summary_question
 from app.services.workbook_parsing.models import WorkbookSummary
 
@@ -28,10 +30,13 @@ class QuestionIntentDraft(BaseModel):
         "cell_lookup",
         "formula_risk",
         "aggregation",
+        "field_relation",
         "other",
     ]
     targets: list[str] = Field(default_factory=list, max_length=MAX_TARGETS)
     tabular_query: TabularQueryPlan | None = None
+    relational_query: RelationalQueryPlan | None = None
+    header_relation: HeaderRelationPlan | None = None
 
 
 @dataclass(frozen=True)
@@ -41,6 +46,8 @@ class QuestionIntent:
     targets: tuple[str, ...] = ()
     from_model: bool = False
     tabular_query: TabularQueryPlan | None = None
+    relational_query: RelationalQueryPlan | None = None
+    header_relation: HeaderRelationPlan | None = None
 
     @classmethod
     def from_draft(cls, draft: QuestionIntentDraft) -> "QuestionIntent":
@@ -48,18 +55,29 @@ class QuestionIntent:
             text for value in draft.targets if (text := value.strip())
         )[:MAX_TARGETS]
         query = draft.tabular_query
+        relational = draft.relational_query
         # A valid schema does not make an operation appropriate. A value lookup
         # or comparison cannot be answered by replacing it with a distribution.
         allowed = {
             "frequencies": {"aggregation", "summary", "row_count"},
             "numeric_summary": {"aggregation"},
             "row_count": {"row_count", "aggregation"},
+            "lookup": {"cell_lookup"},
+            "row_list": {"row_list"},
         }
         if query is not None and draft.kind not in allowed[query.operation]:
             query = None
+        if relational is not None and draft.kind not in allowed[relational.operation]:
+            relational = None
+        if draft.tabular_query is not None and draft.relational_query is not None:
+            query = relational = None
+        relation = draft.header_relation if draft.kind == "field_relation" else None
+        if draft.kind == "field_relation":
+            query = relational = None
         return cls(
-            draft.scope == "whole_workbook" and draft.tabular_query is None,
-            draft.kind, targets, True, query,
+            draft.scope == "whole_workbook" and draft.kind != "field_relation"
+            and not (draft.tabular_query or draft.relational_query),
+            draft.kind, targets, True, query, relational, relation,
         )
 
     @classmethod
@@ -74,7 +92,7 @@ class QuestionIntent:
     @property
     def wants_a_summary(self) -> bool:
         """응답 문체가 아니라, 실제 요청 범위가 파일 전체인 경우만 허용한다."""
-        return self.whole_workbook and self.tabular_query is None
+        return self.whole_workbook and self.tabular_query is None and self.relational_query is None
 
     def enriched(self, question: str) -> str:
         """열 이름을 맞출 때 쓰는 글. 모델이 짚은 대상을 질문에 더해 준다."""

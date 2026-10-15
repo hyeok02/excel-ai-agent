@@ -30,3 +30,5 @@ class QueryTable:
     rows: tuple[QueryRow, ...]
     complete: bool
     excluded_rows: frozenset[int] = frozenset()
+    context: tuple[tuple[str, str], ...] = ()
+    hidden_columns: frozenset[str] = frozenset()

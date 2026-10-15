@@ -92,7 +92,7 @@ class WorkbookDataSearchTool:
         )
         # 목록도 검색 결과가 아니라 시트 전체를 훑어야 한 건도 빠지지 않는다.
         lookups = build_lookups(
-            series_rows, series_headers, context.data_index.rows, original, detected
+            series_rows, series_headers, context.data_index.rows, original, detected, intent
         )
         calculations = [
             *verified["calculations"],

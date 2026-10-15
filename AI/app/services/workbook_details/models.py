@@ -64,6 +64,9 @@ class RegionSummary:
     analysis_complete: bool = False
     hidden_rows: list[int] = field(default_factory=list)
     hidden_columns: list[str] = field(default_factory=list)
+    # Q&A can explicitly address hidden columns without changing visible insights.
+    query_rows: list[list[dict[str, CellValue]]] = field(default_factory=list)
+    query_complete: bool | None = None
 
 
 @dataclass(frozen=True)

@@ -68,7 +68,8 @@ def test_filtered_aggregates_use_formats_of_selected_source_cells():
     plan = TabularQueryPlan(operation="numeric_summary", table_id=table.id, column_ids=["B"],
                             filters=[TabularFilter(column_id="C", operator="equals", value="first")])
 
-    answer = execute_tabular_query(plan, summary, index, "선택한 값의 통계")
+    assert execute_tabular_query(plan, summary, index, "선택한 값의 통계") is None
+    answer = execute_tabular_query(plan, summary, index, "Group이 first인 Measurement 통계")
 
     assert answer is not None and "합계 30%" in answer.answer and "평균 15%" in answer.answer
     assert execute_tabular_query(plan.model_copy(update={"filters": []}), summary, index, "전체 통계") is None

@@ -6,7 +6,7 @@ from app.agent.query.tabular_execution import execute_tabular_query
 def planned_tabular_answer(intent, summary, data_index, question):
     if intent.tabular_query is None:
         return None
-    answer = execute_tabular_query(intent.tabular_query, summary, data_index, question)
+    answer = execute_tabular_query(intent.tabular_query, summary, data_index, question, intent)
     if answer is not None:
         return answer
     return QuestionAnswer(

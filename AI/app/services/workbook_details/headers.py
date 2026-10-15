@@ -1,6 +1,7 @@
 from openpyxl.worksheet.worksheet import Worksheet
 
 from app.services.semantic_models import SemanticRole
+from app.services.workbook_details.cell_values import formula_text
 from app.services.workbook_details.header_labels import header_label
 from app.services.workbook_details.header_path_builder import build_header_paths
 from app.services.workbook_details.models import HeaderPathSummary
@@ -22,7 +23,7 @@ def region_title(
     ):
         for cell in row:
             value = cell.value
-            if isinstance(value, str) and value.startswith("=") and value_worksheet:
+            if formula_text(value) and value_worksheet:
                 value = value_worksheet[cell.coordinate].value
             label = header_label(value)
             if label is not None:

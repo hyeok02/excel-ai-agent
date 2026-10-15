@@ -4,7 +4,7 @@ import os
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from app.services.workbook_details.cell_values import json_value, string_or_none
+from app.services.workbook_details.cell_values import formula_text, json_value, string_or_none
 from app.services.workbook_details.models import CellValue
 
 
@@ -116,12 +116,17 @@ def _populated(cell: dict[str, CellValue]) -> bool:
 
 def _analysis_cell(cell: object, value_cell: object | None) -> dict[str, CellValue]:
     raw_value = getattr(cell, "value", None)
-    is_formula = getattr(cell, "data_type", None) == "f" and isinstance(raw_value, str)
-    return {
+    formula = formula_text(raw_value)
+    is_formula = formula is not None
+    result = {
         "address": str(getattr(cell, "coordinate")),
         "value": None if is_formula else json_value(raw_value),
-        "formula": raw_value if is_formula else None,
+        "formula": formula,
         "cached_value": json_value(getattr(value_cell, "value", None)) if is_formula else None,
         "number_format": string_or_none(getattr(cell, "number_format", None)),
         "bold": bool(getattr(getattr(cell, "font", None), "bold", False)),
     }
+    hyperlink = getattr(cell, "hyperlink", None)
+    if hyperlink is not None:
+        result["hyperlink"] = getattr(hyperlink, "target", None)
+    return result

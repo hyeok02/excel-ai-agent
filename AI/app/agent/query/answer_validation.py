@@ -9,8 +9,10 @@ from app.agent.query.change_direction import answer_directions_supported
 from app.agent.query.claim_bindings import answer_bindings_supported
 from app.agent.query.comparison_answers import validated_comparison_answer
 from app.agent.query.comparison_evidence import available_evidence as _available_evidence
+from app.agent.query.comparison_evidence import present_comparison_evidence as _present
 from app.agent.query.models import (
-    QuestionAnswer, QuestionAnswerDraft, QuestionAnswerEvidence, QuestionAnswerStatus,
+    QuestionAnswer, QuestionAnswerDraft, QuestionAnswerStatus,
+    QuestionAnswerVerification, QuestionVerificationLevel,
 )
 from app.agent.query.numeric_support import answer_units_supported, supported_answer_numbers
 from app.agent.query.references import matching_references, normalize_reference
@@ -107,6 +109,10 @@ def validate_answer(
         selected_tools=_tools(execution),
         evidence=[_present(item) for item in matched],
         limitations=_unique(limitations),
+        verification=QuestionAnswerVerification(
+            level=QuestionVerificationLevel.SOURCE_CHECKED,
+            checks=["cited_cells", "numbers", "units", "claim_bindings"],
+        ),
     )
 
 
@@ -133,12 +139,6 @@ def _blocked(question, execution, evidence, limitations, answer):
         evidence=[_present(item) for item in evidence],
         limitations=_unique(limitations),
     )
-
-
-def _present(item) -> QuestionAnswerEvidence:
-    content = item.formula or (str(item.value) if item.value is not None else "")
-    label = f"{item.description}: {content}" if content else item.description
-    return QuestionAnswerEvidence(**item.model_dump(), label=label[:160])
 
 
 def _tools(execution):

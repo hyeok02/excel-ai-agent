@@ -56,7 +56,7 @@ class LangChainQuestionIntentClassifier:
         # A filename is not a workbook identity. Different users commonly upload
         # "report.xlsx", so caching on it can leak targets from an unrelated schema.
         # Include the bounded source catalog, including category samples.
-        key = sha256(prompt.encode("utf-8")).digest()
+        key = sha256((SYSTEM_PROMPT + prompt).encode("utf-8")).digest()
         if found := self._cache.get(key):
             self._cache.move_to_end(key)
             return found
@@ -85,7 +85,7 @@ class LangChainQuestionIntentClassifier:
             api_key=self._api_key,
             timeout=self._timeout_seconds,
             max_retries=1,
-            max_completion_tokens=1200,
+            max_completion_tokens=2200,
         ).with_structured_output(QuestionIntentDraft, method="json_schema")
 
 

@@ -54,7 +54,9 @@ def test_numeric_summary_and_filtered_row_count_are_source_computed():
     assert "합계 4" in answer.answer and "평균 2" in answer.answer
     assert "최솟값 -6" in answer.answer and "최댓값 10" in answer.answer
     assert "빈칸 1건" in answer.answer
-    count = execute_tabular_query(plan.model_copy(update={"operation": "row_count"}), summary, index, "count")
+    count_plan = plan.model_copy(update={"operation": "row_count"})
+    assert execute_tabular_query(count_plan, summary, index, "count") is None
+    count = execute_tabular_query(count_plan, summary, index, "red count")
     assert "3건" in count.answer
 
 

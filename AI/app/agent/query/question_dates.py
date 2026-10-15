@@ -21,6 +21,7 @@ KOREAN = re.compile(
 )
 ISO = re.compile(r"(?<!\d)((?:19|20)\d{2})[./-](\d{1,2})[./-](\d{1,2})(?!\d)")
 YEAR_MONTH = re.compile(r"(?<!\d)((?:19|20)\d{2})[./-](\d{1,2})(?!\d|[./-]\d)")
+BARE_YEAR = re.compile(r"(?<!\d)((?:19|20)\d{2})(?!\d)")
 MONTH_DAY_YEAR = re.compile(
     rf"\b({MONTH_NAMES})\s+(\d{{1,2}})(?:st|nd|rd|th)?\s*,?\s*((?:19|20)\d{{2}})\b",
     re.I,
@@ -101,6 +102,7 @@ def _mentions(query: str) -> tuple[list[tuple[re.Match, int, int | None, int | N
         (DAY_MONTH_YEAR, lambda m: (int(m[3]), MONTHS[m[2].casefold()], int(m[1]))),
         (MONTH_YEAR_DAY, lambda m: (int(m[2]), MONTHS[m[1].casefold()], int(m[3]))),
         (MONTH_YEAR, lambda m: (int(m[2]), MONTHS[m[1].casefold()], None)),
+        (BARE_YEAR, lambda m: (int(m[1]), None, None)),
     )
     for pattern, values in patterns:
         for match in pattern.finditer(query):

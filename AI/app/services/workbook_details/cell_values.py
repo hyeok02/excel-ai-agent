@@ -2,8 +2,20 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.worksheet.formula import ArrayFormula, DataTableFormula
 
 from app.services.workbook_details.models import CellValue
+
+
+def formula_text(value: object) -> str | None:
+    """Normalize ordinary, array and data-table formulas without executing them."""
+    if isinstance(value, str) and value.startswith("="):
+        return value
+    if isinstance(value, ArrayFormula):
+        return value.text or "=ARRAY_FORMULA()"
+    if isinstance(value, DataTableFormula):
+        return "=DATA_TABLE()"
+    return None
 
 
 def json_value(value: object) -> CellValue:
@@ -40,8 +52,6 @@ def intersecting_merged_ranges(
             and merged_range.min_col <= max_column
         ):
             matches.append(str(merged_range))
-            if len(matches) == 20:
-                break
     return matches
 
 
