@@ -1,7 +1,7 @@
 """Resolve referents separately, then run the normal source-verification pipeline."""
 import asyncio
 
-from app.agent.query.conversation_checks import CONTEXT_CUE, resolution_is_safe
+from app.agent.query.conversation_checks import CONTEXT_CUE, resolution_is_safe, subject_only_followup
 from app.agent.query.conversation_sources import source_bound_context
 from app.agent.query.models import (
     QuestionAnswer, QuestionAnswerStatus, QuestionAnswerVerification, QuestionVerificationLevel,
@@ -12,7 +12,8 @@ async def answer_in_conversation(question, context, sources, resolver, answer_cu
     if context is None:
         return await answer_current(question, sources)
     entries = await asyncio.to_thread(source_bound_context, context, sources.summary, sources.index)
-    depends_on_context = bool(CONTEXT_CUE.search(question))
+    label_only = subject_only_followup(question, sources.index)
+    depends_on_context = label_only or bool(CONTEXT_CUE.search(question))
     if not entries or resolver is None:
         if depends_on_context:
             return context_clarification(question)
@@ -24,6 +25,8 @@ async def answer_in_conversation(question, context, sources, resolver, answer_cu
             return context_clarification(question)
         return await answer_current(question, sources)
     if draft.status == "standalone":
+        if label_only:
+            return context_clarification(question)
         return await answer_current(question, sources)
     # An unresolved latest turn must not disappear and silently reconnect "it"
     # to an older, successfully answered subject instead.

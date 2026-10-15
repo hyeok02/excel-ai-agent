@@ -26,6 +26,16 @@ _PARTICLES = ("으로", "에서", "까지", "부터", "보다", "에게", "은",
               "을", "를", "의", "에", "도", "만", "과", "와")
 
 
+def subject_only_followup(question: str, index) -> bool:
+    """A source label alone does not say which previously requested value to use."""
+    core = re.sub(r"^(?:그럼|그러면|그렇다면|그런데|그리고)\s*|"
+                  r"^(?:what about|how about|and|then)\s+", "", question.strip(), flags=re.I)
+    core = core.rstrip(" ?？.!。 ").casefold()
+    labels = {str(cell.value).strip().casefold() for row in index.rows for cell in row.cells
+              if isinstance(cell.value, str) and len(cell.value.strip()) >= 2}
+    return any(core in {label, label + "은", label + "는", label + "도"} for label in labels)
+
+
 def _content_preserved(original, rewritten):
     original = re.sub(r"(?:그|이|저|해당|위|앞선|방금|이전)\s*(?:항목|값|표|결과|내용|둘|질문)", " ", original)
     for word in re.findall(r"[a-z][a-z0-9_-]*|[가-힣]+", original.casefold()):
