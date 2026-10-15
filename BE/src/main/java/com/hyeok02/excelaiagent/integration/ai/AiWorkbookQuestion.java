@@ -12,12 +12,19 @@ public record AiWorkbookQuestion(
 		@JsonAlias("selected_tools") List<String> selectedTools,
 		List<Evidence> evidence,
 		List<String> limitations,
-		Verification verification) {
+		Verification verification,
+		@JsonAlias("resolved_question") String resolvedQuestion) {
 
 	public AiWorkbookQuestion {
 		if (verification == null) {
 			verification = new Verification("unverified", List.of());
 		}
+	}
+
+	public AiWorkbookQuestion(String question, String answer, String status,
+			double confidence, List<String> selectedTools, List<Evidence> evidence,
+			List<String> limitations, Verification verification) {
+		this(question, answer, status, confidence, selectedTools, evidence, limitations, verification, null);
 	}
 
 	public AiWorkbookQuestion(String question, String answer, String status,

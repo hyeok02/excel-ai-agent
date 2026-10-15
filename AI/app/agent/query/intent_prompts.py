@@ -29,6 +29,9 @@ scope는 질문이 무엇을 묻는지로 정합니다.
   문체이지 파일 전체를 묻는다는 뜻이 아닙니다.
 
 kind는 무엇을 계산해야 하는지입니다. 확신이 없으면 other를 고르세요.
+표시의 뜻·실제 의미·원인(왜)을 묻는 질문은 단순 값 조회로 답할 수 없습니다.
+이때 kind=other, tabular_query=null, relational_query=null로 두세요.
+원본에 적힌 사유 열의 문구를 그대로 묻는 경우에만 cell_lookup을 사용하세요.
 - summary: 파일 전체 설명 / structure: 시트 구성과 역할
 - brief: 전체를 묻되 짧게 원하는 질문. "결론만 말해줘", "핵심만", "한 줄로"
 - comparison: 기간이나 항목 사이의 증감·비교

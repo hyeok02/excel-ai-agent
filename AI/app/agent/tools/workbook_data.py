@@ -7,6 +7,7 @@ from app.agent.contracts import (
     ToolCategory,
 )
 from app.agent.query.comparison_scope import comparison_scope
+from app.agent.query.claim_header_bindings import source_header_bindings
 from app.agent.query.query_rows import (
     query_scope_truncated,
     selected_question_rows,
@@ -129,6 +130,7 @@ class WorkbookDataSearchTool:
             summary=f"질문과 관련된 원본 행 {len(rows)}개를 조회했습니다.",
             data={
                 "query": query,
+                "source_header_bindings": source_header_bindings(context.workbook, context.data_index, evidence),
                 "workbook_summary_query": summary_question,
                 "brief_answer": bool(intent.brief),
                 "summary_answer_allowed": bool(intent.wants_a_summary),

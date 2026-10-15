@@ -8,6 +8,7 @@ from app.agent.query.grounding_sources import (
 )
 from app.agent.query.references import matching_references, normalize_reference
 from app.agent.query.translated_evidence import translated_evidence_sources
+from app.agent.query.semantic_safety import semantic_claim_supported
 from app.agent.query.verified_insight_constraints import (
     insight_intent_matches,
     requested_identifiers_match,
@@ -23,10 +24,13 @@ def answer_is_grounded(
     if not requested_identifiers_match(question.casefold(), answer.casefold()):
         return False
     references = cited_references(evidence)
-    sources = [question, *evidence_sources(evidence), REPORTING_LANGUAGE]
+    facts = _covered_verified_facts(execution, references)
+    if not semantic_claim_supported(answer, evidence, facts):
+        return False
+    sources = [*evidence_sources(evidence), REPORTING_LANGUAGE]
     sources.extend(translated_evidence_sources(evidence))
     sources.extend(semantic_units(sources))
-    sources.extend(_covered_verified_facts(execution, references))
+    sources.extend(facts)
     from app.services.insights.verification.claim_grounding import grounded_claim
 
     return bool(sources) and grounded_claim(answer, sources, references)
@@ -94,7 +98,7 @@ def _covered_verified_facts(
     return [
         str(item[key])
         for item in _covered_verified_items(execution, references)
-        for key in ("title", "fact")
+        for key in ("fact",)
         if item.get(key)
     ]
 

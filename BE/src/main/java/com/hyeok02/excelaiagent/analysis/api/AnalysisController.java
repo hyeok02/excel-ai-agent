@@ -95,7 +95,7 @@ public class AnalysisController {
 			@Valid @RequestBody WorkbookQuestionRequest request,
 			Principal principal) {
 		return workbookQuestionService.ask(
-				analysisId, request.question(), actor(principal));
+				analysisId, request.question(), actor(principal), request.context());
 	}
 
 	@DeleteMapping("/{analysisId}")

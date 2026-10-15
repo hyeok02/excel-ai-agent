@@ -1,5 +1,6 @@
 import { ChevronDown, MessageSquareText, TriangleAlert } from 'lucide-react'
 
+import type { InsightReportResult } from '@/api/analysis'
 import QuestionAnswerCard from '@/components/analysis/result/questions/QuestionAnswerCard'
 import QuestionComposer from '@/components/analysis/result/questions/QuestionComposer'
 import { useWorkbookQuestions } from '@/hooks/analysis/useWorkbookQuestions'
@@ -8,14 +9,16 @@ interface WorkbookQuestionSectionProps {
   analysisId: string
   sourceAvailable: boolean
   suggestions: string[]
+  insightReport?: InsightReportResult | null
 }
 
 const WorkbookQuestionSection = ({
   analysisId,
   sourceAvailable,
   suggestions,
+  insightReport = null,
 }: WorkbookQuestionSectionProps) => {
-  const questions = useWorkbookQuestions(analysisId)
+  const questions = useWorkbookQuestions(analysisId, insightReport)
   const latestAnswer = questions.answers.at(-1)
   const previousAnswers = questions.answers.slice(0, -1).reverse()
   return (
@@ -36,7 +39,7 @@ const WorkbookQuestionSection = ({
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Agent가 질문에 필요한 도구를 선택하고, 답변을 확인한 원본 시트와 셀을 함께
-            보여줍니다.
+            보여줍니다. 이 분석의 인사이트와 앞선 질문을 이어서 물어볼 수 있습니다.
           </p>
         </div>
       </div>

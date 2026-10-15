@@ -5,6 +5,8 @@ from app.agent.execution import AgentToolExecutor
 from app.agent.query.answer_validation import validate_answer
 from app.agent.query.ambiguity_answers import ambiguous_source_answer
 from app.agent.query.comparison_answers import validated_comparison_answer
+from app.agent.query.conversation_answers import answer_in_conversation
+from app.agent.query.conversation_models import QuestionConversation, QuestionContextResolver
 from app.agent.query.grouped_change_answers import validated_grouped_change_answer
 from app.agent.query.header_relation_answers import header_relation_answer
 from app.agent.query.metric_change_answers import validated_metric_change_answer
@@ -17,6 +19,7 @@ from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
 from app.agent.query.identifier_answers import missing_identifier_answer
 from app.agent.query.intent_models import QuestionIntent, QuestionIntentClassifier
+from app.agent.query.interpretation_answers import asks_interpretation, finish_interpretation_answer
 from app.agent.query.models import (
     QuestionAnswer,
     QuestionAnswerGenerator,
@@ -43,18 +46,23 @@ class WorkbookQuestionService:
         registry: AgentToolRegistry,
         executor: AgentToolExecutor | None = None,
         classifier: QuestionIntentClassifier | None = None,
+        context_resolver: QuestionContextResolver | None = None,
     ) -> None:
         self._generator = generator
         self._registry = registry
         self._executor = executor or AgentToolExecutor()
         self._classifier = classifier
+        self._context_resolver = context_resolver
 
     async def answer(
-        self, question: str, summary: WorkbookSummary, data_index: WorkbookDataIndex
+        self, question: str, summary: WorkbookSummary, data_index: WorkbookDataIndex,
+        context: QuestionConversation | None = None,
     ) -> QuestionAnswer:
         sources = await asyncio.to_thread(prepare_formula_sources, summary, data_index)
-        answer = await self._answer_prepared(question, sources)
-        return finish_formula_answer(answer, sources)
+        answer = await answer_in_conversation(
+            question, context, sources, self._context_resolver, self._answer_prepared
+        )
+        return finish_interpretation_answer(finish_formula_answer(answer, sources))
 
     async def _answer_prepared(self, question, sources) -> QuestionAnswer:
         summary, data_index = sources.summary, sources.index
@@ -85,7 +93,7 @@ class WorkbookQuestionService:
             return scalar
         if missing := missing_formula_answer(question, sources, intent):
             return missing
-        if tabular is not None:
+        if tabular is not None and not asks_interpretation(question):
             return tabular
         plan = build_question_plan(question)
         execution = await asyncio.to_thread(
@@ -121,8 +129,6 @@ class WorkbookQuestionService:
         if clarification := unclear_draft_answer(question, draft):
             return clarification
         return validate_answer(question, draft, execution, truncated)
-
-
     async def _question_intent(
         self, question: str, summary: WorkbookSummary
     ) -> QuestionIntent:

@@ -12,10 +12,12 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.databind.json.JsonMapper;
 
 @Component
 public class AiServiceClient {
 
+	private static final JsonMapper JSON = JsonMapper.builder().build();
 	private final RestClient restClient;
 
 	public AiServiceClient(RestClient aiServiceRestClient) {
@@ -61,9 +63,15 @@ public class AiServiceClient {
 
 	public AiWorkbookQuestion askWorkbook(
 			Resource file, String question, boolean includeHiddenSheets) {
+		return askWorkbook(file, question, includeHiddenSheets, null);
+	}
+
+	public AiWorkbookQuestion askWorkbook(
+			Resource file, String question, boolean includeHiddenSheets, WorkbookQuestionContext context) {
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 		body.add("file", namedFile(file));
 		body.add("question", question);
+		if (context != null) body.add("context", JSON.writeValueAsString(context));
 		body.add("include_hidden_sheets", String.valueOf(includeHiddenSheets));
 		try {
 			AiWorkbookQuestion response = restClient.post()

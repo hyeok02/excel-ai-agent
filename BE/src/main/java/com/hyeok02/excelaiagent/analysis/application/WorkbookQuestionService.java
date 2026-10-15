@@ -9,6 +9,7 @@ import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import com.hyeok02.excelaiagent.integration.ai.AiServiceClient;
 import com.hyeok02.excelaiagent.integration.ai.AiWorkbookQuestion;
 import com.hyeok02.excelaiagent.integration.ai.NamedResource;
+import com.hyeok02.excelaiagent.integration.ai.WorkbookQuestionContext;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +36,11 @@ public class WorkbookQuestionService {
 	 * 열고 닫으며, 그 뒤로는 읽어 둔 값만 쓰므로 트랜잭션이 필요 없다.
 	 */
 	public AiWorkbookQuestion ask(UUID analysisId, String question, String ownerUsername) {
+		return ask(analysisId, question, ownerUsername, null);
+	}
+
+	public AiWorkbookQuestion ask(
+			UUID analysisId, String question, String ownerUsername, WorkbookQuestionContext context) {
 		AnalysisJob job = accessService.requireOwned(analysisId, ownerUsername);
 		if (job.getStatus() != AnalysisStatus.COMPLETED) {
 			throw new AnalysisResultNotReadyException(analysisId, job.getStatus());
@@ -42,6 +48,10 @@ public class WorkbookQuestionService {
 		accessService.requireSourceAvailable(job);
 		Resource source = fileStorage.load(analysisId, job.getFileExtension());
 		Resource namedSource = new NamedResource(source, job.getOriginalFilename());
+		if (context != null) {
+			return aiServiceClient.askWorkbook(
+					namedSource, question.trim(), job.isIncludeHiddenSheets(), context);
+		}
 		return aiServiceClient.askWorkbook(
 				namedSource, question.trim(), job.isIncludeHiddenSheets());
 	}

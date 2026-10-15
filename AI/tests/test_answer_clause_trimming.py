@@ -37,7 +37,7 @@ def test_keeps_the_grounded_sentence_when_one_number_is_unverified() -> None:
     # 143은 어느 셀에도 없는 뺄셈 결과다. 예전에는 이 한 수 때문에 앞 문장까지
     # 묻혀 사용자가 아무것도 보지 못했다.
     draft = QuestionAnswerDraft(
-        answer="Research & Development가 가장 많이 줄었습니다. 143명 감소했습니다.",
+        answer="Research & Development 인원은 1,816명입니다. 143명 감소했습니다.",
         evidence=["인원!N107", "인원!N108", "인원!N115"],
         confidence=0.9,
     )
@@ -54,8 +54,7 @@ def test_keeps_the_grounded_sentence_when_one_number_is_unverified() -> None:
 def test_keeps_the_whole_answer_when_both_endpoints_are_stated() -> None:
     draft = QuestionAnswerDraft(
         answer=(
-            "Research & Development가 1,959명에서 1,816명으로 143명 감소해 "
-            "가장 많이 줄었습니다."
+            "Research & Development가 1,959명에서 1,816명으로 143명 감소했습니다."
         ),
         evidence=["인원!N107", "인원!N108", "인원!N115"],
         confidence=0.9,

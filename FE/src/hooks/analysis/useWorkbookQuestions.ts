@@ -1,49 +1,59 @@
-import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
-import { askWorkbookQuestion, type WorkbookQuestionAnswer } from '@/api/analysis'
+import { askWorkbookQuestion, type InsightReportResult } from '@/api/analysis'
+import { buildQuestionContext } from '@/components/analysis/result/questions/questionContext'
 import { getQuestionValidationMessage } from '@/components/analysis/result/questions/questionValidation'
+import {
+  createQuestionSession,
+  reduceQuestionSession,
+} from '@/hooks/analysis/questionSession'
 import { getErrorMessage } from '@/utils/apiClient'
 
-export const useWorkbookQuestions = (analysisId: string) => {
-  const [answers, setAnswers] = useState<WorkbookQuestionAnswer[]>([])
-  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
-  const [validationMessage, setValidationMessage] = useState<string | null>(null)
-
-  const questionMutation = useMutation({
-    mutationFn: (question: string) => askWorkbookQuestion(analysisId, question),
-    onSuccess: (answer) => setAnswers((items) => [...items, answer]),
-    onSettled: () => setPendingQuestion(null),
-  })
+export const useWorkbookQuestions = (
+  analysisId: string,
+  report: InsightReportResult | null = null,
+) => {
+  const [session, setSession] = useState(() => createQuestionSession(analysisId))
+  const pendingScope = useRef<object | null>(null)
+  if (session.analysisId !== analysisId) {
+    setSession(createQuestionSession(analysisId))
+  }
+  const update = (action: Parameters<typeof reduceQuestionSession>[1]) =>
+    setSession((state) => reduceQuestionSession(state, action))
 
   const ask = async (question: string) => {
     const normalized = question.trim()
-    if (questionMutation.isPending) return false
+    const scope = session.scope
+    if (pendingScope.current === scope || session.analysisId !== analysisId) return false
     const message = getQuestionValidationMessage(normalized)
     if (message) {
-      setValidationMessage(message)
+      update({ scope, type: 'validation', message })
       return false
     }
-    setValidationMessage(null)
-    questionMutation.reset()
-    setPendingQuestion(normalized)
+    pendingScope.current = scope
+    update({ scope, type: 'start', question: normalized })
     try {
-      await questionMutation.mutateAsync(normalized)
+      const context = buildQuestionContext(session.answers, report)
+      const answer = await askWorkbookQuestion(analysisId, normalized, context)
+      update({ scope, type: 'success', answer })
       return true
-    } catch {
+    } catch (error) {
+      update({ scope, type: 'error', message: getErrorMessage(error) })
       return false
+    } finally {
+      if (pendingScope.current === scope) pendingScope.current = null
+      update({ scope, type: 'settled' })
     }
   }
 
   return {
-    answers,
+    answers: session.answers,
     ask,
-    clearValidation: () => setValidationMessage(null),
-    errorMessage: questionMutation.isError
-      ? getErrorMessage(questionMutation.error)
-      : null,
-    isPending: questionMutation.isPending,
-    pendingQuestion,
-    validationMessage,
+    clearValidation: () =>
+      update({ scope: session.scope, type: 'validation', message: null }),
+    errorMessage: session.errorMessage,
+    isPending: session.pendingQuestion !== null,
+    pendingQuestion: session.pendingQuestion,
+    validationMessage: session.validationMessage,
   }
 }
