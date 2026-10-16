@@ -3,7 +3,7 @@ from datetime import datetime
 
 from app.agent.query.ambiguity_metric_scope import bind_explicit_metric_scope
 from app.agent.query.ambiguity_candidates import AmbiguousCandidate
-from app.agent.query.ambiguity_labels import source_mentioned
+from app.agent.query.ambiguity_labels import mentioned_sources, source_mentioned
 from app.agent.query.metric_observation_cells import MetricObservation, _column, _human_label, _numeric
 from app.agent.query.metric_observation_periods import LATEST, requested_periods
 from app.agent.query.metric_observation_render import _metric_identity, _period_label
@@ -15,7 +15,7 @@ from app.agent.query.metric_scalar_answers import _BLOCKED
 
 def metric_candidates(question, index):
     rows = list(index.rows)
-    named = {row.sheet_name for row in rows if source_mentioned(row.sheet_name, question)}
+    named = mentioned_sources((row.sheet_name for row in rows), question)
     if named:
         rows = [row for row in rows if row.sheet_name in named]
     requests = requested_periods(question)

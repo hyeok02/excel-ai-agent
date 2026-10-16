@@ -33,6 +33,20 @@ def test_service_routes_a_join_or_explicit_failure_without_generator_fallback(un
     assert result.verification.level == ("unverified" if unsafe else "source_checked")
 
 
+def test_service_keeps_unresolved_group_partial_result_without_generator_or_request_verification():
+    summary, index = relational_fixture(right=[["Customer ID", "Region"], ["C1", "North"], ["C3", "West"]])
+
+    class Classifier:
+        async def classify(self, question, summary):
+            return QuestionIntent(False, "aggregation", (), True, relational_query=relational_plan(summary))
+
+    service = WorkbookQuestionService(NoGenerator(), create_default_tool_registry(), classifier=Classifier())
+    result = asyncio.run(service.answer("Orders와 Customers를 Customer ID로 연결해서 Region별 Amount 합계", summary, index))
+    assert result.status == "limited", result.answer
+    assert result.verification.level == "source_checked"
+    assert "그룹 미확정" in result.answer and "합계 10" in result.answer and "합계 20" in result.answer
+
+
 def test_relational_schema_round_trip_keeps_plan_and_disables_file_overview():
     summary, _ = relational_fixture()
     plan = relational_plan(summary)

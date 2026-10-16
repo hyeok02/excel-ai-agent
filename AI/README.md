@@ -57,6 +57,35 @@ The service runs at `http://localhost:8000`.
     the cited sheet and cell evidence exists in the executed Tool results
 - Swagger UI: `GET /docs`
 
+## Q&A source handling
+
+- Source fields can be bound by a unique complete label with a unit annotation.
+  Explicit currency, scale, year and column selections still constrain the
+  answer; selecting a valid source cell does not authorize changing the requested
+  unit or performing an exchange-rate conversion. Competing scopes require
+  clarification rather than an arbitrary model choice.
+- Two-table joins use typed keys and validate cardinality within the selected
+  population. Unmatched left rows and unknown group membership remain visible
+  as limited results. Relevant duplicate keys still block the join; additional
+  key suggestions come from source columns and are never applied automatically.
+- Missing formula caches can be recovered from bounded internal inputs using
+  supported arithmetic, conditional aggregates (`SUMIF(S)`, `COUNTIF(S)`,
+  `AVERAGEIF(S)`) and exact lookup modes (`INDEX`, `MATCH`, `VLOOKUP`, `HLOOKUP`,
+  `XLOOKUP`). Recovered answers retain their input-cell lineage and are marked
+  as recalculated, not as original saved Excel results. Unsupported array,
+  approximate-match, locale-sensitive or external-data operations remain
+  unavailable; `IFERROR` cannot turn unknown inputs into a verified zero.
+- Follow-up hints re-read the current workbook's cited cells, their corresponding
+  column headers, section captions and number formats within the existing size
+  budget. Wide-table fields are not replaced by the first few columns. Previous
+  answer prose is not evidence, and inferred context does not receive
+  request-wide verification.
+
+These paths do not modify workbooks, execute macros or refresh external links.
+Offline tests cover the deterministic execution and verification contracts;
+they do not establish the accuracy of a live model's interpretation of every
+natural-language question.
+
 ## Test
 
 ```bash

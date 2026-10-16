@@ -3,7 +3,8 @@ from collections import defaultdict
 import re
 
 from app.agent.query.ambiguity_candidates import AmbiguousCandidate
-from app.agent.query.ambiguity_labels import label_base, normalize_label, source_mentioned
+from app.agent.query.ambiguity_labels import label_base, mentioned_sources, normalize_label, source_mentioned
+from app.agent.query.ambiguity_qualifiers import explicit_column_ids, qualified_labels
 from app.agent.query.metric_observation_cells import metric_label_matches
 from app.agent.query.metric_observation_render import _metric_identity
 from app.agent.query.tabular_catalog import build_query_tables
@@ -15,15 +16,15 @@ def table_candidates(question, summary, index):
         return []
     tables = [table for table in build_query_tables(summary)
               if len(table.hidden_columns) < len(table.columns)]
-    named = {table.sheet_name for table in tables if source_mentioned(table.sheet_name, question)}
+    named = mentioned_sources((table.sheet_name for table in tables), question)
     if named:
         tables = [table for table in tables if table.sheet_name in named]
     ranges = explicit_ranges(question)
     if ranges:
         tables = [table for table in tables if any(sheet == table.sheet_name
                   and _inside(reference, table.reference) for sheet, reference in ranges)]
-    contexts = {text for table in tables for _, text in table.context
-                if len(normalize_label(text)) >= 4 and source_mentioned(text, question)}
+    contexts = mentioned_sources((text for table in tables for _, text in table.context
+                                  if len(normalize_label(text)) >= 4), question)
     if contexts:
         tables = [table for table in tables if contexts <= {text for _, text in table.context}]
     metric_question = question
@@ -52,7 +53,7 @@ def table_candidates(question, summary, index):
 def _narrow_matches(question, matches):
     if len(matches) < 2:
         return matches
-    named_columns = set(re.findall(r"\b([A-Z]{1,3})\s*열\b", question, re.I))
+    named_columns = explicit_column_ids(question)
     if named_columns:
         matches = [(table, column) for table, column in matches if column.id in named_columns]
     literal = [(table, column) for table, column in matches
@@ -66,6 +67,8 @@ def _narrow_matches(question, matches):
              and source_mentioned(column.header, question)]
     if exact:
         matches = exact
+    qualified = qualified_labels(question, [column.header for _, column in matches])
+    matches = [(table, column) for table, column in matches if column.header in qualified]
     # Another explicitly named source field or record identity can select the
     # proper parallel table without trusting the classifier's chosen table ID.
     scores = {}

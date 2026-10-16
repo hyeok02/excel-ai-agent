@@ -25,15 +25,24 @@ def source_bound_context(context, summary, index) -> list[dict]:
         if not matched:
             continue
         selected = [cells[ref] for ref in cells if ref in matched][:MAX_ITEM_CELLS]
-        headers, neighbors = [], []
+        headers, captions, neighbors = [], [], []
         for table in tables:
             bounds = _box(table.id)
             if bounds is None or not any(
                 (cell_box := _box(ref)) and _contains(bounds, cell_box) for ref in matched
             ):
                 continue
-            headers.extend(cells[ref] for column in table.columns
+            cited_columns = {box.min_column for cell in selected
+                             if (box := _box(cell.reference)) and _contains(bounds, box)}
+            # A value in a far-right column needs its own label, not the first
+            # six headers of a wide table. All candidates remain source cells.
+            ordered_columns = sorted(table.columns, key=lambda column: not (
+                (box := _box(column.header_reference)) and box.min_column in cited_columns
+            ))
+            headers.extend(cells[ref] for column in ordered_columns
                            if (ref := normalize_reference(column.header_reference)) in cells)
+            captions.extend(cells[ref] for reference, _ in table.context
+                            if (ref := normalize_reference(reference)) in cells)
             for cell in selected:
                 cell_box = _box(cell.reference)
                 if cell_box and _contains(bounds, cell_box):
@@ -41,12 +50,16 @@ def source_bound_context(context, summary, index) -> list[dict]:
                                      if (ref := normalize_reference(
                                          f"{table.sheet_name}!{column.id}{cell_box.min_row}"
                                      )) in cells and ref not in matched)
-        unique = {cell.reference: cell for cell in [*selected[:12], *headers[:6], *neighbors[:6]]}
+        captions = list({cell.reference: cell for cell in captions}.values())[:2]
+        unique = {cell.reference: cell for cell in [
+            *selected[:12], *headers[:6], *captions, *neighbors[:6 - len(captions)],
+        ]}
         entry = {
             "id": key,
             "hint": item.model_dump(exclude={"evidence"}),
             "source_cells": [
-                {"reference": cell.reference, "value": _value(cell.value)}
+                {"reference": cell.reference, "value": _value(cell.value),
+                 "number_format": cell.number_format}
                 for cell in list(unique.values())[:MAX_ITEM_CELLS]
             ],
         }

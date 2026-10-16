@@ -7,6 +7,8 @@ sheet or identifier. Source labels come from the workbook, not a business glossa
 import re
 
 from openpyxl.utils import range_boundaries
+from app.agent.query.ambiguity_labels import label_base, mentioned_sources, source_mentioned
+from app.agent.query.ambiguity_qualifiers import explicit_column_ids, qualified_labels, requested_units_match
 from app.agent.query.metric_observation_cells import metric_label_matches
 from app.agent.query.tabular_request_constraints import matches_constraints
 from app.agent.query.tabular_request_categories import value_matches
@@ -23,12 +25,11 @@ def request_matches_plan(question, plan, table, tables, intent=None):
         if intent.kind not in allowed[plan.operation]:
             return False
     text = _normal(question)
-    named_sheets = {item.sheet_name for item in tables
-                    if _normal(item.sheet_name) in text}
+    named_sheets = mentioned_sources((item.sheet_name for item in tables), question)
     if named_sheets and table.sheet_name not in named_sheets:
         return False
-    contexts = {_normal(value) for candidate in tables for _, value in candidate.context
-                if len(_normal(value)) >= 4 and _normal(value) in text}
+    contexts = {_normal(value) for value in mentioned_sources(
+        (value for candidate in tables for _, value in candidate.context if len(_normal(value)) >= 4), question)}
     selected_context = {_normal(value) for _, value in table.context}
     if contexts and not contexts <= selected_context:
         return False
@@ -40,6 +41,14 @@ def request_matches_plan(question, plan, table, tables, intent=None):
         involved.add(plan.order_by)
     if plan.column_scope == "all_attributes":
         involved.update(column.id for column in table.columns)
+    if not explicit_column_ids(question) <= involved:
+        return False
+    if plan.operation in {"numeric_summary", "lookup", "row_list"}:
+        if not requested_units_match(question, [column.header for column in table.columns
+                                               if column.id in plan.column_ids
+                                               and (plan.operation == "numeric_summary"
+                                                    or label_base(column.header) != column.header)]):
+            return False
     if plan.operation == "numeric_summary":
         # Translated metric names must constrain the source fields too. Source
         # values being valid does not make a debt total an answer about revenue.
@@ -53,7 +62,9 @@ def request_matches_plan(question, plan, table, tables, intent=None):
         semantic_headers = {column.header for candidate in tables for column in candidate.columns
                             if (not named_sheets or candidate.sheet_name in named_sheets)
                             and (not contexts or contexts <= {_normal(value) for _, value in candidate.context})
-                            and metric_label_matches(column.header, metric_question)}
+                            and (metric_label_matches(column.header, metric_question)
+                                 or source_mentioned(label_base(column.header), metric_question))}
+        semantic_headers = qualified_labels(metric_question, semantic_headers)
         selected_headers = {column.header for column in table.columns if column.id in involved}
         if semantic_headers and not semantic_headers <= selected_headers:
             return False

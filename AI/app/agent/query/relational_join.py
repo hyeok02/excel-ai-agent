@@ -24,11 +24,18 @@ def joined_rows(plan, sides):
             raise RelationalError("연결 조건에 비교할 수 없는 값이 있어 행을 임의로 제외하지 않았습니다.")
     right_keys = [key.right_column_id for key in plan.on]
     left_keys = [key.left_column_id for key in plan.on]
+    selected_keys = {_key(row, left_keys) for row in rows["left"]}
     lookup = {}
     for row in rows["right"]:
         key = _key(row, right_keys)
+        # Cardinality is a property of the selected join population. An unused
+        # duplicate dimension key cannot multiply these detail rows. Null keys
+        # never match each other, including partially empty composite keys.
+        if key is None or key not in selected_keys:
+            continue
         if key in lookup:
-            raise RelationalError("오른쪽 표의 연결 키가 중복되어 합계가 부풀 수 있습니다. 고유한 추가 키가 필요합니다.")
+            hint = _additional_key_hint(sides, rows, left_keys, right_keys)
+            raise RelationalError("오른쪽 표의 연결 키가 중복되어 합계가 부풀 수 있습니다. 고유한 추가 키가 필요합니다." + hint)
         lookup[key] = row
     result, unmatched = [], 0
     for row in rows["left"]:
@@ -43,7 +50,41 @@ def joined_rows(plan, sides):
 
 
 def _key(row, columns):
-    return tuple(_typed_value(row.values[column]) for column in columns)
+    values = [row.values[column] for column in columns]
+    typed = [None if value is None or (isinstance(value, str) and not value.strip())
+             else _typed_value(value) for value in values]
+    if None in typed:
+        return None
+    return tuple(typed)
+
+
+def _additional_key_hint(sides, rows, left_keys, right_keys):
+    candidates = []
+    for right_column in sides["right"].columns:
+        if right_column.id in right_keys:
+            continue
+        left_columns = [column for column in sides["left"].columns
+                        if column.id not in left_keys and column.header.strip().casefold() == right_column.header.strip().casefold()]
+        if len(left_columns) != 1:
+            continue
+        left_column = left_columns[0]
+        try:
+            selected = [_key(row, left_keys + [left_column.id]) for row in rows["left"]]
+            keys = [_key(row, right_keys + [right_column.id]) for row in rows["right"]]
+        except RelationalError:
+            continue
+        selected_set = set(selected)
+        relevant = [key for key in keys if key is not None and key in selected_set]
+        # A proposal must be usable for every selected source row and must
+        # remove actual ambiguity. This is a suggestion, not inferred intent.
+        if not selected or None in selected_set or not selected_set <= set(relevant) or len(relevant) != len(set(relevant)):
+            continue
+        candidates.append(f"{sides['left'].sheet_name}.{left_column.header} = {sides['right'].sheet_name}.{right_column.header}")
+        if len(candidates) == 3:
+            break
+    if not candidates:
+        return ""
+    return " 원본에서 중복을 구분할 수 있는 추가 키 후보: " + "; ".join(candidates) + ". 이 기준으로 연결할지 명시해 주세요. 자동 적용하지 않았습니다."
 
 
 def _typed_value(value):
