@@ -1,6 +1,8 @@
 """Resolve referents separately, then run the normal source-verification pipeline."""
 import asyncio
 
+from app.agent.query.clarification_selection import answer_selected_source
+from app.agent.query.conversation_choices import bound_choice_operation
 from app.agent.query.conversation_checks import CONTEXT_CUE, resolution_is_safe, subject_only_followup
 from app.agent.query.conversation_language import scope_only_followup, standalone_wording
 from app.agent.query.conversation_periods import RELATIVE_YEAR, bound_relative_question
@@ -13,6 +15,8 @@ from app.agent.query.models import (
 
 
 async def answer_in_conversation(question, context, sources, resolver, answer_current):
+    if context is not None and context.selection is not None:
+        return await answer_selected_source(question, context.selection, sources, answer_current)
     label_only = subject_only_followup(question, sources.index)
     depends_on_context = label_only or bool(CONTEXT_CUE.search(question) or RELATIVE_YEAR.search(question))
     if context is None or not depends_on_context:
@@ -28,7 +32,8 @@ async def answer_in_conversation(question, context, sources, resolver, answer_cu
         return await answer_current(question, sources)
     try:
         period_question = bound_relative_question(question, entries)
-        draft = bound_scope_question(question, context, entries, sources.index)
+        draft = bound_choice_operation(question, context, entries, sources.summary)
+        draft = draft or bound_scope_question(question, context, entries, sources.index)
         if draft is None:
             if resolver is None:
                 return context_clarification(question)

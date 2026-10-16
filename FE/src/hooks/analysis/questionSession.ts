@@ -51,6 +51,21 @@ export const createQuestionSession = (
   earlierHistoryErrorMessage: null,
 })
 
+export const canSubmitQuestion = (
+  session: QuestionSession,
+  activeScope: object | undefined,
+  pendingScope: object | null,
+  sourceAvailable: boolean,
+) =>
+  Boolean(
+    session.ownerId &&
+    sourceAvailable &&
+    activeScope === session.scope &&
+    pendingScope !== session.scope &&
+    session.pendingQuestion === null &&
+    session.historyStatus === 'ready',
+  )
+
 /** Ignore every completion from a previous analysis, including A -> B -> A navigation. */
 export const reduceQuestionSession = (
   state: QuestionSession,

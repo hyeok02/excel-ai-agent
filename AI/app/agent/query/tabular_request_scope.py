@@ -109,9 +109,9 @@ def request_matches_plan(question, plan, table, tables, intent=None):
 
 
 def explicit_ranges(question):
-    return [(quoted or plain, first.upper() + (":" + last.upper() if last else ""))
+    return [(quoted.replace("''", "'") if quoted else plain, first.upper() + (":" + last.upper() if last else ""))
             for quoted, plain, first, last in re.findall(
-                r"(?:'([^']+)'|([\w& .-]+))!\$?([A-Za-z]{1,3}\$?[1-9]\d*)(?::\$?([A-Za-z]{1,3}\$?[1-9]\d*))?",
+                r"(?:'((?:[^']|'')+)'|([\w& .-]+))!\$?([A-Za-z]{1,3}\$?[1-9]\d*)(?::\$?([A-Za-z]{1,3}\$?[1-9]\d*))?",
                 question,
             )]
 

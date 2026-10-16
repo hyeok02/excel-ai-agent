@@ -20,7 +20,9 @@ const WorkbookQuestionSection = ({
   suggestions,
   insightReport = null,
 }: WorkbookQuestionSectionProps) => {
-  const questions = useWorkbookQuestions(analysisId, insightReport)
+  const questions = useWorkbookQuestions(analysisId, insightReport, sourceAvailable)
+  const choicesDisabled =
+    !sourceAvailable || !questions.historyReady || questions.isPending
   const latestAnswer = questions.answers.at(-1)
   return (
     <section
@@ -105,11 +107,17 @@ const WorkbookQuestionSection = ({
       )}
       {latestAnswer && (
         <div className="mt-5">
-          <QuestionAnswerCard answer={latestAnswer} />
+          <QuestionAnswerCard
+            answer={latestAnswer}
+            choicesDisabled={choicesDisabled}
+            onChoose={questions.choose}
+          />
         </div>
       )}
       <QuestionHistoryPanel
         answers={questions.answers}
+        choicesDisabled={choicesDisabled}
+        onChoose={questions.choose}
         errorMessage={questions.earlierHistoryErrorMessage}
         hasEarlier={questions.hasEarlierHistory}
         isLoading={questions.isLoadingEarlier}

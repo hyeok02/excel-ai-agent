@@ -8,7 +8,7 @@ _AGGREGATES = {"SUM", "AVERAGE", "MIN", "MAX", "COUNT", "COUNTA"}
 _FUNCTIONS = _AGGREGATES | {"ABS", "ROUND", "ROUNDUP", "ROUNDDOWN", "IF", "IFERROR", "AND", "OR", "NOT", "DATE", "YEAR", "MONTH", "DAY"}
 
 
-def function(node, evaluate) -> object:
+def function(node, evaluate, reference_array=None) -> object:
     name, args = node.value, node.args
     if name not in _FUNCTIONS:
         reason = "external_data" if any(marker in name for marker in ("_XLL.", "RTD", "WEBSERVICE", "OFFICE.EXCEL.FUNCTIONS")) else "unsupported_function"
@@ -18,7 +18,7 @@ def function(node, evaluate) -> object:
         return evaluate(args[1]) if truth(evaluate(args[0])) else (evaluate(args[2]) if len(args) == 3 else False)
     if name == "IFERROR":
         arity(args, 2)
-        if any(may_return_array(arg) for arg in args):
+        if any(may_return_array(arg, reference_array) for arg in args):
             raise FormulaUnavailable("unsupported_expression")
         try:
             return evaluate(args[0])
@@ -121,9 +121,9 @@ def date_function(name: str, values: list) -> object:
         raise FormulaUnavailable("calculation_error") from None
 
 
-def may_return_array(node) -> bool:
+def may_return_array(node, reference_array=None) -> bool:
     if node.kind == "range":
-        return ":" in node.value.rsplit("!", 1)[-1]
+        return reference_array(node) if reference_array else ":" in node.value.rsplit("!", 1)[-1]
     if node.kind == "function" and node.value in _AGGREGATES | {"AND", "OR"}:
         return False
     if node.kind == "function" and node.value in {
@@ -131,7 +131,7 @@ def may_return_array(node) -> bool:
         "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
     }:
         return False  # These evaluators reject spilling/array-producing modes.
-    return any(may_return_array(arg) for arg in node.args)
+    return any(may_return_array(arg, reference_array) for arg in node.args)
 
 
 def has_reference_function(node) -> bool:

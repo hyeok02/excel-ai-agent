@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from openpyxl.utils.cell import range_boundaries
 
+from app.agent.query.formula_reference_binding import bind_reference
 from app.agent.query.formula_resolution_models import FormulaUnavailable
 from app.agent.query.formula_resolution_references import reference_cells
 from app.agent.query.formula_resolution_values import numeric
@@ -13,6 +14,7 @@ class FormulaRange:
     references: tuple[str, ...]
     rows: int
     columns: int
+    array: bool = False
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -27,9 +29,11 @@ class FormulaRange:
 def range_argument(node, sheet, resolver) -> FormulaRange:
     if node.kind != "range":
         raise FormulaUnavailable("unsupported_expression")
-    refs = reference_cells(node.value, sheet, resolver.sheets, resolver.limits.max_range_cells)
-    left, top, right, bottom = range_boundaries(node.value.rsplit("!", 1)[-1].replace("$", "").upper())
-    return FormulaRange(tuple(refs), bottom - top + 1, right - left + 1)
+    bound = bind_reference(node.value, sheet, resolver)
+    refs = reference_cells(bound, sheet, resolver.sheets, resolver.limits.max_range_cells)
+    address = bound.rsplit("!", 1)[-1].replace("$", "").upper()
+    left, top, right, bottom = range_boundaries(address)
+    return FormulaRange(tuple(refs), bottom - top + 1, right - left + 1, ":" in address)
 
 
 def integer_argument(value) -> int:
