@@ -4,16 +4,16 @@ from app.agent.query.formula_resolution_functions import function
 from app.agent.query.formula_resolution_models import FormulaUnavailable
 from app.agent.query.formula_resolution_operations import binary, unary
 from app.agent.query.formula_resolution_reference_functions import REFERENCE_FUNCTIONS, reference_function
-from app.agent.query.formula_resolution_references import reference_cells
+from app.agent.query.formula_resolution_ranges import range_argument
 
 
 def evaluate_formula(node, sheet: str, resolver, inputs: set[str], depth: int = 0) -> object:
     resolver.budget.check(depth)
     evaluate = lambda child: evaluate_formula(child, sheet, resolver, inputs, depth + 1)
     if node.kind == "range":
-        refs = reference_cells(node.value, sheet, resolver.sheets, resolver.limits.max_range_cells)
-        values = [resolver.read(reference, inputs, depth + 1) for reference in refs]
-        return values if ":" in node.value.rsplit("!", 1)[-1] else values[0]
+        bound = range_argument(node, sheet, resolver)
+        values = [resolver.read(reference, inputs, depth + 1) for reference in bound.references]
+        return values if bound.array else values[0]
     if node.kind == "number":
         try:
             return Decimal(node.value)
@@ -34,5 +34,5 @@ def evaluate_formula(node, sheet: str, resolver, inputs: set[str], depth: int = 
     if node.kind == "function":
         if node.value in REFERENCE_FUNCTIONS:
             return reference_function(node, evaluate, sheet, resolver, inputs, depth)
-        return function(node, evaluate)
+        return function(node, evaluate, lambda arg: range_argument(arg, sheet, resolver).array)
     raise FormulaUnavailable("unsupported_expression")

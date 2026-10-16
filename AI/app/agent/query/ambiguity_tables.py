@@ -1,6 +1,7 @@
 """Detect repeated table fields using only workbook labels and source context."""
 from collections import defaultdict
 import re
+from openpyxl.utils.cell import quote_sheetname
 
 from app.agent.query.ambiguity_candidates import AmbiguousCandidate
 from app.agent.query.ambiguity_labels import label_base, mentioned_sources, normalize_label, source_mentioned
@@ -94,7 +95,7 @@ def _candidate(question, table, column, cells):
                           f"표시 형식: {formats}" if formats else "") if value)
     header = cells.get(column.header_reference)
     return AmbiguousCandidate(
-        column.header, f"'{table.sheet_name}'!{table.reference}", details or "단위·기간은 표에서 선택",
-        f"'{table.sheet_name}'!{table.reference} 범위의 {column.id}열 {column.header} 기준으로: {question}",
+        column.header, f"{quote_sheetname(table.sheet_name)}!{table.reference}", details or "단위·기간은 표에서 선택",
+        f"{quote_sheetname(table.sheet_name)}!{table.reference} 범위의 {column.id}열 {column.header} 기준으로: {question}",
         (header,) if header else (),
     )

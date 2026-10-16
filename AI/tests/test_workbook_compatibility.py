@@ -1,4 +1,6 @@
 from copy import copy
+from dataclasses import replace
+from hashlib import sha256
 from io import BytesIO
 from zipfile import ZipFile
 
@@ -34,9 +36,12 @@ def test_fallback_styles_preserve_all_indices_values_formulas_and_dates() -> Non
         load_workbook(BytesIO(compatible))
 
     assert parse_workbook("sales.xlsx", compatible) == parse_workbook("sales.xlsx", original)
-    assert build_workbook_data_index("sales.xlsx", compatible) == build_workbook_data_index(
-        "sales.xlsx", original
-    )
+    original_index = build_workbook_data_index("sales.xlsx", original)
+    compatible_index = build_workbook_data_index("sales.xlsx", compatible)
+    assert original_index.source_digest == sha256(original).hexdigest()
+    assert compatible_index.source_digest == sha256(compatible).hexdigest()
+    assert original_index.source_digest != compatible_index.source_digest
+    assert replace(original_index, source_digest="") == replace(compatible_index, source_digest="")
     expected = load_workbook(BytesIO(original))
     actual = load_workbook_for_reading(compatible)
     try:

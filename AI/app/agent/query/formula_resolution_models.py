@@ -52,7 +52,7 @@ def failure_message(reason: str, references: tuple[str, ...]) -> str:
     messages = {
         "external_data": "외부 파일/추가 기능 데이터의 저장된 계산 결과가 없습니다. 원본 Excel에서 해당 연결을 새로 고친 뒤 계산하고 저장해 다시 업로드해 주세요.",
         "missing_reference": "참조 원본이 현재 워크북에 없습니다. 참조 시트나 원본 데이터가 포함된 파일을 업로드해 주세요.",
-        "unsupported_reference": "이 수식의 이름/구조적/동적 참조는 안전 계산 범위 밖입니다. Excel에서 계산하고 저장해 다시 업로드해 주세요.",
+        "unsupported_reference": "이 수식의 참조 방식을 지원하지 않거나 원본 범위를 확정할 수 없습니다. Excel에서 계산하고 저장해 다시 업로드해 주세요.",
         "unsupported_function": "이 수식의 함수는 안전 계산 범위 밖입니다. Excel에서 계산하고 저장해 다시 업로드해 주세요.",
         "source_error": "참조 셀에 Excel 오류가 있어 값을 복원할 수 없습니다. 원본 오류를 수정하고 다시 계산해 주세요.",
         "calculation_error": "수식 계산 중 오류가 발생했습니다. 원본 수식과 입력값을 확인해 주세요.",

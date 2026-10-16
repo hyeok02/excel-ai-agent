@@ -21,6 +21,7 @@ class FormulaResolver:
         self.cells = {cell.reference: cell for row in index.rows for cell in row.cells}
         self.sheets = {row.sheet_name for row in index.rows}
         self.active: set[str] = set()
+        self.reference_stack: list[str] = []
         self.memo: dict[str, tuple[object, frozenset[str]]] = {}
 
     def resolve(self, reference: str) -> FormulaResolution:
@@ -72,6 +73,7 @@ class FormulaResolver:
             inputs.update(dependencies)
             return value
         self.active.add(reference)
+        self.reference_stack.append(reference)
         dependencies: set[str] = set()
         try:
             parsed = FormulaParser(cell.formula, self.limits).parse()
@@ -85,6 +87,7 @@ class FormulaResolver:
         finally:
             inputs.update(dependencies)
             self.active.remove(reference)
+            self.reference_stack.pop()
 
     def bounded_value(self, value: object) -> object:
         if isinstance(value, str) and len(value) > self.limits.max_result_characters:

@@ -4,7 +4,7 @@ import re
 from app.agent.query.tabular_request_scope import explicit_ranges, _inside
 
 _REFERENCE = re.compile(
-    r"(?:'([^']+)'|([\w& .-]+))!\$?([A-Za-z]{1,3}\$?[1-9]\d*)"
+    r"(?:'((?:[^']|'')+)'|([\w& .-]+))!\$?([A-Za-z]{1,3}\$?[1-9]\d*)"
     r"(?::\$?([A-Za-z]{1,3}\$?[1-9]\d*))?",
 )
 

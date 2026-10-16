@@ -64,6 +64,14 @@ The service runs at `http://localhost:8000`.
   answer; selecting a valid source cell does not authorize changing the requested
   unit or performing an exchange-rate conversion. Competing scopes require
   clarification rather than an arbitrary model choice.
+- Ambiguous source candidates also expose bounded `clarification_options` for
+  the UI. A clicked option sends `context.selection` with `source_question` and
+  `option_id`; the current workbook digest, candidate cells and canonical
+  question are revalidated before any model call. Candidates preserve the
+  original question's operations and constraints; selection only narrows the
+  source scope and never grants a verification badge by itself. Saved options
+  survive conversation restoration, but expired source files, stale choices and
+  cross-file choices cannot execute.
 - Two-table joins use typed keys and validate cardinality within the selected
   population. Unmatched left rows and unknown group membership remain visible
   as limited results. Relevant duplicate keys still block the join; additional
@@ -75,6 +83,13 @@ The service runs at `http://localhost:8000`.
   as recalculated, not as original saved Excel results. Unsupported array,
   approximate-match, locale-sensitive or external-data operations remain
   unavailable; `IFERROR` cannot turn unknown inputs into a verified zero.
+- Static workbook/sheet-scoped names and supported Excel table references can
+  resolve to original rectangular ranges, including table data, headers, totals
+  and unambiguous current-row references. The same resolver is used by aggregate
+  and lookup functions. Dynamic names, multi-area references, missing/excluded
+  sheets, missing calculated-column values and unsupported structured-reference
+  syntax stay unavailable. Package metadata has separate size limits; no
+  external refresh or workbook rewrite is performed.
 - Follow-up hints re-read the current workbook's cited cells, their corresponding
   column headers, section captions and number formats within the existing size
   budget. Wide-table fields are not replaced by the first few columns. Previous

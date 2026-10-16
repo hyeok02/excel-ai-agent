@@ -1,28 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 
-import {
-  askWorkbookQuestion,
-  getWorkbookQuestionHistory,
-  type InsightReportResult,
-} from '@/api/analysis'
+import { getWorkbookQuestionHistory, type InsightReportResult } from '@/api/analysis'
 import { useAuth } from '@/app/providers/auth-context'
-import { buildQuestionContext } from '@/components/analysis/result/questions/questionContext'
-import { getQuestionValidationMessage } from '@/components/analysis/result/questions/questionValidation'
 import {
   createQuestionSession,
   reduceQuestionSession,
 } from '@/hooks/analysis/questionSession'
+import { useQuestionSubmission } from '@/hooks/analysis/useQuestionSubmission'
 import { getErrorMessage } from '@/utils/apiClient'
 
 export const useWorkbookQuestions = (
   analysisId: string,
   report: InsightReportResult | null = null,
+  sourceAvailable = true,
 ) => {
   const { user } = useAuth()
   const ownerId = user?.id ?? null
   const [session, setSession] = useState(() => createQuestionSession(analysisId, ownerId))
   const [restoreAttempt, setRestoreAttempt] = useState(0)
-  const pendingScope = useRef<object | null>(null)
   const earlierScope = useRef<object | null>(null)
   if (session.analysisId !== analysisId || session.ownerId !== ownerId) {
     setSession(createQuestionSession(analysisId, ownerId))
@@ -30,6 +25,7 @@ export const useWorkbookQuestions = (
   const { scope } = session
   const update = (action: Parameters<typeof reduceQuestionSession>[1]) =>
     setSession((state) => reduceQuestionSession(state, action))
+  const submission = useQuestionSubmission(session, sourceAvailable, report, update)
 
   useEffect(() => {
     if (!ownerId) return
@@ -78,41 +74,9 @@ export const useWorkbookQuestions = (
     }
   }
 
-  const ask = async (question: string) => {
-    const normalized = question.trim()
-    if (
-      !ownerId ||
-      pendingScope.current === scope ||
-      session.analysisId !== analysisId ||
-      session.ownerId !== ownerId ||
-      session.historyStatus !== 'ready'
-    ) {
-      return false
-    }
-    const message = getQuestionValidationMessage(normalized)
-    if (message) {
-      update({ scope, type: 'validation', message })
-      return false
-    }
-    pendingScope.current = scope
-    update({ scope, type: 'start', question: normalized })
-    try {
-      const context = buildQuestionContext(session.answers, report)
-      const answer = await askWorkbookQuestion(analysisId, normalized, context)
-      update({ scope, type: 'success', answer })
-      return true
-    } catch (error) {
-      update({ scope, type: 'error', message: getErrorMessage(error) })
-      return false
-    } finally {
-      if (pendingScope.current === scope) pendingScope.current = null
-      update({ scope, type: 'settled' })
-    }
-  }
-
   return {
     answers: session.answers,
-    ask,
+    ...submission,
     clearValidation: () =>
       update({ scope: session.scope, type: 'validation', message: null }),
     errorMessage: session.errorMessage,

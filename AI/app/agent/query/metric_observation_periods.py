@@ -22,6 +22,8 @@ SCENARIOS = {
     "budget": re.compile(r"예산|\bbudget\b", re.I),
 }
 LATEST = re.compile(r"최신|최근|현재|마지막|\b(?:latest|most\s+recent|current|last)\b", re.I)
+_COMPARISON = re.compile(r"비교|증감|변화|변동|차이|증가|감소|"
+                         r"\b(?:compare|comparison|change|growth|difference|versus|vs|between)\b", re.I)
 
 
 @dataclass(frozen=True)
@@ -88,7 +90,9 @@ def requested_periods(question: str) -> list[PeriodRequest]:
         if len(cases) > 1 and len(kinds) <= 1:
             return [PeriodRequest(base.year, base.month, base.day, base.grain, case)
                     for case in cases]
-    return result
+    # A source-selection prefix can repeat the user's date. Only identical
+    # qualified periods collapse; same-period comparisons still need operands.
+    return result if _COMPARISON.search(question) else list(dict.fromkeys(result))
 
 
 def _qualifiers(question, patterns):

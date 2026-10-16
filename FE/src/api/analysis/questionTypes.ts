@@ -26,6 +26,15 @@ export interface WorkbookQuestionAnswer {
   evidence: WorkbookQuestionEvidence[]
   limitations: string[]
   verification?: WorkbookQuestionVerification
+  clarificationOptions?: WorkbookQuestionClarificationOption[]
+}
+
+export interface WorkbookQuestionClarificationOption {
+  id: string
+  label: string
+  scope: string
+  details: string
+  question: string
 }
 
 export interface WorkbookQuestionHistoryItem {
@@ -43,4 +52,5 @@ export interface WorkbookQuestionHistoryPage {
 export interface WorkbookQuestionContext {
   turns: { question: string; evidence: string[]; needs_clarification?: boolean }[]
   insights: { title: string; topic: string | null; evidence: string[] }[]
+  selection?: { source_question: string; option_id: string }
 }
