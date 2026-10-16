@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiError> handleConstraintViolation(
 			ConstraintViolationException exception, HttpServletRequest request) {
 		return badRequest("INVALID_PAGINATION",
-				"page는 0 이상, size는 1 이상 100 이하여야 합니다.", request);
+				"page는 0 이상, size는 1 이상 100 이하, before는 1 이상의 정수여야 합니다.", request);
 	}
 
 	@ExceptionHandler(MaxUploadSizeExceededException.class)

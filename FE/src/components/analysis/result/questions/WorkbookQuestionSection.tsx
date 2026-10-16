@@ -1,8 +1,10 @@
-import { ChevronDown, MessageSquareText, TriangleAlert } from 'lucide-react'
+import { MessageSquareText, TriangleAlert } from 'lucide-react'
 
 import type { InsightReportResult } from '@/api/analysis'
 import QuestionAnswerCard from '@/components/analysis/result/questions/QuestionAnswerCard'
 import QuestionComposer from '@/components/analysis/result/questions/QuestionComposer'
+import QuestionHistoryNotice from '@/components/analysis/result/questions/QuestionHistoryNotice'
+import QuestionHistoryPanel from '@/components/analysis/result/questions/QuestionHistoryPanel'
 import { useWorkbookQuestions } from '@/hooks/analysis/useWorkbookQuestions'
 
 interface WorkbookQuestionSectionProps {
@@ -20,7 +22,6 @@ const WorkbookQuestionSection = ({
 }: WorkbookQuestionSectionProps) => {
   const questions = useWorkbookQuestions(analysisId, insightReport)
   const latestAnswer = questions.answers.at(-1)
-  const previousAnswers = questions.answers.slice(0, -1).reverse()
   return (
     <section
       aria-labelledby="workbook-question-heading"
@@ -41,6 +42,10 @@ const WorkbookQuestionSection = ({
             Agent가 질문에 필요한 도구를 선택하고, 답변을 확인한 원본 시트와 셀을 함께
             보여줍니다. 이 분석의 인사이트와 앞선 질문을 이어서 물어볼 수 있습니다.
           </p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            질문과 답변은 이 분석에 자동 저장되어 다시 방문해도 이어집니다. 저장된 근거와
+            검증 표시는 답변 당시의 내용입니다.
+          </p>
         </div>
       </div>
 
@@ -51,14 +56,24 @@ const WorkbookQuestionSection = ({
             <div>
               <p className="font-extrabold">원본 파일 보관기간이 만료되었습니다.</p>
               <p className="mt-0.5 text-xs">
-                저장된 분석 결과는 계속 볼 수 있지만, 원본 셀이 필요한 질문은 사용할 수
-                없습니다.
+                저장된 분석 결과와 이전 대화는 계속 볼 수 있지만, 원본 셀이 필요한 새
+                질문은 사용할 수 없습니다.
               </p>
             </div>
           </div>
         )}
+        <QuestionHistoryNotice
+          errorMessage={questions.historyErrorMessage}
+          isLoading={questions.isRestoring}
+          onRetry={questions.retryHistory}
+        />
         <QuestionComposer
-          disabled={!sourceAvailable}
+          disabled={!sourceAvailable || !questions.historyReady}
+          disabledMessage={
+            !sourceAvailable
+              ? '원본 파일 보관기간이 지나 질문할 수 없습니다.'
+              : '이전 대화를 불러온 뒤 질문할 수 있습니다.'
+          }
           isPending={questions.isPending}
           onAsk={questions.ask}
           suggestions={suggestions}
@@ -93,26 +108,13 @@ const WorkbookQuestionSection = ({
           <QuestionAnswerCard answer={latestAnswer} />
         </div>
       )}
-      {previousAnswers.length > 0 && (
-        <details className="group mt-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-          <summary className="flex cursor-pointer list-none items-center justify-center gap-2 text-xs font-extrabold text-slate-600">
-            이전 질문 {previousAnswers.length}개 보기
-            <ChevronDown
-              aria-hidden="true"
-              className="transition group-open:rotate-180"
-              size={15}
-            />
-          </summary>
-          <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
-            {previousAnswers.map((answer, index) => (
-              <QuestionAnswerCard
-                answer={answer}
-                key={`${answer.question}-${previousAnswers.length - index}`}
-              />
-            ))}
-          </div>
-        </details>
-      )}
+      <QuestionHistoryPanel
+        answers={questions.answers}
+        errorMessage={questions.earlierHistoryErrorMessage}
+        hasEarlier={questions.hasEarlierHistory}
+        isLoading={questions.isLoadingEarlier}
+        onLoadEarlier={questions.loadEarlier}
+      />
     </section>
   )
 }

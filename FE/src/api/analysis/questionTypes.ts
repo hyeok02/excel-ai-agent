@@ -28,6 +28,18 @@ export interface WorkbookQuestionAnswer {
   verification?: WorkbookQuestionVerification
 }
 
+export interface WorkbookQuestionHistoryItem {
+  id: string
+  createdAt: string
+  answer: WorkbookQuestionAnswer
+}
+
+/** Each page is chronological; nextCursor retrieves the preceding, older page. */
+export interface WorkbookQuestionHistoryPage {
+  items: WorkbookQuestionHistoryItem[]
+  nextCursor: string | null
+}
+
 export interface WorkbookQuestionContext {
   turns: { question: string; evidence: string[]; needs_clarification?: boolean }[]
   insights: { title: string; topic: string | null; evidence: string[] }[]
