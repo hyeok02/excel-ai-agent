@@ -73,6 +73,8 @@ def aggregate(name: str, args, values: list) -> object:
                 continue
             if referenced and isinstance(item, (bool, str)):
                 continue
+            if isinstance(item, (bool, str)) and has_reference_function(arg):
+                raise FormulaUnavailable("unsupported_expression")
             if not referenced and isinstance(item, str):
                 try:
                     item = Decimal(item)
@@ -124,4 +126,14 @@ def may_return_array(node) -> bool:
         return ":" in node.value.rsplit("!", 1)[-1]
     if node.kind == "function" and node.value in _AGGREGATES | {"AND", "OR"}:
         return False
+    if node.kind == "function" and node.value in {
+        "INDEX", "MATCH", "VLOOKUP", "HLOOKUP", "XLOOKUP", "_XLFN.XLOOKUP",
+        "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
+    }:
+        return False  # These evaluators reject spilling/array-producing modes.
     return any(may_return_array(arg) for arg in node.args)
+
+
+def has_reference_function(node) -> bool:
+    return (node.kind == "function" and node.value in {"INDEX", "VLOOKUP", "HLOOKUP", "XLOOKUP", "_XLFN.XLOOKUP"}
+            or any(has_reference_function(arg) for arg in node.args))

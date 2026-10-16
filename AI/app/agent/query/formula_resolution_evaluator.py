@@ -3,6 +3,7 @@ from decimal import Decimal, DecimalException
 from app.agent.query.formula_resolution_functions import function
 from app.agent.query.formula_resolution_models import FormulaUnavailable
 from app.agent.query.formula_resolution_operations import binary, unary
+from app.agent.query.formula_resolution_reference_functions import REFERENCE_FUNCTIONS, reference_function
 from app.agent.query.formula_resolution_references import reference_cells
 
 
@@ -18,6 +19,8 @@ def evaluate_formula(node, sheet: str, resolver, inputs: set[str], depth: int = 
             return Decimal(node.value)
         except DecimalException:
             raise FormulaUnavailable("unsupported_expression") from None
+    if node.kind == "missing":
+        return None
     if node.kind == "logical":
         return node.value.upper() == "TRUE"
     if node.kind == "text":
@@ -29,5 +32,7 @@ def evaluate_formula(node, sheet: str, resolver, inputs: set[str], depth: int = 
     if node.kind == "binary":
         return resolver.bounded_value(binary(node.value, evaluate(node.args[0]), evaluate(node.args[1])))
     if node.kind == "function":
+        if node.value in REFERENCE_FUNCTIONS:
+            return reference_function(node, evaluate, sheet, resolver, inputs, depth)
         return function(node, evaluate)
     raise FormulaUnavailable("unsupported_expression")

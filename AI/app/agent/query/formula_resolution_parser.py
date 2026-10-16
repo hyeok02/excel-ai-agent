@@ -70,7 +70,9 @@ class FormulaParser:
         args = []
         if self.position < len(self.tokens) and self.tokens[self.position].subtype != "CLOSE":
             while True:
-                args.append(self.expression(0, depth))
+                next_token = self.tokens[self.position] if self.position < len(self.tokens) else None
+                omitted = next_token and (next_token.type == "SEP" or next_token.subtype == "CLOSE")
+                args.append(FormulaNode("missing", "") if omitted else self.expression(0, depth))
                 if (self.position < len(self.tokens)
                         and self.tokens[self.position].type == "SEP"
                         and self.tokens[self.position].subtype == "ARG"):

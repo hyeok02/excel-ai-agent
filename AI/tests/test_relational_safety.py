@@ -17,8 +17,8 @@ def test_duplicate_right_keys_do_not_multiply_a_sum():
     assert_blocked(answer(summary, index), "중복")
 
 
-@pytest.mark.parametrize("key", [None, "", "  ", "#N/A"])
-def test_missing_and_error_join_keys_never_join_each_other(key):
+@pytest.mark.parametrize("key", ["#N/A", "#REF!", "#DIV/0!"])
+def test_error_join_keys_are_not_usable_source_keys(key):
     summary, index = relational_fixture(left=[["Order ID", "Customer ID", "Amount"], ["ORD-1", key, 10], ["ORD-2", "C2", 20]])
     assert_blocked(answer(summary, index), "키")
 
@@ -33,7 +33,12 @@ def test_key_coercion_does_not_conflate_text_number_boolean(key):
 
 def test_unmatched_outer_group_cannot_silently_disappear_from_total():
     summary, index = relational_fixture(right=[["Customer ID", "Region"], ["C1", "North"], ["C3", "West"]])
-    assert_blocked(answer(summary, index), "그룹")
+    result = answer(summary, index)
+    assert result.status == "limited", result.answer
+    assert "Region=North; Orders.Amount: 합계 10" in result.answer
+    assert "Region=연결 안 됨 (그룹 미확정); Orders.Amount: 합계 20" in result.answer
+    assert result.verification.level == "source_checked"
+    assert any("그룹을 확정하지 못한 왼쪽 행 1개" in limitation for limitation in result.limitations)
 
 
 def test_missing_amount_is_not_zero_or_excluded_from_total():
