@@ -8,6 +8,7 @@ import PromptComposerFrame, {
 
 interface QuestionComposerProps {
   disabled?: boolean
+  disabledMessage?: string
   suggestions: string[]
   isPending: boolean
   onAsk: (question: string) => Promise<boolean>
@@ -17,6 +18,7 @@ interface QuestionComposerProps {
 
 const QuestionComposer = ({
   disabled = false,
+  disabledMessage = '원본 파일 보관기간이 지나 질문할 수 없습니다.',
   suggestions,
   isPending,
   onAsk,
@@ -74,9 +76,7 @@ const QuestionComposer = ({
             }
           }}
           placeholder={
-            disabled
-              ? '원본 파일 보관기간이 지나 질문할 수 없습니다.'
-              : '예: 이 파일에서 가장 중요한 결론은 뭐야?'
+            disabled ? disabledMessage : '예: 이 파일에서 가장 중요한 결론은 뭐야?'
           }
           value={question}
         />

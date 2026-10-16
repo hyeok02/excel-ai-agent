@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +18,11 @@ import org.springframework.data.repository.query.Param;
 public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, UUID> {
 
 	Optional<AnalysisJob> findByAnalysisIdAndOwnerUsername(UUID analysisId, String ownerUsername);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select job from AnalysisJob job where job.analysisId = :analysisId and job.ownerUsername = :ownerUsername")
+	Optional<AnalysisJob> findOwnedForQuestionSave(
+			@Param("analysisId") UUID analysisId, @Param("ownerUsername") String ownerUsername);
 
 	Page<AnalysisJob> findByOwnerUsername(String ownerUsername, Pageable pageable);
 

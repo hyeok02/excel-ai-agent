@@ -9,6 +9,8 @@ import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmission;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisSubmissionService;
 import com.hyeok02.excelaiagent.analysis.application.AnalysisResultDetails;
 import com.hyeok02.excelaiagent.analysis.application.WorkbookQuestionService;
+import com.hyeok02.excelaiagent.analysis.application.WorkbookQuestionHistoryService;
+import com.hyeok02.excelaiagent.analysis.application.WorkbookQuestionHistoryPage;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,12 +41,15 @@ public class AnalysisController {
 
 	private final AnalysisSubmissionService analysisSubmissionService;
 	private final WorkbookQuestionService workbookQuestionService;
+	private final WorkbookQuestionHistoryService workbookQuestionHistoryService;
 
 	public AnalysisController(
 			AnalysisSubmissionService analysisSubmissionService,
-			WorkbookQuestionService workbookQuestionService) {
+			WorkbookQuestionService workbookQuestionService,
+			WorkbookQuestionHistoryService workbookQuestionHistoryService) {
 		this.analysisSubmissionService = analysisSubmissionService;
 		this.workbookQuestionService = workbookQuestionService;
+		this.workbookQuestionHistoryService = workbookQuestionHistoryService;
 	}
 
 	@PostMapping
@@ -96,6 +101,16 @@ public class AnalysisController {
 			Principal principal) {
 		return workbookQuestionService.ask(
 				analysisId, request.question(), actor(principal), request.context());
+	}
+
+	@GetMapping("/{analysisId}/questions")
+	@Operation(summary = "분석한 Excel의 저장된 질문과 답변 조회")
+	public WorkbookQuestionHistoryPage getQuestionHistory(
+			@PathVariable UUID analysisId,
+			@RequestParam(required = false) @Min(1) Long before,
+			@RequestParam(defaultValue = "30") @Min(1) @Max(100) int size,
+			Principal principal) {
+		return workbookQuestionHistoryService.getHistory(analysisId, actor(principal), before, size);
 	}
 
 	@DeleteMapping("/{analysisId}")
