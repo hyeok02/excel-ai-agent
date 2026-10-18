@@ -95,6 +95,28 @@ The service runs at `http://localhost:8000`.
   budget. Wide-table fields are not replaced by the first few columns. Previous
   answer prose is not evidence, and inferred context does not receive
   request-wide verification.
+- Q&A retains its bounded prefix index (50,000 populated cells / 10,000 indexed
+  rows per sheet), but can stream a selected table's original rectangle when
+  that index or the analysis sample is incomplete. Counts, filtered lookups,
+  row lists, numeric statistics and bounded value frequencies require a complete
+  source scan and request/column/unit checks before receiving verification.
+  Hidden rows and native table totals are excluded; unknown values are not zero.
+  Partial reads never turn a sampled population into a verified total.
+  Inferred tables fail closed at ambiguous repeated/changed headers, subtotal
+  markers and numeric-to-text section transitions instead of silently combining
+  populations. Explicit hidden-column requests remain supported. Source cell
+  coordinates must agree with the scanned row and column, including malformed
+  worksheet XML. Small verified header anchors preserve large-range follow-ups
+  without treating previous answer prose as evidence.
+- Original-source reads share a request-local budget: 2,000,000 rectangular
+  cells, 250,000 rows, 16 reads and 20 seconds of source-read work. Exact small
+  cell/range requests and bounded follow-up evidence can also read beyond the
+  prefix, without merging disjoint reads into a falsely complete index.
+  Unsupported sorting/top-N, ambiguous table boundaries, missing formula caches
+  and budget exhaustion remain limited/unavailable where full proof is absent.
+  This is not unlimited-size upload support: initial workbook parsing still
+  loads workbook structure in memory, and generic search, joins and formula
+  dependency resolution retain their own existing coverage limits.
 
 These paths do not modify workbooks, execute macros or refresh external links.
 Offline tests cover the deterministic execution and verification contracts;

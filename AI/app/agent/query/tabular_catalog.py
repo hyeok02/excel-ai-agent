@@ -2,7 +2,7 @@
 import re
 from dataclasses import replace
 
-from openpyxl.utils import get_column_letter, range_boundaries
+from openpyxl.utils import coordinate_to_tuple, get_column_letter, range_boundaries
 
 from app.agent.query.tabular_catalog_models import QueryColumn, QueryRow, QueryTable
 from app.agent.query.tabular_catalog_sources import cell_value, source_cells, table_context, table_sources
@@ -18,10 +18,10 @@ def build_query_tables(summary) -> list[QueryTable]:
         sheet_cells = {address: cell for region in sheet.regions
                        for address, cell in source_cells(region).items()}
         hidden_columns = frozenset(column for region in sheet.regions for column in region.hidden_columns)
-        for reference, cells, complete, merged, hidden in table_sources(sheet):
+        for reference, cells, complete, merged, hidden, kind in table_sources(sheet):
             table = _build_table(sheet.name, reference, cells, complete, merged, hidden)
             if table is not None:
-                tables.append(replace(table, context=table_context(sheet.name, reference, sheet_cells),
+                tables.append(replace(table, source_kind=kind, context=table_context(sheet.name, reference, sheet_cells),
                                       hidden_columns=hidden_columns & {c.id for c in table.columns}))
     return tables
 
@@ -35,7 +35,8 @@ def query_catalog(summary, question: str) -> list[dict]:
         entry = {
             "table_id": table.id, "sheet_name": table.sheet_name,
             "range": table.reference, "complete": table.complete,
-            "row_count": len(table.rows),
+            "row_count": len(table.rows) if table.complete else None,
+            "sampled_row_count": len(table.rows),
             "excluded_row_count": len(table.excluded_rows),
             "context": [{"reference": reference, "text": value}
                         for reference, value in table.context],
@@ -59,6 +60,8 @@ def _build_table(sheet, reference, cells, complete, merged, hidden):
     if bottom <= top or right <= left:
         return None
     headers, header_references = [], {}
+    observed_rows = sorted({coordinate_to_tuple(address)[0] for address in cells
+                            if top < coordinate_to_tuple(address)[0] <= bottom})
     for number in range(left, right + 1):
         column = get_column_letter(number)
         raw = cells.get(f"{column}{top}", {})
@@ -79,7 +82,7 @@ def _build_table(sheet, reference, cells, complete, merged, hidden):
         if raw.get("hyperlink") == value and not any(
             cell_value(cells.get(f"{column}{row}", {})) not in (None, "")
             or cells.get(f"{column}{row}", {}).get("formula")
-            for row in range(top + 1, bottom + 1)
+            for row in observed_rows
         ):
             continue
         if not isinstance(value, str) or not value.strip():
@@ -91,7 +94,7 @@ def _build_table(sheet, reference, cells, complete, merged, hidden):
     if any(_data_merge(span, top + 1, bottom, headers) for span in merged):
         return None
     rows = []
-    for number in range(top + 1, bottom + 1):
+    for number in observed_rows:
         values = {column: cell_value(cells.get(f"{column}{number}", {}))
                   for column, _ in headers}
         formulas = {column: raw["formula"] for column, _ in headers

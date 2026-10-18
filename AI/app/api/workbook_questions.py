@@ -8,8 +8,8 @@ from app.agent import AgentToolRegistry
 from app.agent.query import (
     QuestionAnswer,
     WorkbookQuestionService,
-    build_workbook_data_index,
 )
+from app.agent.query.question_index import build_question_data_index
 from app.agent.query.generator import LangChainQuestionAnswerGenerator
 from app.agent.query.intent_classifier import LangChainQuestionIntentClassifier
 from app.agent.query.conversation_models import QuestionConversation
@@ -58,9 +58,8 @@ async def ask_workbook_question(
     summary = await parse_or_bad_request(
         file.filename or "", content, include_hidden_sheets
     )
-    included_sheets = {sheet.name for sheet in summary.sheets}
     data_index = await run_in_threadpool(
-        build_workbook_data_index, summary.filename, content, included_sheets
+        build_question_data_index, summary.filename, content, summary
     )
     try:
         return await WorkbookQuestionService(

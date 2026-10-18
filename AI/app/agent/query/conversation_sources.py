@@ -1,6 +1,8 @@
 """Re-read context references from this request's authorized workbook only."""
-from app.agent.query.references import _box, _contains, matching_references, normalize_reference
+from app.agent.query.references import _box, _contains, normalize_reference
 from app.agent.query.tabular_catalog import build_query_tables
+from app.agent.query.source_context_matches import context_matches
+from app.agent.query.source_context_readback import refresh_context_cells
 
 MAX_CONTEXT_CHARACTERS = 24_000
 MAX_ITEM_CELLS = 24
@@ -10,8 +12,8 @@ def source_bound_context(context, summary, index) -> list[dict]:
     if context is None:
         return []
     cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
-    available = set(cells)
     tables = build_query_tables(summary)
+    cells = refresh_context_cells(context, index, cells, tables)
     entries, size = [], 0
     # Recency matters under the character budget. Original IDs survive filtering.
     items = [(f"turn:{i}", turn) for i, turn in reversed(list(enumerate(context.turns)))]
@@ -19,9 +21,7 @@ def source_bound_context(context, summary, index) -> list[dict]:
     for key, item in items:
         matched = set()
         for ref in item.evidence:
-            normalized = normalize_reference(ref)
-            if normalized:
-                matched.update(matching_references(normalized, available))
+            matched.update(context_matches(ref, cells, index))
         if not matched:
             continue
         selected = [cells[ref] for ref in cells if ref in matched][:MAX_ITEM_CELLS]

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 
 from app.agent.query.cell_values import formula_text, safe_indexed_value
@@ -61,6 +61,7 @@ class WorkbookDataIndex:
     truncated_sheet_names: frozenset[str] = frozenset()
     source_digest: str = ""
     reference_metadata: ReferenceMetadata = ReferenceMetadata()
+    source_provider: object | None = field(default=None, compare=False, repr=False)
 
     def truncated_for(self, sheet_names: set[str], whole_workbook: bool = False) -> bool:
         if whole_workbook or not self.truncated_sheet_names:

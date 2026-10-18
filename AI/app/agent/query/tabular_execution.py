@@ -20,8 +20,6 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     plan = bind_tabular_plan(plan, table)
     if plan is None:
         return None
-    if not request_matches_plan(question, plan, table, tables, intent):
-        return None
     by_id = {column.id: column for column in table.columns}
     selected = query_columns(plan, table)
     if selected is None or (not selected and plan.operation != "row_count"):
@@ -30,7 +28,15 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     needed = set(selected) | {condition.column_id for condition in filters}
     if plan.order_by:
         needed.add(plan.order_by)
-    if not needed <= by_id.keys() or not validated_table(table, data_index, needed):
+    if not needed <= by_id.keys():
+        return None
+    fully_indexed = validated_table(table, data_index, needed)
+    if getattr(data_index, "source_provider", None) is not None and (
+        not table.complete or (data_index.truncated_for({table.sheet_name}) and not fully_indexed)
+    ):
+        from app.agent.query.streaming_tabular import execute_streaming_tabular
+        return execute_streaming_tabular(plan, table, tables, data_index, question, intent)
+    if not fully_indexed or not request_matches_plan(question, plan, table, tables, intent):
         return None
     rows = filtered_rows(table, filters)
     if rows is None:

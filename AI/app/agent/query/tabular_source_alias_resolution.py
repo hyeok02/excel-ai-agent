@@ -1,4 +1,5 @@
 """Resolve only an omitted source-language label; keep all numbers deterministic."""
+import asyncio
 from dataclasses import replace
 import re
 
@@ -8,7 +9,7 @@ from app.agent.query.quota_errors import raise_for_quota_exhaustion
 
 
 async def resolved_source_label_alias_answer(question, summary, data_index, intent, clarification, resolver=None):
-    direct = source_label_alias_answer(question, summary, data_index, intent, clarification)
+    direct = await asyncio.to_thread(source_label_alias_answer, question, summary, data_index, intent, clarification)
     if direct is not None:
         return direct
     request = alias_lookup_request(question, summary, intent, clarification)
@@ -39,5 +40,5 @@ async def resolved_source_label_alias_answer(question, summary, data_index, inte
         return None
     selected = values[result.candidate_id]
     updated = plan.model_copy(update={"filters": [condition.model_copy(update={"value": selected})]})
-    return source_label_alias_answer(question, summary, data_index,
-                                     replace(intent, tabular_query=updated), clarification)
+    return await asyncio.to_thread(source_label_alias_answer, question, summary, data_index,
+                                   replace(intent, tabular_query=updated), clarification)
