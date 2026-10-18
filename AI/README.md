@@ -64,6 +64,14 @@ The service runs at `http://localhost:8000`.
   answer; selecting a valid source cell does not authorize changing the requested
   unit or performing an exchange-rate conversion. Competing scopes require
   clarification rather than an arbitrary model choice.
+- Ambiguous source candidates also expose bounded `clarification_options` for
+  the UI. A clicked option sends `context.selection` with `source_question` and
+  `option_id`; the current workbook digest, candidate cells and canonical
+  question are revalidated before any model call. Candidates preserve the
+  original question's operations and constraints; selection only narrows the
+  source scope and never grants a verification badge by itself. Saved options
+  survive conversation restoration, but expired source files, stale choices and
+  cross-file choices cannot execute.
 - Two-table joins use typed keys and validate cardinality within the selected
   population. Unmatched left rows and unknown group membership remain visible
   as limited results. Relevant duplicate keys still block the join; additional
@@ -75,11 +83,40 @@ The service runs at `http://localhost:8000`.
   as recalculated, not as original saved Excel results. Unsupported array,
   approximate-match, locale-sensitive or external-data operations remain
   unavailable; `IFERROR` cannot turn unknown inputs into a verified zero.
+- Static workbook/sheet-scoped names and supported Excel table references can
+  resolve to original rectangular ranges, including table data, headers, totals
+  and unambiguous current-row references. The same resolver is used by aggregate
+  and lookup functions. Dynamic names, multi-area references, missing/excluded
+  sheets, missing calculated-column values and unsupported structured-reference
+  syntax stay unavailable. Package metadata has separate size limits; no
+  external refresh or workbook rewrite is performed.
 - Follow-up hints re-read the current workbook's cited cells, their corresponding
   column headers, section captions and number formats within the existing size
   budget. Wide-table fields are not replaced by the first few columns. Previous
   answer prose is not evidence, and inferred context does not receive
   request-wide verification.
+- Q&A retains its bounded prefix index (50,000 populated cells / 10,000 indexed
+  rows per sheet), but can stream a selected table's original rectangle when
+  that index or the analysis sample is incomplete. Counts, filtered lookups,
+  row lists, numeric statistics and bounded value frequencies require a complete
+  source scan and request/column/unit checks before receiving verification.
+  Hidden rows and native table totals are excluded; unknown values are not zero.
+  Partial reads never turn a sampled population into a verified total.
+  Inferred tables fail closed at ambiguous repeated/changed headers, subtotal
+  markers and numeric-to-text section transitions instead of silently combining
+  populations. Explicit hidden-column requests remain supported. Source cell
+  coordinates must agree with the scanned row and column, including malformed
+  worksheet XML. Small verified header anchors preserve large-range follow-ups
+  without treating previous answer prose as evidence.
+- Original-source reads share a request-local budget: 2,000,000 rectangular
+  cells, 250,000 rows, 16 reads and 20 seconds of source-read work. Exact small
+  cell/range requests and bounded follow-up evidence can also read beyond the
+  prefix, without merging disjoint reads into a falsely complete index.
+  Unsupported sorting/top-N, ambiguous table boundaries, missing formula caches
+  and budget exhaustion remain limited/unavailable where full proof is absent.
+  This is not unlimited-size upload support: initial workbook parsing still
+  loads workbook structure in memory, and generic search, joins and formula
+  dependency resolution retain their own existing coverage limits.
 
 These paths do not modify workbooks, execute macros or refresh external links.
 Offline tests cover the deterministic execution and verification contracts;

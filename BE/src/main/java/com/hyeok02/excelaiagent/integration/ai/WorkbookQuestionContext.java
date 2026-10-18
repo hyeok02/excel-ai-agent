@@ -7,17 +7,29 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /** Untrusted navigation hints only; answers and claimed facts are never forwarded. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record WorkbookQuestionContext(
 		@Size(max = 6) List<@NotNull @Valid Turn> turns,
-		@Size(max = 6) List<@NotNull @Valid Insight> insights) {
+		@Size(max = 6) List<@NotNull @Valid Insight> insights,
+		@Valid Selection selection) {
 
 	public WorkbookQuestionContext {
 		if (turns == null) turns = List.of();
 		if (insights == null) insights = List.of();
+	}
+
+	public WorkbookQuestionContext(List<Turn> turns, List<Insight> insights) {
+		this(turns, insights, null);
+	}
+
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public record Selection(
+			@JsonProperty("source_question") @NotBlank @Size(min = 2, max = 1000) String sourceQuestion,
+			@JsonProperty("option_id") @NotBlank @Pattern(regexp = "[0-9a-f]{64}") String optionId) {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)

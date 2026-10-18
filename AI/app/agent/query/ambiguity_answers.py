@@ -39,4 +39,4 @@ def ambiguous_source_answer(question, summary, data_index, intent=None):
         if getattr(intent, "kind", "other") == "comparison" or _COMPARISON.search(question):
             return None
         candidates = table_candidates(question, summary, data_index)
-    return clarification_answer(question, candidates) if candidates else None
+    return clarification_answer(question, candidates, summary, data_index) if candidates else None

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.agent.execution.models import AgentExecutionEvidence
 from app.agent.query.claim_models import SourceClaim
+from app.agent.query.clarification_models import SourceClarificationOption
 
 
 class QuestionAnswerStatus(StrEnum):
@@ -54,6 +55,7 @@ class QuestionAnswer(BaseModel):
     evidence: list[QuestionAnswerEvidence]
     limitations: list[str]
     verification: QuestionAnswerVerification = Field(default_factory=QuestionAnswerVerification)
+    clarification_options: list[SourceClarificationOption] = Field(default_factory=list, max_length=6)
 
 
 class QuestionAnswerGenerator(Protocol):

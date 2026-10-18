@@ -26,10 +26,12 @@ from app.agent.query.question_validation import unclear_draft_answer, vague_ques
 from app.agent.query.question_formula_answers import direct_formula_answer, missing_formula_answer
 from app.agent.query.question_formula_evidence import finish_formula_answer
 from app.agent.query.question_formula_sources import prepare_formula_sources
+from app.agent.query.question_search_scope import search_scope_truncated as _search_scope_truncated
 from app.agent.query.relational_execution import relational_query_answer
 from app.agent.query.relational_routing import missing_relational_plan_answer
 from app.agent.query.router import build_question_plan
 from app.agent.query.structure_answers import validated_structure_answer
+from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
 from app.agent.query.tabular_source_alias_resolution import resolved_source_label_alias_answer
 from app.agent.query.workbook_summary_answers import validated_workbook_summary_answer
@@ -65,6 +67,8 @@ class WorkbookQuestionService:
 
     async def _answer_prepared(self, question, sources) -> QuestionAnswer:
         summary, data_index = sources.summary, sources.index
+        if direct := await asyncio.to_thread(source_lookup_answer, question, sources):
+            return direct
         if clarification := vague_question_answer(question, data_index):
             return clarification
         if missing := missing_identifier_answer(question, data_index):
@@ -87,7 +91,7 @@ class WorkbookQuestionService:
         scalar = metric_scalar_answer(question, summary, data_index, intent)
         if scalar and scalar.status == "answered" and scalar.verification.level == "request_checked":
             return scalar
-        tabular = planned_tabular_answer(intent, summary, data_index, question)
+        tabular = await asyncio.to_thread(planned_tabular_answer, intent, summary, data_index, question)
         if tabular is not None and tabular.status != "insufficient_evidence":
             return tabular
         if scalar:
@@ -141,10 +145,3 @@ class WorkbookQuestionService:
         except Exception as exception:
             raise_for_quota_exhaustion(exception)
             return QuestionIntent.from_keywords(question)
-
-def _search_scope_truncated(execution) -> bool:
-    return any(
-        bool(step.result.data.get("index_truncated"))
-        for step in execution.steps
-        if step.result and isinstance(step.result.data, dict)
-    )

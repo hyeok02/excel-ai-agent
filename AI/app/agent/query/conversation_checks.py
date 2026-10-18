@@ -9,7 +9,8 @@ CONTEXT_CUE = re.compile(
     r"그\s+|그(?:중|거|것|건|걸|게|럼|래|렇|쪽|대로|때|항목|값|표|둘)|"
     r"(?:이|저|위|해당|앞선|방금|이전)\s*(?:항목|값|표|결과|내용|둘|질문|인사이트)|"
     r"(?:둘|두\s*개|나머지|전자는|후자는)|"
-    r"\b(?:those|these|them|it|both|former|latter|same|among|then)\b", re.I,
+    r"\b(?:those|these|them|it|both|former|latter|same|among|then)\b|"
+    r"\b(?:that|this)\s+(?:column|field)\b", re.I,
 )
 _NEGATION = re.compile(r"아닌|아니|않|없는|제외|말고|\b(?:not|except|excluding|without)\b", re.I)
 _OPERATIONS = (
@@ -38,6 +39,7 @@ def subject_only_followup(question: str, index) -> bool:
 
 def _content_preserved(original, rewritten):
     original = re.sub(r"(?:그|이|저|해당|위|앞선|방금|이전)\s*(?:항목|값|표|결과|내용|둘|질문)", " ", original)
+    original = re.sub(r"\b(?:of\s+)?(?:the\s+)?(?:same|that|this)\s+(?:column|field)\b", " ", original, flags=re.I)
     # Quoting a literal does not alter the attached Korean predicate: 신규인 == '신규'인.
     dequoted = re.sub(r"[\"'‘’“”]", "", rewritten)
     for word in content_words(original):

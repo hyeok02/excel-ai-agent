@@ -8,10 +8,11 @@ REFERENCE_FUNCTIONS = CONDITIONAL_FUNCTIONS | LOOKUP_FUNCTIONS | {"_XLFN.XLOOKUP
 
 
 def reference_function(node, evaluate, sheet, resolver, inputs, depth):
+    array = lambda arg: may_return_array(arg, lambda item: range_argument(item, sheet, resolver).array)
     def scalar(arg):
         # Reject arrays before their evaluation can turn one element's error into
         # an apparently valid scalar IFERROR fallback.
-        if may_return_array(arg):
+        if array(arg):
             raise FormulaUnavailable("unsupported_expression")
         value = evaluate(arg)
         if isinstance(value, list):
@@ -25,7 +26,7 @@ def reference_function(node, evaluate, sheet, resolver, inputs, depth):
     else:
         scalar_positions = {"INDEX": (1, 2), "MATCH": (0, 2), "VLOOKUP": (0, 2, 3),
                             "HLOOKUP": (0, 2, 3), "XLOOKUP": (0, 3, 4, 5)}[name]
-    if any(may_return_array(node.args[i]) for i in scalar_positions if i < len(node.args)):
+    if any(array(node.args[i]) for i in scalar_positions if i < len(node.args)):
         raise FormulaUnavailable("unsupported_expression")
     reference = lambda arg: range_argument(arg, sheet, resolver)
     read = lambda address: resolver.read(address, inputs, depth + 1)

@@ -2,6 +2,7 @@
 from typing import Annotated, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from app.agent.query.clarification_models import SourceClarificationSelection
 
 Reference = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 Question = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=1000)]
@@ -26,6 +27,7 @@ class QuestionConversation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     turns: list[ConversationTurn] = Field(default_factory=list, max_length=6)
     insights: list[ConversationInsight] = Field(default_factory=list, max_length=6)
+    selection: SourceClarificationSelection | None = None
 
 
 class ContextResolutionDraft(BaseModel):

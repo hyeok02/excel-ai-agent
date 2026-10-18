@@ -70,10 +70,11 @@ def request_matches_plan(question, plan, table, tables, intent=None):
             return False
     # Explicit labels are constraints. Prefer the longest matching label so that
     # "Amount" does not overrule a requested "Net Amount" column.
+    header_text = header_request_text(question, named_sheets)
     candidates = [(item, column) for item in tables
                   if not named_sheets or item.sheet_name in named_sheets
                   for column in item.columns
-                  if len(_normal(column.header)) >= 4 and _normal(column.header) in text]
+                  if len(_normal(column.header)) >= 4 and _normal(column.header) in header_text]
     candidates = [(item, column) for item, column in candidates
                   if not any(_normal(column.header) != _normal(other.header)
                              and _normal(column.header) in _normal(other.header)
@@ -109,9 +110,9 @@ def request_matches_plan(question, plan, table, tables, intent=None):
 
 
 def explicit_ranges(question):
-    return [(quoted or plain, first.upper() + (":" + last.upper() if last else ""))
+    return [(quoted.replace("''", "'") if quoted else plain, first.upper() + (":" + last.upper() if last else ""))
             for quoted, plain, first, last in re.findall(
-                r"(?:'([^']+)'|([\w& .-]+))!\$?([A-Za-z]{1,3}\$?[1-9]\d*)(?::\$?([A-Za-z]{1,3}\$?[1-9]\d*))?",
+                r"(?:'((?:[^']|'')+)'|([\w& .-]+))!\$?([A-Za-z]{1,3}\$?[1-9]\d*)(?::\$?([A-Za-z]{1,3}\$?[1-9]\d*))?",
                 question,
             )]
 
@@ -133,3 +134,12 @@ def _inside(inner, outer):
 
 def _normal(value):
     return re.sub(r"\s+", " ", str(value).casefold()).strip()
+
+
+def header_request_text(question, sheets):
+    text = _normal(question)
+    for sheet in sorted(sheets, key=len, reverse=True):
+        for spelling in ("'" + sheet.replace("'", "''") + "'", sheet):
+            text = re.sub(r"(?<!\w)" + re.escape(_normal(spelling))
+                          + r"(?=\s*(?:시트|sheet\b|!))", " ", text, flags=re.I)
+    return text

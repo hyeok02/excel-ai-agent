@@ -1,6 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from hashlib import sha256
 
 from app.agent.query.cell_values import formula_text, safe_indexed_value
+from app.agent.query.formula_reference_metadata import ReferenceMetadata
+from app.agent.query.formula_reference_package import read_reference_metadata
 from app.services.provenance import AnalysisEvidence, EvidenceKind
 from app.services.workbook_loading import close_workbook, load_workbook_pair
 
@@ -56,6 +59,9 @@ class WorkbookDataIndex:
     indexed_cell_count: int
     truncated: bool
     truncated_sheet_names: frozenset[str] = frozenset()
+    source_digest: str = ""
+    reference_metadata: ReferenceMetadata = ReferenceMetadata()
+    source_provider: object | None = field(default=None, compare=False, repr=False)
 
     def truncated_for(self, sheet_names: set[str], whole_workbook: bool = False) -> bool:
         if whole_workbook or not self.truncated_sheet_names:
@@ -107,7 +113,8 @@ def build_workbook_data_index(
         close_workbook(values)
     return WorkbookDataIndex(
         filename, tuple(rows), cell_count, bool(truncated_sheets),
-        frozenset(truncated_sheets),
+        frozenset(truncated_sheets), sha256(content).hexdigest(),
+        read_reference_metadata(content, {sheet.title for sheet in selected_sheets}),
     )
 
 

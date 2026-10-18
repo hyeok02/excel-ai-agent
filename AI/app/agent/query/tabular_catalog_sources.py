@@ -35,7 +35,7 @@ def table_sources(sheet):
         cells, complete, merged, hidden = _source_range(reference, regions)
         if cells:
             emitted.append(native.reference)
-            yield reference, cells, complete, merged, hidden
+            yield reference, cells, complete, merged, hidden, "native"
     grouped = defaultdict(list)
     for schema in sheet.column_schemas:
         grouped[schema.source_range].append(schema)
@@ -44,9 +44,9 @@ def table_sources(sheet):
             continue
         cells, complete, merged, hidden = _source_range(reference, regions)
         if len(cells) >= 4:
-            reference = _trimmed_range(reference, cells)
+            reference = _trimmed_range(reference, cells, complete)
             emitted.append(reference)
-            yield reference, cells, complete, merged, hidden
+            yield reference, cells, complete, merged, hidden, "schema"
     all_cells = {address: cell for _, cells in regions for address, cell in cells.items()}
     hidden_rows = {number for region, _ in regions for number in region.hidden_rows}
     merged = {span for region, _ in regions for span in region.merged_ranges}
@@ -54,17 +54,20 @@ def table_sources(sheet):
         if any(_overlaps(reference, known) for known in emitted):
             continue
         cells, complete, merged, hidden = _source_range(reference, regions)
+        if not complete:
+            continue  # A sample-inferred bottom is not an original population boundary.
         emitted.append(reference)
-        yield reference, cells, complete, merged, hidden
+        yield reference, cells, complete, merged, hidden, "report"
     for region, cells in regions:
         reference = f"{region.start_cell}:{region.end_cell}"
         if any(_overlaps(reference, known) for known in emitted):
             continue
-        for segment, segment_cells in _row_segments(reference, cells, region.hidden_rows):
+        segments = _row_segments(reference, cells, region.hidden_rows) if _complete(region) else [(reference, cells)]
+        for segment, segment_cells in segments:
             _, top, _, bottom = range_boundaries(segment)
             yield (segment, segment_cells, _complete(region),
                    region.merged_ranges,
-                   frozenset(row for row in region.hidden_rows if top <= row <= bottom))
+                   frozenset(row for row in region.hidden_rows if top <= row <= bottom), "region")
 
 
 def _source_range(reference, regions):
@@ -125,10 +128,10 @@ def _overlaps(first, second):
     return a <= g and e <= c and b <= h and f <= d
 
 
-def _trimmed_range(reference, cells):
+def _trimmed_range(reference, cells, complete=True):
     left, top, right, bottom = range_boundaries(reference)
     top = leaf_header_row(cells, left, top, right, bottom)
-    bottom = min(bottom, max(coordinate_to_tuple(key)[0] for key in cells))
+    bottom = min(bottom, max(coordinate_to_tuple(key)[0] for key in cells)) if complete else bottom
     return f"{get_column_letter(left)}{top}:{get_column_letter(right)}{bottom}"
 
 

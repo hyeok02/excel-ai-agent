@@ -1,6 +1,8 @@
 import { Bot, CheckCircle2, CircleAlert, ShieldQuestion } from 'lucide-react'
 
-import type { WorkbookQuestionAnswer } from '@/api/analysis'
+import QuestionClarificationChoices, {
+  type QuestionClarificationProps,
+} from '@/components/analysis/result/questions/QuestionClarificationChoices'
 import { resolvedQuestionLabel } from '@/components/analysis/result/questions/questionContext'
 import QuestionEvidenceList from '@/components/analysis/result/questions/QuestionEvidenceList'
 import { questionVerificationPresentation } from '@/components/analysis/result/questions/questionVerification'
@@ -36,7 +38,11 @@ const TONE = {
   },
 } as const
 
-const QuestionAnswerCard = ({ answer }: { answer: WorkbookQuestionAnswer }) => {
+const QuestionAnswerCard = ({
+  answer,
+  choicesDisabled,
+  onChoose,
+}: QuestionClarificationProps) => {
   const hasScopeLimit = answer.limitations.some((message) =>
     message.includes('검색 범위에서 제외'),
   )
@@ -78,6 +84,11 @@ const QuestionAnswerCard = ({ answer }: { answer: WorkbookQuestionAnswer }) => {
           <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
             {answer.answer}
           </p>
+          <QuestionClarificationChoices
+            answer={answer}
+            choicesDisabled={choicesDisabled}
+            onChoose={onChoose}
+          />
           {answer.selectedTools.length > 0 && (
             <details className="mt-3 text-xs text-slate-400">
               <summary className="cursor-pointer font-bold">확인 방법 보기</summary>

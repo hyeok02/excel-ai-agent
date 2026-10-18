@@ -2,8 +2,9 @@ import { ChevronDown } from 'lucide-react'
 
 import type { WorkbookQuestionAnswer } from '@/api/analysis'
 import QuestionAnswerCard from '@/components/analysis/result/questions/QuestionAnswerCard'
+import type { QuestionClarificationProps } from '@/components/analysis/result/questions/QuestionClarificationChoices'
 
-interface QuestionHistoryPanelProps {
+interface QuestionHistoryPanelProps extends Omit<QuestionClarificationProps, 'answer'> {
   answers: WorkbookQuestionAnswer[]
   hasEarlier: boolean
   isLoading: boolean
@@ -17,6 +18,8 @@ const QuestionHistoryPanel = ({
   isLoading,
   errorMessage,
   onLoadEarlier,
+  choicesDisabled,
+  onChoose,
 }: QuestionHistoryPanelProps) => {
   const previousAnswers = answers.slice(0, -1).reverse()
   if (!previousAnswers.length && !hasEarlier) return null
@@ -35,7 +38,9 @@ const QuestionHistoryPanel = ({
         {previousAnswers.map((answer, index) => (
           <QuestionAnswerCard
             answer={answer}
+            choicesDisabled={choicesDisabled}
             key={`${answer.question}-${previousAnswers.length - index}`}
+            onChoose={onChoose}
           />
         ))}
         {errorMessage && (
