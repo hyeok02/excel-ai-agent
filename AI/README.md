@@ -59,6 +59,21 @@ The service runs at `http://localhost:8000`.
 
 ## Q&A source handling
 
+- Chronological trend questions use a deterministic source-series path before
+  model-selected aggregates. Complete dated rows or horizontal period columns
+  are sorted by actual source dates, with net change separated from all rising,
+  falling and flat runs, reversals, extrema and the latest observed interval.
+  All periods are checked even when long output is abbreviated. Different
+  entities, conflicting same-date values, missing intermediate dates/values,
+  incompatible units/scenarios and incomplete source reads cannot receive a
+  verified trend. Existing source-label translations are reused; unknown names
+  are not guessed. Multi-metric questions, derived rate series, unsupported
+  filters/resampling and unresolved relative periods remain explicit limitations.
+  Matching copies of a series are deduplicated only with compatible source
+  context. A missing unit lowers verification without hiding checked numbers.
+  If an alternative table has ambiguous date axes, a complete table's result
+  may be shown with its explicit scope and a limited source-check badge; full
+  request verification requires resolving the source choice against the file.
 - Source fields can be bound by a unique complete label with a unit annotation.
   Explicit currency, scale, year and column selections still constrain the
   answer; selecting a valid source cell does not authorize changing the requested

@@ -1,6 +1,6 @@
 """Pair record metrics with their own as-of dates and source identities."""
 from app.agent.query.index import IndexedRow
-from app.agent.query.metric_observation_periods import source_period
+from app.agent.query.metric_observation_periods import source_period, source_period_grain
 from app.agent.query.metric_observation_cells import (
     MetricObservation, _DATE_HEADER, _METRIC_MODIFIERS, _human_label, _column,
     _numeric, _sheet_rows, _text_in_question, _normal, metric_label_matches,
@@ -46,7 +46,7 @@ def dated_record_observations(rows: list[IndexedRow], question: str) -> list[Met
                     if _record_header_changed(sheet_rows, header, row, metric, date_header):
                         continue
                     observations.append(MetricObservation(
-                        metric, value, period, date_cell, None, None,
+                        metric, value, period, date_cell, source_period_grain(date_cell.value), None,
                         (date_header,), tuple(identifiers),
                     ))
     return observations
