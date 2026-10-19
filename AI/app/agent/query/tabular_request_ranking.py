@@ -12,6 +12,7 @@ _FIRST = re.compile(r"(?:앞의|처음|첫|first)\s*(\d+)", re.I)
 
 def ranking_constraints_match(text, plan, table, *, streaming=False):
     grouped = getattr(plan, "group_by", ())
+    per = getattr(plan, "per_group_limit", None)
     request = ranking_request(text, table, grouped=bool(grouped), excluded=grouped)
     if request is False:
         return False, frozenset()
@@ -19,10 +20,15 @@ def ranking_constraints_match(text, plan, table, *, streaming=False):
         first = _FIRST.search(text)
         if first:
             return not plan.order_by and not grouped and plan.limit == int(first.group(1)), frozenset()
-        return plan.limit is None and plan.order_by is None, frozenset()
+        return plan.limit is None and plan.order_by is None and per is None, frozenset()
     count, descending, requested_metric = request.count, request.descending, request.metric
     if grouped:
-        metric_ok = (plan.order_by is None and plan.operation == "row_count" and requested_metric is None) or (
+        if per is not None:
+            return (plan.operation == "row_list" and plan.limit is None and per == count
+                    and requested_metric == plan.order_by and plan.order_by is not None
+                    and plan.descending == descending), frozenset()
+        metric_ok = (plan.order_by is None and plan.operation in {"row_count", "distinct_count"}
+                     and (requested_metric is None or requested_metric in plan.column_ids)) or (
             plan.operation == "numeric_summary" and plan.statistic != "all"
             and len(plan.column_ids) == 1 and plan.order_by in plan.column_ids
             and requested_metric == plan.order_by)

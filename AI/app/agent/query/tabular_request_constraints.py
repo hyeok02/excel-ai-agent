@@ -13,6 +13,8 @@ from app.agent.query.tabular_request_categories import categories_match
 from app.agent.query.tabular_request_literals import without_literals
 from app.agent.query.tabular_request_grouping import grouping_constraints_match
 from app.agent.query.ambiguity_labels import label_base
+from app.agent.query.tabular_advanced_language import advanced_operations_match, categorical_request_text
+from app.agent.query.tabular_having_language import without_checked_having
 
 
 def matches_constraints(question, plan, table, tables, *, streaming=False) -> bool:
@@ -21,14 +23,19 @@ def matches_constraints(question, plan, table, tables, *, streaming=False) -> bo
     # OR request as AND, even if all individual filter values occur in it.
     if re.search(r"\b(?:or|either)\b|또는|혹은", without_literals(text), re.I):
         return False
+    if not advanced_operations_match(text, plan, table):
+        return False
+    predicate_text = without_checked_having(text, plan, table)
+    if predicate_text is None:
+        return False
     if not grouping_constraints_match(text, plan, table) or not _statistic_matches(text, plan, table):
         return False
-    if not categories_match(text, plan, table):
+    if not categories_match(categorical_request_text(predicate_text, plan, text, table), plan, table):
         return False
     if not extra_filters_supported(text, plan, table):
         return False
     ranking_ok, rank_filters = ranking_constraints_match(text, plan, table, streaming=streaming)
-    return ranking_ok and numeric_constraints_match(text, plan, table, rank_filters)
+    return ranking_ok and numeric_constraints_match(predicate_text, plan, table, rank_filters)
 
 
 def _without_source_names(question, tables):
@@ -59,5 +66,7 @@ def _statistic_matches(text, plan, table):
     if plan.operation != "numeric_summary":
         return not requested if plan.order_by else True
     if getattr(plan, "group_by", ()):
+        if getattr(plan, "share_of_total", False) and not requested:
+            return plan.statistic == "sum"
         return (not requested and plan.statistic == "all") or requested == {plan.statistic}
     return not requested or plan.statistic == "all" or requested == {plan.statistic}

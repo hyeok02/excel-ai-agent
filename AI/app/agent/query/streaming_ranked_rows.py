@@ -68,3 +68,8 @@ class RankedRows:
         if len(entries) > limit and entries[limit - 1][0] == entries[limit][0]:
             lines.append(f"경계값이 같은 행은 원본 행 순서로 선택하여 {limit}개 행만 표시했습니다.")
         return "\n".join(lines), limitations
+
+    def boundary_tied(self):
+        entries = sorted(self.heap, key=lambda entry: entry[:2], reverse=True)
+        limit = self.plan.limit or 50
+        return len(entries) > limit and entries[limit - 1][0] == entries[limit][0]

@@ -121,13 +121,36 @@ The service runs at `http://localhost:8000`.
   Grouping dimensions, aggregate operation and ranking direction/count/metric
   are checked independently of the generated plan. Bounded witness rows cannot
   prove a population-wide source-rank permutation.
+- Aggregate predicates (`having`) run after the complete filtered population is
+  grouped. They do not substitute source-row filters. Shares of numeric sums or
+  row counts use the full filtered total before HAVING, ranking and display
+  limits. Output includes numerator, denominator and percentage; percentage
+  predicates compare exact cross products rather than rounded display values.
+  Unknown aggregates, mixed units, negative contributions and zero denominators
+  cannot receive a certified share. Independent source-bound request checks
+  reject missing/invented stages, metrics, operators or thresholds.
+- Exact distinct counts use one to three typed source columns, globally or per
+  group. Composite keys are counted as tuples, not independent-column counts.
+  Missing/whitespace keys and incomplete tuples are excluded explicitly; unknown
+  formula results are not blanks. State is bounded to 100,000 retained keys and
+  8,000,000 key characters across all groups. Global counts never sum group counts.
+- Per-group top/bottom-N retains at most N+1 candidates per group and checks every
+  eligible row. It is separate from ranking group aggregates or globally ranked
+  rows. Entity requests require nonblank identities that are unique throughout
+  each group, not just among the winners. The common source columns supply those
+  identities; no workbook/department/customer names are built into the engine.
+  Limits are 1,000 partitions, 10,000 retained rows, 2,000,000 retained value
+  characters and 500 displayed rows (whole groups only). Identity proofs are
+  bounded to 100,000 keys / 8,000,000 characters. Display omissions and cutoff
+  ties are explicit; failed computations discard the entire partial answer.
 - Original-source reads share a request-local budget: 2,000,000 rectangular
   cells, 250,000 rows, 16 reads and 20 seconds of source-read work. Exact small
   cell/range requests and bounded follow-up evidence can also read beyond the
   prefix, without merging disjoint reads into a falsely complete index.
-  Group-specific top-N, HAVING, distinct counts, ratios, include-all-ties and
-  ambiguous ranking metrics remain unavailable in the new grouped/streamed
-  paths. Ambiguous table boundaries, missing formula caches and budget exhaustion
+  Arbitrary ratios between columns, distinct-count shares, changed denominator
+  populations, include-all-ties and ambiguous ranking metrics remain unavailable.
+  Entity rankings that require aggregating multiple rows per entity first are
+  not substituted with raw-row rankings. Ambiguous table boundaries, missing formula caches and budget exhaustion
   also remain limited/unavailable where full proof is absent.
   This is not unlimited-size upload support: initial workbook parsing still
   loads workbook structure in memory, and generic search, joins and formula

@@ -62,6 +62,7 @@ class QuestionIntent:
             "frequencies": {"aggregation", "summary", "row_count"},
             "numeric_summary": {"aggregation"},
             "row_count": {"row_count", "aggregation"},
+            "distinct_count": {"row_count", "aggregation"},
             "lookup": {"cell_lookup"},
             "row_list": {"row_list"},
         }

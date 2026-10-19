@@ -6,6 +6,9 @@ from app.agent.query.streaming_tabular_numeric import NumericAccumulator
 from app.agent.query.tabular_filters import finite_number
 from app.agent.query.tabular_numeric import _unit_identity
 from app.agent.query.tabular_results import _display_cell
+from app.agent.query.formula_resolution_values import EXCEL_ERRORS
+from app.agent.query.grouped_aggregate_validation import valid_aggregate_plan
+from app.agent.query.grouped_distinct_state import DistinctState
 
 MAX_GROUPS = 1000
 MAX_AGGREGATES = 12000
@@ -26,6 +29,8 @@ def typed_key(value, style):
         label += f" (숫자; 원본값 {value})"
         return ("number", value, _unit_identity(spec)), label
     if isinstance(value, str):
+        if value.strip().upper() in EXCEL_ERRORS:
+            return None
         return ("text", value), f"{json.dumps(value, ensure_ascii=False)} (문자)"
     return None
 
@@ -35,6 +40,8 @@ class GroupState:
         self.labels = labels
         self.count = 0
         self.numeric = {key: NumericAccumulator() for key in measures}
+        self.distinct = set()
+        self.skipped = 0
 
 
 class GroupedState:
@@ -45,21 +52,10 @@ class GroupedState:
         self.groups = {}
         self.units = {key: NumericAccumulator() for key in self.measures}
         self.key_characters = 0
-        self.valid = self._valid_plan()
-
-    def _valid_plan(self):
-        plan = self.plan
-        if (plan.operation not in {"numeric_summary", "row_count"} or not plan.group_by
-                or len(set(plan.group_by)) != len(plan.group_by)
-                or not set(plan.group_by + plan.column_ids) <= self.columns.keys()):
-            return False
-        if plan.operation == "row_count":
-            return plan.order_by is None and set(plan.column_ids) <= set(plan.group_by)
-        if not self.measures or set(self.measures) & set(plan.group_by):
-            return False
-        if plan.order_by or plan.limit is not None:
-            return plan.order_by in self.measures and plan.statistic != "all"
-        return True
+        self.distinct = DistinctState(plan.column_ids) if plan.operation == "distinct_count" else None
+        self.valid = valid_aggregate_plan(plan, self.columns, self.measures)
+        if self.valid and not plan.group_by:
+            self.groups[()] = GroupState([], self.measures)
 
     def add(self, row):
         if not self.valid:
@@ -88,6 +84,8 @@ class GroupedState:
             self.key_characters += characters
             self.groups[identity] = GroupState([label for _, label in parts], self.measures)
         group = self.groups[identity]
+        if self.distinct is not None and not self.distinct.add(group, row, typed_key):
+            return False
         for key in self.measures:
             value, style = row.values.get(key), row.number_formats.get(key, "General")
             if value is None and row.formulas.get(key):

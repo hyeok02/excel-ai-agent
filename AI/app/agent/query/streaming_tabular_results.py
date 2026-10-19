@@ -3,7 +3,9 @@ from collections import Counter
 
 from app.agent.query.models import QuestionAnswer, QuestionAnswerEvidence, QuestionAnswerVerification
 from app.agent.query.streaming_tabular_numeric import NumericAccumulator
-from app.agent.query.tabular_results import aggregate_text, scope_description, _label
+from app.agent.query.tabular_results import aggregate_text, _label
+from app.agent.query.tabular_feature_contract import feature_contract_matches
+from app.agent.query.tabular_result_scope import result_scope as _result_scope
 from app.services.provenance import EvidenceKind
 
 
@@ -64,9 +66,14 @@ class StreamResult:
 
 
 def result_for(plan, table, selected):
+    if not feature_contract_matches(plan, table):
+        return None
     by_id = {column.id: column for column in table.columns}
     columns = [by_id[key] for key in selected]
-    if getattr(plan, "group_by", []):
+    if plan.per_group_limit is not None:
+        from app.agent.query.partitioned_ranked_rows import PartitionedRankedRows
+        return PartitionedRankedRows(plan, table)
+    if plan.group_by or plan.operation == "distinct_count":
         from app.agent.query.grouped_tabular_results import GroupedAccumulator
         return GroupedAccumulator(plan, table)
     if plan.operation == "row_list" and plan.order_by:
@@ -117,17 +124,3 @@ def stream_answer(question, table, needed, result, *, source_scanned=True):
         evidence=evidence, limitations=limitations,
         verification=QuestionAnswerVerification(level="request_checked", checks=checks),
     )
-
-
-def _result_scope(plan, table):
-    if not getattr(plan, "group_by", []):
-        return scope_description(plan, table)
-    columns = {column.id: column.header for column in table.columns}
-    basic = plan.model_copy(update={"order_by": None, "limit": None})
-    parts = [", ".join(columns[key] for key in plan.group_by) + "별 집계"]
-    if plan.order_by or plan.limit:
-        label = columns[plan.order_by] if plan.order_by else "행 개수"
-        parts.append(f"{label} {'내림차순' if plan.descending else '오름차순'}")
-    if plan.limit:
-        parts.append(f"앞의 {plan.limit}개 그룹")
-    return scope_description(basic, table) + ", ".join(parts) + "\n"

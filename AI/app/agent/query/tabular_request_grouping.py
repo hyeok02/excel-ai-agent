@@ -8,13 +8,12 @@ _JOIN = r"\s*(?:,|·|/|및|와|과|하고|and\b|&)\s*"
 _KEYS = rf"{_TOKEN}(?:\s*별)?(?:{_JOIN}{_TOKEN}(?:\s*별)?)*"
 _KOREAN = re.compile(rf"{_KEYS}\s*별", re.I)
 _ENGLISH = re.compile(rf"\b(?:group(?:ed)?\s+)?by\s+{_KEYS}", re.I)
+_PER = re.compile(rf"(?:각\s*{_KEYS}\s*(?:에서|내에서|마다)|{_KEYS}\s*마다|\b(?:per|each)\s+{_KEYS})", re.I)
 _STAT = r"합계|총합|평균|최솟값|최댓값|최소값|최대값|건수|개수|\b(?:sum|total|average|mean|minimum|maximum|count)\b"
 _UNSUPPORTED = re.compile(
-    r"\bhaving\b|\bdistinct\b|\bunique\b|중복\s*(?:제거|제외)|고유\s*(?:개수|건수)|"
-    r"비중|기여율|점유율|비율|증감률|증가율|\b(?:ratio|share|contribution|growth)\b|"
+    r"비율|증감률|증가율|\b(?:ratio|growth)\b|"
     r"중앙값|분산|표준\s*편차|누적|누계|\b(?:median|variance|stddev|cumulative|running)\b|"
-    r"나누[어기]|나눈|\b(?:divide|divided|per\s+capita)\b|"
-    r"각\s*(?:그룹|부류).*?(?:상위|하위)|\b(?:top|bottom)\b.*?\b(?:per|each)\b", re.I,
+    r"나누[어기]|나눈|\b(?:divide|divided|per\s+capita)\b", re.I,
 )
 
 
@@ -28,16 +27,16 @@ def grouping_constraints_match(text, plan, table):
     masked, identifiers = _source_tokens(text, table)
     if masked is None:
         return not grouped and not re.search(r"별|\b(?:group(?:ed)?\s+)?by\b", text, re.I)
-    spans = list(_KOREAN.finditer(masked))
+    spans = list(_KOREAN.finditer(masked)) + list(_PER.finditer(masked))
     # In a row-list request, "top 5 by Score" describes ordering, not grouping.
-    if grouped or plan.operation in {"numeric_summary", "row_count"}:
+    if plan.operation != "row_list" and (grouped or plan.operation in {"numeric_summary", "row_count", "distinct_count"}):
         spans.extend(_ENGLISH.finditer(masked))
     requested = {identifiers[int(number)] for span in spans
                  for number in re.findall(r"§(\d+)§", span.group())}
     if not grouped:
         return not requested or (plan.operation == "frequencies"
                                   and requested <= set(plan.column_ids))
-    if plan.operation not in {"numeric_summary", "row_count"} or requested != set(grouped):
+    if plan.operation not in {"numeric_summary", "row_count", "distinct_count", "row_list"} or requested != set(grouped):
         return False
     if plan.operation == "numeric_summary" and set(grouped) & set(plan.column_ids):
         return False
@@ -53,15 +52,13 @@ def grouping_constraints_match(text, plan, table):
         if re.match(_JOIN + r"[^§\s]", tail, re.I):
             return False
         remaining = remaining[:span.start()] + " " * (span.end() - span.start()) + remaining[span.end():]
-    if re.search(r"\b(?:group(?:ed)?\s+)?by\b|[^\s§]+별", remaining, re.I):
+    if re.search(r"\b(?:group(?:ed)?\s+)?by\b|[^\s§]+별", remaining, re.I) and plan.operation != "row_list":
         return False
     if _UNSUPPORTED.search(masked) or _derived_request(masked):
         return False
     if plan.operation == "numeric_summary" and not _measures_match(remaining, plan, identifiers):
         return False
-    # A threshold on an aggregate is HAVING, never a source-row filter.
-    return not re.search(rf"(?:{_STAT})[^.;!?]{{0,25}}(?:\d[\d,.]*\s*(?:이상|이하|초과|미만)|[<>≥≤])",
-                         masked, re.I)
+    return True
 
 
 def _derived_request(text):
@@ -80,9 +77,11 @@ def _measures_match(text, plan, identifiers):
     keys = rf"{_TOKEN}(?:{_JOIN}{_TOKEN})*"
     measures = set()
     operation = _STAT + (r"|요약|통계|\bsummary\b|\bstatistics\b" if plan.statistic == "all" else "")
+    if getattr(plan, "share_of_total", False):
+        operation += r"|비중|기여율|점유율|\b(?:share|contribution)\b"
     for statistic in re.finditer(operation, text, re.I):
         before = re.search(rf"({keys})\s*(?:(?:의|을|를)\s*)?$", text[:statistic.start()], re.I)
-        after = re.match(rf"\s*(?:of\s+)?({keys})", text[statistic.end():], re.I)
+        after = re.match(rf"\s*(?:of\s+)?(?:전체\s*|total\s+)?({keys})", text[statistic.end():], re.I)
         for match in (before, after):
             if match:
                 measures.update(identifiers[int(number)] for number in re.findall(r"§(\d+)§", match.group()))
@@ -116,6 +115,6 @@ def _quoted_sources(text, table):
         predicate = re.search(r"(?:=|\b(?:is|equals?|contains?|not))\s*$", before, re.I)
         field = re.search(rf"\bby\s*$|(?:{_STAT})\s*(?:of\s*)?$", before, re.I) or re.match(
             rf"\s*(?:별|(?:의\s*)?(?:{_STAT})|요약|통계)", after, re.I)
-        return value if value.casefold() in names and field and not predicate else " " * len(match.group())
+        return " " + value + " " if value.casefold() in names and field and not predicate else " " * len(match.group())
 
     return re.sub(r"'[^']*'|\"[^\"]*\"|‘[^’]*’|“[^”]*”", substitute, text)

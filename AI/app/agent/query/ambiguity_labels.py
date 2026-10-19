@@ -4,7 +4,7 @@ import unicodedata
 
 _UNIT = re.compile(
     r"(?<![a-z])(?:USD|EUR|KRW|JPY|GBP|CAD|AUD|CNY|INR|millions?|billions?|"
-    r"thousands?|000|M|B)(?![a-z])|[%$€£₩¥]|백만|십억|천|원|명|건", re.I,
+    r"thousands?|000|M|B)(?![a-z])|[%$€£₩¥]|백만|십억|(?:천만|만|억|조)원|천|원|명|건", re.I,
 )
 _PARTICLE = r"(?:에서의|으로의|로의|과의|와의|에서는|에서도|에는|에도|에서|으로|까지|부터|은|는|을|를|이|가|의|과|와|도|만|로|별|에)?"
 
