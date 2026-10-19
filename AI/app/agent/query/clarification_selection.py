@@ -4,12 +4,17 @@ from hmac import compare_digest
 
 from app.agent.query.ambiguity_answers import ambiguous_source_answer
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
+from app.agent.query.trend_answers import trend_answer
 
 
 async def answer_selected_source(question, selection, sources, answer_current):
     current = await asyncio.to_thread(
-        ambiguous_source_answer, selection.source_question, sources.summary, sources.index,
+        trend_answer, selection.source_question, sources.summary, sources.index,
     )
+    if current is None:
+        current = await asyncio.to_thread(
+            ambiguous_source_answer, selection.source_question, sources.summary, sources.index,
+        )
     option = next((option for option in current.clarification_options
                    if compare_digest(option.id, selection.option_id)
                    and option.question == question), None) if current else None

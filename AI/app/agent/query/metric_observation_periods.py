@@ -24,6 +24,7 @@ SCENARIOS = {
 LATEST = re.compile(r"최신|최근|현재|마지막|\b(?:latest|most\s+recent|current|last)\b", re.I)
 _COMPARISON = re.compile(r"비교|증감|변화|변동|차이|증가|감소|"
                          r"\b(?:compare|comparison|change|growth|difference|versus|vs|between)\b", re.I)
+_YEAR_FIRST = re.compile(r"(\d{4})([-/.])(\d{1,2})(?:\2(\d{1,2}))?")
 
 
 @dataclass(frozen=True)
@@ -48,14 +49,25 @@ def source_period(value: object) -> datetime | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
-        return datetime(int(value), 1, 1) if value == int(value) and 1900 <= value <= 2100 else None
+        return datetime(int(value), 1, 1) if 1900 <= value <= 2100 and value == int(value) else None
     if not isinstance(value, str):
         return None
+    if match := _YEAR_FIRST.fullmatch(value.strip()):
+        try:
+            return datetime(int(match[1]), int(match[3]), int(match[4] or 1))
+        except ValueError:
+            return None
     try:
         return datetime.fromisoformat(value.strip()).replace(tzinfo=None)
     except ValueError:
         match = re.fullmatch(r"(?:FY\s*)?((?:19|20)\d{2})(?:\s*[AE])?", value.strip(), re.I)
         return datetime(int(match[1]), 1, 1) if match else None
+
+
+def source_period_grain(value: object) -> str | None:
+    """An explicit year-month names a month, not an invented first-day record."""
+    match = _YEAR_FIRST.fullmatch(value.strip()) if isinstance(value, str) else None
+    return "month" if match and match[4] is None and source_period(value) is not None else None
 
 
 def qualifier(value: object, patterns: dict[str, re.Pattern]) -> str | None:

@@ -34,6 +34,7 @@ from app.agent.query.structure_answers import validated_structure_answer
 from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
 from app.agent.query.tabular_source_alias_resolution import resolved_source_label_alias_answer
+from app.agent.query.trend_answers import trend_answer
 from app.agent.query.workbook_summary_answers import validated_workbook_summary_answer
 from app.agent.query.verified_insight_answers import validated_verified_insight_answer
 from app.agent.registry import AgentToolRegistry
@@ -67,6 +68,8 @@ class WorkbookQuestionService:
 
     async def _answer_prepared(self, question, sources) -> QuestionAnswer:
         summary, data_index = sources.summary, sources.index
+        if trend := await asyncio.to_thread(trend_answer, question, summary, data_index):
+            return trend
         if direct := await asyncio.to_thread(source_lookup_answer, question, sources):
             return direct
         if clarification := vague_question_answer(question, data_index):

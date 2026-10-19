@@ -5,6 +5,7 @@ from decimal import Decimal
 from app.agent.query.comparison_value_format import comparison_values
 from app.agent.query.excel_number_formats import display_value, parse_number_format
 from app.agent.query.metric_observation_units import observation_unit
+from app.agent.query.metric_observation_periods import source_period_grain
 from app.agent.query.metric_observations import _normal
 from app.agent.query.models import QuestionAnswer, QuestionAnswerEvidence, QuestionAnswerStatus
 _GRAIN_NAMES = {"annual": "회계연도", "quarter": "분기", "month": "월간", "ltm": "최근 12개월"}
@@ -58,7 +59,9 @@ def _value(item, unit):
 
 def _period_label(item):
     date = item.period
-    text = f"{date.year}년 {date.month}월 {date.day}일"
+    text = f"{date.year}년 {date.month}월"
+    if source_period_grain(item.period_cell.value) != "month":
+        text += f" {date.day}일"
     parts = [_GRAIN_NAMES.get(item.grain), _SCENARIO_NAMES.get(item.scenario)]
     return text + (" " + " ".join(part for part in parts if part) if any(parts) else " 기준")
 

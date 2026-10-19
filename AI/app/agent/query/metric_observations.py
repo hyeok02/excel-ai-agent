@@ -1,7 +1,7 @@
 """Extract horizontal report values with source period/grain/scenario cells."""
 import re
 from app.agent.query.index import IndexedRow
-from app.agent.query.metric_observation_periods import GRAINS, SCENARIOS, qualifier, source_period
+from app.agent.query.metric_observation_periods import GRAINS, SCENARIOS, qualifier, source_period, source_period_grain
 from app.agent.query.metric_observation_cells import (
     MetricObservation, _DATE_HEADER, _human_label, _column, _numeric,
     _sheet_rows, _text_in_question, _normal, metric_label_matches,
@@ -41,6 +41,7 @@ def horizontal_observations(rows: list[IndexedRow], question: str) -> list[Metri
                     if date_cell is None:
                         continue
                     grain, grain_refs = _axis_qualifier(sheet_rows, axis, by_column, value, left, right, GRAINS)
+                    grain = grain or source_period_grain(date_cell.value)
                     scenario, scenario_refs = _axis_qualifier(sheet_rows, axis, by_column, value, left, right, SCENARIOS)
                     if isinstance(date_cell.value, str) and re.fullmatch(r"(?:FY\s*)?(?:19|20)\d{2}\s*[AE]", date_cell.value, re.I):
                         grain = "annual"
