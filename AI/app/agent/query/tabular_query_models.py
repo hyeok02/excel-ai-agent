@@ -23,6 +23,7 @@ class TabularQueryPlan(BaseModel):
     table_id: str
     column_scope: Literal["selected", "all_attributes"] = "selected"
     column_ids: list[str] = Field(default_factory=list, max_length=24)
+    group_by: list[str] = Field(default_factory=list, max_length=3)
     identity_column_ids: list[str] = Field(default_factory=list, max_length=24)
     filters: list[TabularFilter] = Field(default_factory=list, max_length=8)
     order_by: str | None = None

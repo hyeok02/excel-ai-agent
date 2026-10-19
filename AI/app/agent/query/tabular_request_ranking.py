@@ -5,35 +5,43 @@ from decimal import Decimal
 
 from app.agent.query.excel_number_formats import parse_number_format
 from app.agent.query.tabular_validation import filtered_rows, ordered_rows
+from app.agent.query.tabular_ranking_language import ranking_request
 
-_RANKING = re.compile(r"(?P<direction>상위|하위|top|bottom)\s*(?P<count>\d+)", re.I)
 _FIRST = re.compile(r"(?:앞의|처음|첫|first)\s*(\d+)", re.I)
 
 
-def ranking_constraints_match(text, plan, table):
-    matches = list(_RANKING.finditer(text))
-    if not matches:
+def ranking_constraints_match(text, plan, table, *, streaming=False):
+    grouped = getattr(plan, "group_by", ())
+    request = ranking_request(text, table, grouped=bool(grouped), excluded=grouped)
+    if request is False:
+        return False, frozenset()
+    if request is None:
         first = _FIRST.search(text)
         if first:
-            return plan.limit == int(first.group(1)), frozenset()
-        return plan.limit is None, frozenset()
-    if len(matches) != 1:
-        return False, frozenset()
-    match = matches[0]
-    count = int(match.group("count"))
-    descending = match.group("direction").casefold() in {"상위", "top"}
-    numeric = [column for column in plan.column_ids
+            return not plan.order_by and not grouped and plan.limit == int(first.group(1)), frozenset()
+        return plan.limit is None and plan.order_by is None, frozenset()
+    count, descending, requested_metric = request.count, request.descending, request.metric
+    if grouped:
+        metric_ok = (plan.order_by is None and plan.operation == "row_count" and requested_metric is None) or (
+            plan.operation == "numeric_summary" and plan.statistic != "all"
+            and len(plan.column_ids) == 1 and plan.order_by in plan.column_ids
+            and requested_metric == plan.order_by)
+        return (metric_ok and plan.limit == count and plan.descending == descending), frozenset()
+    if streaming:
+        # Witnesses are not the population. Complete-stream numeric/unit checks
+        # belong to the accumulator; a sampled 1..N rank is never proof.
+        return (plan.order_by is not None and requested_metric == plan.order_by
+                and plan.limit == count and plan.descending == descending), frozenset()
+    if plan.order_by and requested_metric in (None, plan.order_by):
+        rows = filtered_rows(table, plan.filters)
+        correct = (rows is not None and all(_number(row.values.get(plan.order_by)) for row in rows)
+                   and _compatible_units(table, plan.order_by, rows) and plan.descending == descending
+                   and plan.limit == count)
+        return correct, frozenset()
+    numeric = [column for column in dict.fromkeys([*plan.column_ids, plan.order_by]) if column is not None
                if all(_number(row.values.get(column)) for row in table.rows)]
-    preceding = [(found.end(), column.id) for column in table.columns
-                 for found in re.finditer(re.escape(column.header), text, re.I)
-                 if found.end() <= match.start() and match.start() - found.end() < 50]
-    requested_metric = max(preceding, default=(0, None))[1]
-    if plan.order_by:
-        metric = plan.order_by
-        if (requested_metric is None or requested_metric == metric) and metric in numeric:
-            correct = (_compatible_units(table, metric) and plan.descending == descending
-                       and plan.limit == count)
-            return correct, frozenset()
+    if count is None:
+        return False, frozenset()
     return _source_rank_matches(plan, table, numeric, requested_metric, count, descending)
 
 
@@ -80,7 +88,8 @@ def _number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-def _compatible_units(table, column):
-    specs = [parse_number_format(row.number_formats.get(column, "General")) for row in table.rows]
+def _compatible_units(table, column, rows=None):
+    specs = [parse_number_format(row.number_formats.get(column, "General"))
+             for row in (table.rows if rows is None else rows)]
     return len({(spec.percent, spec.multiplier, spec.divisor, spec.prefix, spec.suffix, spec.mode)
                 for spec in specs}) <= 1
