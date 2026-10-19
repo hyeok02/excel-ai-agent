@@ -42,12 +42,13 @@ def ranking_request(text, table, *, grouped=False, excluded=()):
     # "top 5 rows by Score" and "Score descending" share one contract.
     after = text[found.end():]
     by = re.search(r"\bby\s+", after, re.I)
-    if by and not grouped:
+    if by:
         candidates = [column.id for column in columns
                       if re.match(re.escape(column.header) + r"(?![A-Za-z0-9_])", after[by.end():], re.I)]
-        if len(candidates) != 1:
+        if len(candidates) != 1 and not grouped:
             return False
-        metric = candidates[0]
+        if len(candidates) == 1:
+            metric = candidates[0]
     return RankRequest(count, descending, metric)
 
 

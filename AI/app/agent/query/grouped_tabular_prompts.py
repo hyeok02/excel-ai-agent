@@ -1,4 +1,5 @@
 """Source-bound grouped statistics; no domain or workbook-specific rules."""
+from app.agent.query.advanced_tabular_prompts import ADVANCED_TABULAR_PROMPT
 
 GROUPED_TABULAR_PROMPT = """
 단일 표에서 '부서별 매출 합계', '지역과 부서별 평균', '부서별 건수 상위 3개'처럼
@@ -13,7 +14,6 @@ GROUPED_TABULAR_PROMPT = """
 - 그룹별 건수 상위/하위 N개: order_by=null, descending과 limit=N입니다.
 - 일반 행의 수치 상위/하위 N개: operation=row_list, group_by=[], order_by는
   순위 기준 열, column_ids에는 질문이 요청한 식별자/값을 모두 넣으세요.
-그룹별 비율/기여도, 집계 후 조건(HAVING), 그룹마다 개별 상위 N개, 중복 제외
-건수, 동점 전체 포함은 지원하지 않으므로 억지로 위 연산에 맞추지 말고 null로 두세요.
+임의 열 간 비율·기여도와 동점 전체 포함은 위 연산으로 대신하지 마세요.
 그룹 수치 순위의 집계 연산이 모호하면 추정하지 말고 null로 두세요.
-"""
+""" + ADVANCED_TABULAR_PROMPT

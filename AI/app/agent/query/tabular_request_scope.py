@@ -12,6 +12,7 @@ from app.agent.query.ambiguity_qualifiers import explicit_column_ids, qualified_
 from app.agent.query.metric_observation_cells import metric_label_matches
 from app.agent.query.tabular_request_constraints import matches_constraints
 from app.agent.query.tabular_request_categories import value_matches
+from app.agent.query.tabular_having_language import without_checked_having
 
 
 def request_matches_plan(question, plan, table, tables, intent=None, *, streaming=False):
@@ -19,6 +20,7 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
         allowed = {
             "lookup": {"cell_lookup"}, "row_list": {"row_list"},
             "row_count": {"row_count", "aggregation"},
+            "distinct_count": {"row_count", "aggregation"},
             "numeric_summary": {"aggregation"},
             "frequencies": {"aggregation", "summary", "row_count"},
         }
@@ -37,6 +39,7 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
         if sheet != table.sheet_name or not _inside(reference, table.reference):
             return False
     involved = set(plan.column_ids) | set(plan.group_by) | {item.column_id for item in plan.filters}
+    involved.update(item.column_id for item in getattr(plan, "having", ()) if item.column_id)
     if plan.order_by:
         involved.add(plan.order_by)
     if plan.column_scope == "all_attributes":
@@ -44,14 +47,14 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
     if not explicit_column_ids(question) <= involved:
         return False
     if plan.operation in {"numeric_summary", "lookup", "row_list"}:
-        if not requested_units_match(question, [column.header for column in table.columns
+        units_text = without_checked_having(question, plan, table) if getattr(plan, "having", ()) else question
+        if units_text is None or not requested_units_match(units_text, [column.header for column in table.columns
                                                if column.id in plan.column_ids
                                                and (plan.operation == "numeric_summary"
                                                     or label_base(column.header) != column.header)]):
             return False
     if plan.operation == "numeric_summary":
-        # Translated metric names must constrain the source fields too. Source
-        # values being valid does not make a debt total an answer about revenue.
+        # Translated metric names constrain source fields, not just valid values.
         metric_question = question
         for caption in contexts:
             metric_question = re.sub(re.escape(caption), " ", metric_question, flags=re.I)
@@ -70,8 +73,7 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
         semantic_headers -= {column.header for column in table.columns if column.id in plan.group_by}
         if semantic_headers and not semantic_headers <= selected_headers:
             return False
-    # Explicit labels are constraints. Prefer the longest matching label so that
-    # "Amount" does not overrule a requested "Net Amount" column.
+    # Prefer longest explicit labels: "Amount" must not overrule "Net Amount".
     header_text = header_request_text(question, named_sheets)
     candidates = [(item, column) for item in tables
                   if not named_sheets or item.sheet_name in named_sheets

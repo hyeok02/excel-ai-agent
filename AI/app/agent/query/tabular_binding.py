@@ -16,6 +16,8 @@ def bind_tabular_plan(plan, table):
             "identity_column_ids": [resolve(value) for value in plan.identity_column_ids],
             "filters": [condition.model_copy(update={"column_id": resolve(condition.column_id)})
                         for condition in plan.filters],
+            "having": [condition.model_copy(update={"column_id": resolve(condition.column_id)
+                        if condition.column_id else None}) for condition in plan.having],
             "order_by": resolve(plan.order_by) if plan.order_by else None,
         })
     except ValueError:

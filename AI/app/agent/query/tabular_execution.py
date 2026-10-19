@@ -7,6 +7,7 @@ from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_results import aggregate_text, query_evidence, scope_description
 from app.agent.query.tabular_request_scope import request_matches_plan, rows_match_explicit_ranges
 from app.agent.query.tabular_validation import filtered_rows, ordered_rows, query_columns, validated_table
+from app.agent.query.tabular_feature_contract import feature_contract_matches, has_bounded_features
 
 
 def execute_tabular_query(plan, summary, data_index, question: str, intent=None) -> QuestionAnswer | None:
@@ -18,7 +19,7 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         return None
     table = matches[0]
     plan = bind_tabular_plan(plan, table)
-    if plan is None:
+    if plan is None or not feature_contract_matches(plan, table):
         return None
     by_id = {column.id: column for column in table.columns}
     selected = query_columns(plan, table)
@@ -30,7 +31,7 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         needed.add(plan.order_by)
     if not needed <= by_id.keys():
         return None
-    bounded_query = bool(getattr(plan, "group_by", [])) or plan.operation == "row_list" and bool(plan.order_by)
+    bounded_query = has_bounded_features(plan)
     fully_indexed = validated_table(table, data_index, needed)
     if getattr(data_index, "source_provider", None) is not None and (
         not table.complete or (data_index.truncated_for({table.sheet_name}) and not fully_indexed)

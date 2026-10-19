@@ -72,7 +72,7 @@ value_unit=raw입니다. 단순 이름/ID 일치는 equals, 명시적인 부분 
 집계합니다. 지정한 행 순서만 요구하는 경우 order_by=null로 원본 순서를
 유지합니다. 조건이 없는 일반 질문에는 limit=null입니다.
 all_attributes는 frequencies에서만 사용하고, 그 밖의 연산은 selected로
-두세요. 특정 열만 요청하면 identity_column_ids=[]입니다.
+두세요. 특정 열만 요청하면 identity_column_ids=[]이며, 그룹 내 개체 순위 검증은 예외입니다.
 기간별 증감 등 위 연산으로 답할 수 없는
 질문이나 열/표가 모호하면 tabular_query=null로 두세요. 전체 파일 소개나
 시트 구성 질문도 null입니다. 계획이 있으면 scope=specific입니다.
