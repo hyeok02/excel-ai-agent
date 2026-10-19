@@ -108,12 +108,27 @@ The service runs at `http://localhost:8000`.
   coordinates must agree with the scanned row and column, including malformed
   worksheet XML. Small verified header anchors preserve large-range follow-ups
   without treating previous answer prose as evidence.
+- Single-table grouped counts and numeric statistics use up to three typed
+  source dimensions. Filters run before grouping; sums, means and extrema use
+  every matching original row before groups are ranked. Numeric row top/bottom-N
+  keeps at most N+1 candidates (N <= 100) while checking every candidate's sort
+  value and unit. Group state is bounded to 1,000 groups, 12,000 accumulators and
+  512,000 key-label characters. Exceeding a bound discards the partial result.
+  Numeric/text/boolean keys stay distinct, blank keys form an explicit group,
+  and a blank numeric population is never replaced by zero. Stable ties follow
+  source occurrence order; cutoff ties are disclosed. Without an explicit N,
+  output is limited to 50 rows/groups with an explicit display-limit notice.
+  Grouping dimensions, aggregate operation and ranking direction/count/metric
+  are checked independently of the generated plan. Bounded witness rows cannot
+  prove a population-wide source-rank permutation.
 - Original-source reads share a request-local budget: 2,000,000 rectangular
   cells, 250,000 rows, 16 reads and 20 seconds of source-read work. Exact small
   cell/range requests and bounded follow-up evidence can also read beyond the
   prefix, without merging disjoint reads into a falsely complete index.
-  Unsupported sorting/top-N, ambiguous table boundaries, missing formula caches
-  and budget exhaustion remain limited/unavailable where full proof is absent.
+  Group-specific top-N, HAVING, distinct counts, ratios, include-all-ties and
+  ambiguous ranking metrics remain unavailable in the new grouped/streamed
+  paths. Ambiguous table boundaries, missing formula caches and budget exhaustion
+  also remain limited/unavailable where full proof is absent.
   This is not unlimited-size upload support: initial workbook parsing still
   loads workbook structure in memory, and generic search, joins and formula
   dependency resolution retain their own existing coverage limits.

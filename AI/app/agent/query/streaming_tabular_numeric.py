@@ -45,6 +45,15 @@ class NumericAccumulator:
         self.count += 1
         return True
 
+    def value(self, statistic):
+        if not self.count or statistic not in {"sum", "average", "min", "max"}:
+            return None
+        with localcontext() as context:
+            context.prec = max(28, len(self.total.as_tuple().digits) + abs(self.total.as_tuple().exponent)
+                               + len(str(self.count)) + 5)
+            return {"sum": self.total, "average": self.total / self.count,
+                    "min": self.minimum, "max": self.maximum}[statistic]
+
     def render(self, statistic):
         if not self.count:
             return None

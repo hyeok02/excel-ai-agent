@@ -14,7 +14,7 @@ from app.agent.query.tabular_request_constraints import matches_constraints
 from app.agent.query.tabular_request_categories import value_matches
 
 
-def request_matches_plan(question, plan, table, tables, intent=None):
+def request_matches_plan(question, plan, table, tables, intent=None, *, streaming=False):
     if intent is not None:
         allowed = {
             "lookup": {"cell_lookup"}, "row_list": {"row_list"},
@@ -36,7 +36,7 @@ def request_matches_plan(question, plan, table, tables, intent=None):
     for sheet, reference in explicit_ranges(question):
         if sheet != table.sheet_name or not _inside(reference, table.reference):
             return False
-    involved = set(plan.column_ids) | {item.column_id for item in plan.filters}
+    involved = set(plan.column_ids) | set(plan.group_by) | {item.column_id for item in plan.filters}
     if plan.order_by:
         involved.add(plan.order_by)
     if plan.column_scope == "all_attributes":
@@ -65,7 +65,9 @@ def request_matches_plan(question, plan, table, tables, intent=None):
                             and (metric_label_matches(column.header, metric_question)
                                  or source_mentioned(label_base(column.header), metric_question))}
         semantic_headers = qualified_labels(metric_question, semantic_headers)
-        selected_headers = {column.header for column in table.columns if column.id in involved}
+        selected_headers = {column.header for column in table.columns
+                            if column.id in involved and column.id not in plan.group_by}
+        semantic_headers -= {column.header for column in table.columns if column.id in plan.group_by}
         if semantic_headers and not semantic_headers <= selected_headers:
             return False
     # Explicit labels are constraints. Prefer the longest matching label so that
@@ -106,7 +108,7 @@ def request_matches_plan(question, plan, table, tables, intent=None):
                  for match in re.finditer(identifier_pattern, value)}
     if any(identifier.casefold() not in filters | bound_ids for identifier in identifiers):
         return False
-    return matches_constraints(question, plan, table, tables)
+    return matches_constraints(question, plan, table, tables, streaming=streaming)
 
 
 def explicit_ranges(question):

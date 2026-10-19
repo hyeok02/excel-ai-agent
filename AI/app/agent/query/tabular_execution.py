@@ -25,19 +25,24 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     if selected is None or (not selected and plan.operation != "row_count"):
         return None
     filters = plan.filters or []
-    needed = set(selected) | {condition.column_id for condition in filters}
+    needed = set(selected) | set(getattr(plan, "group_by", [])) | {condition.column_id for condition in filters}
     if plan.order_by:
         needed.add(plan.order_by)
     if not needed <= by_id.keys():
         return None
+    bounded_query = bool(getattr(plan, "group_by", [])) or plan.operation == "row_list" and bool(plan.order_by)
     fully_indexed = validated_table(table, data_index, needed)
     if getattr(data_index, "source_provider", None) is not None and (
         not table.complete or (data_index.truncated_for({table.sheet_name}) and not fully_indexed)
+        or bounded_query and not fully_indexed
     ):
         from app.agent.query.streaming_tabular import execute_streaming_tabular
         return execute_streaming_tabular(plan, table, tables, data_index, question, intent)
     if not fully_indexed or not request_matches_plan(question, plan, table, tables, intent):
         return None
+    if bounded_query:
+        from app.agent.query.indexed_accumulation_execution import execute_indexed_accumulation
+        return execute_indexed_accumulation(plan, table, selected, needed, question, data_index)
     rows = filtered_rows(table, filters)
     if rows is None:
         return None

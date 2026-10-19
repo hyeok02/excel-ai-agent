@@ -63,7 +63,21 @@ class StreamResult:
         return "\n".join(lines), list(dict.fromkeys(limitations))
 
 
-def stream_answer(question, table, needed, result):
+def result_for(plan, table, selected):
+    by_id = {column.id: column for column in table.columns}
+    columns = [by_id[key] for key in selected]
+    if getattr(plan, "group_by", []):
+        from app.agent.query.grouped_tabular_results import GroupedAccumulator
+        return GroupedAccumulator(plan, table)
+    if plan.operation == "row_list" and plan.order_by:
+        from app.agent.query.streaming_ranked_rows import RankedRows
+        return RankedRows(plan, columns)
+    if plan.order_by or plan.limit is not None:
+        return None
+    return StreamResult(plan, columns)
+
+
+def stream_answer(question, table, needed, result, *, source_scanned=True):
     text, limitations = result.render()
     if text is None:
         return None
@@ -93,11 +107,27 @@ def stream_answer(question, table, needed, result):
         value=column.header,
         description="전체 원본 재조회에서 직접 확인한 집계 대상 표의 열 머리글",
     ) for column in table.columns if column.id in needed or not needed and column.id not in table.hidden_columns)
+    checks = ["source_values", "table_scope", "request_alignment", "calculation"]
+    if source_scanned:
+        checks.append("full_source_scan")
     return QuestionAnswer(
-        question=question, answer=scope_description(result.plan, table) + text,
+        question=question, answer=_result_scope(result.plan, table) + text,
         status="limited" if limitations else "answered", confidence=0.9 if limitations else 1,
-        selected_tools=["tabular_query", "stream_original_table"], evidence=evidence, limitations=limitations,
-        verification=QuestionAnswerVerification(level="request_checked", checks=[
-            "source_values", "table_scope", "request_alignment", "calculation", "full_source_scan",
-        ]),
+        selected_tools=["tabular_query", "stream_original_table"] if source_scanned else ["tabular_query"],
+        evidence=evidence, limitations=limitations,
+        verification=QuestionAnswerVerification(level="request_checked", checks=checks),
     )
+
+
+def _result_scope(plan, table):
+    if not getattr(plan, "group_by", []):
+        return scope_description(plan, table)
+    columns = {column.id: column.header for column in table.columns}
+    basic = plan.model_copy(update={"order_by": None, "limit": None})
+    parts = [", ".join(columns[key] for key in plan.group_by) + "별 집계"]
+    if plan.order_by or plan.limit:
+        label = columns[plan.order_by] if plan.order_by else "행 개수"
+        parts.append(f"{label} {'내림차순' if plan.descending else '오름차순'}")
+    if plan.limit:
+        parts.append(f"앞의 {plan.limit}개 그룹")
+    return scope_description(basic, table) + ", ".join(parts) + "\n"

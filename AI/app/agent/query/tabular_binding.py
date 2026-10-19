@@ -12,6 +12,7 @@ def bind_tabular_plan(plan, table):
     try:
         return plan.model_copy(update={
             "column_ids": [resolve(value) for value in plan.column_ids],
+            "group_by": [resolve(value) for value in plan.group_by],
             "identity_column_ids": [resolve(value) for value in plan.identity_column_ids],
             "filters": [condition.model_copy(update={"column_id": resolve(condition.column_id)})
                         for condition in plan.filters],
