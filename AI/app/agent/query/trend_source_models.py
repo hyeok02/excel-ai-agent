@@ -14,3 +14,4 @@ class TrendCandidate:
     context: tuple[IndexedCell, ...] = ()
     error: str | None = None
     hidden_rows: int = 0
+    period_note: str = ""

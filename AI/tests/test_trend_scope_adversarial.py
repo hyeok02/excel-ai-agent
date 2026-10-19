@@ -67,7 +67,6 @@ def test_partial_index_without_original_provider_cannot_certify_full_history():
 
 @pytest.mark.parametrize("question", [
     "전체 직원 수가 120 이상인 기간만 추이를 설명해줘",
-    "2024년 6월 이후 전체 직원 수의 기간별 추이를 설명해줘",
     "서울의 전체 직원 수의 기간별 추이를 설명해줘",
     "없는부서 직원 수의 기간별 추이를 설명해줘",
     "전체 직원 수와 Revenue의 기간별 추이를 설명해줘",
@@ -79,6 +78,16 @@ def test_extra_user_scope_cannot_be_ignored(question):
     # If a future implementation supports the extra scope, these cases should
     # be replaced with an independent calculation oracle, never a loose badge.
     not_certified(answer)
+
+
+def test_inclusive_since_window_has_its_own_calculation_oracle():
+    summary, index = source()
+    answer = direct(summary, index, "2024년 6월 이후 전체 직원 수의 기간별 추이를 설명해줘")
+    assert answer.verification.level == "request_checked"
+    assert "150명 → 130명, 20명 감소(-13.33%)" in answer.answer
+    assert "3개 관측값" in answer.answer
+    assert "2024-03-31" not in answer.answer
+    assert "2024-06-01" in answer.answer and "경계 포함" in answer.answer
 
 
 @pytest.mark.parametrize("modifier", ["증가율", "감소율", "비율", "growth rate", "percentage"])

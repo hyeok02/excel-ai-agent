@@ -9,11 +9,13 @@ from app.agent.query.metric_observation_periods import source_period, source_per
 from app.agent.query.trend_source_models import MAX_TREND_OBSERVATIONS, TrendCandidate
 from app.agent.query.trend_source_readback import column_cells, table_rows
 from app.agent.query.trend_source_context import verified_context
+from app.agent.query.trend_source_scope import scope_dated_items
+from app.agent.query.trend_labels import trend_metric_label_matches
 
 _IDENTITY = re.compile(r"\b(?:id|code|identifier|key)\b|코드|식별자|식별번호", re.I)
 
 
-def vertical_candidate(table, metric, tables, index, question):
+def vertical_candidate(table, metric, tables, index, question, source_names=()):
     rows, error = table_rows(table, tables, index, question)
     from app.agent.query.workbook_source import source_for
     provider = source_for(index)
@@ -49,7 +51,17 @@ def vertical_candidate(table, metric, tables, index, question):
     date_header = cells.get(date.header_reference)
     if date_header is None:
         return replace(base, context=(label,), error="source_mismatch")
-    records, identities, error = _identity_records(table, records, metric.id, date.id, question)
+    selected, identities, identity_error = _identity_records(table, records, metric.id, date.id, question)
+    if identity_error:
+        selected = records
+    identifiers = identities if not identity_error else [
+        cell for row in records for column, cell in row.items() if column not in {metric.id, date.id}]
+    records, note, error = scope_dated_items(
+        question, label, [(row, row.get(date.id)) for row in selected], (*identifiers, *captions),
+        relative_error=identity_error, missing_date_error="missing_or_invalid_value", source_names=source_names)
+    base = replace(base, period_note=note)
+    if not error and identity_error:
+        records, identities, error = _identity_records(table, records, metric.id, date.id, question)
     context = (label, date_header, *identities, *captions)
     if error:
         return replace(base, context=context, error=error)
@@ -71,11 +83,18 @@ def vertical_candidate(table, metric, tables, index, question):
 
 
 def _identity_records(table, records, metric, date, question):
+    if not records:
+        return records, [], None
     identities = []
     for column in table.columns:
         if column.id in {metric, date}:
             continue
         values = [row.get(column.id) for row in records]
+        # Another explicitly requested numeric measure is not an entity key.
+        # Its own candidate still validates every in-window value independently.
+        if not _IDENTITY.search(column.header) and trend_metric_label_matches(column.header, question) \
+                and any(cell is not None and _numeric(cell.value) for cell in values):
+            continue
         texts = [cell for cell in values if cell and isinstance(cell.value, str)
                  and cell.value.strip() and source_period(cell.value) is None]
         if not texts and not _IDENTITY.search(column.header):

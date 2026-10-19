@@ -14,9 +14,10 @@ from app.agent.query.tabular_catalog_sources import cell_value, source_cells, ta
 from app.agent.query.trend_source_context import verified_context
 from app.agent.query.trend_source_models import MAX_TREND_OBSERVATIONS, TrendCandidate
 from app.agent.query.trend_source_readback import rectangle_rows
+from app.agent.query.trend_source_scope import scope_dated_items
 
 
-def horizontal_candidates(summary, index, question):
+def horizontal_candidates(summary, index, question, source_names=()):
     result = []
     for sheet in summary.sheets:
         sheet_cells = {address: cell for region in sheet.regions for address, cell in source_cells(region).items()}
@@ -60,7 +61,7 @@ def horizontal_candidates(summary, index, question):
                                                      "ambiguous_date_axis", len(hidden)))
                         continue
                     candidate = _candidate(sheet.name, reference, label, row, axis, dates,
-                                           visible, left, right, len(hidden))
+                                           visible, left, right, len(hidden), question, captions or (), source_names)
                     if captions is None:
                         candidate = replace(candidate, error="source_mismatch")
                     else:
@@ -70,7 +71,7 @@ def horizontal_candidates(summary, index, question):
     return result
 
 
-def _candidate(sheet, reference, label, row, axis, dates, rows, left, right, hidden):
+def _candidate(sheet, reference, label, row, axis, dates, rows, left, right, hidden, question, captions, source_names):
     base = TrendCandidate(f"{sheet}!{reference}", (), (label,), hidden_rows=hidden)
     by_column = {_column(cell): cell for cell in dates if left < _column(cell) < right}
     values = {_column(cell): cell for cell in row.cells if left < _column(cell) < right}
@@ -80,6 +81,12 @@ def _candidate(sheet, reference, label, row, axis, dates, rows, left, right, hid
                                if cell.value not in (None, "") or cell.formula}
     if len(occupied) > MAX_TREND_OBSERVATIONS:
         return replace(base, error="resource_limit")
+    occupied, note, error = scope_dated_items(
+        question, label, [(column, axis_cells.get(column)) for column in sorted(occupied)], captions,
+        source_names=source_names)
+    base = replace(base, period_note=note)
+    if error:
+        return replace(base, error=error)
     observations = []
     for column in sorted(occupied):
         period_cell, value = axis_cells.get(column), values.get(column)

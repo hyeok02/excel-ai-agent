@@ -63,12 +63,24 @@ The service runs at `http://localhost:8000`.
   model-selected aggregates. Complete dated rows or horizontal period columns
   are sorted by actual source dates, with net change separated from all rising,
   falling and flat runs, reversals, extrema and the latest observed interval.
-  All periods are checked even when long output is abbreviated. Different
+  All periods inside the requested date window are checked even when long
+  output is abbreviated. Original dates are bound before value, duplicate and
+  unit checks: a provably out-of-window bad value cannot block an otherwise
+  complete requested series. Unknown dates and incomplete/mismatched source
+  reads still block verification; they are never presumed out of scope. Different
   entities, conflicting same-date values, missing intermediate dates/values,
   incompatible units/scenarios and incomplete source reads cannot receive a
   verified trend. Existing source-label translations are reused; unknown names
-  are not guessed. Multi-metric questions, derived rate series, unsupported
-  filters/resampling and unresolved relative periods remain explicit limitations.
+  are not guessed. Explicitly named metrics can be compared as separate full
+  trajectories (up to six): direct endpoint/change differences require aligned
+  dates, units and entity context. Missing requested metrics cannot disappear
+  behind another metric's verified answer. Mismatched scopes remain limited
+  individual trajectories, not an implicit join, conversion or resampling.
+  Open date bounds and rolling `최근 1년` / `last 6 months` windows are supported.
+  Rolling windows use the selected source's latest observation date, not today,
+  and disclose the anchor and inclusive boundaries. Korean 이후/이전 include
+  the named calendar period; English after/before exclude it. Unknown/ambiguous
+  anchors, derived rate series and unsupported filters remain limitations.
   Matching copies of a series are deduplicated only with compatible source
   context. A missing unit lowers verification without hiding checked numbers.
   If an alternative table has ambiguous date axes, a complete table's result
