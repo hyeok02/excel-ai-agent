@@ -11,6 +11,8 @@ from app.agent.query.trend_selection import (
 )
 from app.agent.query.trend_sources import trend_candidates
 from app.agent.query.trend_render import render_trend, trend_witness_indices
+from app.agent.query.trend_comparison import comparison_answer, comparison_candidates, comparison_missing_metrics
+from app.agent.query.trend_comparison_scope import explicit_metric_labels
 
 _REASONS = {
     "ambiguous_date_axis": "한 지표에 연결할 날짜 열이 여러 개여서 임의로 선택하지 않았습니다.",
@@ -23,6 +25,7 @@ _REASONS = {
     "conflicting_units": "원본 표시 형식과 단위 설명이 충돌하여 추이를 확정하지 못했습니다.",
     "insufficient_periods": "추이를 설명하려면 서로 다른 날짜의 유효한 값이 두 개 이상 필요합니다.",
     "resource_limit": "전체 시계열 확인 한도를 넘었습니다. 일부 기간만 읽고 전체 추이라고 답하지 않았습니다.",
+    "outside_requested_period": "요청한 날짜 범위에 원본 관측값이 없습니다.",
 }
 
 
@@ -30,18 +33,28 @@ def trend_answer(question, summary, index, intent=None):
     if not asks_trend(question):
         return None
     candidates, named = scoped_trend_candidates(question, trend_candidates(summary, index, question), summary)
+    candidates = comparison_candidates(question, candidates)
     rows = list(index.rows)
     prepared = [prepare_trend_candidate(item, rows) for item in candidates]
-    valid = distinct_trend_candidates([(item, units) for item, units in prepared if not item.error])
+    valid = distinct_trend_candidates([(item, units) for item, units in prepared if not item.error],
+                                     preserve_labels=len(explicit_metric_labels(question, candidates)) >= 2)
     if not valid:
-        reason = next((_REASONS[item.error] for item, _ in prepared if item.error in _REASONS), None)
+        reason = next((item.error.removeprefix("date_scope:") for item, _ in prepared
+                       if item.error and item.error.startswith("date_scope:")), None)
+        reason = reason or next((_REASONS[item.error] for item, _ in prepared if item.error in _REASONS), None)
         return _unavailable(question, reason or "요청한 항목의 날짜와 전체 원본 값을 연결하지 못했습니다. 날짜 열과 지표가 있는 표를 지정해 주세요.")
-    if any(item.error and item.error != "ambiguous_date_axis" for item, _ in prepared):
+    if any(item.error and item.error not in {"ambiguous_date_axis", "outside_requested_period"}
+           for item, _ in prepared):
         return _unavailable(question, "같은 항목의 다른 원본 후보에 누락값이나 확인하지 못한 범위가 있습니다. 완전한 표만 임의로 선택하지 않았습니다. 사용할 시트와 표 범위를 지정해 주세요.")
+    if comparison_missing_metrics(question, candidates, valid):
+        return _unavailable(question, "비교하도록 지정한 항목 중 요청 기간의 원본 값을 확인하지 못한 항목이 있습니다. 나머지 항목만으로 전체 비교를 대신하지 않았습니다.")
+    scope_ambiguous = any(item.error == "ambiguous_date_axis" for item, _ in prepared)
     if len(valid) > 1:
+        compared = comparison_answer(question, valid, rows, named, summary, index, scope_ambiguous=scope_ambiguous)
+        if compared is not None:
+            return compared
         return clarification_answer(question, [_choice(question, item) for item, _ in valid], summary, index)
     candidate, units = valid[0]
-    scope_ambiguous = any(item.error == "ambiguous_date_axis" for item, _ in prepared)
     _, scoped_question = bind_explicit_metric_scope(question, candidate.observations)
     if scoped_question != question:
         import re
@@ -69,7 +82,7 @@ def trend_answer(question, summary, index, intent=None):
         limitations.append("수치는 원본 저장값 기준입니다. 통화·수량 단위까지는 확정하지 못했습니다.")
     if candidate.hidden_rows:
         limitations.append(f"숨겨진 {candidate.hidden_rows}개 행을 제외한 표시 데이터의 추이입니다.")
-    text = f"원본 범위: {candidate.table_id}\n" + text
+    text = f"원본 범위: {candidate.table_id}\n" + (candidate.period_note + "\n" if candidate.period_note else "") + text
     return QuestionAnswer(
         question=question, answer=text, status="limited" if limitations else "answered",
         confidence=0.9 if limitations else 1, selected_tools=["chronological_trend"],

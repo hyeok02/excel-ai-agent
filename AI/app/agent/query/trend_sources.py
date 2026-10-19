@@ -6,10 +6,12 @@ from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.trend_source_horizontal import horizontal_candidates
 from app.agent.query.trend_source_vertical import vertical_candidate
 from app.agent.query.trend_source_models import TrendCandidate
+from app.agent.query.trend_source_scope import source_scope_names
 
 
 def trend_candidates(summary, index, question) -> list[TrendCandidate]:
     tables = build_query_tables(summary)
+    names = source_scope_names(index, question, tables)
     result = []
     for table in tables:
         # Non-temporal summary tables are not failed alternatives to a time series.
@@ -20,6 +22,6 @@ def trend_candidates(summary, index, question) -> list[TrendCandidate]:
             continue
         for metric in table.columns:
             if metric_label_matches(metric.header, question):
-                result.append(vertical_candidate(table, metric, tables, index, question))
-    result.extend(horizontal_candidates(summary, index, question))
+                result.append(vertical_candidate(table, metric, tables, index, question, names))
+    result.extend(horizontal_candidates(summary, index, question, names))
     return result

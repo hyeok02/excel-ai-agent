@@ -58,13 +58,15 @@ def prepare_trend_candidate(candidate, rows):
     return replace(candidate, observations=points), tuple(observation_unit(item, rows) for item in points)
 
 
-def distinct_trend_candidates(prepared):
+def distinct_trend_candidates(prepared, *, preserve_labels=False):
     distinct = []
     for candidate, units in prepared:
         # Entity/currency/scenario captions are part of identity, not just values.
         entities = tuple(sorted({str(cell.value) for point in candidate.observations
                                  for cell in point.entity_cells}))
-        key = (_metric_identity(candidate.observations[0].label.value), entities, tuple(
+        label = str(candidate.observations[0].label.value)
+        identity = label.casefold().strip() if preserve_labels else _metric_identity(label)
+        key = (identity, entities, tuple(
             (point.period, point.value.value, point.grain, point.scenario, unit.identity)
             for point, unit in zip(candidate.observations, units)))
         if not any(existing[0] == key for existing in distinct):
