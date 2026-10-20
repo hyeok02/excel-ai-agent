@@ -90,8 +90,24 @@ def test_inclusive_since_window_has_its_own_calculation_oracle():
     assert "2024-06-01" in answer.answer and "경계 포함" in answer.answer
 
 
-@pytest.mark.parametrize("modifier", ["증가율", "감소율", "비율", "growth rate", "percentage"])
-def test_derived_metric_request_cannot_certify_the_underlying_raw_trajectory(modifier):
+@pytest.mark.parametrize("modifier", ["증가율", "감소율", "growth rate"])
+def test_derived_metric_request_certifies_independent_calculation_not_raw_trajectory(modifier):
+    summary, index = source()
+    answer = direct(summary, index, f"전체 직원 수의 {modifier} 추이를 설명해줘")
+    assert answer.status == "answered" and answer.verification.level == "request_checked"
+    decrease = modifier == "감소율"
+    expected = ["-50%", "20%", "-8.33%"] if decrease else ["50%", "-20%", "8.33%"]
+    for date, value in zip(["2024-06-30", "2024-09-30", "2024-12-31"], expected):
+        assert f"{date}: {value}" in answer.answer
+    formula = "이전 기준값 - 현재값" if decrease else "현재값 - 이전 기준값"
+    assert f"({formula}) / 이전 기준값 × 100" in answer.answer
+    assert "3개 시점" in answer.answer and "100명 → 130명" not in answer.answer
+    assert {("B2", 100), ("B3", 150), ("B4", 120), ("B5", 130)} <= {
+        (cell.reference, cell.value) for cell in answer.evidence}
+
+
+@pytest.mark.parametrize("modifier", ["비율", "percentage"])
+def test_undefined_ratio_still_cannot_certify_raw_trajectory(modifier):
     summary, index = source()
     not_certified(direct(summary, index, f"전체 직원 수의 {modifier} 추이를 설명해줘"))
 

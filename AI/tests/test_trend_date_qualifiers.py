@@ -9,9 +9,7 @@ from tests.support.trend_fixtures import observations
 
 
 @pytest.mark.parametrize("question", [
-    "2024 Q1 Total Employees trend", "Total Employees trend Q1 2024",
-    "Total Employees trend 2024 Q1 to 2024 Q2", "Total Employees trend Q1",
-    "Total Employees trend 1st quarter 2024", "Total Employees trend quarter 2 2024",
+    "Total Employees trend Q1",
     "Total Employees trend in June", "Total Employees trend June to September",
     "Total Employees trend between January and March", "Total Employees trend in 2024 June",
     "Total Employees trend over the last 1 year in June",

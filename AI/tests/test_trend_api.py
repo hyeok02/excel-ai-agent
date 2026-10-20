@@ -50,7 +50,14 @@ def test_upload_route_reads_new_file_values_and_intermediate_reversal(client):
         assert answer["selected_tools"] == ["chronological_trend"]
 
 
-def test_upload_route_does_not_certify_raw_values_as_growth_rate_series(client):
+def test_upload_route_certifies_computed_growth_not_the_underlying_raw_series(client):
     answer = upload(client, 1, "전체 직원 수 증가율의 기간별 추이를 설명해줘")
-    assert answer["status"] == "insufficient_evidence"
-    assert answer["verification"]["level"] == "unverified"
+    assert answer["status"] == "answered", answer
+    assert answer["verification"]["level"] == "request_checked"
+    assert "derived_trend" in answer["selected_tools"]
+    assert "(현재값 - 이전 기준값) / 이전 기준값 × 100" in answer["answer"]
+    assert "2024-02-01: 50%" in answer["answer"] and "2024-03-01: -20%" in answer["answer"]
+    assert "2024-04-01: 8.33%" in answer["answer"] and "50% → 8.33%" in answer["answer"]
+    assert "3개 시점" in answer["answer"] and "10명 → 13명" not in answer["answer"]
+    assert {("B2", 13), ("B3", 12), ("B4", 15), ("B5", 10)} <= {
+        (cell["reference"], cell["value"]) for cell in answer["evidence"]}

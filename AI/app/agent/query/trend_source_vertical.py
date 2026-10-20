@@ -5,7 +5,9 @@ from dataclasses import replace
 from app.agent.query.metric_observation_cells import (
     MetricObservation, _DATE_HEADER, _numeric, _text_in_question,
 )
-from app.agent.query.metric_observation_periods import source_period, source_period_grain
+from app.agent.query.metric_observation_periods import source_period
+from app.agent.query.trend_period_metadata import trend_period_metadata
+from app.agent.query.trend_row_metadata import row_unit_context, row_scenario
 from app.agent.query.trend_source_models import MAX_TREND_OBSERVATIONS, TrendCandidate
 from app.agent.query.trend_source_readback import column_cells, table_rows
 from app.agent.query.trend_source_context import verified_context
@@ -66,6 +68,7 @@ def vertical_candidate(table, metric, tables, index, question, source_names=()):
     if error:
         return replace(base, context=context, error=error)
     observations = []
+    headers = {column.id: cells[column.header_reference] for column in table.columns if column.header_reference in cells}
     for row in records:
         value, period_cell = row.get(metric.id), row.get(date.id)
         # Rows occupied in a rectangle cannot disappear because one axis is blank.
@@ -74,8 +77,13 @@ def vertical_candidate(table, metric, tables, index, question, source_names=()):
         period = source_period(period_cell.value)
         if period is None:
             return replace(base, context=context, error="missing_or_invalid_date")
-        observations.append(MetricObservation(label, value, period, period_cell, source_period_grain(period_cell.value), None,
-                                              (date_header,), tuple([*identities, *captions])))
+        grain, scenario = trend_period_metadata(period_cell.value)
+        try:
+            scenario = row_scenario(headers, row, scenario)
+        except ValueError:
+            return replace(base, context=context, error="mixed_series_context")
+        observations.append(MetricObservation(label, value, period, period_cell, grain, scenario,
+                                              (date_header,), tuple([*identities, *captions]), row_unit_context(headers, row)))
         if len(observations) > MAX_TREND_OBSERVATIONS:
             return replace(base, context=context, error="resource_limit")
     return replace(base, observations=tuple(observations), context=context,

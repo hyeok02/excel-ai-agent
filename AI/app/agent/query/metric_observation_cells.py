@@ -25,6 +25,7 @@ class MetricObservation:
     scenario: str | None
     context_cells: tuple[IndexedCell, ...]
     entity_cells: tuple[IndexedCell, ...] = ()
+    unit_context: tuple[IndexedCell, ...] = ()
 
 def metric_label_matches(label: str, question: str) -> bool:
     normalized = _normal(label)
