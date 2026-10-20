@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from app.agent.query.comparison_value_format import people_unit
 from app.agent.query.excel_number_formats import parse_number_format
 from app.agent.query.metric_observations import MetricObservation, _column
-from app.agent.query.metric_unit_settings import source_settings
+from app.agent.query.metric_unit_settings import source_settings, explicit_row_settings
+from app.agent.query.trend_row_metadata import UNIT_HEADERS
 
 _MAGNITUDES = {
     "million": "백만", "millions": "백만", "백만": "백만",
@@ -34,7 +35,13 @@ def observation_unit(observation: MetricObservation, rows) -> ObservationUnit:
     if spec.percent:
         return ObservationUnit("", style_identity, (), True)
     if unit := people_unit("", observation.label.value):
-        return ObservationUnit(unit, (unit, *style_identity), (observation.label,), True)
+        explicit, row_refs = explicit_row_settings(observation, _currency, _magnitude, {"magnitude"})
+        label_magnitude = _magnitude(str(observation.label.value))
+        if explicit is None or (explicit.get("magnitude") and label_magnitude
+                                and explicit["magnitude"] != label_magnitude):
+            return ObservationUnit("", ("conflicting_units", *style_identity), row_refs, False)
+        suffix = (explicit.get("magnitude") or label_magnitude) + unit
+        return ObservationUnit(suffix, (suffix, *style_identity), (observation.label, *row_refs), True)
     label = str(observation.label.value).casefold()
     # A source amount caption must not turn a ratio into dollars.
     if re.search(r"%|\bratio\b|\byield\b|\bgrowth\b|\bmargin\b|\bmultiple\b| / ", label):
@@ -42,11 +49,25 @@ def observation_unit(observation: MetricObservation, rows) -> ObservationUnit:
     relevant = [row for row in rows if row.sheet_name == observation.value.sheet_name]
     caption = observation.label if _currency(label) or _magnitude(label) else _caption(observation, relevant)
     currency, magnitude, references = source_settings(relevant, observation, _currency, _magnitude)
+    explicit, row_refs = explicit_row_settings(observation, _currency, _magnitude)
+    if explicit is None:
+        return ObservationUnit("", ("conflicting_units", *style_identity), row_refs, False)
+    currency, magnitude = explicit.get("currency", currency), explicit.get("magnitude", magnitude)
+    if explicit:
+        inherited = [cell for offset in range(0, len(references), 2)
+                     if UNIT_HEADERS.get(str(references[offset].value).strip().casefold()) not in explicit
+                     for cell in references[offset:offset + 2]]
+        references = [*row_refs, *inherited]
     if caption is not None:
         text = str(caption.value)
         local_currency = _currency(text)
+        local_magnitude = _magnitude(text)
+        if (explicit.get("currency") and local_currency and local_currency != currency
+                and not (local_currency == "달러" and currency.endswith("달러"))
+                or explicit.get("magnitude") and local_magnitude and local_magnitude != magnitude):
+            return ObservationUnit("", ("conflicting_units", *style_identity), (*row_refs, caption), False)
         currency = currency if local_currency == "달러" and currency else local_currency or currency
-        magnitude = _magnitude(text) or magnitude
+        magnitude = local_magnitude or magnitude
         references.append(caption)
     if not currency and not magnitude:
         return ObservationUnit("", style_identity, (), bool(spec.prefix or spec.suffix))

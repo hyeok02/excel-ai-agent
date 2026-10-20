@@ -13,6 +13,9 @@ from app.agent.query.trend_sources import trend_candidates
 from app.agent.query.trend_render import render_trend, trend_witness_indices
 from app.agent.query.trend_comparison import comparison_answer, comparison_candidates, comparison_missing_metrics
 from app.agent.query.trend_comparison_scope import explicit_metric_labels
+from app.agent.query.derived_trend_answers import derived_trend_answer
+from app.agent.query.grouped_trend_answers import grouped_trend_answer
+from app.agent.query.grouped_share_trend_answers import grouped_share_trend_answer
 
 _REASONS = {
     "ambiguous_date_axis": "한 지표에 연결할 날짜 열이 여러 개여서 임의로 선택하지 않았습니다.",
@@ -30,8 +33,14 @@ _REASONS = {
 
 
 def trend_answer(question, summary, index, intent=None):
+    if share := grouped_share_trend_answer(question, summary, index):
+        return share
+    if derived := derived_trend_answer(question, summary, index):
+        return derived
     if not asks_trend(question):
         return None
+    if grouped := grouped_trend_answer(question, summary, index):
+        return grouped
     candidates, named = scoped_trend_candidates(question, trend_candidates(summary, index, question), summary)
     candidates = comparison_candidates(question, candidates)
     rows = list(index.rows)

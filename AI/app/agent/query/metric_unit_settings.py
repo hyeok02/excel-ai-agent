@@ -2,6 +2,38 @@
 import re
 
 from app.agent.query.metric_observations import _column, _human_label
+from app.agent.query.trend_row_metadata import UNIT_HEADERS
+
+
+def explicit_row_settings(observation, currency_parser, magnitude_parser, kinds=None):
+    values, references = {}, []
+    for header in observation.unit_context:
+        kind = UNIT_HEADERS.get(str(header.value).strip().casefold())
+        if kind is None or kinds is not None and kind not in kinds:
+            continue
+        cell = next((cell for cell in observation.unit_context if cell != header
+                     and _column(cell) == _column(header)), None)
+        parser = currency_parser if kind == "currency" else magnitude_parser
+        parsed = _unambiguous_control(str(cell.value), parser) if cell else ""
+        if not parsed or kind in values and values[kind] != parsed:
+            return None, tuple(references)
+        values[kind] = parsed
+        references.extend((header, cell))
+    return values, tuple(dict.fromkeys(references))
+
+
+def _unambiguous_control(value, parser):
+    if len(value) > 250 or re.search(r"\b(?:not|except|excluding)\b|아닌|제외", value, re.I):
+        return ""
+    parts = re.split(r"[/,;]|\b(?:or|and)\b|또는|및", value, flags=re.I)
+    if len(parts) > 1 and any(not parser(part) for part in parts):
+        return ""
+    words = value.split()
+    choices = {parser(value), *(parser(part) for part in parts)}
+    choices.update(parser(" ".join(words[start:start + size]))
+                   for size in (1, 2, 3) for start in range(len(words)))
+    choices.discard("")
+    return next(iter(choices)) if len(choices) == 1 else ""
 
 
 def source_settings(rows, observation, currency_parser, magnitude_parser):

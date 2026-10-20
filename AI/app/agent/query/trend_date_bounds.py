@@ -9,6 +9,7 @@ from app.agent.query.question_dates import (
 from app.agent.query.trend_period_scope import calendar_request
 from app.agent.query.trend_relative_dates import relative_window, RELATIVE_CUE
 from app.agent.query.trend_date_qualifiers import date_qualifier_error
+from app.agent.query.trend_calendar_periods import expand_calendar_periods
 
 _POST = re.compile(r"^\s*(이후|이전|부터|까지)(?=$|\s|[가-힣])")
 _PRE = re.compile(r"\b(from|since|after|through|until|before)\s*$", re.I)
@@ -29,6 +30,9 @@ class TrendDateBounds:
 
 def parse_trend_date_bounds(question, observations, named_sheets=()):
     masked, error = calendar_request(question, observations, named_sheets)
+    if error:
+        return None, error
+    masked, calendar_note, error = expand_calendar_periods(masked)
     if error:
         return None, error
     mentions, invalid = _mentions(masked)
@@ -98,7 +102,7 @@ def parse_trend_date_bounds(question, observations, named_sheets=()):
     if _DATE_WORDS.search(remainder):
         return None, "날짜 조건이 서로 겹치거나 기준이 모호합니다. 날짜 범위를 하나로 지정해 주세요."
     remainder = re.sub(r"\b(?:to|through|until)\b|사이", " ", remainder, flags=re.I)
-    note = (f"조회 날짜 범위: {start.date().isoformat() if start else '원본 시작'} ~ "
+    note = (calendar_note + f"조회 날짜 범위: {start.date().isoformat() if start else '원본 시작'} ~ "
             f"{end.date().isoformat() if end else '원본 끝'}(경계 포함).")
     return TrendDateBounds(start, end, note, False, remainder), None
 
