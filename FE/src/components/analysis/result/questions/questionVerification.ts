@@ -1,5 +1,6 @@
 import type { WorkbookQuestionAnswer } from '../../../../api/analysis/questionTypes.ts'
 import { boundedQuestionVerification } from './questionBoundedVerification.ts'
+import { composedQuestionVerification } from './questionComposedVerification.ts'
 
 /** Answer availability and source citations are not a correctness certificate. */
 export const questionVerificationPresentation = (answer: WorkbookQuestionAnswer) => {
@@ -91,6 +92,8 @@ export const questionVerificationPresentation = (answer: WorkbookQuestionAnswer)
         '각 주장의 값·대상·기간·항목을 원본 셀과 연결해 확인했습니다. 업무상 의미나 원인까지 입증한 것은 아닙니다.',
     } as const
   }
+  const composed = composedQuestionVerification(answer, checks)
+  if (composed) return composed
   const requestChecksComplete =
     checks.includes('table_scope') &&
     (checks.includes('source_values') || checks.includes('source_cells')) &&

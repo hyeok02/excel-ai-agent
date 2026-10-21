@@ -5,6 +5,7 @@ from app.agent.query.metric_request_coverage import uncovered_request_tokens
 from app.agent.query.metric_observation_periods import GRAINS
 from app.agent.query.trend_labels import trend_label_spellings
 from app.agent.query.trend_date_bounds import parse_trend_date_bounds, select_trend_periods
+from app.agent.query.trend_postconditions import trend_postcondition_error
 
 _TREND = re.compile(r"추이|추세|흐름|반등|상승\s*전환|하락\s*전환|"
                     r"\b(?:trends?|trajectory|rebound|time\s+series|over\s+time)\b", re.I)
@@ -36,6 +37,8 @@ def trend_request_error(question, observations, named_sheets):
     labels = {label for item in observations for label in trend_label_spellings(item.label.value)}
     for label in sorted(labels, key=len, reverse=True):
         remaining = re.sub(r"(?<!\w)" + re.escape(label) + r"(?![a-z0-9])", " ", remaining, flags=re.I)
+    if error := trend_postcondition_error(remaining, observations, named_sheets):
+        return error
     if _UNSUPPORTED.search(remaining) or re.search(r"증가율|감소율|증감률|비율|비중|점유율|기여율|"
                                                    r"%|\b(?:growth\s+rate|rate|ratio|share|percentage|percent)\b", remaining, re.I):
         return "추이 외의 조건·집계까지 함께 확인할 수 없습니다. 대상과 비교할 날짜 범위를 구체적으로 지정해 주세요."
