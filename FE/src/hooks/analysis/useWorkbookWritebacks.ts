@@ -7,10 +7,13 @@ import {
   proposeWorkbookWriteback,
   rejectWorkbookWriteback,
 } from '@/api/analysis'
+import { applyScopedResult, unwrapScopedResult } from '@/hooks/asyncViewScope'
+import { useAsyncViewScope } from '@/hooks/useAsyncViewScope'
 import { getErrorMessage } from '@/utils/apiClient'
 
 export const useWorkbookWritebacks = (analysisId: string) => {
   const queryClient = useQueryClient()
+  const scope = useAsyncViewScope()
   const key = ['workbook-writebacks', analysisId]
   const history = useQuery({
     queryKey: key,
@@ -20,8 +23,8 @@ export const useWorkbookWritebacks = (analysisId: string) => {
 
   const proposal = useMutation({
     mutationFn: (instruction: string) =>
-      proposeWorkbookWriteback(analysisId, instruction),
-    onSuccess: refresh,
+      scope.run(() => proposeWorkbookWriteback(analysisId, instruction)),
+    onSuccess: (result) => applyScopedResult(result, refresh),
   })
   const approval = useMutation({
     mutationFn: ({
@@ -30,26 +33,29 @@ export const useWorkbookWritebacks = (analysisId: string) => {
     }: {
       writebackId: string
       approvedCells: string[]
-    }) => approveWorkbookWriteback(analysisId, writebackId, approvedCells),
-    onSuccess: refresh,
+    }) =>
+      scope.run(() => approveWorkbookWriteback(analysisId, writebackId, approvedCells)),
+    onSuccess: (result) => applyScopedResult(result, refresh),
   })
   const rejection = useMutation({
-    mutationFn: (writebackId: string) => rejectWorkbookWriteback(analysisId, writebackId),
-    onSuccess: refresh,
+    mutationFn: (writebackId: string) =>
+      scope.run(() => rejectWorkbookWriteback(analysisId, writebackId)),
+    onSuccess: (result) => applyScopedResult(result, refresh),
   })
   const download = useMutation({
     mutationFn: (writebackId: string) =>
-      downloadWorkbookWriteback(analysisId, writebackId),
-    onSuccess: ({ blob, filename }) => {
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.setTimeout(() => URL.revokeObjectURL(url), 0)
-    },
+      scope.run(() => downloadWorkbookWriteback(analysisId, writebackId)),
+    onSuccess: (result) =>
+      applyScopedResult(result, ({ blob, filename }) => {
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        window.setTimeout(() => URL.revokeObjectURL(url), 0)
+      }),
   })
 
   const resetMutationMessages = () => {
@@ -61,17 +67,17 @@ export const useWorkbookWritebacks = (analysisId: string) => {
 
   const propose = async (instruction: string) => {
     resetMutationMessages()
-    return proposal.mutateAsync(instruction)
+    return unwrapScopedResult(await proposal.mutateAsync(instruction))
   }
 
   const approve = async (writebackId: string, approvedCells: string[] = []) => {
     resetMutationMessages()
-    return approval.mutateAsync({ approvedCells, writebackId })
+    return unwrapScopedResult(await approval.mutateAsync({ approvedCells, writebackId }))
   }
 
   const reject = async (writebackId: string) => {
     resetMutationMessages()
-    return rejection.mutateAsync(writebackId)
+    return unwrapScopedResult(await rejection.mutateAsync(writebackId))
   }
 
   const downloadFile = (writebackId: string) => {
@@ -106,7 +112,7 @@ export const useWorkbookWritebacks = (analysisId: string) => {
     pendingAction,
     downloadNotice:
       download.isSuccess && download.variables
-        ? { writebackId: download.variables, filename: download.data.filename }
+        ? { writebackId: download.variables, filename: download.data.value.filename }
         : null,
     errorMessage: error ? getErrorMessage(error) : null,
   }

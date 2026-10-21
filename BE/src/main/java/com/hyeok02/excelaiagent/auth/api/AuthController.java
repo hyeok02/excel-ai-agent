@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +18,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,16 +33,19 @@ public class AuthController {
 
 	private final AuthenticationManager authenticationManager;
 	private final SecurityContextRepository securityContextRepository;
+	private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
 	private final UserAccountService userAccountService;
 	private final AuthProperties authProperties;
 
 	public AuthController(
 			AuthenticationManager authenticationManager,
 			SecurityContextRepository securityContextRepository,
+			@Qualifier("loginSessionAuthenticationStrategy") SessionAuthenticationStrategy sessionAuthenticationStrategy,
 			UserAccountService userAccountService,
 			AuthProperties authProperties) {
 		this.authenticationManager = authenticationManager;
 		this.securityContextRepository = securityContextRepository;
+		this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
 		this.userAccountService = userAccountService;
 		this.authProperties = authProperties;
 	}
@@ -54,6 +59,7 @@ public class AuthController {
 			Authentication authentication = authenticationManager.authenticate(
 					UsernamePasswordAuthenticationToken.unauthenticated(
 							loginRequest.username().trim(), loginRequest.password()));
+			sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
 			SecurityContext context = SecurityContextHolder.createEmptyContext();
 			context.setAuthentication(authentication);
 			SecurityContextHolder.setContext(context);

@@ -19,10 +19,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 
 @Configuration
 public class SecurityConfig {
@@ -51,13 +53,15 @@ public class SecurityConfig {
 			HttpSecurity http,
 			AuthProperties authProperties,
 			CompanyOidcUserService companyOidcUserService,
-			UserAccountService userAccountService) throws Exception {
-		CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-		csrfRepository.setHeaderName("X-XSRF-TOKEN");
-		csrfRepository.setCookieCustomizer(cookie -> cookie.path("/").sameSite("Lax"));
+			UserAccountService userAccountService,
+			CookieCsrfTokenRepository csrfRepository,
+			ChangeSessionIdAuthenticationStrategy sessionFixationProtectionStrategy,
+			CsrfAuthenticationStrategy csrfAuthenticationStrategy) throws Exception {
 
 		http
 				.cors(Customizer.withDefaults())
+				.sessionManagement(session -> session
+						.sessionAuthenticationStrategy(sessionFixationProtectionStrategy))
 				.exceptionHandling(exceptions -> exceptions
 						.authenticationEntryPoint((request, response, exception) ->
 								writeUnauthorized(response)))
@@ -69,6 +73,7 @@ public class SecurityConfig {
 					SecurityContextHolderFilter.class)
 					.csrf(csrf -> csrf
 					.csrfTokenRepository(csrfRepository)
+					.sessionAuthenticationStrategy(csrfAuthenticationStrategy)
 					.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
 					.ignoringRequestMatchers("/api/v1/telegram/webhook"))
 					.authorizeHttpRequests(authorize -> authorize

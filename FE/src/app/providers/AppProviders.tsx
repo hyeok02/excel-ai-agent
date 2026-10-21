@@ -1,30 +1,23 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { type PropsWithChildren, useState } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { type PropsWithChildren, useEffect, useState } from 'react'
 
 import AuthProvider from '@/app/providers/AuthProvider'
+import {
+  createSessionQueryClient,
+  disposeSessionQueryClient,
+} from '@/app/providers/sessionQueryClient'
 
-const AppProviders = ({ children }: PropsWithChildren) => {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: 1,
-            refetchOnWindowFocus: false,
-            staleTime: 30_000,
-          },
-          mutations: {
-            retry: 0,
-          },
-        },
-      }),
-  )
+const SessionQueries = ({ children }: PropsWithChildren) => {
+  const [queryClient] = useState(createSessionQueryClient)
+  useEffect(() => () => disposeSessionQueryClient(queryClient), [queryClient])
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
-    </QueryClientProvider>
-  )
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
+
+const AppProviders = ({ children }: PropsWithChildren) => (
+  <AuthProvider>
+    <SessionQueries>{children}</SessionQueries>
+  </AuthProvider>
+)
 
 export default AppProviders

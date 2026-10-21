@@ -1,4 +1,12 @@
-import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  Fragment,
+  type PropsWithChildren,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 import {
   type AuthConfig,
@@ -10,36 +18,52 @@ import {
   logout as requestLogout,
 } from '@/api/auth'
 import { AuthContext, type AuthContextValue } from '@/app/providers/auth-context'
+import { initializeAuthSession } from '@/app/providers/authInitialization'
+import { type AuthSession, nextAuthSession } from '@/app/providers/authSession'
 
 const AuthProvider = ({ children }: PropsWithChildren) => {
-  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [session, setSession] = useState<AuthSession>({ user: null, revision: 0 })
+  const user = session.user
   const [config, setConfig] = useState<AuthConfig | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const authRequest = useRef(0)
+  const commitUser = useCallback(
+    (currentUser: CurrentUser | null, newSession = false) => {
+      setSession((previous) => nextAuthSession(previous, currentUser, newSession))
+    },
+    [],
+  )
 
   const refresh = useCallback(async () => {
+    const request = ++authRequest.current
     try {
       const currentUser = await getCurrentUser()
-      setUser(currentUser)
+      if (request !== authRequest.current) return null
+      commitUser(currentUser)
       return currentUser
     } catch {
-      setUser(null)
+      if (request === authRequest.current) commitUser(null)
       return null
     }
-  }, [])
+  }, [commitUser])
 
   useEffect(() => {
-    const initialize = async () => {
-      try {
-        const [authConfig] = await Promise.all([getAuthConfig(), initializeCsrf()])
-        setConfig(authConfig)
-        await refresh()
-      } finally {
-        setIsLoading(false)
-      }
+    let mounted = true
+    const request = ++authRequest.current
+    void initializeAuthSession({
+      config: getAuthConfig,
+      csrf: initializeCsrf,
+      user: getCurrentUser,
+      isMounted: () => mounted,
+      isCurrent: () => request === authRequest.current,
+      onConfig: setConfig,
+      onUser: commitUser,
+      onSettled: () => setIsLoading(false),
+    })
+    return () => {
+      mounted = false
     }
-
-    void initialize()
-  }, [refresh])
+  }, [commitUser])
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -47,22 +71,34 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
       config,
       isLoading,
       login: async (username, password) => {
+        const request = ++authRequest.current
         await initializeCsrf()
+        if (request !== authRequest.current)
+          throw new DOMException('Login superseded', 'AbortError')
         const authenticatedUser = await loginWithCredentials(username, password)
-        setUser(authenticatedUser)
+        if (request !== authRequest.current)
+          throw new DOMException('Login superseded', 'AbortError')
+        commitUser(authenticatedUser, true)
+        setIsLoading(false)
         return authenticatedUser
       },
       logout: async () => {
+        const request = ++authRequest.current
         await requestLogout()
-        setUser(null)
+        if (request !== authRequest.current) return
+        commitUser(null, true)
         await initializeCsrf()
       },
       refresh,
     }),
-    [config, isLoading, refresh, user],
+    [commitUser, config, isLoading, refresh, user],
   )
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      <Fragment key={session.revision}>{children}</Fragment>
+    </AuthContext.Provider>
+  )
 }
 
 export default AuthProvider

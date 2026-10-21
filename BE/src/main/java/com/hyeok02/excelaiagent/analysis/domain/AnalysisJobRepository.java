@@ -20,8 +20,12 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, UUID> 
 	Optional<AnalysisJob> findByAnalysisIdAndOwnerUsername(UUID analysisId, String ownerUsername);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select job from AnalysisJob job where job.analysisId = :analysisId")
+	Optional<AnalysisJob> findForUpdate(@Param("analysisId") UUID analysisId);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select job from AnalysisJob job where job.analysisId = :analysisId and job.ownerUsername = :ownerUsername")
-	Optional<AnalysisJob> findOwnedForQuestionSave(
+	Optional<AnalysisJob> findOwnedForUpdate(
 			@Param("analysisId") UUID analysisId, @Param("ownerUsername") String ownerUsername);
 
 	Page<AnalysisJob> findByOwnerUsername(String ownerUsername, Pageable pageable);

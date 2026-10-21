@@ -8,6 +8,7 @@ import com.hyeok02.excelaiagent.analysis.domain.AnalysisDepth;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJob;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisJobRepository;
 import com.hyeok02.excelaiagent.analysis.domain.AnalysisMode;
+import com.hyeok02.excelaiagent.analysis.error.AnalysisNotFoundException;
 import com.hyeok02.excelaiagent.analysis.error.AnalysisQueueFullException;
 import com.hyeok02.excelaiagent.analysis.storage.AnalysisFileStorage;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,6 @@ public class AnalysisSubmissionService {
 	private final AnalysisJobProcessor analysisJobProcessor;
 	private final AnalysisResultReader analysisResultReader;
 	private final AnalysisHistoryService analysisHistoryService;
-	private final AnalysisAccessService analysisAccessService;
 
 	public AnalysisSubmissionService(
 			ExcelFileValidator excelFileValidator,
@@ -30,15 +30,13 @@ public class AnalysisSubmissionService {
 			AnalysisJobRepository analysisJobRepository,
 			AnalysisJobProcessor analysisJobProcessor,
 			AnalysisResultReader analysisResultReader,
-			AnalysisHistoryService analysisHistoryService,
-			AnalysisAccessService analysisAccessService) {
+			AnalysisHistoryService analysisHistoryService) {
 		this.excelFileValidator = excelFileValidator;
 		this.analysisFileStorage = analysisFileStorage;
 		this.analysisJobRepository = analysisJobRepository;
 		this.analysisJobProcessor = analysisJobProcessor;
 		this.analysisResultReader = analysisResultReader;
 		this.analysisHistoryService = analysisHistoryService;
-		this.analysisAccessService = analysisAccessService;
 	}
 
 	public AnalysisSubmission submit(
@@ -98,7 +96,8 @@ public class AnalysisSubmissionService {
 
 	@Transactional
 	public void delete(UUID analysisId, String ownerUsername) {
-		AnalysisJob job = analysisAccessService.requireOwned(analysisId, ownerUsername);
+		AnalysisJob job = analysisJobRepository.findOwnedForUpdate(analysisId, ownerUsername)
+				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
 		analysisJobRepository.delete(job);
 		analysisJobRepository.flush();
 		analysisFileStorage.delete(analysisId);
