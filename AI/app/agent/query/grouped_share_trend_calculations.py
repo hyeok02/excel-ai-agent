@@ -14,6 +14,8 @@ _TOTAL_ROW = re.compile(r"(?:합|총|소|누)\s*계|(?<![가-힣])계(?![가-힣
 
 
 def category_share_points(source, target, named, index):
+    if source.request.statistic not in {None, "sum"}:
+        raise ValueError("범주별 평균·최솟값·최댓값을 더해 전체 합계로 만들지 않았습니다. 원본 합계 기준 비중을 지정해 주세요.")
     if re.search(r"비중|비율|증감률|증가율|감소율|평균|주당|인당|%|\b(?:ratio|share|percentage|rate|margin|average|eps|per)\b", source.metric.header, re.I):
         raise ValueError("이미 비율·평균인 지표를 더해 전체 합계로 만들지 않았습니다. 가산 가능한 원본 수치가 필요합니다.")
     _identities(source, source.records)

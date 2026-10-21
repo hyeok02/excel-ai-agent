@@ -14,7 +14,7 @@ from app.agent.query.trend_source_vertical import _IDENTITY
 from app.agent.query.trend_selection import prepare_trend_candidate
 
 
-def grouped_series(source, index):
+def grouped_series(source, index, *, allow_single_period=False):
     identity = _identities(source, source.records)
     groups = defaultdict(list)
     for row in source.records:
@@ -49,6 +49,9 @@ def grouped_series(source, index):
         points = tuple(_aggregate(items, source.request.statistic, index.rows) for _, items in sorted(dates.items()))
         candidate, units = prepare_trend_candidate(TrendCandidate(source.table.id, points, source.context,
                                                   hidden_rows=source.hidden, period_note=source.note), index.rows)
+        if allow_single_period and candidate.error == "insufficient_periods" and len(candidate.observations) == 1:
+            candidate = replace(candidate, error=None)
+            units = tuple(observation_unit(point, index.rows) for point in candidate.observations)
         if candidate.error:
             raise ValueError("요청한 그룹의 전체 시계열을 확정하지 못했습니다: " + candidate.error)
         result.append((title, candidate, units, tuple(dict.fromkeys(references))))
