@@ -1,14 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import {
-  type AnalysisDepth,
-  type AnalysisMode,
-  analyzeWorkbook,
-  resumeAnalysis,
-} from '@/api/analysis'
+import { type AnalysisDepth, type AnalysisMode, resumeAnalysis } from '@/api/analysis'
 import type { useAnalysisProgress } from '@/hooks/analysis/useAnalysisProgress'
+import { useAnalysisSubmission } from '@/hooks/analysis/useAnalysisSubmission'
 import { getErrorMessage } from '@/utils/apiClient'
 
 export const ANALYSIS_ID_PARAM = 'id'
@@ -37,35 +33,9 @@ export const useAnalysisRun = (
   const [dismissedId, setDismissedId] = useState<string | null>(null)
   const analysisId = searchParams.get(ANALYSIS_ID_PARAM)
 
-  const mutation = useMutation({
-    mutationFn: ({
-      file,
-      analysisMode,
-      analysisDepth,
-      includeHiddenSheets,
-    }: {
-      file: File
-      analysisMode: AnalysisMode
-      analysisDepth: AnalysisDepth
-      includeHiddenSheets: boolean
-    }) =>
-      analyzeWorkbook(
-        file,
-        analysisMode,
-        analysisDepth,
-        includeHiddenSheets,
-        progress.updateStatus,
-        (submission) =>
-          setSearchParams(
-            { [ANALYSIS_ID_PARAM]: submission.analysisId },
-            { replace: true },
-          ),
-      ),
-    onError: handlers.onError,
-    onSuccess: () => {
-      handlers.onSuccess()
-      void queryClient.invalidateQueries({ queryKey: ANALYSIS_HISTORY_QUERY_KEY })
-    },
+  const mutation = useAnalysisSubmission(analysisId, progress, {
+    ...handlers,
+    onSubmitted: (id) => setSearchParams({ [ANALYSIS_ID_PARAM]: id }, { replace: true }),
   })
 
   const restored = useQuery({
@@ -74,11 +44,17 @@ export const useAnalysisRun = (
       analysisId !== dismissedId &&
       !mutation.isPending &&
       !mutation.data,
-    queryFn: () => resumeAnalysis(analysisId as string, progress.updateStatus),
+    queryFn: ({ signal }) =>
+      resumeAnalysis(analysisId as string, progress.updateStatus, signal),
     queryKey: ['analysis', analysisId],
     retry: false,
     staleTime: Number.POSITIVE_INFINITY,
   })
+
+  const cancelObservation = () => {
+    mutation.reset()
+    void queryClient.cancelQueries({ queryKey: ['analysis', analysisId], exact: true })
+  }
 
   const forgetOpenAnalysis = () => {
     if (!analysisId) return
@@ -98,14 +74,22 @@ export const useAnalysisRun = (
     isError: mutation.isError || restored.isError,
     isPending: mutation.isPending || restored.isFetching,
     open: (nextAnalysisId: string) => {
+      if (
+        nextAnalysisId === analysisId &&
+        analysisId !== dismissedId &&
+        !mutation.isError &&
+        !restored.isError
+      )
+        return
       setDismissedId(null)
-      mutation.reset()
+      cancelObservation()
       progress.reset(false)
       setSearchParams({ [ANALYSIS_ID_PARAM]: nextAnalysisId })
+      if (nextAnalysisId === analysisId) void restored.refetch()
     },
     reset: () => {
       setDismissedId(analysisId)
-      mutation.reset()
+      cancelObservation()
       forgetOpenAnalysis()
     },
     start: (
@@ -113,6 +97,9 @@ export const useAnalysisRun = (
       analysisMode: AnalysisMode,
       analysisDepth: AnalysisDepth,
       includeHiddenSheets: boolean,
-    ) => mutation.mutate({ analysisDepth, analysisMode, file, includeHiddenSheets }),
+    ) => {
+      cancelObservation()
+      mutation.start({ analysisDepth, analysisMode, file, includeHiddenSheets })
+    },
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import type { AnalysisStatus } from '@/api/analysis'
 
@@ -30,10 +30,10 @@ export const useAnalysisProgress = () => {
     if (nextStatus === 'COMPLETED') setActiveStep(6)
   }
 
-  const reset = (hasSelectedFile: boolean) => {
+  const reset = useCallback((hasSelectedFile: boolean) => {
     setProcessingStatus(null)
     setActiveStep(hasSelectedFile ? 1 : 0)
-  }
+  }, [])
 
   return {
     activeStep,

@@ -38,7 +38,7 @@ public class WorkbookQuestionHistoryService {
 	@Transactional
 	public void save(UUID analysisId, String ownerUsername, String submittedQuestion, AiWorkbookQuestion answer) {
 		// Recheck ownership after inference and serialize with deletion of the parent analysis.
-		jobRepository.findOwnedForQuestionSave(analysisId, ownerUsername)
+		jobRepository.findOwnedForUpdate(analysisId, ownerUsername)
 				.orElseThrow(() -> new AnalysisNotFoundException(analysisId));
 		try {
 			repository.saveAndFlush(WorkbookQuestion.answered(

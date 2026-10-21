@@ -49,6 +49,7 @@ const AnalysisResultSection = ({
       {mode === 'LLM' && (
         <>
           <WorkbookWritebackSection
+            key={result.analysisId}
             analysisId={result.analysisId}
             sourceAvailable={result.sourceAvailable}
           />
