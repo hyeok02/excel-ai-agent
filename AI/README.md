@@ -193,3 +193,10 @@ natural-language question.
 ```bash
 pytest
 ```
+
+The default test run blocks outbound sockets and DNS from collection through
+fixture cleanup, including when a real API key exists in the local environment.
+In-process API clients and explicitly injected model/HTTP fakes still work.
+A network attempt fails the test instead of being swallowed by an ordinary
+application error fallback. Live evaluations under `evals/` are separate and
+must not be used as part of an offline stabilization run.

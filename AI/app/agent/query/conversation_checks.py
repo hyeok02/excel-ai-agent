@@ -4,6 +4,7 @@ import re
 from app.agent.query.references import extract_references
 from app.agent.query.conversation_language import contains_content_word, content_words, scope_only_followup
 from app.agent.query.conversation_periods import RELATIVE_YEAR, bound_relative_question
+from app.agent.query.conversation_numeric_constraints import numeric_constraints_preserved
 
 CONTEXT_CUE = re.compile(
     r"그\s+|그(?:중|거|것|건|걸|게|럼|래|렇|쪽|대로|때|항목|값|표|둘)|"
@@ -67,9 +68,7 @@ def resolution_is_safe(original: str, draft, context: list[dict]) -> bool:
         original = bound
     # Preserve explicit IDs, periods and filter numbers exactly; never "correct"
     # a missing requested ID to one found in a previous answer.
-    numbers = re.findall(r"\d+(?:[.,]\d+)*", original)
-    rewritten_numbers = re.findall(r"\d+(?:[.,]\d+)*", rewritten)
-    if any(number not in rewritten_numbers for number in numbers):
+    if not numeric_constraints_preserved(original, rewritten):
         return False
     for pattern in (r"#\s*\d+", r"\d+(?:[.,]\d+)*\s*%", r"\d+(?:[.,]\d+)*(?:천|만|억|조)"):
         expected = {re.sub(r"\s+", "", value) for value in re.findall(pattern, original)}

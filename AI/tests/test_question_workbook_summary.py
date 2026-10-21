@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from openpyxl.worksheet.formula import ArrayFormula
 
+from app.agent.execution import AgentStepStatus
 from app.agent.query.cell_values import formula_text, safe_indexed_value
 from app.agent.query.index import IndexedCell, IndexedRow
 from app.agent.query.router import build_question_plan
@@ -70,8 +71,8 @@ def test_cell_value_evidence_is_not_overwritten_by_structure_evidence() -> None:
     empty = _evidence(None)
     execution = SimpleNamespace(
         steps=[
-            SimpleNamespace(result=SimpleNamespace(evidence=[rich])),
-            SimpleNamespace(result=SimpleNamespace(evidence=[empty])),
+            SimpleNamespace(status=AgentStepStatus.SUCCEEDED, result=SimpleNamespace(evidence=[rich])),
+            SimpleNamespace(status=AgentStepStatus.SUCCEEDED, result=SimpleNamespace(evidence=[empty])),
         ]
     )
 

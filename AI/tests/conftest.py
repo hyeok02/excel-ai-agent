@@ -6,6 +6,15 @@ exercises the actual HTTP service with its live intent classifier.
 """
 import pytest
 
+from tests.support.offline_network import install_network_guard
+
+
+def pytest_configure(config):
+    """Protect collection, fixtures and tests, even with a real key in .env."""
+    guard = pytest.MonkeyPatch()
+    install_network_guard(guard)
+    config.add_cleanup(guard.undo)
+
 
 @pytest.fixture(autouse=True)
 def offline_api_intent_classifier(monkeypatch):

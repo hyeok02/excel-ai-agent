@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 
-from app.agent.execution import AgentExecution
+from app.agent.execution import AgentExecution, AgentStepStatus
 from app.agent.query.models import QuestionAnswerEvidence
 from app.agent.query.references import matching_references, normalize_reference
 
@@ -18,7 +18,7 @@ class VerifiedComparisonAnswer:
 def available_evidence(execution: AgentExecution) -> dict[str, object]:
     available = {}
     for step in execution.steps:
-        if not step.result:
+        if step.status is not AgentStepStatus.SUCCEEDED or not step.result:
             continue
         for item in step.result.evidence:
             if not item.reference:

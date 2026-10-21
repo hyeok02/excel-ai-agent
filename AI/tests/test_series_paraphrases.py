@@ -81,12 +81,10 @@ def test_r_and_d_abbreviation_selects_research_and_development() -> None:
     assert found["header"] == "Research & Development"
 
 
-def test_counts_the_metrics_when_the_question_asks_how_many() -> None:
+def test_unclassified_metrics_are_not_guessed_to_be_departments() -> None:
     question = "부서가 총 몇 개야?"
     comparison = _comparison(question)
-    if comparison.get("metric_group") != "department":
-        pytest.skip("이 표는 부서 묶음으로 읽히지 않는다")
-
-    found = build_metric_count(comparison, question)
-
-    assert found["count"] >= 2
+    # A table also containing Total Employees does not prove which headers are
+    # departments. Assert this safety boundary instead of silently skipping it.
+    assert comparison.get("metric_group") is None
+    assert build_metric_count(comparison, question) is None
