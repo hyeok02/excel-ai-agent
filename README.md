@@ -313,6 +313,7 @@ cd AI && python tests/run_analysis_regression.py
 
 ```bash
 cd FE
+npm test
 npm run typecheck
 npm run lint
 npm run format:check
@@ -333,6 +334,10 @@ cd AI
 source .venv/bin/activate
 pytest
 ```
+
+PR 자동 검사에서도 AI 테스트와 Frontend의 대화 복원·파일 격리·검증 배지
+테스트를 실행합니다. AI 단위 테스트는 수집 단계부터 외부 네트워크 연결을
+차단하므로 로컬 API 키가 있어도 유료 AI를 호출하지 않습니다.
 
 ## 데이터 보호 원칙
 

@@ -9,6 +9,7 @@ import {
 import { buildClarificationRequest } from '@/components/analysis/result/questions/questionClarification'
 import { buildQuestionContext } from '@/components/analysis/result/questions/questionContext'
 import { getQuestionValidationMessage } from '@/components/analysis/result/questions/questionValidation'
+import { executeQuestionRequest } from '@/hooks/analysis/questionRequest'
 import {
   canSubmitQuestion,
   type QuestionSession,
@@ -50,21 +51,21 @@ export const useQuestionSubmission = (
     }
     pendingScope.current = scope
     update({ scope, type: 'start', question: normalized })
-    try {
-      const answer = await askWorkbookQuestion(
-        analysisId,
-        normalized,
-        context ?? buildQuestionContext(session.answers, report),
-      )
-      update({ scope, type: 'success', answer })
-      return true
-    } catch (error) {
-      update({ scope, type: 'error', message: getErrorMessage(error) })
-      return false
-    } finally {
-      if (pendingScope.current === scope) pendingScope.current = null
-      update({ scope, type: 'settled' })
-    }
+    return executeQuestionRequest({
+      scope,
+      request: () =>
+        askWorkbookQuestion(
+          analysisId,
+          normalized,
+          context ?? buildQuestionContext(session.answers, report),
+        ),
+      isActive: () => active.current?.scope === scope,
+      update,
+      errorMessage: getErrorMessage,
+      release: () => {
+        if (pendingScope.current === scope) pendingScope.current = null
+      },
+    })
   }
 
   return {

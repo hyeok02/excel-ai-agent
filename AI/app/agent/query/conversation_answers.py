@@ -8,6 +8,7 @@ from app.agent.query.conversation_language import scope_only_followup, standalon
 from app.agent.query.conversation_periods import RELATIVE_YEAR, bound_relative_question
 from app.agent.query.conversation_scopes import bound_scope_question
 from app.agent.query.conversation_sources import source_bound_context
+from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.models import (
     QuestionAnswer, QuestionAnswerStatus, QuestionAnswerVerification, QuestionVerificationLevel,
@@ -17,6 +18,14 @@ from app.agent.query.models import (
 async def answer_in_conversation(question, context, sources, resolver, answer_current):
     if context is not None and context.selection is not None:
         return await answer_selected_source(question, context.selection, sources, answer_current)
+    standalone = standalone_wording(question)
+    if (standalone != question.strip()
+            and getattr(getattr(sources, "original_index", None), "source_provider", None) is not None):
+        # A complete address-only request has no implicit subject to resolve.
+        # The direct parser rejects leftover filters, pronouns and operations.
+        direct = await asyncio.to_thread(source_lookup_answer, standalone, sources)
+        if direct is not None:
+            return direct.model_copy(update={"question": question})
     label_only = subject_only_followup(question, sources.index)
     depends_on_context = label_only or bool(CONTEXT_CUE.search(question) or RELATIVE_YEAR.search(question))
     if context is None or not depends_on_context:

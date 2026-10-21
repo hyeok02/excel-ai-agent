@@ -1,6 +1,7 @@
 import type { WorkbookQuestionAnswer } from '../../../../api/analysis/questionTypes.ts'
 import { boundedQuestionVerification } from './questionBoundedVerification.ts'
 import { composedQuestionVerification } from './questionComposedVerification.ts'
+import { requestQuestionVerification } from './questionRequestVerification.ts'
 
 /** Answer availability and source citations are not a correctness certificate. */
 export const questionVerificationPresentation = (answer: WorkbookQuestionAnswer) => {
@@ -94,6 +95,8 @@ export const questionVerificationPresentation = (answer: WorkbookQuestionAnswer)
   }
   const composed = composedQuestionVerification(answer, checks)
   if (composed) return composed
+  const request = requestQuestionVerification(answer, checks)
+  if (request) return request
   const requestChecksComplete =
     checks.includes('table_scope') &&
     (checks.includes('source_values') || checks.includes('source_cells')) &&

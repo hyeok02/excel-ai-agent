@@ -59,13 +59,25 @@ def expanded_growth_source(source, basis, named, index, summary):
     current = [row for row, point in zip(records, points)
                if (bounds.start is None or point.period >= bounds.start)
                and (bounds.end is None or point.period <= bounds.end)]
-    active = {key(row) for row in filter_records(current, source.request.filters, source.table)}
-    paired = [(row, point) for row, point in zip(records, points) if key(row) in active]
-    records, points = [row for row, _ in paired], [point for _, point in paired]
+    accepted = filter_records(current, source.request.filters, source.table)
+    active = {key(row) for row in accepted}
     start, end = bounds.start, bounds.end
-    if start and basis in {"year", "month"}:
-        start = shift_month(start, -12 if basis == "year" else -1)
-    if start and basis == "previous":
+    calendar_baseline = bool(start and basis in {"year", "month"})
+    current_ids = {id(row) for row in accepted}
+    required = {(key(row), shift_month(point.period, -12 if basis == "year" else -1))
+                for row, point in zip(records, points) if id(row) in current_ids} if calendar_baseline else set()
+    needed_dates = {period for _, period in required}
+    paired = [(row, point) for row, point in zip(records, points)
+              if not calendar_baseline
+              or id(row) in current_ids or point.period in needed_dates]
+    paired = [(row, point) for row, point in paired if key(row) in active]
+    records, points = [row for row, _ in paired], [point for _, point in paired]
+    if calendar_baseline:
+        # Calendar growth needs exact group/date operands, not every row in a
+        # continuous interval between last year's baseline and this period.
+        selected = [row for row, point in zip(records, points)
+                    if id(row) in current_ids or (key(row), point.period) in required]
+    elif start and basis == "previous":
         priors, prior_rows = {}, []
         for moment in sorted({point.period for point in points if point.period < start}, reverse=True):
             candidates = [row for row, point in zip(records, points) if point.period == moment and key(row) not in priors]

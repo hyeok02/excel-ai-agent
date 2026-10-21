@@ -12,7 +12,17 @@ const answer = (
   status: 'answered',
   confidence: 1,
   selectedTools: ['search_workbook_data'],
-  evidence: [],
+  evidence: [
+    {
+      kind: 'cell',
+      sheetName: 'Data',
+      reference: 'B2',
+      description: '원본',
+      value: 100,
+      formula: null,
+      label: '금액',
+    },
+  ],
   limitations: [],
   ...overrides,
 })
