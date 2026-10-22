@@ -49,7 +49,7 @@ def table_candidates(question, summary, index):
     longest = {key: values for key, values in groups.items()
                if not any(key != other and key in other for other in groups)}
     for matches in longest.values():
-        matches = _narrow_matches(question, matches, summary)
+        matches = _narrow_matches(question, matches)
         identities = {(table.id, column.id) for table, column in matches}
         if len(identities) > 1:
             cells = {cell.reference: cell for row in index.rows for cell in row.cells}
@@ -57,7 +57,7 @@ def table_candidates(question, summary, index):
     return []
 
 
-def _narrow_matches(question, matches, summary=None):
+def _narrow_matches(question, matches):
     if len(matches) < 2:
         return matches
     named_columns = explicit_column_ids(question)
@@ -87,26 +87,12 @@ def _narrow_matches(question, matches, summary=None):
         identities = {str(value) for row in table.rows for value in row.values.values()
                       if isinstance(value, str) and 3 <= len(value.strip()) <= 100
                       and source_or_reading_mentioned(value, question)}
-        scores[table.id] = (len(identities), headers, _role_rank(table, summary))
+        scores[table.id] = (len(identities), headers)
     if scores:
         best = max(scores.values())
         matches = [(table, column) for table, column in matches if scores[table.id] == best]
     return matches
 
-
-# 같은 값이 분석 결과 시트와 차트 공급 시트에 함께 있으면, 사람이 보는 쪽은
-# 분석 결과다. 시트 이름이 아니라 이미 매겨진 역할로 가른다.
-_ROLE_RANK = {"output": 3, "calculation": 2, "input": 1}
-
-
-def _role_rank(table, summary) -> int:
-    for sheet in getattr(summary, "sheets", ()) or ():
-        if sheet.name != table.sheet_name:
-            continue
-        classification = getattr(sheet, "sheet_classification", None)
-        role = getattr(getattr(classification, "role", None), "value", None)
-        return _ROLE_RANK.get(str(role), 0)
-    return 0
 
 
 def _candidate(question, table, column, cells):
