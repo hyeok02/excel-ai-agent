@@ -1,3 +1,4 @@
+from functools import lru_cache
 import re
 from dataclasses import dataclass
 
@@ -64,7 +65,13 @@ def _normalize_match(match: re.Match[str]) -> str:
     )
 
 
+@lru_cache(maxsize=65536)
 def _box(reference: str) -> ReferenceBox | None:
+    """같은 참조를 되풀이해 파싱하지 않는다.
+
+    한 질문에 참조 파싱이 73만 번 돌았다. 참조 글자는 바뀌지 않으므로 한 번만
+    풀면 된다.
+    """
     parsed = _parse_reference(reference)
     if parsed is None:
         return None
@@ -82,6 +89,7 @@ def _box(reference: str) -> ReferenceBox | None:
     )
 
 
+@lru_cache(maxsize=65536)
 def _parse_reference(value: str) -> tuple[str, str, str, str | None, str | None] | None:
     sheet, separator, cells = value.strip().rpartition("!")
     match = CELL_RANGE_PATTERN.fullmatch(cells)
@@ -110,6 +118,7 @@ def _contains(outer: ReferenceBox, inner: ReferenceBox) -> bool:
     )
 
 
+@lru_cache(maxsize=4096)
 def _column_number(column: str) -> int:
     result = 0
     for character in column.casefold():
