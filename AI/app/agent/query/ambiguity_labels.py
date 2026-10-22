@@ -2,6 +2,8 @@
 import re
 import unicodedata
 
+from app.services.insights.display.glossary import readable
+
 _UNIT = re.compile(
     r"(?<![a-z])(?:USD|EUR|KRW|JPY|GBP|CAD|AUD|CNY|INR|millions?|billions?|"
     r"thousands?|000|M|B)(?![a-z])|[%$€£₩¥]|백만|십억|(?:천만|만|억|조)원|천|원|명|건", re.I,
@@ -31,6 +33,22 @@ def unit_qualifier(value):
 def source_mentioned(source, question):
     """Match complete source phrases, allowing Unicode spacing and punctuation."""
     return bool(_source_matches(source, question))
+
+
+def source_or_reading_mentioned(source, question):
+    """원본 글자 그대로, 또는 용어집이 읽어 주는 이름으로 질문과 맞춰 본다.
+
+    표의 값은 영어('Services')인데 질문은 한국어('서비스')라 글자로는 절대
+    맞지 않았다. 그래서 후보 순위가 모든 표에서 0점으로 비겼고, 질문이 무엇이든
+    같은 후보 목록이 나왔다.
+    """
+    if source_mentioned(source, question):
+        return True
+    reading = readable(source)
+    if reading == str(source):
+        return False
+    korean = reading.split("(")[0].strip()
+    return bool(korean) and source_mentioned(korean, question)
 
 
 def mentioned_sources(sources, question):

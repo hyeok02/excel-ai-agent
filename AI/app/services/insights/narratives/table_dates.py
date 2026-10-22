@@ -1,4 +1,5 @@
 """Date-axis recognition that rejects duplicate periods and reporting bases."""
+from functools import lru_cache
 import re
 
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
@@ -34,7 +35,13 @@ def is_date(value):
 
 
 def column(cell):
-    return column_index_from_string(coordinate_from_string(cell["cell"])[0])
+    return _column_of(cell["cell"])
+
+
+@lru_cache(maxsize=65536)
+def _column_of(address):
+    """같은 셀 주소를 되풀이해 파싱하지 않는다. 한 질문에 540만 번 불렸다."""
+    return column_index_from_string(coordinate_from_string(address)[0])
 
 
 def _date_key(value):
