@@ -1,16 +1,12 @@
 """Create one common, source-grounded sentence describing any workbook."""
 import re
 
-from app.services.insights.verification.claim_grounding import grounded_claim
-from app.services.insights.verification.derived_claim_grounding import grounded_derivation
+from app.services.insights.verification.statement_grounding import grounded_statement
 from app.services.insights.models import (
     ValidatedWorkbookInsightReport,
     WorkbookInsightReport,
 )
-from app.services.insights.verification.numeric_validation import unmatched_numbers
 from app.services.insights.verification.reference_matching import resolve_references
-from app.services.insights.verification.review_points import grounded_tokens, mask_known_names
-from app.services.insights.verification.unit_grounding import grounded_units
 from app.services.insights.verification.validation_index import EvidenceIndex, extract_references
 from app.services.insights.narratives.workbook_lead_rules import structured_lead
 
@@ -59,14 +55,7 @@ def _supported(
         resolved, unmatched = resolve_references(requested, index.references)
         if unmatched or not resolved:
             continue
-        source = [text for ref in resolved for text in index.reference_text.get(ref, [])]
-        grounded = grounded_tokens(source)
-        cited = set().union(*(index.reference_numbers.get(ref, set()) for ref in resolved))
-        claim = mask_known_names(lead, grounded)
-        if (not unmatched_numbers(claim, cited)
-                and grounded_claim(lead, source, resolved)
-                and grounded_derivation(lead, source, resolved, index.numeric_changes)
-                and grounded_units(lead, source, resolved, index.numeric_changes)):
+        if grounded_statement(lead, index, resolved):
             return True
     return False
 

@@ -23,14 +23,23 @@ def value_is_authorized(value: object, instruction: str) -> bool:
         labels = ("true", "참", "예") if value else ("false", "거짓", "아니오")
         return any(label in normalized for label in labels)
     if isinstance(value, (int, float)):
-        return bool(numbers(str(value)) & _stated_numbers(instruction))
+        transitions = list(VALUE_TRANSITION.finditer(instruction))
+        if transitions:
+            return as_number(value) in {as_number(match.group("next")) for match in transitions}
+        return as_number(value) in _stated_numbers(instruction)
     text = str(value).strip().casefold()
     if text and text in normalized:
         return True
     return _iso_date(text) and numbers(text) <= numbers(instruction)
 
 
-AMOUNT_TOKEN = re.compile(r"(?<![\w$.:])-?\d[\d,]*(?:\.\d+)?\s*(?:백만|조|억|만(?!큼)|천)?")
+AMOUNT_TOKEN = re.compile(
+    r"(?<![\w$.:+-])(?P<currency_sign>[+-](?=[$€£₩¥]))?[$€£₩¥]?\s*"
+    r"(?P<amount>[+-]?\d[\d,]*(?:\.\d+)?(?:[eE][+-]?\d+)?)"
+    r"\s*(?P<scale>trillion|billion|million|thousand|백만|조|억|만(?!큼)|천)?", re.I,
+)
+MAGNITUDES = {"trillion": "1e12", "billion": "1e9", "million": "1e6", "thousand": "1e3",
+              "조": "1e12", "백만": "1e6", "억": "1e8", "만": "1e4", "천": "1e3"}
 
 
 def _stated_numbers(instruction: str) -> set:
@@ -42,13 +51,23 @@ def _stated_numbers(instruction: str) -> set:
     바꿀 값(1081에서 1000으로)은 증감 표현이 뒤따라도 그대로 둔다.
     """
     stated = [match.span("next") for match in VALUE_TRANSITION.finditer(instruction)]
-    deltas = set()
+    result = set()
     for match in AMOUNT_TOKEN.finditer(instruction):
-        if any(low <= match.start() < high for low, high in stated):
+        target = any(low <= match.start() < high for low, high in stated)
+        if not target and direction_after(instruction, match.end()):
             continue
-        if direction_after(instruction, match.end()):
-            deltas |= numbers(match.group())
-    return numbers(instruction) - deltas
+        number = as_number(match.group("amount"))
+        if number is None:
+            continue
+        if match.group("currency_sign"):
+            if match.group("amount").startswith(("+", "-")):
+                continue
+            number *= -1 if match.group("currency_sign") == "-" else 1
+        number *= Decimal(MAGNITUDES.get((match.group("scale") or "").casefold(), "1"))
+        result.add(number)
+        if re.match(r"\s*(?:%|퍼센트|percent)", instruction[match.end():], re.I):
+            result.add(number / 100)
+    return result
 
 
 def _iso_date(value: str) -> bool:

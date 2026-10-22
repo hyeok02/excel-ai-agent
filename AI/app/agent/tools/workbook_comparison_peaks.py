@@ -1,12 +1,4 @@
-"""감소·증가를 물었을 때 각 지표의 최고점(최저점)부터 현재까지를 본다.
-
-검색이 가져온 행의 첫 줄을 시작점으로 삼으면, 같은 질문도 검색 결과에 따라
-기간이 달라져 답이 바뀐다. 실제로 같은 파일 같은 질문이 검색어에 따라
-'2022-09부터'면 Other, '2023-09부터'면 Services로 갈렸다.
-
-사람은 "가장 많이 감소한"을 보통 최고점 대비로 읽는다. 전 구간 양끝만 보면
-중간에 크게 늘었다 줄어든 항목이 '증가'로 잡혀 질문에 답하지 못한다.
-"""
+"""Explicit highest/lowest-point-to-latest comparison, never an implicit default."""
 from app.agent.query.comparison_scope import column_from_address
 
 Point = tuple[object, object]

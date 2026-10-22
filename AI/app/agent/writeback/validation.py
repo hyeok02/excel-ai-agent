@@ -11,6 +11,7 @@ from app.agent.writeback.references import (
     key,
 )
 from app.agent.writeback.value_authorization import as_number, stated_current_value
+from app.agent.writeback.target_authorization import TargetAuthorization
 
 FORBIDDEN_FORMULA = re.compile(
     r"(?:\[|https?://|\\\\|\||\b(?:WEBSERVICE|HYPERLINK|RTD|CALL|REGISTER\.ID|EXEC)\s*\()",
@@ -22,6 +23,7 @@ def validate_changes(
     drafts, available, data_index, instruction: str
 ) -> tuple[list[WritebackChange], list[str]]:
     changes, risks, seen = [], [], set()
+    authorization = TargetAuthorization(instruction, data_index)
     sheets = sheet_columns(data_index)
     for draft in drafts:
         references = expand_reference(draft.reference)
@@ -38,18 +40,23 @@ def validate_changes(
         for reference in references:
             _append_change(
                 changes, risks, seen, draft, reference, available,
-                data_index, instruction, sheets,
+                data_index, authorization, sheets,
             )
+    risks.extend(authorization.missing_risks(changes))
     return dedupe_related(changes), risks
 
 
 def _append_change(
-    changes, risks, seen, draft, reference, available, data_index, instruction, sheets
+    changes, risks, seen, draft, reference, available, data_index, authorization, sheets
 ) -> None:
     cell_key = key(draft.sheet_name, reference)
     cell = available.get(cell_key)
     if cell is None:
         risks.append(f"{draft.sheet_name}!{reference}: 원본에서 확인할 수 없는 셀입니다.")
+        return
+    instruction, target_risk = authorization.instruction_for(cell)
+    if target_risk:
+        risks.append(f"{draft.sheet_name}!{reference}: {target_risk}")
         return
     if cell_key in seen:
         risks.append(f"{draft.sheet_name}!{reference}: 중복 변경입니다.")
@@ -65,13 +72,11 @@ def _append_change(
     if formula_risk:
         risks.append(f"{draft.sheet_name}!{reference}: {formula_risk}")
         return
-    # 요청에 값이 그대로 적혀 있거나, 요청이 밝힌 계산으로 그 값이 나와야 한다.
     derivation, rejection = authorize_value(cell.value, draft.new_value, instruction, formula)
     if rejection:
         risks.append(f"{draft.sheet_name}!{reference}: {rejection} 제외했습니다.")
         return
     old_value = cell.formula or cell.value
-    # 요청이 바꾸기 전 값을 밝혔는데 대상 셀이 다른 값을 들고 있으면 엉뚱한 셀을 고른 것이다.
     stated = stated_current_value(instruction, draft.new_value)
     if stated is not None and as_number(old_value) != stated:
         risks.append(

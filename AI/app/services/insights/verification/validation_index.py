@@ -7,6 +7,7 @@ from typing import Any
 from app.agent.execution.models import AgentExecution, AgentStepStatus
 from app.services.insights.verification.numeric_validation import numbers
 from app.services.insights.verification.reference_values import index_reference_numbers
+from app.services.insights.verification.relation_index import sheet_observations
 from app.services.provenance import EvidenceKind
 
 REFERENCE_PATTERN = re.compile(
@@ -25,6 +26,7 @@ class EvidenceIndex:
     numeric_changes: list[dict] = field(default_factory=list)
     evidence_text: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
+    observations: list = field(default_factory=list)
 
 
 def workbook_evidence_index(context: dict[str, object]) -> EvidenceIndex:
@@ -80,6 +82,7 @@ def _index_workbook_sheet(index: EvidenceIndex, sheet: Any) -> None:
     if not isinstance(sheet, dict):
         return
     sheet_name = str(sheet.get("name", ""))
+    index.observations.extend(sheet_observations(sheet))
     index.numeric_changes.extend(sheet.get("business_facts", {}).get("numeric_changes", []))
     serialized = json.dumps(sheet, ensure_ascii=False, default=str)
     index.references.update(extract_references(serialized))

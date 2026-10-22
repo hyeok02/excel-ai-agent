@@ -64,6 +64,20 @@ def test_metric_comparison_preserves_each_endpoint_number_format() -> None:
     assert comparison["metrics"][0]["end_number_format"] == "0.0%"
 
 
+@pytest.mark.parametrize("question,start,change", [
+    ("처음과 마지막 비교해서 가장 많이 감소한 부서는?", 100, 20),
+    ("최고점 대비 마지막 인원이 가장 많이 감소한 부서는?", 200, -80),
+])
+def test_explicit_endpoints_are_not_silently_replaced_by_a_peak(question, start, change):
+    rows = [_row(2, "2024-01-01", 100), _row(3, "2024-02-01", 200),
+            _row(4, "2024-03-01", 120)]
+    comparison = build_time_series_comparison(rows, _headers(rows), question)
+    assert comparison["metrics"][0]["start_value"] == start
+    assert comparison["metrics"][0]["change"] == change
+    if change > 0:
+        assert comparison["ranked_changes"] == []
+
+
 @pytest.mark.parametrize("date_header", ("Period", "기준월"))
 def test_common_period_headers_are_recognized(date_header: str) -> None:
     rows = [_row(2, "2025-01-01", 100), _row(3, "2025-02-01", 120)]

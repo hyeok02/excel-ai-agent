@@ -1,14 +1,11 @@
 from app.agent.execution.models import AgentExecution
-from app.services.insights.verification.claim_grounding import grounded_claim
-from app.services.insights.verification.derived_claim_grounding import grounded_derivation
-from app.services.insights.verification.unit_grounding import grounded_units
+from app.services.insights.verification.statement_grounding import grounded_statement
 from app.services.insights.models import (
     InsightValidationStatus, ValidatedWorkbookInsight,
     ValidatedWorkbookInsightReport, WorkbookInsight, WorkbookInsightReport,
 )
-from app.services.insights.verification.numeric_validation import numbers, unmatched_numbers
+from app.services.insights.verification.numeric_validation import numbers
 from app.services.insights.verification.reference_matching import resolve_references
-from app.services.insights.verification.review_points import grounded_tokens, mask_known_names
 from app.services.insights.verification.topic_grounding import grounded_topic, required_citations
 from app.services.insights.verification.validated_report import assemble_report, add_source_fallback
 from app.services.insights.narratives.source_narratives import source_narrative_report
@@ -73,25 +70,15 @@ def _validate_insight(
     if unmatched or not resolved:
         return None
     source_text = [text for ref in resolved for text in index.reference_text.get(ref, [])]
-    grounded = grounded_tokens(source_text)
-    cited_numbers = set().union(*(index.reference_numbers.get(ref, set()) for ref in resolved))
-
-    def supported(text: str | None) -> bool:
+    def supported(text: str | None, fact=False) -> bool:
         if not text:
             return False
-        if any(text in (item.fact, item.title) and required_citations(item, references)
+        if any(text in ((item.fact,) if fact else (item.fact, item.title)) and required_citations(item, references)
                for item in canonical):
             return True
-        without_addresses = REFERENCE_PATTERN.sub(" ", text)
-        claim = mask_known_names(without_addresses, grounded)
-        return (
-            not unmatched_numbers(claim, cited_numbers)
-            and grounded_claim(text, source_text, resolved)
-            and grounded_derivation(text, source_text, resolved, index.numeric_changes)
-            and grounded_units(text, source_text, resolved, index.numeric_changes)
-        )
+        return grounded_statement(text, index, resolved)
 
-    if not supported(insight.fact):
+    if not supported(insight.fact, fact=True):
         return None
     # Do not let a valid fact carry a fabricated title, cause or recommendation.
     cause = insight.cause

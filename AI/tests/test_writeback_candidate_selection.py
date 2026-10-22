@@ -55,3 +55,13 @@ def test_selection_still_works_without_a_stated_value() -> None:
     references = _references("Headcount 시트 Services 값을 981로 바꿔줘")
 
     assert any(item.startswith("Headcount!") for item in references)
+
+
+def test_explicit_anchored_address_with_korean_particle_stays_a_priority():
+    references = _references("Headcount!$b$3을 999로 바꿔줘")
+    assert "Headcount!B3" in references
+
+
+def test_explicit_range_prioritizes_all_interior_cells():
+    references = _references("Headcount!$b$2:$c$3을 999로 바꿔줘")
+    assert {"Headcount!B2", "Headcount!C2", "Headcount!B3", "Headcount!C3"} <= references
