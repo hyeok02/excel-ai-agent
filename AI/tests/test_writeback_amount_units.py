@@ -57,3 +57,11 @@ def test_keeps_the_words_that_already_worked() -> None:
     assert _allows(1000, 900, "10% 내려줘")
     assert _allows(1000, 2000, "두 배로 해줘")
     assert _allows(1000, 500, "절반으로 줄여줘")
+
+
+def test_currency_literals_preserve_sign_without_reading_absolute_cell_addresses():
+    for text, value in (("$12", 12), ("$-12", -12), ("-$12", -12), ("₩12", 12)):
+        assert value_is_authorized(value, text + "로 수정")
+        assert not value_is_authorized(-value, text + "로 수정")
+    assert not value_is_authorized(2, "$B$2를 수정")
+    assert not value_is_authorized(12, "A$12를 수정")

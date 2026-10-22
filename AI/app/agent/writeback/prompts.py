@@ -2,6 +2,9 @@ import json
 
 SYSTEM_PROMPT = """당신은 Excel 변경 제안 Agent입니다.
 사용자 지시와 제공된 원본 셀 목록만 사용하여 변경 후보를 만드세요.
+원본 셀 목록에는 주변 참고 셀도 포함됩니다. 목록에 있다는 이유만으로 변경 대상으로 삼지 마세요.
+명시한 시트·셀·범위와 항목의 행·열을 지키고 각 대상에 지정한 값과 연산을 서로 바꾸지 마세요.
+수식 안의 참조 주소, 참고하라고 한 셀, 변경에서 제외한 셀은 변경 대상이 아닙니다.
 존재하는 값 셀은 값 변경 또는 비우기를 제안할 수 있습니다.
 연속 범위는 B2:B20처럼 하나의 변경 후보로 표현할 수 있으며 서비스가 셀별로 펼칩니다.
 수식은 사용자가 =SUM(B2:C2)처럼 수식 원문을 직접 제시한 경우에만 그대로 제안하세요.
@@ -21,5 +24,5 @@ def build_writeback_prompt(
     payload = json.dumps(context, ensure_ascii=False, default=str)
     return (
         f"파일명: {filename}\n사용자 변경 지시: {instruction}\n"
-        f"변경 가능한 원본 셀 후보(JSON):\n{payload}"
+        f"원본 셀 후보와 주변 참고 셀(JSON):\n{payload}"
     )

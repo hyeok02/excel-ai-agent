@@ -4,6 +4,7 @@ from app.agent.query.comparison_scope import (
     requested_change_direction,
 )
 from app.agent.query.index import IndexedRow
+from app.agent.query.change_ranking_request import change_comparison_basis
 from app.agent.tools.workbook_comparison_metrics import metric_changes
 from app.agent.tools.workbook_comparison_peaks import peak_adjusted_metrics
 from app.agent.tools.workbook_comparison_series import time_series_candidates
@@ -27,7 +28,11 @@ def build_time_series_comparison(
     start_date, start_row = points[0]
     end_date, end_row = points[-1]
     direction = requested_change_direction(query)
-    metrics = peak_adjusted_metrics(metrics, points, direction)
+    basis = change_comparison_basis(query)
+    if basis == "extreme_to_latest":
+        metrics = peak_adjusted_metrics(metrics, points, direction)
+    elif basis in {"max_drawdown", "adjacent"}:
+        return None  # Complete-series ranking owns these interval operations.
     ranked = rank_changes(metrics, direction)
     return {
         "sheet_name": sheet_name,
@@ -38,6 +43,7 @@ def build_time_series_comparison(
         "end_reference": f"{sheet_name}!{date_column}{end_row.row_number}",
         "metric_group": metric_group if scoped else None,
         "change_direction": direction,
+        "comparison_basis": "extreme_to_latest" if basis == "extreme_to_latest" else "net",
         "metrics": metrics,
         "ranked_changes": ranked[:5],
         "largest_absolute_changes": sorted(

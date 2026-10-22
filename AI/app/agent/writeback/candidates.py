@@ -3,6 +3,8 @@ import re
 from app.agent.query.index import IndexedCell, WorkbookDataIndex
 from app.agent.query.search_terms import relevance, search_terms
 from app.agent.writeback.value_authorization import as_number
+from app.agent.writeback.target_authorization import TargetAuthorization
+from app.agent.writeback.references import key
 from app.services.insights.verification.numeric_validation import numbers
 
 MAX_CANDIDATE_CELLS = 240
@@ -20,10 +22,7 @@ def select_writeback_candidates(
     anchors = list(
         dict.fromkeys([*value_positions, *_text_anchors(instruction, index)])
     )
-    direct_references = set(re.findall(r"\b[A-Za-z]{1,3}[1-9][0-9]{0,6}\b", instruction))
-    mentioned_sheets = {
-        row.sheet_name for row in index.rows if row.sheet_name.casefold() in instruction.casefold()
-    }
+    explicit_targets = TargetAuthorization(instruction, index).targets
     selected_positions = _neighbor_positions(index, anchors)
     cells = [
         cell
@@ -34,8 +33,7 @@ def select_writeback_candidates(
         cell
         for row in index.rows
         for cell in row.cells
-        if cell.address.upper() in {item.upper() for item in direct_references}
-        and (not mentioned_sheets or cell.sheet_name in mentioned_sheets)
+        if key(cell.sheet_name, cell.address) in explicit_targets
     ]
     if not cells:
         dense_rows = sorted(index.rows, key=lambda row: len(row.cells), reverse=True)[:40]

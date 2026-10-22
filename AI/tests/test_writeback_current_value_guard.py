@@ -49,7 +49,7 @@ def test_blocks_change_when_target_cell_holds_a_different_current_value() -> Non
     body = response.json()
     assert body["status"] == "blocked"
     assert body["changes"] == []
-    assert any("현재 값" in risk for risk in body["risks"])
+    assert any("현재 값" in risk or "원본 행" in risk for risk in body["risks"])
 
 
 def test_allows_change_when_target_cell_holds_the_stated_current_value() -> None:

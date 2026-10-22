@@ -12,7 +12,8 @@ from app.services.insights.verification.validation_index import REFERENCE_PATTER
 
 WORDS = re.compile(r"[A-Za-z]+|[가-힣]+")
 PARTICLES = ("입니다", "에서는", "에서", "으로", "까지", "부터", "보다", "처럼", "에는",
-             "이며", "이고", "의", "은", "는", "이", "가", "을", "를", "에", "와", "과", "로", "도")
+             "이며", "이고", "의", "은", "는", "이", "가", "을", "를", "에", "와", "과", "로", "도",
+             "했습니다", "했으며", "했고", "합니다", "하며", "하고")
 # Language glue only: never company names, industry terms, or domain synonyms.
 # 비교·정도를 나타내는 말이 빠져 있으면 평범한 한국어 답변까지 근거 없음으로
 # 막힌다. "가장 많이 줄었습니다"가 '가장' 하나 때문에 통째로 버려졌다.
@@ -59,4 +60,5 @@ def grounded_claim(text: str, source_text: list[str], references: set[str]) -> b
     words = WORDS.findall(prose)
     if not words:
         return False
-    return all(_forms(word) & (source_words | REPORT_WORDS) for word in words)
+    grammar = set().union(*(_forms(word) for word in REPORT_WORDS))
+    return all(_forms(word) & (source_words | grammar) for word in words)

@@ -34,6 +34,7 @@ def test_department_decrease_excludes_total_and_role_columns() -> None:
     assert comparison is not None
     assert comparison["start_date"] == "2023-09-01"
     assert comparison["end_date"] == "2025-06-01"
+    assert comparison["comparison_basis"] == "net"
     assert [item["header"] for item in comparison["metrics"]] == [
         path[-1] for path in COLUMNS.values()
     ]
@@ -42,13 +43,11 @@ def test_department_decrease_excludes_total_and_role_columns() -> None:
         "start_value": 1277,
         "end_value": 1081,
         "change": -196.0,
-            "start_number_format": "General",
-            "end_number_format": "General",
+        "start_number_format": "General",
+        "end_number_format": "General",
         "header_references": ["Metrics!W106", "Metrics!W107"],
         "start_reference": "Metrics!W115",
         "end_reference": "Metrics!W108",
-        # 지표마다 최고점 시점이 다르므로 그 지표의 시작 시점을 함께 싣는다.
-        "start_date": "2023-09-01",
     }
 
 
