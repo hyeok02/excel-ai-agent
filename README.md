@@ -332,7 +332,8 @@ cd BE
 ```bash
 cd AI
 source .venv/bin/activate
-pytest
+pip install -e '.[dev]'   # 병렬 실행용 pytest-xdist 포함
+pytest                    # CPU 수만큼 병렬, 직렬은 pytest -n0
 ```
 
 PR 자동 검사에서도 AI 테스트와 Frontend의 대화 복원·파일 격리·검증 배지

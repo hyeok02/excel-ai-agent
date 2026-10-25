@@ -36,7 +36,9 @@ def test_multiple_tables_keep_separate_counts_and_exact_evidence_ranges():
     tables = build_query_tables(summary)
     assert [table.id for table in tables] == ["Arbitrary!B2:C4", "Arbitrary!E9:F12"]
     plan = TabularQueryPlan(operation="frequencies", table_id=tables[1].id, column_ids=["F"])
-    answer = execute_tabular_query(plan, summary, index, "second table flags")
+    # Same-shaped tables with different values: only a named scope selects one.
+    assert execute_tabular_query(plan, summary, index, "second table flags") is None
+    answer = execute_tabular_query(plan, summary, index, "Arbitrary!E9:F12 flags")
     assert "‘ready’ 2건" in answer.answer and "빈칸 1건" in answer.answer
     assert "pending" not in answer.answer
     assert {item.reference for item in answer.evidence} == {"E9:E12", "F9:F12"}

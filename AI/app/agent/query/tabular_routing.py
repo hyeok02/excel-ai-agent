@@ -2,6 +2,7 @@
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
 from app.agent.query.tabular_execution import execute_tabular_query
 from app.agent.query.tabular_partial_categories import partial_category_answer
+from app.agent.query.tabular_scope_conflicts import scope_clarification
 
 
 def planned_tabular_answer(intent, summary, data_index, question):
@@ -10,6 +11,8 @@ def planned_tabular_answer(intent, summary, data_index, question):
     answer = execute_tabular_query(intent.tabular_query, summary, data_index, question, intent)
     if answer is not None:
         return answer
+    if clarification := scope_clarification(intent.tabular_query, summary, data_index, question):
+        return clarification
     partial = partial_category_answer(intent, summary, data_index, question)
     if partial is not None:
         return partial

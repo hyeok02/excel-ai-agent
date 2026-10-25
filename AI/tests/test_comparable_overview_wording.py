@@ -31,40 +31,33 @@ def _overview(**kwargs):
     return comparable_transaction_report(_context(**kwargs))[1]
 
 
-def test_both_metrics_are_stated_in_one_sentence() -> None:
-    overview = _overview()
+def test_full_coverage_multiple_is_the_price_conclusion_and_amount_is_size() -> None:
+    overview = _overview(valid_count=10)
 
-    assert overview.startswith(
-        "거래 가격은 비교 대상의 중앙값보다 23.8% 낮고, 이익 대비 가격은 49.0% 낮습니다."
-    )
+    assert overview == "EBITDA 대비 인수가격은 비교 거래 중앙값보다 49.0% 낮습니다."
+    assert "거래 가격" not in overview and "23.8%" not in overview
 
 
 def test_opposite_directions_keep_their_own_wording() -> None:
-    overview = _overview(ebitda_percent=12.0)
-
-    assert "23.8% 낮고, 이익 대비 가격은 12.0% 높습니다" in overview
-    assert "비쌌다고 단정하기는 어렵습니다" in overview
-
-
-def test_missing_profit_coverage_is_stated_once() -> None:
-    overview = _overview(valid_count=3)
-
-    assert "이익 자료가 있는 거래가 10건 중 3건뿐이라" in overview
-    assert overview.count("단정하기는 어렵습니다") == 1
+    assert _overview(valid_count=10, ebitda_percent=12.0) == (
+        "EBITDA 대비 인수가격은 비교 거래 중앙값보다 12.0% 높습니다."
+    )
 
 
-def test_full_coverage_drops_the_caveat() -> None:
-    overview = _overview(valid_count=10)
-
-    assert "단정하기는 어렵습니다" not in overview
+def test_half_coverage_is_enough_and_less_is_named_as_excluded() -> None:
+    assert _overview(valid_count=5).startswith("EBITDA 대비 인수가격은")
+    thin = _overview(valid_count=3)
+    assert thin.startswith("EBITDA 기준 배수가 10건 중 3건만 값이 있어 가격 수준은 판단할 수 없습니다.")
+    assert "거래 규모뿐이며, 비교 거래 중앙값보다 23.8% 작습니다" in thin
 
 
 def test_a_single_metric_reads_on_its_own() -> None:
-    assert _overview(kinds=("transaction_value",)).startswith(
-        "거래 가격은 비교 대상의 중앙값보다 23.8% 낮습니다."
+    assert _overview(kinds=("transaction_value",)) == (
+        "가격 수준을 비교할 배수 열이 없습니다. "
+        "비교할 수 있는 것은 거래 규모뿐이며, 비교 거래 중앙값보다 23.8% 작습니다."
     )
-    assert _overview(kinds=("ebitda_multiple",)).startswith(
-        "이익 대비 가격은 비교 대상의 중앙값보다 49.0% 낮습니다."
+    assert _overview(kinds=("ebitda_multiple",), valid_count=10).startswith(
+        "EBITDA 대비 인수가격은 비교 거래 중앙값보다 49.0% 낮습니다."
     )
 
 

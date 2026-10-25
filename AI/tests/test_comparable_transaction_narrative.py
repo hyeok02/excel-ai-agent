@@ -64,29 +64,34 @@ def test_comparable_narrative_is_selected_before_row_dump_fallbacks():
 
     report = source_narrative_report(context)
 
-    assert [item.category for item in report.insights] == ["metric", "metric"]
-    facts = " ".join(item.fact for item in report.insights)
-    assert "5.09배" in facts and "9.99배" in facts
-    assert "10건 중 3건" in report.overview
-    assert "23.8%" in report.overview and "49.0%" in report.overview
-    assert "$911.8M" in facts and "$1,196.6M" in facts
-    assert "'Deal Review'!E12:E21" in report.insights[0].evidence
-    assert [item.topic for item in report.insights] == [
-        "EBITDA 대비 거래가격", "총 거래가치",
-    ]
+    # EBITDA multiples exist for 3 of 10 peers only: no price conclusion,
+    # and the transaction amount is described as size, never as price.
+    assert [item.topic for item in report.insights] == ["거래 규모"]
+    assert report.overview == (
+        "EBITDA 기준 배수가 10건 중 3건만 값이 있어 가격 수준은 판단할 수 없습니다. "
+        "비교할 수 있는 것은 거래 규모뿐이며, 비교 거래 중앙값보다 23.8% 작습니다."
+    )
+    fact = report.insights[0].fact
+    assert "$911.8M" in fact and "$1,196.6M" in fact and "23.8% 작습니다" in fact
+    assert "'Deal Review'!C12:C21" in report.insights[0].evidence
     validated = validate_workbook_insights(report, context)
     assert [item.topic for item in validated.insights] == [item.topic for item in report.insights]
 
 
+def _set(regions, column, addresses, value):
+    for region in regions:
+        for row in region["analysis_rows"]:
+            if row[0]["address"][:1] == column and row[0]["address"] in addresses:
+                row[0]["value"] = value
+    return regions
+
+
 def test_multiple_with_fewer_than_three_values_is_not_reported():
-    regions = deepcopy(_regions())
-    target = next(row[0] for row in regions[4]["analysis_rows"]
-                  if row[0]["address"] == "E14")
-    target["value"] = "NA"
+    regions = _set(_set(deepcopy(_regions()), "D", {"D14"}, "NA"), "E", {"E14"}, "NA")
 
     result = extract_comparable_transactions("Deal Review", regions)
 
-    assert [metric["kind"] for metric in result["metrics"]] == ["transaction_value"]
+    assert [metric["kind"] for metric in result["metrics"]] == ["size"]
 
 
 def test_declared_focus_id_must_match_the_subject_row():
@@ -97,15 +102,14 @@ def test_declared_focus_id_must_match_the_subject_row():
 
 
 def test_zero_median_is_not_turned_into_a_percentage():
+    zeros = {"14", "17", "20", "23", "24", "25", "26"}
     regions = deepcopy(_regions())
-    for address in ("E14", "E17", "E20", "E23", "E24", "E25", "E26"):
-        target = next(row[0] for row in regions[4]["analysis_rows"]
-                      if row[0]["address"] == address)
-        target["value"] = 0
+    for column in ("D", "E"):
+        _set(regions, column, {f"{column}{row}" for row in zeros}, 0)
 
     result = extract_comparable_transactions("Deal Review", regions)
 
-    assert [metric["kind"] for metric in result["metrics"]] == ["transaction_value"]
+    assert [metric["kind"] for metric in result["metrics"]] == ["size"]
 
 
 def test_validated_comparison_does_not_append_transaction_row_dumps():
@@ -127,5 +131,5 @@ def test_validated_comparison_does_not_append_transaction_row_dumps():
     )
 
     assert len(row_dump) == 1
-    assert len(report.insights) == 2
+    assert len(report.insights) == 1
     assert all("Noise Corp" not in item.fact for item in report.insights)

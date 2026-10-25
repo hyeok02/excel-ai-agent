@@ -8,6 +8,12 @@ from app.agent.query.tabular_source_alias_resolver import LangChainSourceLabelRe
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 
 
+async def clarified_answer(question, summary, data_index, intent, clarification):
+    """Every source-scope clarification gets the same one alias retry."""
+    return await resolved_source_label_alias_answer(
+        question, summary, data_index, intent, clarification) or clarification
+
+
 async def resolved_source_label_alias_answer(question, summary, data_index, intent, clarification, resolver=None):
     direct = await asyncio.to_thread(source_label_alias_answer, question, summary, data_index, intent, clarification)
     if direct is not None:

@@ -4,11 +4,13 @@ import re
 
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 
+from app.services.insights.facts.comparable_columns import BUYER_SIDE, TARGET_NAME, TARGET_SIDE, column_role
+
 COMPARABLE = re.compile(r"comparab.*transaction|transaction.*comparab|비교.*거래", re.I)
-TARGET_NAME = re.compile(r"target.*(?:issuer.*)?name|피인수.*(?:기업|대상).*이름", re.I)
 TRANSACTION_ID = re.compile(r"(?:transaction|deal).*(?:\bid\b|ids\b)|거래.*(?:id|아이디)", re.I)
 FOCUS_ID = re.compile(r"(?:focus|subject|base).*(?:transaction|deal)?.*(?:\bid\b|ids\b)|기준.*거래.*(?:id|아이디)", re.I)
 PROVIDER_KEY = re.compile(r"^(?:SP[A-Z0-9_]+|NA)$", re.I)
+VALUED = {"multiple", "size", "equity", "enterprise", "earnings"}
 STATISTIC = {
     "high": re.compile(r"^(?:high|max|maximum|최대)$", re.I),
     "median": re.compile(r"^(?:median|중앙값)$", re.I),
@@ -23,36 +25,25 @@ def comparable_layout(sheet_name, regions):
     if not cells or not COMPARABLE.search(scope):
         return None
     rows = _rows(cells)
-    header = _find_header(rows)
+    hidden = {column_index_from_string(column) for region in regions
+              for column in region.get("hidden_columns") or ()}
+    header = _find_header(rows, hidden)
     if not header:
         return None
-    header_row, metrics, name_column, id_column = header
-    if not {"ebitda_multiple", "transaction_value"} <= metrics.keys():
-        return None
-    stats = _statistics(rows, header_row, [item[0] for item in metrics.values()])
+    header_row, columns, name_column, id_column = header
+    valued = [item["column"] for item in columns if item["role"] in VALUED]
+    stats = _statistics(rows, header_row, valued)
     if not stats:
         return None
     first_stat, last_stat = min(stats.values()), max(stats.values())
-    peers = _peer_rows(rows, header_row, first_stat, name_column, metrics)
+    peers = _peer_rows(rows, header_row, first_stat, name_column, valued)
     declared, focus_id = _focus_id(rows, header_row, id_column)
     subject = _subject_row(rows, header_row, last_stat, name_column, id_column,
-                           metrics, declared, focus_id)
+                           valued, declared, focus_id)
     if len(peers) < 3 or subject is None:
         return None
-    return {"cells": cells, "rows": rows, "headers": metrics, "peers": peers,
+    return {"cells": cells, "rows": rows, "columns": columns, "peers": peers,
             "name_column": name_column, "subject": subject, "median_row": stats["median"]}
-def metric_kind(label):
-    normalized = " ".join(label.casefold().split())
-    if "ebitda" in normalized and ("value" in normalized or "ev" in normalized):
-        if "(x)" in normalized or "multiple" in normalized or "/" in normalized:
-            return "ebitda_multiple", 2 if "transaction" in normalized else 1
-    if "total transaction value" in normalized or "총 거래가치" in normalized:
-        return "transaction_value", 2
-    if "transaction value" in normalized and not any(
-        word in normalized for word in ("per share", "ebit", "ebitda")
-    ):
-        return "transaction_value", 1
-    return None, 0
 def finite(cell):
     value = cell.get("value") if isinstance(cell, dict) else None
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
@@ -74,26 +65,41 @@ def _rows(cells):
         name, row = coordinate_from_string(cell["cell"])
         result.setdefault(row, {})[column_index_from_string(name)] = cell
     return result
-def _find_header(rows):
+def _find_header(rows, hidden=frozenset()):
+    """Hidden helper columns never become a reported metric or caveat."""
     candidates = []
     for row_number, row in rows.items():
-        metrics, name_column, id_column = {}, None, None
-        for column, cell in row.items():
+        columns, name_column, id_column = [], None, None
+        for column, cell in sorted(row.items()):
             label = " ".join(str(cell["value"]).split())
-            kind, priority = metric_kind(label)
-            if kind and (kind not in metrics or priority > metrics[kind][0]):
-                metrics[kind] = (priority, column, cell)
+            if column not in hidden and (role := column_role(label)):
+                columns.append({"role": role[0], "detail": role[1], "priority": role[2],
+                                "column": column, "cell": cell,
+                                "side": _side(rows.get(row_number - 1, {}), column)})
             if TARGET_NAME.search(label):
                 name_column = column
             if TRANSACTION_ID.search(label):
                 id_column = column
-        if metrics and name_column:
-            candidates.append((len(metrics), sum(item[0] for item in metrics.values()),
-                               -row_number, row_number, metrics, name_column, id_column))
+        if name_column and any(item["role"] in {"multiple", "size"} for item in columns):
+            score = sum(item["role"] in VALUED for item in columns)
+            candidates.append((score, -row_number, row_number, columns, name_column, id_column))
     if not candidates:
         return None
-    *_, row_number, metrics, name_column, id_column = max(candidates)
-    return row_number, {key: value[1:] for key, value in metrics.items()}, name_column, id_column
+    *_, row_number, columns, name_column, id_column = max(candidates, key=lambda item: item[:2])
+    return row_number, columns, name_column, id_column
+
+
+def _side(group_row, column):
+    """A group caption above ("Target LTM Financials") tells whose figures follow."""
+    left = [cell for number, cell in group_row.items() if number <= column]
+    caption = str(max(left, key=lambda cell: _column_number(cell))["value"]) if left else ""
+    if BUYER_SIDE.search(caption):
+        return "buyer"
+    return "target" if TARGET_SIDE.search(caption) else None
+
+
+def _column_number(cell):
+    return column_index_from_string(coordinate_from_string(cell["cell"])[0])
 def _statistics(rows, header_row, metric_columns):
     matches = []
     for row_number in sorted(row for row in rows if row > header_row):
@@ -113,8 +119,7 @@ def _statistics(rows, header_row, metric_columns):
                         for column in metric_columns)):
             return {label: row for row, label in group}
     return {}
-def _peer_rows(rows, header_row, first_stat, name_column, metrics):
-    columns = [value[0] for value in metrics.values()]
+def _peer_rows(rows, header_row, first_stat, name_column, columns):
     return [row for row in sorted(rows) if header_row < row < first_stat
             and rows[row].get(name_column)
             and not PROVIDER_KEY.fullmatch(str(rows[row][name_column]["value"]).strip())
@@ -133,9 +138,8 @@ def _focus_id(rows, header_row, id_column):
                     found = min(choices, key=lambda item: abs(item[0] - column))
                     return True, str(found[1]["value"])
     return declared, None
-def _subject_row(rows, header_row, last_stat, name_column, id_column, metrics,
+def _subject_row(rows, header_row, last_stat, name_column, id_column, columns,
                  focus_declared, focus_id):
-    columns = [value[0] for value in metrics.values()]
     usable = lambda row: (rows[row].get(name_column)
                           and any(finite(rows[row].get(column)) for column in columns))
     if focus_declared:

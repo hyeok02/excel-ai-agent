@@ -57,7 +57,8 @@ def _comparable(sheet, comparison, descriptions):
         label = str(metric.get("label") or metric.get("kind") or "거래 지표")
         descriptions[median_ref] = f"{label} 비교거래 중앙값"
         descriptions[subject_ref] = f"{subject} {label}"
-        unit = "multiple" if metric.get("kind") == "ebitda_multiple" else "source_unit"
+        multiple = metric.get("unit") == "multiple" or metric.get("kind") == "ebitda_multiple"
+        unit = "multiple" if multiple else "source_unit"
         common = _operands(
             label,
             [median_ref, subject_ref],

@@ -42,7 +42,9 @@ def test_numeric_condition_counts_only_one_table_and_does_not_mix_neighboring_fu
     plan = TabularQueryPlan(operation="row_count", table_id=tables[0].id, filters=[
         TabularFilter(column_id="C", operator="greater_than_or_equal", value=1, value_unit="percent"),
     ])
-    result = execute_tabular_query(plan, summary, index, "Percent (%)가 1% 이상인 건수")
+    # The pre-execution guard asks which table this means; execution agrees.
+    assert execute_tabular_query(plan, summary, index, "Percent (%)가 1% 이상인 건수") is None
+    result = execute_tabular_query(plan, summary, index, "Arbitrary!B4:C7 표에서 Percent (%)가 1% 이상인 건수")
     assert "2건" in result.answer
     assert all(not evidence.reference.startswith("H") for evidence in result.evidence)
 

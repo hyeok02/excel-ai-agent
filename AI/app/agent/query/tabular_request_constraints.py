@@ -12,7 +12,7 @@ from app.agent.query.tabular_request_extras import extra_filters_supported
 from app.agent.query.tabular_request_categories import categories_match
 from app.agent.query.tabular_request_literals import without_literals
 from app.agent.query.tabular_request_grouping import grouping_constraints_match
-from app.agent.query.ambiguity_labels import label_base
+from app.agent.query.tabular_request_operations import operation_matches
 from app.agent.query.tabular_advanced_language import advanced_operations_match, categorical_request_text
 from app.agent.query.tabular_having_language import without_checked_having
 
@@ -28,7 +28,7 @@ def matches_constraints(question, plan, table, tables, *, streaming=False) -> bo
     predicate_text = without_checked_having(text, plan, table)
     if predicate_text is None:
         return False
-    if not grouping_constraints_match(text, plan, table) or not _statistic_matches(text, plan, table):
+    if not grouping_constraints_match(text, plan, table) or not operation_matches(text, plan, table):
         return False
     if not categories_match(categorical_request_text(predicate_text, plan, text, table), plan, table):
         return False
@@ -47,26 +47,3 @@ def _without_source_names(question, tables):
         text = re.sub(re.escape(caption), " ", text, flags=re.I)
     return text
 
-
-def _statistic_matches(text, plan, table):
-    patterns = {
-        "sum": r"합계|총합|\bsum\b|\btotal\b",
-        "average": r"평균|\baverage\b|\bmean\b",
-        "min": r"최솟값|최소값|\bminimum\b",
-        "max": r"최댓값|최대값|\bmaximum\b",
-    }
-    text = without_literals(text)
-    labels = {label for column in table.columns for label in (column.header, label_base(column.header))}
-    for label in sorted(labels, key=len, reverse=True):
-        # An isolated operator/column-name collision is ambiguous, not proof
-        # that the user did not ask for an aggregate.
-        if not any(re.fullmatch(pattern, label, re.I) for pattern in patterns.values()):
-            text = re.sub(r"(?<![\w])" + re.escape(label) + r"(?![A-Za-z0-9_])", " ", text, flags=re.I)
-    requested = {key for key, pattern in patterns.items() if re.search(pattern, text, re.I)}
-    if plan.operation != "numeric_summary":
-        return not requested if plan.order_by else True
-    if getattr(plan, "group_by", ()):
-        if getattr(plan, "share_of_total", False) and not requested:
-            return plan.statistic == "sum"
-        return (not requested and plan.statistic == "all") or requested == {plan.statistic}
-    return not requested or plan.statistic == "all" or requested == {plan.statistic}

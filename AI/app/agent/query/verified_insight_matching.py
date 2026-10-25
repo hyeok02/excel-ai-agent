@@ -24,14 +24,13 @@ _GENERIC = {
     "latest", "recent",
 }
 _GENERIC_STEMS = ("늘어", "늘었", "줄어", "줄었", "변했", "달라졌")
-_REQUESTS = {
-    "알려줘", "보여줘", "말해줘", "설명해줘", "뭐야", "무엇", "어떤",
-    "어떻게", "비교해줘", "요약해줘", "정리해줘", "please", "show", "tell",
-    "what",
-}
-_ALIAS_GROUPS = tuple(
-    (concept, *values) for concept, values in SEMANTIC_ALIASES.items()
-)
+_REQUESTS = {"알려줘", "보여줘", "말해줘", "설명해줘", "뭐야", "무엇", "어떤", "어떻게",
+             "비교해줘", "요약해줘", "정리해줘", "please", "show", "tell", "what"}
+# How to show a fact, not which fact (incl. the app's own follow-up questions,
+# e.g. "… 관련 수치와 원본 근거를 보여줘"); never required inside the insight.
+_REQUEST_WORDING = {"관련", "수치", "원본", "근거", "항목별", "시작", "처음", "최초", "값", "마지막", "기준",
+                    "함께", "기록된", "확인된", "내용", "표시별", "요약", "설명"}
+_ALIAS_GROUPS = tuple((concept, *values) for concept, values in SEMANTIC_ALIASES.items())
 _ALIAS_TERMS = {value for values in _ALIAS_GROUPS for value in values}
 
 
@@ -47,10 +46,10 @@ def verified_insight_score(
     ):
         return 0
     title = str(item.get("title") or "").casefold()
-    terms = [term for term in _canonical_terms(asked) if term not in _REQUESTS]
+    terms = [term for term in _canonical_terms(asked) if not _request_word(term)]
     direct = {
         term for term in _canonical_terms(question)
-        if term not in _ALIAS_TERMS and term not in _REQUESTS
+        if term not in _ALIAS_TERMS and not _request_word(term)
     }
     requested_identity = {term for term in direct if term not in _GENERIC}
     distinctive = {
@@ -115,7 +114,12 @@ def _identity_requirements(text: str) -> list[frozenset[str]]:
 
 
 def _identity_generic(term: str) -> bool:
-    return term in _GENERIC or any(term.startswith(stem) for stem in _GENERIC_STEMS)
+    return term in _GENERIC or _request_word(term) or term.startswith(_GENERIC_STEMS)
+
+
+def _request_word(term: str) -> bool:
+    base = re.sub(r"(?:으로|로|와|과|을|를|의|에|은|는)$", "", term)
+    return term in _REQUESTS or base in _REQUESTS or base in _REQUEST_WORDING
 
 
 def _target_matches(question: str, asked: str, text: str) -> bool:
@@ -128,7 +132,7 @@ def _target_matches(question: str, asked: str, text: str) -> bool:
 def _phrase_bonus(question: str, title: str) -> int:
     question_tokens = [
         token for token in _TOKENS.findall(question.casefold())
-        if token not in _REQUESTS
+        if not _request_word(token)
     ]
     title_tokens = _TOKENS.findall(title)
     longest = 0

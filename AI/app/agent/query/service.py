@@ -33,7 +33,7 @@ from app.agent.query.router import build_question_plan
 from app.agent.query.structure_answers import validated_structure_answer
 from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
-from app.agent.query.tabular_source_alias_resolution import resolved_source_label_alias_answer
+from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
 from app.agent.query.workbook_summary_answers import validated_workbook_summary_answer
 from app.agent.query.verified_insight_answers import validated_verified_insight_answer
@@ -82,9 +82,7 @@ class WorkbookQuestionService:
         if clarification := missing_relational_plan_answer(question, summary, intent):
             return clarification
         if clarification := ambiguous_source_answer(question, summary, data_index, intent):
-            return await resolved_source_label_alias_answer(
-                question, summary, data_index, intent, clarification
-            ) or clarification
+            return await clarified_answer(question, summary, data_index, intent, clarification)
         if formula := direct_formula_answer(question, sources, intent):
             return formula
         if relational := relational_query_answer(intent.relational_query, summary, data_index, question, intent):
@@ -95,6 +93,8 @@ class WorkbookQuestionService:
         if scalar and scalar.status == "answered" and scalar.verification.level == "request_checked":
             return scalar
         tabular = await asyncio.to_thread(planned_tabular_answer, intent, summary, data_index, question)
+        if tabular is not None and "clarify_source_scope" in tabular.selected_tools:
+            return await clarified_answer(question, summary, data_index, intent, tabular)
         if tabular is not None and tabular.status != "insufficient_evidence":
             return tabular
         if scalar:
