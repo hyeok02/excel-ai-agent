@@ -35,9 +35,9 @@ def test_comparison_overview_starts_with_its_subject_and_analysis_type():
     result = validate_workbook_insights(draft, context)
 
     assert result.overview.startswith(
-        "이 파일은 Sample Investment Co.의 거래 가격을 비슷한 거래 5건과 비교한 자료입니다."
+        "이 파일은 Sample Investment Co. 인수 거래(총 거래가치 $80.0M)를 비교 거래 5건과 비교한 자료입니다."
     )
-    assert "거래 가격은 비교 대상의 중앙값보다 20.0% 낮습니다" in overview
+    assert "거래 규모뿐이며, 비교 거래 중앙값보다 20.0% 작습니다" in overview
     assert items[0].fact.startswith("Sample Investment Co.의 총 거래가치는")
 
 

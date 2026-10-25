@@ -191,8 +191,13 @@ natural-language question.
 ## Test
 
 ```bash
+pip install -e '.[dev]'
 pytest
 ```
+
+With the dev extra installed, `pytest` runs on every CPU (pytest-xdist).
+Use `pytest -n0` for a serial run; `--pdb` switches to serial automatically.
+Without pytest-xdist the same command still runs, serially.
 
 The default test run blocks outbound sockets and DNS from collection through
 fixture cleanup, including when a real API key exists in the local environment.

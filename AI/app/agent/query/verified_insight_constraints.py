@@ -19,6 +19,8 @@ _CHANGE_MARKERS = (
     "줄어", "줄었", "늘어", "늘었", "change", "trend", "compar", "decreas",
     "increas", "grew", "fell", "rose",
 )
+_OVER_TIME = re.compile(r"변화|변동|증감|추이|변했|달라졌|늘었|줄었|늘어|줄어|"
+                        r"(?:시작|처음|최초).*(?:마지막|최근|끝)|\b(?:change|trend|grew|fell|rose)\b", re.I)
 _COUNT_VALUE = re.compile(r"(?<!\d)\d[\d,]*(?:건|개|명|대)(?![가-힣])")
 
 
@@ -54,8 +56,15 @@ def insight_intent_matches(
     question: str, item: dict[str, object], answer_kind: str = ""
 ) -> bool:
     category = str(item.get("category") or "").casefold()
-    if category not in {"change", "trend"}:
+    if not category:
         return True
+    if category not in {"change", "trend"}:
+        # A snapshot cannot answer a change over time; words inside the
+        # insight's own title ("비교군 중앙값") are its name, not the request.
+        asked = question.casefold()
+        for label in (item.get("title"), item.get("topic")):
+            asked = asked.replace(str(label or "").casefold() or "\0", " ")
+        return not _OVER_TIME.search(asked)
     normalized = question.casefold()
     return any(
         marker in normalized for marker in _CHANGE_MARKERS

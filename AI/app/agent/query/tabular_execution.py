@@ -8,6 +8,7 @@ from app.agent.query.tabular_results import aggregate_text, query_evidence, scop
 from app.agent.query.tabular_request_scope import request_matches_plan, rows_match_explicit_ranges
 from app.agent.query.tabular_validation import filtered_rows, ordered_rows, query_columns, validated_table
 from app.agent.query.tabular_feature_contract import feature_contract_matches, has_bounded_features
+from app.agent.query.tabular_scope_conflicts import needed_columns, plan_scope_conflict
 
 
 def execute_tabular_query(plan, summary, data_index, question: str, intent=None) -> QuestionAnswer | None:
@@ -26,10 +27,8 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     if selected is None or (not selected and plan.operation != "row_count"):
         return None
     filters = plan.filters or []
-    needed = set(selected) | set(getattr(plan, "group_by", [])) | {condition.column_id for condition in filters}
-    if plan.order_by:
-        needed.add(plan.order_by)
-    if not needed <= by_id.keys():
+    needed = needed_columns(plan, selected)
+    if not needed <= by_id.keys() or plan_scope_conflict(question, plan, table, tables, needed) is not None:
         return None
     bounded_query = has_bounded_features(plan)
     fully_indexed = validated_table(table, data_index, needed)

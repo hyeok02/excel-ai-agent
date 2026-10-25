@@ -9,6 +9,18 @@ import pytest
 from tests.support.offline_network import install_network_guard
 
 
+@pytest.hookimpl(tryfirst=True)
+def pytest_cmdline_main(config):
+    """Use every CPU when pytest-xdist (dev extra) is installed.
+
+    Explicit -n, -n0 and -p no:xdist win; --pdb runs serially; without the
+    plugin the suite runs serially instead of failing on an unknown -n option.
+    """
+    if (config.pluginmanager.hasplugin("xdist") and not hasattr(config, "workerinput")
+            and getattr(config.option, "numprocesses", 0) is None):
+        config.option.numprocesses = "auto"
+
+
 def pytest_configure(config):
     """Protect collection, fixtures and tests, even with a real key in .env."""
     guard = pytest.MonkeyPatch()

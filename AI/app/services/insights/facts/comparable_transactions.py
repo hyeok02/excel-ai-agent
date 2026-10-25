@@ -1,22 +1,31 @@
-"""Build bounded comparable-transaction facts from a detected table layout."""
-import math
-from statistics import median
+"""Build bounded comparable-transaction facts from a detected table layout.
 
-from openpyxl.utils import get_column_letter
+Price level is judged only by multiples (price per unit of earnings); the
+transaction amount is reported as deal size. Industry, buyer and announcement
+date come from the same row, so caveats are stated from source values.
+"""
+import re
+from collections import Counter
+from datetime import date, datetime
 
-from app.services.insights.facts.comparable_layout import comparable_layout, finite, metric_kind
+from app.services.insights.facts.comparable_layout import comparable_layout
+from app.services.insights.facts.comparable_metrics import (
+    _at, _range, _reference, column_metric, derived_multiples, source_multiples,
+)
 
 
 def extract_comparable_transactions(sheet_name, regions):
     layout = comparable_layout(sheet_name, regions)
     if not layout:
         return None
-    rows, cells = layout["rows"], layout["cells"]
+    rows = layout["rows"]
     subject_cell = rows[layout["subject"]][layout["name_column"]]
-    metrics = [
-        item for kind in ("ebitda_multiple", "transaction_value")
-        if (item := _metric(sheet_name, cells, layout, kind))
-    ]
+    multiples = source_multiples(sheet_name, layout)
+    multiples += derived_multiples(sheet_name, layout, {item["basis"] for item in multiples})
+    sizes = sorted((item for item in layout["columns"] if item["role"] == "size"),
+                   key=lambda item: -item["priority"])
+    size = next((metric for item in sizes if (metric := column_metric(sheet_name, layout, item, "size"))), None)
+    metrics = [*multiples, *([size] if size else [])]
     if not metrics:
         return None
     subject_reference = _reference(sheet_name, subject_cell["cell"])
@@ -28,49 +37,46 @@ def extract_comparable_transactions(sheet_name, regions):
         "peer_count": len(layout["peers"]),
         "peer_name_range": _range(sheet_name, layout["name_column"], layout["peers"]),
         "metrics": metrics,
+        "buyer": _subject_text(layout, "buyer"),
+        "announced": _subject_date(layout),
+        "industry": _industry(sheet_name, layout),
     }
 
 
-def _metric(sheet, cells, layout, kind):
-    column, label_cell = layout["headers"][kind]
-    subject = _at(cells, column, layout["subject"])
-    peer_cells = [_at(cells, column, row) for row in layout["peers"]]
-    valid = [cell for cell in peer_cells if finite(cell)]
-    if not finite(subject) or len(valid) < 3:
+def _subject_text(layout, role):
+    for item in layout["columns"]:
+        cell = _at(layout, item["column"], layout["subject"]) if item["role"] == role else None
+        if cell and isinstance(cell["value"], str) and cell["value"].strip():
+            return " ".join(cell["value"].split())
+    return None
+
+
+def _subject_date(layout):
+    for item in layout["columns"]:
+        cell = _at(layout, item["column"], layout["subject"]) if item["role"] == "announced" else None
+        value = cell["value"] if cell else None
+        if isinstance(value, (date, datetime)):
+            return value.strftime("%Y-%m-%d")
+        if isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:[T ][\d:.]+)?", value.strip()):
+            return value.strip()[:10]
+    return None
+
+
+def _industry(sheet, layout):
+    """The most specific industry column: the one that separates peers most."""
+    options = []
+    for item in layout["columns"]:
+        if item["role"] != "industry":
+            continue
+        subject = _at(layout, item["column"], layout["subject"])
+        peers = [cell["value"].strip() for row in layout["peers"]
+                 if (cell := _at(layout, item["column"], row)) and isinstance(cell["value"], str)
+                 and cell["value"].strip()]
+        if subject and isinstance(subject["value"], str) and peers:
+            options.append((len(set(peers)), item, subject, peers))
+    if not options:
         return None
-    middle = median(float(cell["value"]) for cell in valid)
-    if middle == 0:
-        return None
-    median_cell = _at(cells, column, layout["median_row"])
-    evidence = [_reference(sheet, label_cell["cell"]),
-                _reference(sheet, subject["cell"]),
-                _range(sheet, column, layout["peers"])]
-    median_matches = finite(median_cell) and math.isclose(
-        float(median_cell["value"]), middle, rel_tol=1e-9, abs_tol=1e-9
-    )
-    if median_matches:
-        evidence.append(_reference(sheet, median_cell["cell"]))
-    return {
-        "kind": metric_kind(str(label_cell["value"]))[0],
-        "label": str(label_cell["value"]).strip(),
-        "header_cell": label_cell["cell"],
-        "subject_value": float(subject["value"]), "subject_cell": subject["cell"],
-        "median": middle, "median_cell": median_cell["cell"] if median_matches else None,
-        "difference": float(subject["value"]) - middle,
-        "difference_percent": (float(subject["value"]) / middle - 1) * 100,
-        "valid_count": len(valid), "peer_count": len(layout["peers"]),
-        "peer_range": _range(sheet, column, layout["peers"]), "evidence": evidence,
-    }
-
-
-def _at(cells, column, row):
-    return cells.get(f"{get_column_letter(column)}{row}")
-
-
-def _reference(sheet, cell):
-    return f"'{str(sheet).replace(chr(39), chr(39) * 2)}'!{cell}"
-
-
-def _range(sheet, column, rows):
-    letter = get_column_letter(column)
-    return _reference(sheet, f"{letter}{min(rows)}:{letter}{max(rows)}")
+    _, item, subject, peers = max(options, key=lambda option: option[0])
+    return {"subject": subject["value"].strip(), "peers": Counter(peers).most_common(),
+            "evidence": [_reference(sheet, subject["cell"]),
+                         _range(sheet, item["column"], layout["peers"])]}

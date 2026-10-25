@@ -1,5 +1,6 @@
 """Detect repeated table fields using only workbook labels and source context."""
 from collections import defaultdict
+from functools import lru_cache
 import re
 from openpyxl.utils.cell import quote_sheetname
 
@@ -21,19 +22,7 @@ from app.agent.query.tabular_request_scope import explicit_ranges, _inside
 def table_candidates(question, summary, index):
     if summary is None:
         return []
-    tables = [table for table in build_query_tables(summary)
-              if len(table.hidden_columns) < len(table.columns)]
-    named = mentioned_sources((table.sheet_name for table in tables), question)
-    if named:
-        tables = [table for table in tables if table.sheet_name in named]
-    ranges = explicit_ranges(question)
-    if ranges:
-        tables = [table for table in tables if any(sheet == table.sheet_name
-                  and _inside(reference, table.reference) for sheet, reference in ranges)]
-    contexts = mentioned_sources((text for table in tables for _, text in table.context
-                                  if len(normalize_label(text)) >= 4), question)
-    if contexts:
-        tables = [table for table in tables if contexts <= {text for _, text in table.context}]
+    tables, contexts = scoped_tables(question, build_query_tables(summary))
     metric_question = question
     for context in contexts:
         metric_question = re.sub(re.escape(context), " ", metric_question, flags=re.I)
@@ -45,19 +34,49 @@ def table_candidates(question, summary, index):
             base = label_base(column.header)
             if len(normalize_label(base)) >= 3 and (source_mentioned(base, question)
                                                     or metric_label_matches(base, metric_question)):
-                groups[normalize_label(_metric_identity(base))].append((table, column))
+                groups[field_identity(column)].append((table, column))
     longest = {key: values for key, values in groups.items()
                if not any(key != other and key in other for other in groups)}
     for matches in longest.values():
-        matches = _narrow_matches(question, matches)
+        matches = narrow_matches(question, matches)
         identities = {(table.id, column.id) for table, column in matches}
         if len(identities) > 1:
-            cells = {cell.reference: cell for row in index.rows for cell in row.cells}
-            return [_candidate(question, table, column, cells) for table, column in matches]
+            return candidates_for(question, matches, index)
     return []
 
 
-def _narrow_matches(question, matches):
+def field_identity(column):
+    return _header_identity(column.header)
+
+
+@lru_cache(maxsize=65536)
+def _header_identity(header):
+    return normalize_label(_metric_identity(label_base(header)))
+
+
+def candidates_for(question, matches, index):
+    cells = {cell.reference: cell for row in index.rows for cell in row.cells}
+    return [_candidate(question, table, column, cells) for table, column in matches]
+
+
+def scoped_tables(question, tables):
+    """Apply only scopes the user named: sheet, A1 range or table caption."""
+    tables = [table for table in tables if len(table.hidden_columns) < len(table.columns)]
+    named = mentioned_sources((table.sheet_name for table in tables), question)
+    if named:
+        tables = [table for table in tables if table.sheet_name in named]
+    ranges = explicit_ranges(question)
+    if ranges:
+        tables = [table for table in tables if any(sheet == table.sheet_name
+                  and _inside(reference, table.reference) for sheet, reference in ranges)]
+    contexts = mentioned_sources((text for table in tables for _, text in table.context
+                                  if len(normalize_label(text)) >= 4), question)
+    if contexts:
+        tables = [table for table in tables if contexts <= {text for _, text in table.context}]
+    return tables, contexts
+
+
+def narrow_matches(question, matches):
     if len(matches) < 2:
         return matches
     named_columns = explicit_column_ids(question)
@@ -92,7 +111,6 @@ def _narrow_matches(question, matches):
         best = max(scores.values())
         matches = [(table, column) for table, column in matches if scores[table.id] == best]
     return matches
-
 
 
 def _candidate(question, table, column, cells):

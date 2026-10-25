@@ -17,6 +17,7 @@ _UNSUPPORTED = re.compile(
     r"\b(?:average|mean|median|sum|maximum|minimum|highest|lowest|by\s+department|"
     r"only|where|excluding|above|below)\b", re.I,
 )
+_START = re.compile(r"시작|처음|최초|\b(?:first|start|earliest|initial)\b", re.I)
 _CHANGE = re.compile(r"증가|감소|증감|변화|변동|얼마나|차이|비교|\b(?:change|growth|difference|compare)\b", re.I)
 
 
@@ -24,7 +25,8 @@ def metric_observation_answer(question, summary, index: WorkbookDataIndex, inten
     if premise := metric_premise_answer(question, summary, index, intent):
         return premise
     requests = requested_periods(question)
-    latest = bool(LATEST.search(question))
+    # "시작 값과 마지막 값" asks for both ends of a series, not the latest snapshot.
+    latest = bool(LATEST.search(question)) and not _START.search(question)
     if not (requests or latest) or _UNSUPPORTED.search(question):
         return None
     if intent is not None and (getattr(intent, "whole_workbook", False)
