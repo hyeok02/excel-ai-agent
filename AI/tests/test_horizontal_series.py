@@ -15,7 +15,7 @@ def region(*rows):
     return {"analysis_rows": list(rows), "preview_rows": list(rows)}
 
 
-def test_repeated_and_reversing_dates_split_reporting_bases():
+def test_repeated_conflicting_dates_do_not_invent_reporting_bases():
     data = region(
         [
             cell("D1", "2024-01-31T00:00:00"),
@@ -33,10 +33,7 @@ def test_repeated_and_reversing_dates_split_reporting_bases():
 
     series = extract_horizontal_series([data])
 
-    assert [[point["value_cell"] for point in item["points"]] for item in series] == [
-        ["D3", "F3"],
-        ["H3", "I3"],
-    ]
+    assert series == []
 
 
 def test_actual_and_estimate_axes_remain_separate_across_blank_columns():

@@ -40,7 +40,8 @@ def _note_unit(sheet):
             (found.group(1) or found.group(2)).casefold()
         ):
             key = (found.group(1) or found.group(2)).casefold()
-            return AMOUNT_TEXT[key], [_reference(sheet, cell)]
+            text = AMOUNT_TEXT[key] if "$" in found.group(0) else MAGNITUDE[key]
+            return text, [_reference(sheet, cell)]
     return None
 
 

@@ -9,6 +9,7 @@ from app.agent.query.metric_semantics import column_metric_conflict
 from app.agent.query.tabular_request_constraints import matches_constraints
 from app.agent.query.tabular_request_categories import value_matches
 from app.agent.query.tabular_having_language import without_checked_having
+from app.agent.query.tabular_population_context import unit_qualified_headers
 
 
 def request_matches_plan(question, plan, table, tables, intent=None, *, streaming=False):
@@ -46,10 +47,10 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
         return False
     if plan.operation in {"numeric_summary", "lookup", "row_list"}:
         units_text = without_checked_having(question, plan, table) if getattr(plan, "having", ()) else question
-        if units_text is None or not requested_units_match(units_text, [column.header for column in table.columns
+        if units_text is None or not requested_units_match(units_text, unit_qualified_headers(plan, table, [column.header for column in table.columns
                                                if column.id in plan.column_ids
                                                and (plan.operation == "numeric_summary"
-                                                    or label_base(column.header) != column.header)]):
+                                                    or label_base(column.header) != column.header)])):
             return False
     if plan.operation == "numeric_summary":
         # Translated metric names constrain source fields, not just valid values.

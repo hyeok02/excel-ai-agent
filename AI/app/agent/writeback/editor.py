@@ -5,6 +5,7 @@ from openpyxl.cell.cell import MergedCell
 from app.services.workbook_loading import close_workbook, load_workbook_for_reading
 
 from app.agent.writeback.models import VerificationCheck, WritebackChange, WritebackManifest
+from app.agent.writeback.application_contract import validate_application_contract
 from app.agent.writeback.package_editor import changed_worksheet_paths, patch_workbook_package
 from app.agent.writeback.macro_verification import add_macro_check
 from app.agent.writeback.verification import (
@@ -23,6 +24,12 @@ def apply_writeback(
 ) -> tuple[bytes, WritebackManifest]:
     if not changes or len(changes) > 50:
         raise UnsafeWritebackError("한 번에 1~50개의 검증된 변경만 적용할 수 있습니다.")
+    changes = [change.model_copy(update={"reference": change.reference.upper()}) for change in changes]
+    try:
+        for change in changes:
+            validate_application_contract(change)
+    except ValueError as exception:
+        raise UnsafeWritebackError(str(exception)) from exception
     keep_vba = Path(filename).suffix.lower() == ".xlsm"
     before = workbook_fingerprint(content, keep_vba)
     workbook = load_workbook_for_reading(content, keep_vba=keep_vba)
@@ -37,7 +44,7 @@ def apply_writeback(
         raise UnsafeWritebackError(str(exception)) from exception
     after = workbook_fingerprint(modified, keep_vba)
     checks = compare_fingerprints(before, after, changes)
-    checks.extend(package_checks(content, modified, changed_paths))
+    checks.extend(package_checks(content, modified, changed_paths, changes))
     add_macro_check(checks, content, modified, keep_vba)
     checks.append(_verify_values(modified, changes, keep_vba))
     manifest = WritebackManifest(
@@ -106,6 +113,8 @@ def _unsafe_formula(formula: str) -> bool:
 
 
 def _comparable(value: object, value_type: str | None = None) -> object:
+    if isinstance(value, bool):
+        return ("boolean", value)
     if value_type == "date" and hasattr(value, "date"):
         return value.date().isoformat()
     if hasattr(value, "isoformat"):

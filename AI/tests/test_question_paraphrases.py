@@ -14,7 +14,7 @@ from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.query_rows import selected_question_rows
 from app.agent.query.service import WorkbookQuestionService
 from app.agent.query.workbook_summary_rows import is_workbook_summary_question
-from app.services.workbook_parsing.models import WorkbookSummary
+from tests.tabular_query_fixtures import table_fixture
 
 SHEET = "작업현황"
 WHOLE_FILE = (
@@ -57,12 +57,10 @@ def _rows() -> tuple[IndexedRow, ...]:
 
 def _answer(question: str):
     service = WorkbookQuestionService(_Generator(), create_default_tool_registry())
+    summary, index = table_fixture([(5, 3, [[cell.value for cell in row.cells] for row in _rows()])],
+                                   sheet_name=SHEET)
     return asyncio.run(
-        service.answer(
-            question,
-            WorkbookSummary("tck.xlsx", 0, []),
-            WorkbookDataIndex("tck.xlsx", _rows(), 24, False),
-        )
+        service.answer(question, summary, index)
     )
 
 

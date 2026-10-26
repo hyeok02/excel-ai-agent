@@ -32,6 +32,7 @@ from app.agent.query.relational_routing import missing_relational_plan_answer
 from app.agent.query.router import build_question_plan
 from app.agent.query.structure_answers import validated_structure_answer
 from app.agent.query.source_lookup_answers import source_lookup_answer
+from app.agent.query.source_count_answers import source_count_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
 from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
@@ -53,7 +54,6 @@ class WorkbookQuestionService:
         self._executor = executor or AgentToolExecutor()
         self._classifier = classifier
         self._context_resolver = context_resolver
-
     async def answer(
         self, question: str, summary: WorkbookSummary, data_index: WorkbookDataIndex,
         context: QuestionConversation | None = None,
@@ -63,7 +63,6 @@ class WorkbookQuestionService:
             question, context, sources, self._context_resolver, self._answer_prepared
         )
         return finish_interpretation_answer(finish_formula_answer(answer, sources))
-
     async def _answer_prepared(self, question, sources) -> QuestionAnswer:
         summary, data_index = sources.summary, sources.index
         if incompatible := incompatible_metric_answer(question, summary, data_index):
@@ -72,6 +71,8 @@ class WorkbookQuestionService:
             return trend
         if direct := await asyncio.to_thread(source_lookup_answer, question, sources):
             return direct
+        if counted := await asyncio.to_thread(source_count_answer, question, summary, data_index):
+            return counted
         if clarification := vague_question_answer(question, data_index):
             return clarification
         if missing := missing_identifier_answer(question, data_index):
@@ -121,7 +122,7 @@ class WorkbookQuestionService:
             return canonical
         if canonical := validated_metric_change_answer(question, execution, truncated):
             return canonical
-        if canonical := validated_row_list_answer(question, execution, truncated):
+        if canonical := validated_row_list_answer(question, execution, truncated, summary=summary, data_index=data_index):
             return canonical
         if canonical := validated_structure_answer(question, execution, truncated):
             return canonical
@@ -140,7 +141,6 @@ class WorkbookQuestionService:
     async def _question_intent(
         self, question: str, summary: WorkbookSummary
     ) -> QuestionIntent:
-        """의도 판별이 실패해도 질문에는 답한다. 분류는 힌트일 뿐이다."""
         if self._classifier is None:
             return QuestionIntent.from_keywords(question)
         try:

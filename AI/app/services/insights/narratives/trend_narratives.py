@@ -5,6 +5,8 @@ from app.services.insights.narratives.narrative_values import (
     finite, identity, insight, metric_name, metric_unit, number, overall, period,
 )
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
+from app.services.insights.facts.series_scalars import displayed_value
+from app.services.insights.narratives.series_path import path_direction
 
 
 def trend_report(context):
@@ -22,7 +24,7 @@ def trend_report(context):
     records = sheet.get("business_facts", {}).get("time_series") or sheet.get(
         "business_facts", {}).get("selected_records", [])
     subject, owner_refs = identity(sheet)
-    unit = metric_unit(primary["metric"], records)
+    unit = primary.get("unit") or metric_unit(primary["metric"], records)
     metric = metric_name(primary["metric"])
     topic = translate(primary["metric"]) or metric
     owner = f"{subject}의 " if subject else ""
@@ -38,7 +40,7 @@ def trend_report(context):
     detail = ""
     if related:
         fragments = [f"{metric_name(c['metric'])} 항목은 "
-                     f"{_change(c, metric_unit(c['metric'], records) or unit, False)}"
+                     f"{_change(c, c.get('unit') or metric_unit(c['metric'], records), False)}"
                      for c in related]
         detail = f"같은 기간 {'. '.join(fragments)}."
         related_topic = _related_topic(topic, related)
@@ -97,8 +99,11 @@ def _change(change, unit, dated=True):
     direction = "감소했습니다" if change["change"] < 0 else "증가했습니다"
     before = f"{period(change['earliest_period'])} " if dated else ""
     after = f"{period(change['latest_period'])} " if dated else ""
+    if change["change"] == 0:
+        return f"{before}{old}{unit}과 {after}{new}{unit}으로 시작과 마지막 값이 같습니다"
+    delta_unit = "%p" if unit == "%" else unit
     return (f"{before}{old}{unit}에서 {after}{new}{unit}{'으로' if unit else '로'} "
-            f"{delta.lstrip('-')}{unit}({abs(change['change_rate_percent']):g}%) {direction}")
+            f"{delta.lstrip('-')}{delta_unit}({abs(change['change_rate_percent']):g}%) {direction}")
 
 
 def _timeline(change, records, unit):
@@ -117,7 +122,7 @@ def _timeline(change, records, unit):
             continue
         for cell in cells[1:]:
             if cell.get("label") == change["metric"] and finite(cell.get("value")):
-                points[date] = (cells[0]["value"], cell["value"], record["location"])
+                points[date] = (cells[0]["value"], displayed_value(cell), record["location"])
     ordered = [points[date] for date in sorted(points)]
     if len(ordered) < 3:
         return "", []
@@ -125,6 +130,6 @@ def _timeline(change, records, unit):
     indexes = sorted({0, len(ordered) // 3, 2 * len(ordered) // 3, len(ordered) - 1})
     selected = [ordered[index] for index in indexes]
     text = " → ".join(f"{period(date)} {number(value)}{unit}" for date, value, _ in selected)
-    falling = all(a[1] > b[1] for a, b in zip(ordered, ordered[1:]))
-    trend = " 이 구간에서는 감소세가 이어졌습니다." if falling else ""
-    return f" 기간별 기록은 {text}입니다.{trend}", [ref for _, _, ref in ordered]
+    trend = " 이 구간에서는 " + path_direction([point[1] for point in ordered])
+    coverage = "기간별 기록" if len(selected) == len(ordered) else "주요 시점의 기록"
+    return f" {coverage}은 {text}입니다.{trend}", [ref for _, _, ref in ordered]

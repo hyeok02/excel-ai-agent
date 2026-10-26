@@ -17,6 +17,7 @@ from app.agent.query.metric_observation_periods import LATEST
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_request_scope import explicit_ranges, _inside
 from app.agent.query.clarification_table_preview import table_choice
+from app.agent.query.source_record_identity import record_identities
 
 
 def table_candidates(question, summary, index):
@@ -108,9 +109,7 @@ def narrow_matches(question, matches):
             continue
         headers = sum(source_or_reading_mentioned(column.header, question) for column in table.columns
                       if column.id not in table.hidden_columns)
-        identities = {str(value) for row in table.rows for value in row.values.values()
-                      if isinstance(value, str) and 3 <= len(value.strip()) <= 100
-                      and source_or_reading_mentioned(value, question)}
+        identities = record_identities(table, question)
         scores[table.id] = (len(identities), headers)
     if scores:
         best = max(scores.values())

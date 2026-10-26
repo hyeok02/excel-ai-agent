@@ -8,6 +8,7 @@ from app.agent.query.comparison_evidence import (
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
 from app.agent.query.cell_lookup_validation import valid_cell_lookup
 from app.services.insights.display.glossary import readable
+from app.agent.query.source_count_answers import checked_legacy_count
 
 MAX_NAMED = 12
 
@@ -17,6 +18,7 @@ def validated_row_list_answer(
     execution: AgentExecution,
     index_truncated: bool,
     available: dict[str, object] | None = None,
+    *, summary=None, data_index=None,
 ) -> QuestionAnswer | None:
     found = _row_list(execution)
     if found is not None:
@@ -31,7 +33,7 @@ def validated_row_list_answer(
         found = _row_count(execution)
         if found is None:
             return None
-        text, references = _count_answer(found)
+        return checked_legacy_count(question, found, summary, data_index)
     if not text:
         return None
     available = available if available is not None else available_evidence(execution)
@@ -102,17 +104,6 @@ def _row_count(execution: AgentExecution) -> dict | None:
         if isinstance(found, dict) and found.get("count"):
             return found
     return None
-
-
-def _count_answer(found: dict) -> tuple[str, list[str]]:
-    subject = readable(found.get("header") or "항목")
-    text = f"{subject}는 모두 {found['count']}건입니다."
-    references = [
-        found.get("header_reference"),
-        found.get("first_reference"),
-        found.get("last_reference"),
-    ]
-    return text, [value for value in references if isinstance(value, str)]
 
 
 def _row_list(execution: AgentExecution) -> dict | None:

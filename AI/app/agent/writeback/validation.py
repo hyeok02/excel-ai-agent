@@ -1,5 +1,4 @@
 import re
-
 from app.agent.writeback.derived_values import authorize_value
 from app.agent.writeback.models import WritebackChange
 from app.agent.writeback.related_cells import dedupe_related, related_cells, sheet_columns
@@ -12,6 +11,7 @@ from app.agent.writeback.references import (
 )
 from app.agent.writeback.value_authorization import as_number, stated_current_value
 from app.agent.writeback.target_authorization import TargetAuthorization
+from app.agent.writeback.target_syntax import formula_spans
 
 FORBIDDEN_FORMULA = re.compile(
     r"(?:\[|https?://|\\\\|\||\b(?:WEBSERVICE|HYPERLINK|RTD|CALL|REGISTER\.ID|EXEC)\s*\()",
@@ -54,6 +54,12 @@ def _append_change(
     if cell is None:
         risks.append(f"{draft.sheet_name}!{reference}: 원본에서 확인할 수 없는 셀입니다.")
         return
+    formula = _formula_value(draft.new_value)
+    if cell.formula and formula is None:
+        risks.append(
+            f"{draft.sheet_name}!{reference}: 수식 셀은 명시적인 새 수식으로만 변경할 수 있습니다."
+        )
+        return
     instruction, target_risk = authorization.instruction_for(cell)
     if target_risk:
         risks.append(f"{draft.sheet_name}!{reference}: {target_risk}")
@@ -62,12 +68,6 @@ def _append_change(
         risks.append(f"{draft.sheet_name}!{reference}: 중복 변경입니다.")
         return
     seen.add(cell_key)
-    formula = _formula_value(draft.new_value)
-    if cell.formula and formula is None:
-        risks.append(
-            f"{draft.sheet_name}!{reference}: 수식 셀은 명시적인 새 수식으로만 변경할 수 있습니다."
-        )
-        return
     formula_risk = _formula_risk(formula, instruction)
     if formula_risk:
         risks.append(f"{draft.sheet_name}!{reference}: {formula_risk}")
@@ -118,7 +118,7 @@ def _formula_value(value: object) -> str | None:
 def _formula_risk(formula: str | None, instruction: str) -> str | None:
     if formula is None:
         return None
-    if formula.casefold() not in instruction.casefold():
+    if formula.casefold() not in {instruction[start:end].strip().casefold() for start, end in formula_spans(instruction)}:
         return "수식 원문이 요청에 직접 적혀 있지 않아 제외했습니다."
     if len(formula) > 8192:
         return "Excel 수식 최대 길이를 초과했습니다."

@@ -2,6 +2,7 @@
 import re
 
 from app.agent.writeback.references import expand_reference, key
+from app.agent.writeback.natural_operations import natural_operations, value_instruction
 from app.agent.writeback.target_semantics import semantic_target_risk
 from app.agent.writeback.target_syntax import sheet_mentions, target_mentions
 from app.agent.tools.workbook_header_index import detect_header_rows
@@ -54,7 +55,17 @@ class TargetAuthorization:
         if not self.mentions:
             if self.headers is None:
                 self.headers = detect_header_rows(self.index.rows)
-            return self.instruction, semantic_target_risk(cell, self.instruction, self.index, self.headers)
+            operations = natural_operations(self.instruction, {row.sheet_name for row in self.index.rows})
+            if not operations:
+                return "", "변경할 대상과 새 값을 요청에 입력해 주세요."
+            results = [(operation, semantic_target_risk(cell, operation, self.index, self.headers))
+                       for operation in operations]
+            accepted = {value_instruction(operation) for operation, risk in results if risk is None}
+            if len(accepted) == 1:
+                return accepted.pop(), None
+            if len(accepted) > 1:
+                return "", "같은 셀에 여러 변경 지시가 있어 적용할 값을 확정하지 못했습니다."
+            return "", results[0][1]
         instructions = self.targets.get(key(cell.sheet_name, cell.address), [])
         if not instructions:
             return "", "요청에 명시한 변경 대상 시트·셀·범위와 일치하지 않습니다."

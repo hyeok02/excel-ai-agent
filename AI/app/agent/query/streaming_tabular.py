@@ -9,6 +9,7 @@ from app.agent.query.streaming_tabular_rows import header_matches, row_eligible,
 from app.agent.query.streaming_tabular_witnesses import RequestWitnesses
 from app.agent.query.tabular_request_scope import request_matches_plan, rows_match_explicit_ranges
 from app.agent.query.tabular_validation import query_columns
+from app.agent.query.tabular_population_context import NumericPopulationContext, population_controls, numeric_population
 
 
 def execute_streaming_tabular(plan, table, tables, index, question, intent):
@@ -25,7 +26,7 @@ def execute_streaming_tabular(plan, table, tables, index, question, intent):
     projected = set(selected) | set(getattr(plan, "group_by", []))
     if plan.order_by:
         projected.add(plan.order_by)
-    needed = projected | filter_columns
+    needed = projected | filter_columns | population_controls(plan, table)
     columns = {column.id: column for column in table.columns}
     if not needed <= columns.keys():
         return None
@@ -38,6 +39,7 @@ def execute_streaming_tabular(plan, table, tables, index, question, intent):
             return None
         witnesses = RequestWitnesses(question, plan)
         numeric_columns = set()
+        population = NumericPopulationContext(plan, table)
         left, top, right, bottom = range_boundaries(table.reference)
         expected = top
         scan = provider.scan_rows(table.sheet_name, table.reference)
@@ -56,7 +58,7 @@ def execute_streaming_tabular(plan, table, tables, index, question, intent):
                 row = source_row(indexed, table)
                 if not row.formulas and not any(value not in (None, "") for value in row.values.values()):
                     continue
-                if ambiguous_boundary(row, table, numeric_columns):
+                if ambiguous_boundary(row, table, numeric_columns, allow_totals=numeric_population(plan)):
                     return None
                 if any(row.formulas.get(column) and row.values[column] is None for column in filter_columns):
                     return None
@@ -67,6 +69,8 @@ def execute_streaming_tabular(plan, table, tables, index, question, intent):
                 if accepted is None:
                     return None
                 if accepted:
+                    if not population.add(row):
+                        return population.unavailable(question)
                     if any(row.formulas.get(column) and row.values[column] is None for column in projected):
                         return None
                     if not rows_match_explicit_ranges(question, table, needed or list(columns), [row]) or not result.add(row):
@@ -77,6 +81,9 @@ def execute_streaming_tabular(plan, table, tables, index, question, intent):
         all_tables = [witnessed if candidate.id == table.id else candidate for candidate in tables]
         if not request_matches_plan(question, plan, witnessed, all_tables, intent, streaming=True):
             return None
-        return stream_answer(question, table, needed, result)
+        answer = stream_answer(question, table, needed, result)
+        if answer is not None:
+            answer.answer = population.description() + answer.answer
+        return answer
     except (SourceReadError, ValueError, TypeError, ArithmeticError):
         return None

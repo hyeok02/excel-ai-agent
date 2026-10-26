@@ -190,6 +190,11 @@ natural-language question.
 
 ## Test
 
+See [acceptance scope and offline real-file checks](evals/README.md) for the
+difference between source-engine, injected-plan API and live-model validation.
+Offline acceptance failures and model-required cases are retained, not counted
+as successful answers.
+
 ```bash
 pip install -e '.[dev]'
 pytest

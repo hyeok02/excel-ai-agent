@@ -55,7 +55,9 @@ def test_count_totals_grouped_trends_and_source_labels_still_answer():
 
 
 def test_requested_statistics_still_match_numeric_summaries():
-    assert "합계 60" in _run("합계는?", operation="numeric_summary", column_ids=["C"], statistic="sum").answer
+    rows = [["Owner", "Year", "Amount", "Grade"], ["Alpha", 2024, 10, "ordinary"],
+            ["Beta", 2025, 20, "ordinary"], ["Gamma", 2026, 30, "ordinary"]]
+    assert "합계 60" in _run("합계는?", operation="numeric_summary", column_ids=["C"], statistic="sum", rows=rows).answer
     assert "평균 20" in _run("Amount 평균은?", operation="numeric_summary", column_ids=["C"],
-                            statistic="average").answer
+                            statistic="average", rows=rows).answer
     assert "3건" in _run("몇 건이야?", operation="row_count").answer

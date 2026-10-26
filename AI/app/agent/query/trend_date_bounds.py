@@ -11,7 +11,7 @@ from app.agent.query.trend_relative_dates import relative_window, RELATIVE_CUE
 from app.agent.query.trend_date_qualifiers import date_qualifier_error
 from app.agent.query.trend_calendar_periods import expand_calendar_periods
 
-_POST = re.compile(r"^\s*(이후|이전|부터|까지)(?=$|\s|[가-힣])")
+_POST = re.compile(r"^\s*(이후|이전|부터|까지|에서|으로|로)(?=$|\s|[가-힣])")
 _PRE = re.compile(r"\b(from|since|after|through|until|before)\s*$", re.I)
 _DATE_WORDS = re.compile(r"이후|이전|부터|까지|\b(?:from|since|after|through|until|before)\b", re.I)
 _UNSUPPORTED_DATE = re.compile(r"작년|재작년|올해|금년|내년|지난달|이번달|이달|금월|내달|"
@@ -114,9 +114,9 @@ def select_trend_periods(observations, bounds):
 
 
 def _direction(word):
-    if word in {"이후", "부터", "from", "since", "after"}:
+    if word in {"이후", "부터", "에서", "from", "since", "after"}:
         return "start"
-    return "end" if word in {"이전", "까지", "through", "until", "before"} else None
+    return "end" if word in {"이전", "까지", "으로", "로", "through", "until", "before"} else None
 
 
 def _one_bound(mention, word):

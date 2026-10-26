@@ -6,6 +6,7 @@ from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 from app.services.insights.display.display_quality import business_priority, is_presentable_label
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.narratives.narrative_values import finite
+from app.services.insights.facts.series_scalars import unit
 
 MAX_SERIES = 24
 MAX_AXIS_DISTANCE = 120
@@ -13,7 +14,7 @@ MAX_AXIS_DISTANCE = 120
 
 def extract_horizontal_series(regions):
     rows = _worksheet_rows(regions)
-    axes = [axis for row, cells in sorted(rows.items()) for axis in _axes(row, cells)]
+    axes = [axis for row, cells in sorted(rows.items()) for axis in _axes(row, cells, rows.get(row - 1, {}))]
     results = []
     for axis_row, axis in axes:
         next_row = min((row for row, _ in axes if row > axis_row), default=10**9)
@@ -46,24 +47,28 @@ def _worksheet_rows(regions):
     return rows
 
 
-def _axes(row, cells):
+def _axes(row, cells, headings):
     dated = [(column, cell, date_value(cell["value"]))
              for column, cell in sorted(cells.items()) if date_value(cell["value"])]
     runs = []
-    current = []
+    current, basis = [], None
     for column, cell, date in dated:
-        if current and (column != current[-1][0] + 1 or date <= current[-1][2]):
+        heading = headings.get(column, {}).get("value")
+        heading = heading if isinstance(heading, str) and not date_value(heading) else None
+        if current and (column != current[-1][0] + 1 or heading and heading != basis):
             runs.append(current)
             current = []
+        if not current or heading:
+            basis = heading
         current.append((column, cell, date))
     if current:
         runs.append(current)
-    return [(row, run) for run in runs if len(run) >= 2]
+    return [(row, sorted(run, key=lambda point: point[2])) for run in runs if len(run) >= 2]
 
 
 def _axis_series(rows, start, end, axis):
     results, scope = [], None
-    first_column = axis[0][0]
+    first_column = min(point[0] for point in axis)
     basis = _basis(rows.get(start - 1, {}), axis)
     for row in sorted(number for number in rows if start < number < end):
         cells = rows[row]
@@ -80,15 +85,23 @@ def _axis_series(rows, start, end, axis):
             if column in cells and finite(cells[column]["value"])
         ]
         axis_values = [cells[column] for column, _, _ in axis if column in cells]
-        if label and len(points) >= 2:
-            points = [points[0], points[-1]]
-            results.append({
-                "metric": " ".join(str(label["value"]).split()),
-                "label_cell": label["cell"], "scope": scope["value"] if scope else None,
-                "scope_cell": scope["cell"] if scope else None,
-                "basis": basis["value"] if basis else None,
-                "points": points, "row": row,
-            })
+        if label and len(points) == len(axis) and len({unit(point) for point in points}) == 1:
+            unique = {}
+            for point in points:
+                period = point["period"]
+                if period in unique and unique[period]["value"] != point["value"]:
+                    break
+                unique.setdefault(period, point)
+            else:
+                points = list(unique.values())
+                if len(points) >= 2:
+                    results.append({
+                        "metric": " ".join(str(label["value"]).split()),
+                        "label_cell": label["cell"], "scope": scope["value"] if scope else None,
+                        "scope_cell": scope["cell"] if scope else None,
+                        "basis": basis["value"] if basis else None,
+                        "points": [points[0], points[-1]], "observations": points, "row": row,
+                    })
         elif label and not axis_values:
             scope = label
     return results

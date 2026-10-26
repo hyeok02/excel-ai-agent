@@ -3,6 +3,7 @@ from datetime import datetime
 
 from app.services.insights.display.derived_metrics import derived_metric, magnitude_weight
 from app.services.insights.display.display_quality import is_identifier_label
+from app.services.insights.facts.series_scalars import consistent_metric, displayed_value, scalar, unit
 
 MAX_TEXT_LENGTH = 120
 MAX_IDENTITY_CELLS = 3
@@ -25,21 +26,25 @@ def numeric_changes(records: list[dict[str, object]]) -> list[dict[str, object]]
     new_by_label = _numbers_by_label(latest)
     changes = []
     for label in [name for name in old_by_label if name in new_by_label]:
-        old, new = old_by_label[label], new_by_label[label]
-        if old == 0 or old == new:
+        if not consistent_metric(dated, label):
             continue
-        changes.append(
-            {
-                "metric": label,
-                "earliest_period": earliest["values"][0]["value"],
-                "earliest_value": old,
-                "latest_period": latest["values"][0]["value"],
-                "latest_value": new,
-                "change": round(new - old, 4),
-                "change_rate_percent": round((new - old) / abs(old) * 100, 2),
-                "evidence": [earliest["location"], latest["location"]],
-            }
-        )
+        old, new = old_by_label[label], new_by_label[label]
+        if old == 0 or old == new and all(_numbers_by_label(row).get(label) == old for row in dated):
+            continue
+        change = {
+            "metric": label,
+            "earliest_period": earliest["values"][0]["value"],
+            "earliest_value": old,
+            "latest_period": latest["values"][0]["value"],
+            "latest_value": new,
+            "change": round(new - old, 4),
+            "change_rate_percent": round((new - old) / abs(old) * 100, 2),
+            "evidence": [earliest["location"], latest["location"]],
+        }
+        source_unit = next(unit(cell) for cell in earliest["values"][1:] if cell.get("label") == label)
+        if source_unit:
+            change["unit"] = source_unit
+        changes.append(change)
     # 수치가 똑같은 항목이 둘 있으면 어느 쪽을 쓸지 정렬만으로는 갈리지 않는다.
     # 이름으로 먼저 줄을 세워 두면, 같은 파일을 다시 돌려도 같은 항목이 뽑힌다.
     named = sorted(changes, key=lambda item: item["metric"])
@@ -64,11 +69,11 @@ def date_value(value: object) -> datetime | None:
 
 def _numbers_by_label(record: dict[str, object]) -> dict[str, float]:
     return {
-        str(value["label"]): float(value["value"])
+        str(value["label"]): displayed_value(value)
         for value in record["values"][1:]
         if value.get("label")
         and not is_identifier_label(value["label"])
-        and isinstance(value["value"], (int, float))
+        and scalar(value["value"])
     }
 
 

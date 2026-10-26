@@ -6,6 +6,7 @@ from app.agent.query.ambiguity_candidates import AmbiguousCandidate
 from app.agent.query.clarification_preview_scope import absent_source_value, unrequested_detail_population
 from app.agent.query.clarification_preview_values import latest_preview_rows, preview_row
 from app.agent.query.metric_observation_cells import _DATE_HEADER, _numeric
+from app.agent.query.source_record_identity import requested_record_rows
 
 _SNAPSHOT = re.compile(r"\b(?:latest|current|most\s+recent)\b|현재|최신", re.I)
 
@@ -17,6 +18,7 @@ def table_choice(question, table, column, cells, index):
     if unrequested_detail_population(question, table, complete):
         return None
     selected, period_note = latest_preview_rows(question, table, column, rows, complete)
+    selected = requested_record_rows(table, question, selected)
     if complete and selected and all(absent_source_value(row.values.get(column.id)) for row in selected):
         return None
     header = cells.get(column.header_reference)

@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from app.agent.writeback.change_direction import direction_after
+from app.agent.writeback.clear_authorization import clear_is_authorized
 from app.services.insights.verification.numeric_validation import numbers
 
 # "1081에서 981로", "1,081 → 981", "from 1081 to 981"처럼
@@ -18,7 +19,7 @@ VALUE_TRANSITION = re.compile(
 def value_is_authorized(value: object, instruction: str) -> bool:
     normalized = instruction.casefold()
     if value is None:
-        return bool(re.search(r"비우|삭제|지우|제거|clear|delete|remove", normalized))
+        return clear_is_authorized(instruction)
     if isinstance(value, bool):
         labels = ("true", "참", "예") if value else ("false", "거짓", "아니오")
         return any(label in normalized for label in labels)
