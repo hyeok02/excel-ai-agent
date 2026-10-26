@@ -9,6 +9,7 @@ from app.agent.query.tabular_request_scope import request_matches_plan, rows_mat
 from app.agent.query.tabular_validation import filtered_rows, ordered_rows, query_columns, validated_table
 from app.agent.query.tabular_feature_contract import feature_contract_matches, has_bounded_features
 from app.agent.query.tabular_scope_conflicts import needed_columns, plan_scope_conflict
+from app.agent.query.tabular_population_context import NumericPopulationContext, population_controls
 
 
 def execute_tabular_query(plan, summary, data_index, question: str, intent=None) -> QuestionAnswer | None:
@@ -27,7 +28,7 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     if selected is None or (not selected and plan.operation != "row_count"):
         return None
     filters = plan.filters or []
-    needed = needed_columns(plan, selected)
+    needed = needed_columns(plan, selected) | population_controls(plan, table)
     if not needed <= by_id.keys() or plan_scope_conflict(question, plan, table, tables, needed) is not None:
         return None
     bounded_query = has_bounded_features(plan)
@@ -51,6 +52,9 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         return None
     if not rows_match_explicit_ranges(question, table, selected, rows):
         return None
+    population = NumericPopulationContext(plan, table)
+    if not all(population.add(row) for row in rows):
+        return population.unavailable(question)
     if plan.operation == "lookup" and (plan.limit is not None or plan.order_by):
         # A sorted first row is not an exact record lookup; it can hide duplicates
         # or a missing identity condition.
@@ -60,7 +64,7 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     )
     if not text:
         return None
-    text = scope_description(plan, table) + text
+    text = scope_description(plan, table) + population.description() + text
     if data_index.truncated_for({table.sheet_name}):
         limitations.append("이 표의 셀은 모두 대조했지만 같은 시트의 일부 다른 셀은 검색 범위에서 제외되었습니다.")
     if table.excluded_rows:

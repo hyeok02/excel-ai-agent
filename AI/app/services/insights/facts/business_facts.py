@@ -11,10 +11,11 @@ from app.services.insights.facts.fact_labels import (
 from app.services.insights.facts.fact_records import (
     fact_value, identity_score, record_location, record_score,
 )
-from app.services.insights.facts.fact_trends import date_value, numeric_changes
+from app.services.insights.facts.fact_trends import numeric_changes
 from app.services.insights.facts.horizontal_series import extract_horizontal_series
 from app.services.insights.facts.region_rows import visible_region_rows
 from app.services.insights.facts.table_inputs import build_table_regions, legacy_table_rows
+from app.services.insights.facts.trend_dimensions import complete_values, numeric_columns, trend_values
 
 MAX_VALUES_PER_ROW = 10
 
@@ -37,6 +38,7 @@ def build_business_facts(
         header_cells = header_addresses([visible_region])
         region_title = region.get("title")
         role = _semantic_role(region)
+        metric_columns = numeric_columns(source_rows)
         for row in source_rows:
             if is_technical_row(row) or any(
                 str(cell.get("address")) in header_cells for cell in row
@@ -54,9 +56,11 @@ def build_business_facts(
             candidates.append(
                 (record_score(values, role), identity_score(values), record)
             )
-            if region_complete and date_value(values[0]["value"]) and len(values) > 1:
-                scope = _trend_scope(regions, region_index, values)
-                trend_record = {**record, "_trend_scope": scope}
+            normalized = (trend_values(complete_values(row, values, headers, schemas), metric_columns)
+                          if region_complete else [])
+            if len(normalized) > 1:
+                scope = _trend_scope(regions, region_index, normalized)
+                trend_record = {**record, "values": normalized, "_trend_scope": scope}
                 trend_rows.append(trend_record)
                 trend_groups.setdefault(scope, []).append(trend_record)
     candidates.sort(key=lambda item: item[0], reverse=True)

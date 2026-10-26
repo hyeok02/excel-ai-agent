@@ -1,15 +1,10 @@
 """Narratives for normalized, source-addressable horizontal metric series."""
 from app.services.insights.display.derived_metrics import derived_metric
-from app.services.insights.display.glossary import readable
 from app.services.insights.display.display_quality import business_priority, metric_family
-from app.services.insights.display.percent_format import scales_by_percent
-from app.services.insights.models import WorkbookInsight
 from datetime import date
-from app.services.insights.display.amount_units import PER_SHARE, amount_unit
-from app.services.insights.narratives.narrative_values import (
-    number, period, reference, workbook_identity,
-)
-from app.services.insights.narratives.topic_labels import scoped_source_topic
+from app.services.insights.display.amount_units import amount_unit
+from app.services.insights.narratives.narrative_values import workbook_identity
+from app.services.insights.narratives.horizontal_insight import horizontal_insight as _insight
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 
 
@@ -60,58 +55,6 @@ def _settled(series):
     return 0 if series.get("points") and str(series["points"][-1].get("period", ""))[:10] > date.today().isoformat() else 1
 
 
-def _insight(sheet, series, owner=("", ()), unit=("", ())):
-    points = series.get("points", [])
-    if len(points) < 2:
-        return None
-    earliest, latest = points[0], points[-1]
-    old, new = float(earliest["value"]), float(latest["value"])
-    if old == new:
-        return None
-    metric = str(series.get("metric", "")).strip()
-    scope = str(series.get("scope") or "").strip()
-    _, holder_refs = owner
-    # 대상 이름은 요약 첫 문장에서 한 번만 밝힌다. 카드마다 붙이면 계속 반복된다.
-    subject = (f"{readable(scope)}의 {readable(metric)}" if scope
-               else readable(metric))
-    topic = scoped_source_topic(metric, series.get("label_cell"), scope, series.get("scope_cell"))
-    money, money_refs = unit
-    if money and PER_SHARE.search(f"{scope} {metric}"):
-        money, money_refs = "", []
-    if _percentage(points):
-        old_text, new_text = _percent(old, earliest), _percent(new, latest)
-        fact = (
-            f"{subject}: {period(earliest['period'])} {old_text}에서 "
-            f"{period(latest['period'])} {new_text}로 {_direction(old, new)}했습니다."
-        )
-    else:
-        change = new - old
-        rate = abs(change / old * 100) if old else None
-        change_text = f"{number(abs(change))}{money}"
-        if rate is not None:
-            change_text += f"({rate:.2f}%)"
-        fact = (
-            f"{subject}: {period(earliest['period'])} {number(old)}{money}에서 "
-            f"{period(latest['period'])} {number(new)}{money}로 "
-            f"{change_text} {_direction(old, new)}했습니다."
-        )
-    evidence = [
-        series.get("scope_cell"), series.get("label_cell"),
-        earliest.get("period_cell"), earliest.get("value_cell"),
-        latest.get("period_cell"), latest.get("value_cell"),
-    ]
-    return WorkbookInsight(
-        title=f"{subject} 변화",
-        fact=fact,
-        category="change",
-        severity="info",
-        evidence=[*holder_refs, *money_refs,
-                  *(reference(sheet, cell) for cell in dict.fromkeys(evidence) if cell)],
-        confidence=1.0,
-        topic=topic,
-    )
-
-
 def _signature(series):
     """Same row, same numbers: one copy may have lost its percent formatting."""
     points = series.get("points", [])
@@ -129,16 +72,6 @@ def _derived(series):
 
 def _percentage(points):
     return all("%" in str(point.get("number_format", "")) for point in points)
-
-
-def _percent(value, point):
-    number_format = str(point.get("number_format", ""))
-    display = value * 100 if scales_by_percent(number_format) else value
-    return f"{number(display)}%"
-
-
-def _direction(old, new):
-    return "감소" if new < old else "증가"
 
 
 def _basis_priority(value):

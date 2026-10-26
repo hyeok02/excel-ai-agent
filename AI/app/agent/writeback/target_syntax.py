@@ -23,18 +23,28 @@ class TargetMention:
 
 def mask_formulas(instruction: str) -> str:
     """Keep offsets, but never authorize formula operands as destinations."""
-    chars, position = list(instruction), 0
+    chars = list(instruction)
+    for start, end in formula_spans(instruction):
+        chars[start:end] = " " * (end - start)
+    return "".join(chars)
+
+
+def formula_spans(instruction):
+    spans, position = [], 0
     while position < len(instruction):
         if instruction[position] != "=":
             position += 1
             continue
         start, depth, quote = position, 0, None
+        wrapper = instruction[start - 1] if start and instruction[start - 1] in "\"'`" else None
         position += 1
         while position < len(instruction):
             char = instruction[position]
             if quote:
                 if char == quote:
                     quote = None
+            elif depth == 0 and wrapper and char == wrapper:
+                break
             elif char in "\"'":
                 quote = char
             elif char == "(":
@@ -46,8 +56,8 @@ def mask_formulas(instruction: str) -> str:
             ):
                 break
             position += 1
-        chars[start:position] = " " * (position - start)
-    return "".join(chars)
+        spans.append((start, position))
+    return spans
 
 
 def sheet_mentions(text: str, sheets) -> list[tuple[int, int, str]]:

@@ -9,7 +9,7 @@ _TOTAL_LABEL = re.compile(
 _TOTAL_FORMULA = re.compile(r"(?<!\w)(?:_xlfn\.)?(?:SUBTOTAL|AGGREGATE)\s*\(", re.I)
 
 
-def ambiguous_boundary(row, table, numeric_columns):
+def ambiguous_boundary(row, table, numeric_columns, *, allow_totals=False):
     values = [row.values[column.id] for column in table.columns]
     aligned = sum(isinstance(value, str) and value.strip() == column.header
                   for column, value in zip(table.columns, values))
@@ -21,7 +21,7 @@ def ambiguous_boundary(row, table, numeric_columns):
     # Native table totals are explicit metadata. An inferred rectangle has no
     # equivalent guarantee: do not silently count a subtotal or drop it by guess.
     if table.source_kind != "native":
-        if (any(isinstance(value, str) and _TOTAL_LABEL.search(value) for value in values)
+        if not allow_totals and (any(isinstance(value, str) and _TOTAL_LABEL.search(value) for value in values)
                 or any(_TOTAL_FORMULA.search(formula) for formula in row.formulas.values())):
             return True
         if (all(value is None or isinstance(value, str) for value in values)

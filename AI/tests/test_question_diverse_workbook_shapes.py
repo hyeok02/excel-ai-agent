@@ -44,7 +44,8 @@ def test_sales_question_reuses_a_verified_financial_change() -> None:
 
     assert answer.status is QuestionAnswerStatus.ANSWERED
     assert answer.answer == report.insights[0].fact
-    assert "50(50.00%) 증가" in answer.answer
+    assert "100USD" in answer.answer and "150USD" in answer.answer
+    assert "50USD(50.00%) 증가" in answer.answer
 
 
 def test_plain_record_question_reuses_a_verified_cell_lookup_fact() -> None:

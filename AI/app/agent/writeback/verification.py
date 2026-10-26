@@ -4,6 +4,7 @@ from zipfile import ZipFile
 from app.services.workbook_loading import close_workbook, load_workbook_for_reading
 
 from app.agent.writeback.models import VerificationCheck
+from app.agent.writeback.package_preservation import unchanged_content
 
 def workbook_fingerprint(content: bytes, keep_vba: bool) -> dict[str, object]:
     workbook = load_workbook_for_reading(content, keep_vba=keep_vba)
@@ -51,7 +52,7 @@ def compare_fingerprints(before, after, changes) -> list[VerificationCheck]:
     ]
 
 def package_checks(
-    before: bytes, after: bytes, changed_paths: set[str]
+    before: bytes, after: bytes, changed_paths: set[str], changes
 ) -> list[VerificationCheck]:
     with ZipFile(BytesIO(before)) as original, ZipFile(BytesIO(after)) as modified:
         original_names, modified_names = set(original.namelist()), set(modified.namelist())
@@ -63,9 +64,11 @@ def package_checks(
             _features(original.read(path)) == _features(modified.read(path))
             for path in changed_paths
         )
+        untouched_values = unchanged_content(original, modified, changes)
     return [
         _check("package_structure", original_names == modified_names, "파일 구성 요소 보존"),
         _check("unchanged_parts", parts_preserved, "변경 시트 외 원본 부품 보존"),
+        _check("unapproved_content", untouched_values, "승인한 값 외 셀·수식·서식·시트 내용 보존"),
         _check("excel_extensions", features_preserved, "유효성·확장 기능 보존"),
         _check("recalculation", _recalculation_requested(after), "Excel 실행 시 수식 재계산"),
     ]

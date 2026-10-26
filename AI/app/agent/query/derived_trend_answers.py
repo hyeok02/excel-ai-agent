@@ -1,8 +1,9 @@
 """Deterministic growth and explicit-operand share trends, before generation."""
 from app.agent.query.models import QuestionAnswer, QuestionAnswerVerification
 from app.agent.query.trend_comparison_scope import comparison_limits
-from app.agent.query.trend_request import trend_request_error
-from app.agent.query.derived_trend_request import GROWTH, SHARE, metric_tokens, derived_request, source_question
+from app.agent.query.trend_request import trend_request_error, asks_trend
+from app.agent.query.derived_trend_request import GROWTH, SHARE, YOY, MOM, PREVIOUS, metric_tokens, derived_request, source_question
+from app.agent.query.metric_observation_periods import requested_periods
 from app.agent.query.derived_trend_sources import initial_sources, operand_sources
 from app.agent.query.derived_trend_calculations import growth_points, share_points
 from app.agent.query.derived_trend_render import render_derived
@@ -10,6 +11,11 @@ from app.agent.query.derived_trend_render import render_derived
 
 def derived_trend_answer(question, summary, index):
     if not (GROWTH.search(question) or SHARE.search(question)):
+        return None
+    if (GROWTH.search(question) and not asks_trend(question) and len(requested_periods(question)) == 2
+            and not any(pattern.search(question) for pattern in (YOY, MOM, PREVIOUS))):
+        # A two-period amount+rate question belongs to the endpoint comparison
+        # executor, not a derived series that only renders period growth rates.
         return None
     initial, named = initial_sources(question, summary, index)
     masked, labels = metric_tokens(question, initial)
