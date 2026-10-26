@@ -30,6 +30,7 @@ def ranked_regions(regions):
             results.append({
                 "title": title, "title_cell": title_cell,
                 "role": body.get("role"), "rows": rows,
+                "rows_complete": header.get("rows_complete") is True and body.get("rows_complete") is True,
             })
             break
     return results

@@ -1,6 +1,6 @@
 """Discover source-bound time series without workbook-specific names or ranges."""
 from app.agent.query.metric_observation_cells import _DATE_HEADER
-from app.agent.query.trend_labels import trend_metric_label_matches as metric_label_matches
+from app.agent.query.trend_labels import trend_column_matches
 from app.agent.query.metric_observation_periods import source_period
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.trend_source_horizontal import horizontal_candidates
@@ -21,7 +21,7 @@ def trend_candidates(summary, index, question) -> list[TrendCandidate]:
         if not dated:
             continue
         for metric in table.columns:
-            if metric_label_matches(metric.header, question):
+            if trend_column_matches(metric, question):
                 result.append(vertical_candidate(table, metric, tables, index, question, names))
     result.extend(horizontal_candidates(summary, index, question, names))
     return result

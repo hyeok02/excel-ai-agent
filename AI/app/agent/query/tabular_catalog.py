@@ -6,6 +6,7 @@ from openpyxl.utils import coordinate_to_tuple, get_column_letter, range_boundar
 
 from app.agent.query.tabular_catalog_models import QueryColumn, QueryRow, QueryTable
 from app.agent.query.tabular_catalog_sources import cell_value, source_cells, table_context, table_sources
+from app.agent.query.column_context import column_context
 
 MAX_CATALOG_TABLES = 18
 MAX_CATALOG_COLUMNS = 80
@@ -18,10 +19,13 @@ def build_query_tables(summary) -> list[QueryTable]:
         sheet_cells = {address: cell for region in sheet.regions
                        for address, cell in source_cells(region).items()}
         hidden_columns = frozenset(column for region in sheet.regions for column in region.hidden_columns)
+        parents = tuple(span for region in sheet.regions for span in region.merged_ranges)
         for reference, cells, complete, merged, hidden, kind in table_sources(sheet):
             table = _build_table(sheet.name, reference, cells, complete, merged, hidden)
             if table is not None:
-                tables.append(replace(table, source_kind=kind, context=table_context(sheet.name, reference, sheet_cells),
+                columns = tuple(replace(column, context=column_context(sheet.name, column, sheet_cells, parents, reference))
+                                for column in table.columns)
+                tables.append(replace(table, columns=columns, source_kind=kind, context=table_context(sheet.name, reference, sheet_cells),
                                       hidden_columns=hidden_columns & {c.id for c in table.columns}))
     return tables
 
@@ -43,6 +47,7 @@ def query_catalog(summary, question: str) -> list[dict]:
             "columns": [{
                 "column_id": column.id, "header": column.header,
                 "header_reference": column.header_reference,
+                "parent_context": list(column.context),
                 "hidden": column.id in table.hidden_columns,
                 "samples": list(column.sample_values),
             } for column in table.columns[:MAX_CATALOG_COLUMNS]],

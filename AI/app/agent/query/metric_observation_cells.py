@@ -9,7 +9,7 @@ from app.agent.query.comparison_scope import column_from_address, column_number
 from app.agent.query.index import IndexedCell
 from app.agent.query.metric_observation_periods import source_period
 from app.agent.query.search_terms import SEMANTIC_ALIASES
-_DATE_HEADER = re.compile(r"\b(?:date|period|year|as\s+of)\b|날짜|일자|기준일|기준월|기간|연도", re.I)
+_DATE_HEADER = re.compile(r"\b(?:dates?|periods?|years?|as\s+of)\b|날짜|일자|기준일|기준월|기간|연도", re.I)
 _ABSENT = {"na", "n/a", "n.a.", "-", "#pend", "#n/a"}
 _CODE = re.compile(r"^[A-Z][A-Z0-9]*_[A-Z0-9_]+$")
 _METRIC_MODIFIERS = re.compile(r"\b(?:latest|actual|actuals|annual|total)\b|\([^)]*\)", re.I)

@@ -15,6 +15,7 @@ from app.agent.query.trend_source_context import verified_context
 from app.agent.query.trend_source_models import MAX_TREND_OBSERVATIONS, TrendCandidate
 from app.agent.query.trend_source_readback import rectangle_rows
 from app.agent.query.trend_source_scope import scope_dated_items
+from app.agent.query.metric_row_semantics import row_metric_conflict
 
 
 def horizontal_candidates(summary, index, question, source_names=()):
@@ -49,6 +50,8 @@ def horizontal_candidates(summary, index, question, source_names=()):
                     if not axes:
                         continue
                     axis, dates = max(axes, key=lambda item: item[0].row_number)
+                    if row_metric_conflict(label, axis, visible, question):
+                        continue
                     if _intervening_section(visible, axis, row, left, right):
                         continue
                     competing = [other for other, _ in axes if other != axis and not any(

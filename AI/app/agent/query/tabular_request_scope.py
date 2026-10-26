@@ -1,21 +1,19 @@
-"""Reject plans that contradict explicitly named source scopes and operations.
-
-Natural-language interpretation chooses source IDs, never answer numbers. These
-checks keep an otherwise valid computation from silently answering another field,
-sheet or identifier. Source labels come from the workbook, not a business glossary.
-"""
+"""Reject plans contradicting source scopes, metric meanings or operations."""
 import re
 
 from openpyxl.utils import range_boundaries
 from app.agent.query.ambiguity_labels import label_base, mentioned_sources, source_mentioned
 from app.agent.query.ambiguity_qualifiers import explicit_column_ids, qualified_labels, requested_units_match
 from app.agent.query.metric_observation_cells import metric_label_matches
+from app.agent.query.metric_semantics import column_metric_conflict
 from app.agent.query.tabular_request_constraints import matches_constraints
 from app.agent.query.tabular_request_categories import value_matches
 from app.agent.query.tabular_having_language import without_checked_having
 
 
 def request_matches_plan(question, plan, table, tables, intent=None, *, streaming=False):
+    if any(column_metric_conflict(column, question) for column in table.columns if column.id in plan.column_ids):
+        return False
     if intent is not None:
         allowed = {
             "lookup": {"cell_lookup"}, "row_list": {"row_list"},

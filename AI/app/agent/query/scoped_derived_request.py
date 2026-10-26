@@ -5,7 +5,7 @@ from app.agent.query.derived_trend_request import calculation_question, GROWTH, 
 from app.agent.query.grouped_share_trend_request import protect_headers, restore_headers
 from app.agent.query.metric_observation_periods import source_period
 from app.agent.query.tabular_request_categories import value_matches
-from app.agent.query.trend_labels import trend_metric_label_matches
+from app.agent.query.trend_labels import trend_column_matches
 from app.agent.query.trend_source_readback import table_rows
 
 
@@ -27,7 +27,7 @@ def clean_scoped_question(question, tables, index):
     masked, fields = protect_headers(question, tables)
     values = []
     for table in tables:
-        if not any(trend_metric_label_matches(column.header, question) for column in table.columns):
+        if not any(trend_column_matches(column, question) for column in table.columns):
             continue
         rows, error = table_rows(table, tables, index, question)
         if error:

@@ -1,6 +1,7 @@
 """Retain source cell bindings instead of flattening a cited table into a bag."""
 from dataclasses import dataclass
 import re
+from openpyxl.utils.cell import quote_sheetname
 
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.verification.source_scalars import scalar
@@ -23,7 +24,7 @@ def sheet_observations(sheet):
 
     def reference(cell):
         address = cell.get("cell") or cell.get("address")
-        return normalize_reference(f"{name}!{address}") if address else None
+        return normalize_reference(f"{quote_sheetname(name)}!{address}") if address else None
 
     def add_row(cells, headers=None):
         cells = [cell for cell in cells if isinstance(cell, dict)]
@@ -75,7 +76,7 @@ def sheet_observations(sheet):
         add_rows([cell for row in table.get("rows", []) for cell in row])
     for series in facts.get("horizontal_series", []):
         for point in series.get("points", []):
-            ref = normalize_reference(f"{name}!{point.get('value_cell')}")
+            ref = normalize_reference(f"{quote_sheetname(name)}!{point.get('value_cell')}")
             if ref and scalar(point.get("value")):
                 result.append(Observation((str(series.get("metric", "")),),
                                           tuple(str(series[key]) for key in ("scope", "basis")

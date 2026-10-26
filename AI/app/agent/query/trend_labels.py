@@ -15,3 +15,8 @@ def trend_metric_label_matches(label, question):
     translated = translate(label)
     return metric_label_matches(label, question) or bool(
         translated and _korean_metric_in_question(translated, question))
+
+
+def trend_column_matches(column, question):
+    from app.agent.query.metric_semantics import column_metric_conflict
+    return trend_metric_label_matches(column.header, question) and not column_metric_conflict(column, question)

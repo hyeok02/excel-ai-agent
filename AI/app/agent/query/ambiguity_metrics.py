@@ -7,7 +7,7 @@ from app.agent.query.ambiguity_candidates import AmbiguousCandidate
 from app.agent.query.ambiguity_labels import mentioned_sources, source_mentioned
 from app.agent.query.metric_observation_cells import MetricObservation, _column, _human_label, _numeric
 from app.agent.query.metric_observation_periods import LATEST, requested_periods
-from app.agent.query.metric_observation_render import _metric_identity, _period_label
+from app.agent.query.metric_observation_render import _metric_identity, _period_label, _value
 from app.agent.query.metric_observation_scope import _bind_entity_scope
 from app.agent.query.metric_observation_units import observation_unit
 from app.agent.query.metric_observations import horizontal_observations, dated_record_observations, metric_label_matches
@@ -61,7 +61,7 @@ def metric_candidates(question, index):
                     key = (item.label.reference, tuple(cell.value for cell in item.entity_cells))
                     if key not in newest_by_scope or item.period > newest_by_scope[key].period:
                         newest_by_scope[key] = item
-                return [_candidate(item, rows, question) for item in newest_by_scope.values()]
+                return _candidates(newest_by_scope.values(), rows, question)
             newest = max(item.period for item in actual)
             groups.append([item for item in actual if item.period == newest])
     elif not requests:
@@ -70,7 +70,7 @@ def metric_candidates(question, index):
         identities = {(item.period, item.grain, item.scenario, item.value.value,
                        observation_unit(item, rows).identity) for item in group}
         if len(identities) > 1:
-            return [_candidate(item, rows, question) for item in group]
+            return _candidates(group, rows, question)
     return []
 
 
@@ -97,7 +97,7 @@ def _candidate(item, rows, question):
     unit_text = (f"단위: {unit.suffix}" if unit.suffix else
                  f"표시 형식: {item.value.number_format}" if item.value.number_format != "General"
                  else "단위 미확인")
-    details = "; ".join(filter(None, [entity, period, unit_text]))
+    details = "; ".join(filter(None, [entity, period, f"원본 값: {_value(item, unit)}", unit_text]))
     qualified = f"{quote_sheetname(item.value.sheet_name)}!{item.value.address}"
     # An exact cell address is the final unambiguous fallback even when a sheet
     # contains repeated same-name company blocks or conflicting unit captions.
@@ -107,3 +107,7 @@ def _candidate(item, rows, question):
     cells = tuple(dict.fromkeys((item.label, item.value, item.period_cell, *item.context_cells,
                                 *item.entity_cells, *unit.references)))
     return AmbiguousCandidate(str(item.label.value), qualified, details, followup, cells)
+
+
+def _candidates(items, rows, question):
+    return [_candidate(item, rows, question) for item in items if _numeric(item.value.value)]
