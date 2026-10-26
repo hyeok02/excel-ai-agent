@@ -2,9 +2,6 @@
 from collections import defaultdict
 from functools import lru_cache
 import re
-from openpyxl.utils.cell import quote_sheetname
-
-from app.agent.query.ambiguity_candidates import AmbiguousCandidate
 from app.agent.query.ambiguity_labels import (
     label_base,
     mentioned_sources,
@@ -14,9 +11,12 @@ from app.agent.query.ambiguity_labels import (
 )
 from app.agent.query.ambiguity_qualifiers import explicit_column_ids, qualified_labels
 from app.agent.query.metric_observation_cells import metric_label_matches
+from app.agent.query.metric_semantics import column_metric_conflict
 from app.agent.query.metric_observation_render import _metric_identity
+from app.agent.query.metric_observation_periods import LATEST
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_request_scope import explicit_ranges, _inside
+from app.agent.query.clarification_table_preview import table_choice
 
 
 def table_candidates(question, summary, index):
@@ -32,8 +32,8 @@ def table_candidates(question, summary, index):
             if column.id in table.hidden_columns:
                 continue
             base = label_base(column.header)
-            if len(normalize_label(base)) >= 3 and (source_mentioned(base, question)
-                                                    or metric_label_matches(base, metric_question)):
+            if (not column_metric_conflict(column, metric_question) and len(normalize_label(base)) >= 3
+                    and (source_mentioned(base, question) or metric_label_matches(base, metric_question))):
                 groups[field_identity(column)].append((table, column))
     longest = {key: values for key, values in groups.items()
                if not any(key != other and key in other for other in groups)}
@@ -56,7 +56,12 @@ def _header_identity(header):
 
 def candidates_for(question, matches, index):
     cells = {cell.reference: cell for row in index.rows for cell in row.cells}
-    return [_candidate(question, table, column, cells) for table, column in matches]
+    previews = [preview for table, column in matches
+                if (preview := table_choice(question, table, column, cells, index)) is not None]
+    explicit = explicit_ranges(question) or mentioned_sources((table.sheet_name for table, _ in matches), question)
+    if LATEST.search(question) and not explicit and any(available for _, available, _ in previews):
+        previews = [preview for preview in previews if not preview[2]]
+    return [candidate for candidate, _, _ in previews]
 
 
 def scoped_tables(question, tables):
@@ -111,16 +116,3 @@ def narrow_matches(question, matches):
         best = max(scores.values())
         matches = [(table, column) for table, column in matches if scores[table.id] == best]
     return matches
-
-
-def _candidate(question, table, column, cells):
-    context = " / ".join(text for _, text in table.context)[-160:]
-    formats = ", ".join(value for value in column.number_formats if value != "General")
-    details = "; ".join(value for value in (column.header_reference, context,
-                          f"표시 형식: {formats}" if formats else "") if value)
-    header = cells.get(column.header_reference)
-    return AmbiguousCandidate(
-        column.header, f"{quote_sheetname(table.sheet_name)}!{table.reference}", details or "단위·기간은 표에서 선택",
-        f"{quote_sheetname(table.sheet_name)}!{table.reference} 범위의 {column.id}열 {column.header} 기준으로: {question}",
-        (header,) if header else (),
-    )

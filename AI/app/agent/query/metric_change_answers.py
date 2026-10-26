@@ -13,7 +13,7 @@ from app.agent.query.comparison_value_format import (
     people_unit,
     percentage_formats,
 )
-from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
+from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus, QuestionAnswerVerification
 from app.services.insights.display.glossary import readable
 from app.services.insights.narratives.narrative_values import topic_particle
 
@@ -70,6 +70,9 @@ def _answered(question, execution, index_truncated, available, text, references,
         selected_tools=[step.tool_name for step in execution.steps],
         evidence=[present_comparison_evidence(item) for item in evidence],
         limitations=limitations,
+        verification=QuestionAnswerVerification(
+            level="source_checked", checks=["cited_cells", *(["source_values"] if checks else [])]
+        ),
     )
 
 

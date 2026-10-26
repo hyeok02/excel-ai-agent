@@ -11,6 +11,7 @@ class QueryColumn:
     header_reference: str
     sample_values: tuple[CellValue, ...]
     number_formats: tuple[str, ...] = ()
+    context: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

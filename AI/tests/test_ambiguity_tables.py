@@ -23,7 +23,8 @@ def test_parallel_matching_fields_offer_actual_source_choices_without_verificati
     assert result.verification.level == "unverified"
     assert "B4:C6" in result.answer and "G4:H6" in result.answer
     assert "다시 질문:" in result.answer
-    assert {cell.reference for cell in result.evidence} == {"C4", "H4"}
+    assert {"C4", "C5", "C6", "H4", "H5", "H6"} <= {cell.reference for cell in result.evidence}
+    assert "원본 값 예시" in result.answer and "10" in result.answer and "80" in result.answer
 
 
 def test_other_explicit_source_header_or_record_identity_resolves_parallel_table():

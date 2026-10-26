@@ -7,7 +7,7 @@ from app.agent.query.metric_observation_cells import _DATE_HEADER
 from app.agent.query.metric_observation_periods import source_period
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_request_scope import explicit_ranges, _inside
-from app.agent.query.trend_labels import trend_metric_label_matches
+from app.agent.query.trend_labels import trend_column_matches
 from app.agent.query.trend_source_context import verified_context
 from app.agent.query.trend_source_readback import table_rows, column_cells
 from app.agent.query.trend_source_scope import source_scope_names
@@ -41,7 +41,7 @@ def grouped_sources(question, summary, index):
                 _inside(corner, reference) for corner in table.reference.split(":"))
                 for sheet, reference in ranges):
             continue
-        metrics = [column for column in table.columns if trend_metric_label_matches(column.header, question)]
+        metrics = [column for column in table.columns if trend_column_matches(column, question)]
         if not metrics:
             continue
         rows, error = table_rows(table, tables, index, question)
@@ -55,11 +55,13 @@ def grouped_sources(question, summary, index):
                                             dates[0].id if len(dates) == 1 else "__date__")
         if preliminary is None:
             continue
-        if len(dates) != 1:
-            raise ValueError("요청 항목이 있는 표의 날짜 열이 없거나 여러 개입니다. 날짜 축이 명확한 표 범위를 지정해 주세요.")
-        dimensions = {*preliminary.groups, dates[0].id}
+        dimensions = {*preliminary.groups, *(date.id for date in dates)}
         dimensions.update(item.column_id for item in preliminary.filters if isinstance(item.value, str))
         metrics = [c for c in metrics if c.id not in dimensions]
+        if not metrics:
+            continue
+        if len(dates) != 1:
+            raise ValueError("요청 항목이 있는 표의 날짜 열이 없거나 여러 개입니다. 날짜 축이 명확한 표 범위를 지정해 주세요.")
         for metric in metrics:
             request = parse_grouped_request(question, table, records, metric.id, dates[0].id)
             if request is None:

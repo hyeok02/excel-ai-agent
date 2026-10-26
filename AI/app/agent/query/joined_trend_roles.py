@@ -4,7 +4,7 @@ from app.agent.query.grouped_trend_request_spans import grouping_spans, headers_
 from app.agent.query.joined_trend_binding import bind_keys
 from app.agent.query.joined_trend_readback import read_join_side
 from app.agent.query.metric_observation_cells import _DATE_HEADER
-from app.agent.query.trend_labels import trend_metric_label_matches
+from app.agent.query.trend_labels import trend_column_matches
 
 
 def bind_joined_roles(question, selected, tables, index):
@@ -21,7 +21,7 @@ def bind_joined_roles(question, selected, tables, index):
         dimensions = {*groups, *(column.id for column in dates),
                       *(pair[position].id for pair in keys), *(item.column_id for item in conditions)}
         metrics = [column for column in table.columns if column.id not in dimensions
-                   and trend_metric_label_matches(column.header, question)]
+                   and trend_column_matches(column, question)]
         if not metrics:
             continue
         named_dates = [column for column in dates if any(key == column.id for key, _ in headers)]

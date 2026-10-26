@@ -7,8 +7,9 @@ from app.agent.query.metric_observation_cells import (
     _sheet_rows, _text_in_question, _normal, metric_label_matches,
 )
 from app.agent.query.metric_record_observations import dated_record_observations
+from app.agent.query.metric_row_semantics import row_metric_conflict
 
-def horizontal_observations(rows: list[IndexedRow], question: str) -> list[MetricObservation]:
+def horizontal_observations(rows: list[IndexedRow], question: str, *, include_conflicts=False) -> list[MetricObservation]:
     sheets = _sheet_rows(rows)
     observations = []
     for sheet_rows in sheets.values():
@@ -31,6 +32,8 @@ def horizontal_observations(rows: list[IndexedRow], question: str) -> list[Metri
                 if not previous:
                     continue
                 axis, dates = max(previous, key=lambda item: item[0].row_number)
+                if not include_conflicts and row_metric_conflict(label, axis, sheet_rows, question):
+                    continue
                 by_column = {_column(cell): cell for cell in dates if left < _column(cell) < right}
                 # A new non-date section heading closes the old table. In
                 # particular, Revenue in a growth-rate block is not Revenue.

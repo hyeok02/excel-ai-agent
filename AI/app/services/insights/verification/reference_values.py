@@ -1,5 +1,6 @@
 import re
 from typing import Any, Protocol
+from openpyxl.utils.cell import quote_sheetname
 
 from app.services.insights.verification.numeric_validation import numbers
 
@@ -74,7 +75,7 @@ def _record_references(record, sheet_name, extract_references, normalize_referen
     for candidate in candidates:
         parsed = extract_references(candidate)
         if not parsed and CELL_RANGE_PATTERN.match(candidate):
-            normalized = normalize_reference(f"{sheet_name}!{candidate}")
+            normalized = normalize_reference(f"{quote_sheetname(sheet_name)}!{candidate}")
             parsed = {normalized} if normalized else set()
         references.update(parsed)
     return references

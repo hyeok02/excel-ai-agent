@@ -3,7 +3,7 @@ import re
 from types import SimpleNamespace
 
 from app.agent.query.ambiguity_answers import ambiguous_source_answer
-from app.agent.query.metric_observation_cells import metric_label_matches
+from app.agent.query.metric_semantics import column_metric_matches
 from app.agent.query.metric_request_coverage import uncovered_request_tokens
 from app.agent.query.models import QuestionAnswerStatus, QuestionAnswerVerification, QuestionVerificationLevel
 from app.agent.query.tabular_binding import bind_tabular_plan
@@ -85,7 +85,7 @@ def alias_lookup_request(question, summary, intent, clarification):
            for candidate in tables for row in candidate.rows for value in row.values.values()):
         return None
     columns = [column for column in table.columns if column.id in plan.column_ids]
-    if not all(metric_label_matches(column.header, remainder) for column in columns):
+    if not all(column_metric_matches(column, remainder) for column in columns):
         return None
     observations = [SimpleNamespace(label=SimpleNamespace(value=column.header), entity_cells=())
                     for column in columns]

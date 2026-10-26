@@ -1,5 +1,4 @@
 import asyncio
-
 from app.agent.contracts import AgentToolContext
 from app.agent.execution import AgentToolExecutor
 from app.agent.query.answer_validation import validate_answer
@@ -15,6 +14,7 @@ from app.agent.query.metric_period_answers import validated_metric_period_answer
 from app.agent.query.metric_snapshot_answers import validated_metric_snapshot_answer
 from app.agent.query.metric_observation_answers import metric_observation_answer
 from app.agent.query.metric_scalar_answers import metric_scalar_answer
+from app.agent.query.metric_semantic_guard import incompatible_metric_answer
 from app.agent.query.row_list_answers import validated_row_list_answer
 from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
@@ -39,8 +39,6 @@ from app.agent.query.workbook_summary_answers import validated_workbook_summary_
 from app.agent.query.verified_insight_answers import validated_verified_insight_answer
 from app.agent.registry import AgentToolRegistry
 from app.services.workbook_parsing.models import WorkbookSummary
-
-
 class WorkbookQuestionService:
     def __init__(
         self,
@@ -68,6 +66,8 @@ class WorkbookQuestionService:
 
     async def _answer_prepared(self, question, sources) -> QuestionAnswer:
         summary, data_index = sources.summary, sources.index
+        if incompatible := incompatible_metric_answer(question, summary, data_index):
+            return incompatible
         if trend := await asyncio.to_thread(time_series_answer, question, summary, data_index):
             return trend
         if direct := await asyncio.to_thread(source_lookup_answer, question, sources):

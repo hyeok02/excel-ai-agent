@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
+from openpyxl.utils.cell import quote_sheetname
 
 from app.agent.execution.models import AgentExecution, AgentStepStatus
 from app.services.insights.verification.numeric_validation import numbers
@@ -57,7 +58,7 @@ def agent_evidence_index(execution: AgentExecution) -> EvidenceIndex:
             if not evidence.reference:
                 continue
             reference = normalize_reference(
-                f"{evidence.sheet_name}!{evidence.reference}"
+                f"{quote_sheetname(evidence.sheet_name)}!{evidence.reference}"
             )
             if reference:
                 index.references.add(reference)
@@ -93,7 +94,7 @@ def _index_workbook_sheet(index: EvidenceIndex, sheet: Any) -> None:
     for formula in sheet.get("formula_samples", []):
         cell = formula.get("cell") if isinstance(formula, dict) else None
         if cell:
-            reference = normalize_reference(f"{sheet_name}!{cell}")
+            reference = normalize_reference(f"{quote_sheetname(sheet_name)}!{cell}")
             if reference:
                 index.references.add(reference)
                 index.cause_references.add(reference)
@@ -103,7 +104,7 @@ def _index_workbook_sheet(index: EvidenceIndex, sheet: Any) -> None:
             continue
         reference = normalize_reference(str(value))
         if reference is None and CELL_RANGE_PATTERN.match(str(value)):
-            reference = normalize_reference(f"{sheet_name}!{value}")
+            reference = normalize_reference(f"{quote_sheetname(sheet_name)}!{value}")
         if reference:
             index.references.add(reference)
 

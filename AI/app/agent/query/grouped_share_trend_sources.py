@@ -11,7 +11,7 @@ from app.agent.query.tabular_request_categories import value_matches
 from app.agent.query.grouped_share_trend_request import clean_share_question, whole_relation, remove_whole
 from app.agent.query.metric_observation_cells import _numeric
 from app.agent.query.metric_observation_periods import source_period
-from app.agent.query.trend_labels import trend_metric_label_matches
+from app.agent.query.trend_labels import trend_column_matches
 
 
 def category_share_source(question, summary, index):
@@ -22,7 +22,7 @@ def category_share_source(question, summary, index):
     if not SHARE.search(operation) or not TEMPORAL.search(operation):
         return None
     requested = {column.header for table in tables for column in table.columns
-                 if trend_metric_label_matches(column.header, question)
+                 if trend_column_matches(column, question)
                  and any(_numeric(row.values.get(column.id)) for row in table.rows)}
     if len(requested) > 1:
         return None  # Explicit source-operand ratios use the derived adapter.

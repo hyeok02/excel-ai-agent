@@ -7,8 +7,9 @@ from app.agent.query.comparison_evidence import (
     present_comparison_evidence,
 )
 from app.agent.query.intent_models import QuestionIntent
-from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
+from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus, QuestionAnswerVerification
 from app.agent.query.verified_insight_constraints import insight_intent_matches
+from app.agent.query.verified_insight_selection import requested_insight_items
 from app.agent.query.verified_insight_matching import (
     MIN_RELEVANCE_SCORE,
     verified_insight_score,
@@ -23,19 +24,14 @@ def validated_verified_insight_answer(
     index_truncated: bool,
     intent: QuestionIntent | None = None,
 ) -> QuestionAnswer | None:
-    """Return the one verified fact that clearly matches the user's question.
-
-    Ambiguous matches deliberately fall through to the normal answer generator.  This
-    path is for high-confidence reuse, not a replacement for arbitrary workbook Q&A.
-    """
-
+    """Reuse one clearly matching fact; ambiguous matches still fall through."""
     available = available_evidence(execution)
     if not available:
         return None
     asked = intent.enriched(question) if intent is not None else question
     answer_kind = intent.kind if intent is not None else ""
     ranked = []
-    for order, item in enumerate(_verified_items(execution)):
+    for order, item in enumerate(requested_insight_items(question, _verified_items(execution))):
         fact = str(item.get("fact") or "").strip()
         if not fact or not insight_intent_matches(question, item, answer_kind):
             continue
@@ -64,11 +60,7 @@ def validated_verified_insight_answer(
     return QuestionAnswer(
         question=question,
         answer=fact,
-        status=(
-            QuestionAnswerStatus.LIMITED
-            if limited
-            else QuestionAnswerStatus.ANSWERED
-        ),
+        status=QuestionAnswerStatus.LIMITED if limited else QuestionAnswerStatus.ANSWERED,
         confidence=confidence,
         selected_tools=[step.tool_name for step in execution.steps],
         evidence=[
@@ -76,6 +68,10 @@ def validated_verified_insight_answer(
             for value in evidence[:MAX_PRESENTED_EVIDENCE]
         ],
         limitations=limitations,
+        # Reuse checks citations and the canonical fact, not the full request scope.
+        verification=QuestionAnswerVerification(
+            level="source_checked", checks=["cited_cells", "verified_insight_fact"]
+        ),
     )
 
 

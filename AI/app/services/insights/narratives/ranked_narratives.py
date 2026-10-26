@@ -7,12 +7,14 @@ from app.services.insights.narratives.ranked_regions import ranked_regions
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.table_inputs import narrative_regions
 from app.services.insights.narratives.table_schema import column, detect_schema, share_value
+from app.services.insights.narratives.share_narrative_facts import share_interpretations
+from app.services.insights.narratives.ranked_selection import select_ranked_candidates
 
 
 def ranked_report(context):
     primary, comparisons = narrative_sheet_groups(context)
     candidates = _sheet_candidates(primary) or _sheet_candidates(comparisons)
-    selected = _select(candidates)
+    selected = select_ranked_candidates(candidates)
     if not selected:
         return [], ""
     return [item[2] for item in selected], " ".join(item[2].fact for item in selected[:2])
@@ -37,7 +39,7 @@ def _candidates(sheet, region):
         return []
     header_index, schema, headers = detected
     records = [{column(cell): cell for cell in row} for row in rows[header_index + 1:]]
-    results = []
+    results = share_interpretations(sheet, region, header_index, schema)
     if "rank" in schema and "name" in schema:
         ranked = [_rank_candidate(sheet, region, row, schema, headers) for row in records]
         results.extend(item for item in ranked if item)
@@ -73,26 +75,6 @@ def _rank_candidate(sheet, region, row, schema, headers):
         f"{name['value']} 1위", fact, _refs(sheet, cited), "metric",
         topic=source_topic(title if title_cell else name["value"]),
     )
-
-
-def _select(candidates):
-    groups = {
-        "aggregate": [item for item in candidates if item[0] in {"total", "aggregate"}],
-        "rank": [item for item in candidates if item[0] == "rank"],
-        "component": [item for item in candidates if item[0] == "component"],
-    }
-    chosen = []
-    for group in ("aggregate", "rank", "component", "aggregate", "rank"):
-        options = [item for item in groups[group] if item not in chosen]
-        if options:
-            chosen.append(max(options, key=_priority))
-    remaining = sorted((item for item in candidates if item not in chosen),
-                       key=_priority, reverse=True)
-    return (chosen + remaining)[:5]
-
-
-def _priority(candidate):
-    return -candidate[3], candidate[1]
 
 
 def _get(row, schema, role):
