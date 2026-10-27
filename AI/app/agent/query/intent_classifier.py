@@ -8,6 +8,7 @@
 검증하고 원본에서 계산한다. 분류기를 부르지 못하면 기존 검색을 사용한다.
 """
 import os
+import json
 from collections import OrderedDict
 from hashlib import sha256
 from pathlib import Path
@@ -22,6 +23,7 @@ from app.agent.query.intent_models import (
 )
 from app.agent.query.intent_prompts import SYSTEM_PROMPT, build_intent_prompt
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
+from app.agent.query.query_replanning import REPAIR_INSTRUCTIONS
 from app.services.workbook_parsing.models import WorkbookSummary
 
 DEFAULT_MODEL = "gpt-4.1-2025-04-14"
@@ -86,9 +88,32 @@ class LangChainQuestionIntentClassifier:
             model=self._model,
             api_key=self._api_key,
             timeout=self._timeout_seconds,
-            max_retries=1,
-            max_completion_tokens=2200,
+            max_retries=0,
+            # Up to four bounded plans, including Boolean trees, share one response.
+            max_completion_tokens=4096,
         ).with_structured_output(QuestionIntentDraft, method="json_schema")
+
+    async def replan(self, question, summary, feedback):
+        """One additional structured invocation; no answer generator or hidden retry."""
+        prompt = build_intent_prompt(question, summary) + "\n<plan_diagnostic>\n" + json.dumps(
+            feedback, ensure_ascii=False, separators=(",", ":")) + "\n</plan_diagnostic>"
+        system = SYSTEM_PROMPT + "\n" + REPAIR_INSTRUCTIONS
+        key = sha256((system + prompt).encode("utf-8")).digest()
+        if found := self._cache.get(key):
+            self._cache.move_to_end(key)
+            return found
+        try:
+            result = await self._build_model().ainvoke([
+                SystemMessage(content=system), HumanMessage(content=prompt)])
+            intent = QuestionIntent.from_draft(QuestionIntentDraft.model_validate(result))
+        except Exception as error:
+            raise_for_quota_exhaustion(error)
+            return None
+        self._cache[key] = intent
+        self._cache.move_to_end(key)
+        if len(self._cache) > MAX_CACHED:
+            self._cache.popitem(last=False)
+        return intent
 
 
 def _timeout() -> float:

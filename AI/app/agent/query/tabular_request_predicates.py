@@ -120,7 +120,7 @@ def local_operator(text, start, end, headers):
     before = re.split(r"[,;]", text[before_start:start])[-1]
     after = re.split(r"[,;]", text[end:after_end])[0]
     negative = bool(re.match(r"\s*(?:[이가]\s*)?(?:아닌|아니|제외|외의)", after)
-                    or re.search(r"(?:not|except|excluding)\s*$", before, re.I))
+                    or re.search(r"(?:not|except|excluding)\s*['\"‘“]?\s*$", before, re.I))
     contains = bool(re.search(r"포함|contains?", before[-16:] + after[:10], re.I))
     return "not_equals" if negative else "contains" if contains else "equals"
 

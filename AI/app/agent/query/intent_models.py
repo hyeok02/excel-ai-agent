@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.agent.query.tabular_query_models import TabularQueryPlan
 from app.agent.query.relational_models import RelationalQueryPlan
 from app.agent.query.header_relation_models import HeaderRelationPlan
+from app.agent.query.composite_models import CompositeQueryPlan
 from app.agent.query.workbook_summary_rows import is_workbook_summary_question
 from app.services.workbook_parsing.models import WorkbookSummary
 
@@ -37,6 +38,7 @@ class QuestionIntentDraft(BaseModel):
     tabular_query: TabularQueryPlan | None = None
     relational_query: RelationalQueryPlan | None = None
     header_relation: HeaderRelationPlan | None = None
+    composite_query: CompositeQueryPlan | None = None
 
 
 @dataclass(frozen=True)
@@ -48,6 +50,7 @@ class QuestionIntent:
     tabular_query: TabularQueryPlan | None = None
     relational_query: RelationalQueryPlan | None = None
     header_relation: HeaderRelationPlan | None = None
+    composite_query: CompositeQueryPlan | None = None
 
     @classmethod
     def from_draft(cls, draft: QuestionIntentDraft) -> "QuestionIntent":
@@ -77,8 +80,8 @@ class QuestionIntent:
             query = relational = None
         return cls(
             draft.scope == "whole_workbook" and draft.kind != "field_relation"
-            and not (draft.tabular_query or draft.relational_query),
-            draft.kind, targets, True, query, relational, relation,
+            and not (draft.tabular_query or draft.relational_query or draft.composite_query),
+            draft.kind, targets, True, query, relational, relation, draft.composite_query,
         )
 
     @classmethod
@@ -93,7 +96,7 @@ class QuestionIntent:
     @property
     def wants_a_summary(self) -> bool:
         """응답 문체가 아니라, 실제 요청 범위가 파일 전체인 경우만 허용한다."""
-        return self.whole_workbook and self.tabular_query is None and self.relational_query is None
+        return self.whole_workbook and not (self.tabular_query or self.relational_query or self.composite_query)
 
     def enriched(self, question: str) -> str:
         """열 이름을 맞출 때 쓰는 글. 모델이 짚은 대상을 질문에 더해 준다."""

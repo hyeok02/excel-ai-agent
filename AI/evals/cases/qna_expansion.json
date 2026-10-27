@@ -1,0 +1,33 @@
+{
+  "description": "Real-file offline positive controls. Fixture names and expected counts are test oracles, never production branches.",
+  "cases": [
+    {
+      "id": "inspection_or_count",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "네트워크 안정이 x 또는 o인 행 수",
+      "statuses": ["answered"],
+      "required_patterns": ["11건"],
+      "evidence_targets": ["작업현황!F6:F22"],
+      "verified": true
+    },
+    {
+      "id": "inspection_compound_frequencies",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "네트워크 안정의 표시별 건수를 요약해줘; TCK,성수계전 작업의 표시별 건수를 요약해줘",
+      "statuses": ["limited"],
+      "required_patterns": ["x[^\\n]*7", "o[^\\n]*4", "o[^\\n]*11", "△[^\\n]*1"],
+      "evidence_targets": ["작업현황!E5:E6", "작업현황!F5:F6"],
+      "verification_levels": ["source_checked"],
+      "forbid_request_checked": true
+    },
+    {
+      "id": "inspection_compound_checked_filters",
+      "file": "TCK_작업현황_260910.xlsx",
+      "question": "네트워크 안정이 x 또는 o인 행 수; 네트워크 안정이 x 또는 ?인 행 수",
+      "statuses": ["answered"],
+      "required_patterns": ["11건", "8건"],
+      "evidence_targets": ["작업현황!F5:F22"],
+      "verified": true
+    }
+  ]
+}

@@ -39,7 +39,7 @@ def ranking_constraints_match(text, plan, table, *, streaming=False):
         return (plan.order_by is not None and requested_metric == plan.order_by
                 and plan.limit == count and plan.descending == descending), frozenset()
     if plan.order_by and requested_metric in (None, plan.order_by):
-        rows = filtered_rows(table, plan.filters)
+        rows = filtered_rows(table, plan.filters, getattr(plan, "filter_expression", None))
         correct = (rows is not None and all(_number(row.values.get(plan.order_by)) for row in rows)
                    and _compatible_units(table, plan.order_by, rows) and plan.descending == descending
                    and plan.limit == count)
@@ -52,6 +52,8 @@ def ranking_constraints_match(text, plan, table, *, streaming=False):
 
 
 def _source_rank_matches(plan, table, numeric, requested_metric, count, descending):
+    if getattr(plan, "filter_expression", None) is not None:
+        return False, frozenset()  # Removing one predicate would change a boolean population.
     # A source rank is acceptable only if it is a complete 1..N permutation,
     # its selected rows equal the requested N largest/smallest values, and the
     # answer's selected numeric metric proves that ordering independently. The

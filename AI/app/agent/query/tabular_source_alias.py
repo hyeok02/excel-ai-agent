@@ -58,6 +58,7 @@ def alias_lookup_request(question, summary, intent, clarification):
             or clarification.status != QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
             or not intent.from_model or intent.whole_workbook or intent.kind != "cell_lookup"
             or intent.relational_query or intent.header_relation or plan is None
+            or getattr(plan, "filter_expression", None) is not None
             or plan.operation != "lookup" or plan.column_scope != "selected"
             or plan.limit or plan.order_by or len(plan.filters) != 1
             or not re.fullmatch(r"[가-힣\s?]+", question)):

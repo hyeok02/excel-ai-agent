@@ -10,33 +10,14 @@ import asyncio
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-import re
 import time
 
 import httpx
-from openpyxl.utils import range_boundaries
 
-
-def evidence_errors(targets, evidence):
-    """Require every oracle cell to appear in the returned source references."""
-    ranges = []
-    for item in evidence:
-        try:
-            bounds = range_boundaries(item.get("reference", ""))
-            if all(value is not None for value in bounds):
-                ranges.append((item.get("sheet_name"), bounds))
-        except (ValueError, TypeError):
-            continue
-    errors = []
-    for target in targets:
-        sheet, _, reference = target.rpartition("!")
-        left, top, right, bottom = range_boundaries(reference)
-        covered = all(any(name == sheet and a <= col <= c and b <= row <= d
-                          for name, (a, b, c, d) in ranges)
-                      for col in range(left, right + 1) for row in range(top, bottom + 1))
-        if not covered:
-            errors.append(f"Missing source coverage: {target}")
-    return errors
+if __package__:
+    from .response_checks import check_response, evidence_errors
+else:
+    from response_checks import check_response, evidence_errors
 
 
 async def run_case(client, semaphore, case, directory, endpoint, allow_clarification=()):
@@ -47,27 +28,16 @@ async def run_case(client, semaphore, case, directory, endpoint, allow_clarifica
             response = await client.post(endpoint, data={"question": case["question"]},
                                          files={"file": (path.name, path.read_bytes())})
             body = response.json()
-            errors = []
-            if response.status_code != 200:
-                errors.append(f"HTTP {response.status_code}")
-            if body.get("status") not in case.get("statuses", ["answered"]):
-                errors.append(f"status={body.get('status')}")
-            for pattern in case.get("required_patterns", []):
-                if not re.search(pattern, body.get("answer", ""), re.I):
-                    errors.append(f"Missing answer pattern: {pattern}")
-            for pattern in case.get("forbidden_patterns", []):
-                if re.search(pattern, body.get("answer", ""), re.I):
-                    errors.append(f"Forbidden answer pattern: {pattern}")
-            if case.get("verified") and body.get("verification", {}).get("level") != "request_checked":
-                errors.append("Request-bound verification missing")
-            errors.extend(evidence_errors(case.get("evidence_targets", []), body.get("evidence", [])))
+            errors = check_response(case, response.status_code, body)
             strict_errors = list(errors)
+            fields = body if isinstance(body, dict) else {}
             clarified = (case["id"] in allow_clarification and response.status_code == 200
-                         and body.get("status") == "insufficient_evidence"
-                         and body.get("verification", {}).get("level") == "unverified"
-                         and "clarify_source_scope" in body.get("selected_tools", [])
-                         and "다시 질문:" in body.get("answer", "")
-                         and len(body.get("evidence", [])) >= 2 and body.get("confidence") == 0)
+                         and fields.get("status") == "insufficient_evidence"
+                         and isinstance(fields.get("verification"), dict)
+                         and fields["verification"].get("level") == "unverified"
+                         and "clarify_source_scope" in fields.get("selected_tools", [])
+                         and "다시 질문:" in fields.get("answer", "")
+                         and len(fields.get("evidence", [])) >= 2 and fields.get("confidence") == 0)
             if clarified:
                 errors = []
             result = {"id": case["id"], "file": case["file"], "question": case["question"],
@@ -79,8 +49,9 @@ async def run_case(client, semaphore, case, directory, endpoint, allow_clarifica
             result = {"id": case["id"], "file": case["file"], "question": case["question"],
                       "seconds": round(time.monotonic() - started, 2),
                       "errors": [f"{type(error).__name__}: {error}"]}
+        fields = result.get("response")
         print(json.dumps({"id": result["id"], "errors": result["errors"],
-                          "answer": result.get("response", {}).get("answer"),
+                          "answer": fields.get("answer") if isinstance(fields, dict) else None,
                           "seconds": result["seconds"]}, ensure_ascii=False), flush=True)
         return result
 

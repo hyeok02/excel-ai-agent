@@ -11,6 +11,8 @@ const TOOL_LABELS: Record<string, string> = {
   search_workbook_data: '원본 셀 검색',
   inspect_header_relation: '원본 열 이름과 배치 확인',
   tabular_query: '원본 표 범위 대조·집계',
+  composite_question: '문항별 조건·계산·근거 대조',
+  boolean_filter_query: 'OR·제외·괄호 조건 대조',
   relational_query: '표 간 연결·원본 대조',
   chronological_trend: '날짜순 원본 추이 대조',
   compare_trend_series: '항목별 추이 비교',

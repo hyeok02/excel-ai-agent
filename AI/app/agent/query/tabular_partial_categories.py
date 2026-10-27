@@ -11,7 +11,8 @@ from app.agent.query.tabular_request_predicates import categorical_predicates, n
 
 def partial_category_answer(intent, summary, data_index, question):
     plan = intent.tabular_query
-    if (plan is None or plan.operation != "row_list" or plan.limit or plan.order_by
+    if (plan is None or getattr(plan, "filter_expression", None) is not None
+            or plan.operation != "row_list" or plan.limit or plan.order_by
             or re.search(r"정확|완전히|동일|일치|\bexact(?:ly)?\b", question, re.I)):
         return None
     tables = [table for table in build_query_tables(summary) if table.id == plan.table_id]
