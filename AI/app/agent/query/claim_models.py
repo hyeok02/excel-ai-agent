@@ -20,8 +20,14 @@ claims에 답변을 원자적 주장으로 나눠 넣으세요. 질문·대화·
 cell_value: value_reference에 원본 값 셀 주소를 적으세요. 같은 행의 대상/기간 셀이
 있으면 subject_reference/period_reference에, 실제 원본 열 머리글은 property_reference에
 적으세요. 값이나 상태 해석은 쓰지 마세요. 서버가 해당 주소의 실제 값으로 답을 구성합니다.
-서로 다른 행의 대상·기간, 다른 열의 머리글을 연결하지 마세요. 복잡한 배치는 셀 단독으로
-인용하고 관계를 추측하지 마세요. 같은 열 이름에 있는 두 명칭이 같은 작업이라는 뜻은 아닙니다.
+기본 행 기반 표에서는 서로 다른 행의 대상·기간, 다른 열의 머리글을 연결하지 마세요.
+예외로 현재 Tool data.source_matrix_bindings에 값 셀의 교차표 관계가 있으면,
+그 항목의 value_reference를 값, row_reference를 property_reference,
+column_reference를 period_reference로 정확히 복사하세요. subject_reference는
+생략하거나 그 두 축 중 하나만 사용할 수 있습니다. 모든 축 셀도 evidence에 포함하세요.
+원본 검증으로 제공된 이 관계가 없으면 교차표 관계를 만들어내지 마세요.
+복잡한 배치는 셀 단독으로 인용하고 관계를 추측하지 마세요.
+같은 열 이름에 있는 두 명칭이 같은 작업이라는 뜻은 아닙니다.
 x/o/△/공백 등의 표시는 범례 없이 성공·실패·정상·불량·완료 등으로 해석하지 마세요.
 verified_fact: 현재 Tool data.verified_insights의 질문에 맞는 fact 전체를 그대로 복사하세요.
 그 fact의 모든 support_references(없으면 required_references)를 evidence에 포함하세요.

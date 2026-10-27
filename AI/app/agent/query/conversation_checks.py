@@ -39,6 +39,8 @@ def subject_only_followup(question: str, index) -> bool:
 
 
 def _content_preserved(original, rewritten):
+    from app.agent.query.conversation_aggregate_conditions import SAME_CONDITIONS
+    original = SAME_CONDITIONS.sub("", original.strip())
     original = re.sub(r"(?:그|이|저|해당|위|앞선|방금|이전)\s*(?:항목|값|표|결과|내용|둘|질문)", " ", original)
     original = re.sub(r"\b(?:of\s+)?(?:the\s+)?(?:same|that|this)\s+(?:column|field)\b", " ", original, flags=re.I)
     # Quoting a literal does not alter the attached Korean predicate: 신규인 == '신규'인.

@@ -24,6 +24,10 @@ from tests.tabular_query_fixtures import table_fixture
     ("2024-01-31T12:30:00", datetime(2024, 1, 31, 12, 30), None),
     ("2024", datetime(2024, 1, 1), None),
     ("FY2024E", datetime(2024, 1, 1), None),
+    ("Jan 2024", datetime(2024, 1, 1), "month"),
+    ("2024 Nov", datetime(2024, 11, 1), "month"),
+    (" 2024 SEPTEMBER ", datetime(2024, 9, 1), "month"),
+    ("Feb.-2024", datetime(2024, 2, 1), "month"),
 ])
 def test_year_first_formats_keep_valid_dates_and_month_grain(text, expected, grain):
     assert source_period(text) == expected
@@ -33,7 +37,8 @@ def test_year_first_formats_keep_valid_dates_and_month_grain(text, expected, gra
 @pytest.mark.parametrize("text", [
     "01/02/2024", "31/01/2024", "01.02.2024", "24/01/31", "2024/01-31",
     "2024-13", "2024/00", "2024.02.30", "2023/02/29", "2024/01/00", "2024-01-32",
-    "0000/01/01", "2024/01/31 extra", "Jan 2024", "2024/1/2/3", True, float("nan"), float("inf"),
+    "0000/01/01", "2024/01/31 extra", "Jan 24", "2024 November estimate", "2024 Smarch",
+    "2024/1/2/3", True, float("nan"), float("inf"),
 ])
 def test_invalid_or_ambiguous_dates_are_not_guessed(text):
     assert source_period(text) is None

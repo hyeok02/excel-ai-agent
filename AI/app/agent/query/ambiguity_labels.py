@@ -73,12 +73,12 @@ def _source_matches(source, question):
 
 def resolve_unique_column(value, table):
     exact = {column.id for column in table.columns
-             if value == column.id or value == column.header}
+             if value == column.id or value == column.header or value == column.display_header}
     if exact:
         return next(iter(exact)) if len(exact) == 1 else None
     normalized = normalize_label(value)
     matches = {column.id for column in table.columns
-               if normalized and normalize_label(column.header) == normalized}
+               if normalized and normalized in {normalize_label(column.header), normalize_label(column.display_header)}}
     if not matches:
         # Only remove a complete source unit annotation, never a year,
         # scenario, partial business metric, or a user-supplied different unit.

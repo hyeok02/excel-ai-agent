@@ -1,7 +1,6 @@
 """Reject plans contradicting source scopes, metric meanings or operations."""
 import re
 
-from openpyxl.utils import range_boundaries
 from app.agent.query.ambiguity_labels import label_base, mentioned_sources, source_mentioned
 from app.agent.query.ambiguity_qualifiers import explicit_column_ids, qualified_labels, requested_units_match
 from app.agent.query.metric_observation_cells import metric_label_matches
@@ -10,9 +9,13 @@ from app.agent.query.tabular_request_constraints import matches_constraints
 from app.agent.query.tabular_request_categories import value_matches
 from app.agent.query.tabular_having_language import without_checked_having
 from app.agent.query.tabular_population_context import unit_qualified_headers
+from app.agent.query.tabular_header_paths import header_paths_match_request
+from app.agent.query.tabular_explicit_scope import explicit_ranges, rows_match_explicit_ranges, _inside
 
 
 def request_matches_plan(question, plan, table, tables, intent=None, *, streaming=False):
+    if not header_paths_match_request(question, plan, table, tables):
+        return False
     if any(column_metric_conflict(column, question) for column in table.columns if column.id in plan.column_ids):
         return False
     if intent is not None:
@@ -25,7 +28,6 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
         }
         if intent.kind not in allowed[plan.operation]:
             return False
-    text = _normal(question)
     named_sheets = mentioned_sources((item.sheet_name for item in tables), question)
     if named_sheets and table.sheet_name not in named_sheets:
         return False
@@ -34,8 +36,8 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
     selected_context = {_normal(value) for _, value in table.context}
     if contexts and not contexts <= selected_context:
         return False
-    for sheet, reference in explicit_ranges(question):
-        if sheet != table.sheet_name or not _inside(reference, table.reference):
+    for sheet, reference in explicit_ranges(question, include_unqualified=True):
+        if (sheet and sheet != table.sheet_name) or not _inside(reference, table.reference):
             return False
     involved = set(plan.column_ids) | set(plan.group_by) | {item.column_id for item in plan.filters}
     involved.update(item.column_id for item in getattr(plan, "having", ()) if item.column_id)
@@ -46,11 +48,15 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
     if not explicit_column_ids(question) <= involved:
         return False
     if plan.operation in {"numeric_summary", "lookup", "row_list"}:
-        units_text = without_checked_having(question, plan, table) if getattr(plan, "having", ()) else question
-        if units_text is None or not requested_units_match(units_text, unit_qualified_headers(plan, table, [column.header for column in table.columns
+        # A recognized sheet named "converter" or "환산" is a source scope,
+        # not a request to convert the values. Conversion elsewhere remains.
+        units_text = header_request_text(question, named_sheets)
+        if getattr(plan, "having", ()):
+            units_text = without_checked_having(units_text, plan, table)
+        if units_text is None or not requested_units_match(units_text, unit_qualified_headers(plan, table, [column.display_header for column in table.columns
                                                if column.id in plan.column_ids
                                                and (plan.operation == "numeric_summary"
-                                                    or label_base(column.header) != column.header)])):
+                                                    or label_base(column.display_header) != column.display_header)])):
             return False
     if plan.operation == "numeric_summary":
         # Translated metric names constrain source fields, not just valid values.
@@ -93,11 +99,21 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
     source_headers = {_normal(column.header) for candidate in tables for column in candidate.columns}
     source_scope_ids = {_normal(token) for label in named_sheets | contexts
                         for token in re.findall(identifier_pattern, label)}
-    range_addresses = {address.casefold() for _, reference in explicit_ranges(question)
+    # A series identifier in a coordinate-bound metadata row identifies its
+    # value column, unlike a transaction ID that must constrain a data row.
+    series_ids = {_normal(value) for candidate in tables for column in candidate.columns
+                  for _, value in getattr(column, "source_identifiers", ())}
+    selected_series_ids = {_normal(value) for column in table.columns if column.id in involved
+                           for _, value in getattr(column, "source_identifiers", ())}
+    mentioned_series = {_normal(identifier) for identifier in identifiers} & series_ids
+    if not mentioned_series <= selected_series_ids:
+        return False
+    range_addresses = {address.casefold().replace("$", "") for _, reference in explicit_ranges(question, include_unqualified=True)
                        for address in reference.split(":")}
     identifiers = [identifier for identifier in identifiers
                    if _normal(identifier) not in source_headers
                    and _normal(identifier) not in source_scope_ids
+                   and _normal(identifier) not in selected_series_ids
                    and identifier.casefold() not in range_addresses]
     filters = {str(item.value).casefold() for item in plan.filters
                if item.operator == "equals"}
@@ -110,29 +126,6 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
     if any(identifier.casefold() not in filters | bound_ids for identifier in identifiers):
         return False
     return matches_constraints(question, plan, table, tables, streaming=streaming)
-
-
-def explicit_ranges(question):
-    return [(quoted.replace("''", "'") if quoted else plain, first.upper() + (":" + last.upper() if last else ""))
-            for quoted, plain, first, last in re.findall(
-                r"(?:'((?:[^']|'')+)'|([\w& .-]+))!\$?([A-Za-z]{1,3}\$?[1-9]\d*)(?::\$?([A-Za-z]{1,3}\$?[1-9]\d*))?",
-                question,
-            )]
-
-
-def rows_match_explicit_ranges(question, table, columns, rows):
-    for _, reference in explicit_ranges(question):
-        for row in rows:
-            for column in columns:
-                if not _inside(f"{column}{row.row_number}", reference):
-                    return False
-    return True
-
-
-def _inside(inner, outer):
-    a, b, c, d = range_boundaries(inner.replace("$", ""))
-    e, f, g, h = range_boundaries(outer.replace("$", ""))
-    return e <= a <= c <= g and f <= b <= d <= h
 
 
 def _normal(value):

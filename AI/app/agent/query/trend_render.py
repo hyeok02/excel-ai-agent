@@ -96,7 +96,7 @@ def _movement(before, after, spec, unit):
     if not difference:
         return "변동 없음"
     verb = "증가" if difference > 0 else "감소"
-    if spec.percent:
+    if spec.percent or unit.suffix == "%":
         moved = display_scale(difference.copy_abs(), spec.multiplier, spec.divisor)
         return f"{_number(moved)}%p {verb}"
     text = f"{_value(difference.copy_abs(), spec, unit)} {verb}"

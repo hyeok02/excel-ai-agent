@@ -56,3 +56,6 @@ class WorkbookSummary:
     formula_risk_summary: FormulaRiskSummary = field(
         default_factory=FormulaRiskSummary.empty
     )
+    embedded_data_model: bool = False
+    data_model_only: bool = False
+    limitations: list[str] = field(default_factory=list)

@@ -5,7 +5,7 @@ from openpyxl.utils import range_boundaries
 
 from app.agent.query.streaming_tabular_boundaries import ambiguous_boundary
 from app.agent.query.streaming_tabular_results import result_for, stream_answer
-from app.agent.query.streaming_tabular_rows import header_matches, row_eligible, source_row, source_scope
+from app.agent.query.streaming_tabular_rows import header_matches, metadata_matches, row_eligible, source_row, source_scope
 from app.agent.query.streaming_tabular_witnesses import RequestWitnesses
 from app.agent.query.tabular_request_scope import request_matches_plan, rows_match_explicit_ranges
 from app.agent.query.tabular_validation import query_columns
@@ -50,6 +50,10 @@ def execute_streaming_tabular(plan, table, tables, index, question, intent):
                 expected += 1
                 if indexed.row_number == top:
                     if not header_matches(indexed, table):
+                        return None
+                    continue
+                if indexed.row_number in table.metadata_rows:
+                    if not metadata_matches(indexed, table):
                         return None
                     continue
                 if indexed.row_number in sheet.hidden_rows:

@@ -23,6 +23,7 @@ from app.services.insights.models import (
 )
 from app.services.insights.verification.validator import validate_workbook_insights
 from app.services.workbook_parsing.models import WorkbookSummary
+from app.services.workbook_data_model import DATA_MODEL_ONLY_MESSAGE
 
 router = APIRouter(prefix="/api/v1/workbooks", tags=["workbooks"])
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
@@ -83,6 +84,7 @@ async def generate_workbook_insights(
     summary = await parse_or_bad_request(
         file.filename or "", await read_upload(file), include_hidden_sheets
     )
+    require_accessible_worksheet_data(summary)
     try:
         report = await insight_generator.generate(summary, depth)
     except InsightGenerationError as exception:
@@ -101,7 +103,17 @@ def _verify_insights(
     report: WorkbookInsightReport, summary: WorkbookSummary, depth: AnalysisDepth
 ) -> ValidatedWorkbookInsightReport:
     profile = select_analysis_profile(summary, depth)
-    return validate_workbook_insights(report, build_workbook_context(summary, profile))
+    validated = validate_workbook_insights(report, build_workbook_context(summary, profile))
+    if summary.limitations:
+        validated = validated.model_copy(update={
+            "limitations": list(dict.fromkeys([*validated.limitations, *summary.limitations])),
+        })
+    return validated
+
+
+def require_accessible_worksheet_data(summary: WorkbookSummary) -> None:
+    if summary.data_model_only:
+        raise HTTPException(status_code=422, detail=DATA_MODEL_ONLY_MESSAGE)
 
 
 def _parse_workbook_or_bad_request(

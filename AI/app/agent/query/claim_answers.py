@@ -18,13 +18,16 @@ def validated_claim_answer(question, draft, execution, index_truncated, availabl
         step for step in execution.steps if step.status is AgentStepStatus.SUCCEEDED
     ]))
     sentences, evidence, limitations = [], {}, []
+    cell_interpretation_unchecked = False
     for claim in draft.claims:
         if claim.kind == "unknown":
             limitations.append(UNKNOWN)
         elif result := render_claim(claim, question, available, execution):
-            sentence, sources = result
+            sentence, sources = result.sentence, result.evidence
             sentences.append(sentence)
             evidence.update({(item.sheet_name, item.reference): item for item in sources})
+            if claim.kind == "cell_value" and not result.complete_lookup:
+                cell_interpretation_unchecked = True
         else:
             limitations.append(REJECTED)
     if index_truncated:
@@ -35,7 +38,7 @@ def validated_claim_answer(question, draft, execution, index_truncated, availabl
     # canonical scope disclosures; never append an arbitrary assertion as a caveat.
     if draft.limitations:
         limitations.append(UNKNOWN)
-    if any(claim.kind == "cell_value" for claim in draft.claims) and sentences:
+    if cell_interpretation_unchecked and sentences:
         limitations.append("원본 셀의 값과 배치를 확인한 답변이며 표시의 업무상 의미는 해석하지 않았습니다.")
     if not sentences:
         return QuestionAnswer(

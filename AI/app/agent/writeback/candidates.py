@@ -2,8 +2,10 @@ import re
 
 from app.agent.query.index import IndexedCell, WorkbookDataIndex
 from app.agent.query.search_terms import relevance, search_terms
-from app.agent.writeback.value_authorization import as_number
+from app.agent.writeback.value_authorization import VALUE_TRANSITION, as_number
+from app.agent.writeback.natural_operations import ASSIGNMENT, natural_operations
 from app.agent.writeback.target_authorization import TargetAuthorization
+from app.agent.writeback.target_syntax import sheet_mentions
 from app.agent.writeback.references import key
 from app.services.insights.verification.numeric_validation import numbers
 
@@ -18,9 +20,10 @@ RATE = re.compile(r"(?<![\w.])\d+(?:\.\d+)?\s*(?:%|퍼센트|프로)")
 def select_writeback_candidates(
     instruction: str, index: WorkbookDataIndex
 ) -> list[IndexedCell]:
-    value_positions, value_cells = _stated_value_matches(instruction, index)
+    target_text = _target_search_text(instruction, index)
+    value_positions, value_cells = _stated_value_matches(target_text, index)
     anchors = list(
-        dict.fromkeys([*value_positions, *_text_anchors(instruction, index)])
+        dict.fromkeys([*_text_anchors(target_text, index), *value_positions])
     )
     explicit_targets = TargetAuthorization(instruction, index).targets
     selected_positions = _neighbor_positions(index, anchors)
@@ -43,6 +46,30 @@ def select_writeback_candidates(
     return list({cell.reference: cell for cell in ordered}.values())[:MAX_CANDIDATE_CELLS]
 
 
+def _target_search_text(instruction: str, index: WorkbookDataIndex) -> str:
+    """Retrieve source labels/current values, never the requested new values.
+
+    A replacement may already occur in hundreds of unrelated cells. Letting it
+    anchor retrieval can fill the candidate budget before the requested row is
+    seen. This is retrieval only: final authorization still checks the complete
+    original instruction and rejects wrong rows, columns and replacement values.
+    """
+    sheets = {row.sheet_name for row in index.rows}
+    targets = []
+    for operation in natural_operations(instruction, sheets):
+        prefix = ASSIGNMENT.split(operation, maxsplit=1)[0]
+        # Also support transitions without a grammatical assignment boundary.
+        prefix = VALUE_TRANSITION.sub(lambda match: match.group("current"), prefix)
+        prefix = re.sub(r"(?<![\w.])-?\d[\d,]*(?:\.\d+)?\s*(?:으로|로)(?=\s|$)", " ", prefix)
+        current = " ".join(match.group("current") for match in VALUE_TRANSITION.finditer(operation))
+        targets.append(f"{prefix} {current}")
+    return " ".join(targets)
+
+
+def _named_sheets(instruction: str, index: WorkbookDataIndex) -> set[str]:
+    return {name for _, _, name in sheet_mentions(instruction, {row.sheet_name for row in index.rows})}
+
+
 def _stated_value_matches(
     instruction: str, index: WorkbookDataIndex
 ) -> tuple[list[int], list[IndexedCell]]:
@@ -57,7 +84,10 @@ def _stated_value_matches(
         return [], []
     positions: list[int] = []
     cells: list[IndexedCell] = []
+    named = _named_sheets(instruction, index)
     for position, row in enumerate(index.rows):
+        if named and row.sheet_name not in named:
+            continue
         matched = [cell for cell in row.cells if as_number(cell.value) in stated]
         if matched:
             positions.append(position)
@@ -82,9 +112,11 @@ def _sheet_relevance(sheet_name: str, terms) -> int:
 
 def _text_anchors(instruction: str, index: WorkbookDataIndex) -> list[int]:
     terms = search_terms(instruction)
+    named = _named_sheets(instruction, index)
     scored = [
         (relevance(row, terms) + _sheet_relevance(row.sheet_name, terms), position)
         for position, row in enumerate(index.rows)
+        if not named or row.sheet_name in named
     ]
     return [
         position

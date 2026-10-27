@@ -43,6 +43,9 @@ def remaining_scope_supported(text, table, tables):
     if without_literals(text) != text:  # Unbound quoted values are not output instructions.
         return False
     text = re.sub(r"(?:상위|하위|앞의|처음|top|bottom|first)\s*\d+", " ", text, flags=re.I)
+    # Output question endings carry no population constraint. Consume complete
+    # counting phrases before smaller particles (이/야) can split their meaning.
+    text = re.sub(r"몇\s*(?:건|개|명|곳|행|가지)(?:이야|야|인가요|인지|입니까|이니)?", " ", text)
     words = r"조건|해당하는|해당|만족하는|만족|맞는|대상|중에서|중|행|레코드|기록|항목|거래|장비|건|개|명|곳|수|"
     words += r"합계|총합|총액|합산|평균|최솟값|최댓값|최소값|최대값|목록|값|건수|개수|몇|얼마|알려줘|보여줘|계산해줘|구해줘|구해|"
     words += r"시트|표|범위|그룹|별로|별|각|마다|전체|모두|각각|기준|으로|에서|에게|대한|대해|의|을|를|이|가|은|는|인|와|과|에|만|"

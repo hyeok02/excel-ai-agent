@@ -43,6 +43,12 @@ def observation_unit(observation: MetricObservation, rows) -> ObservationUnit:
         suffix = (explicit.get("magnitude") or label_magnitude) + unit
         return ObservationUnit(suffix, (suffix, *style_identity), (observation.label, *row_refs), True)
     label = str(observation.label.value).casefold()
+    if "%" in label:
+        if _currency(label) or _currency(spec.prefix + spec.suffix) or spec.suffix.strip() not in {"", "%"}:
+            return ObservationUnit("", ("conflicting_units", *style_identity), (observation.label,), False)
+        # A percentage unit in the source header with a numeric 0.0 format
+        # means stored percentage points, not a fraction requiring x100.
+        return ObservationUnit("%", ("stored_percent_points", *style_identity), (observation.label,), True)
     # A source amount caption must not turn a ratio into dollars.
     if re.search(r"%|\bratio\b|\byield\b|\bgrowth\b|\bmargin\b|\bmultiple\b| / ", label):
         return ObservationUnit("", style_identity, (), False)

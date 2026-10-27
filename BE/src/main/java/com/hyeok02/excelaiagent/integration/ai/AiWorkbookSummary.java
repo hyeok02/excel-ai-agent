@@ -2,11 +2,13 @@ package com.hyeok02.excelaiagent.integration.ai;
 
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.hyeok02.excelaiagent.integration.ai.model.AiDependencySummary;
 import com.hyeok02.excelaiagent.integration.ai.model.AiExcludedSheetSummary;
 import com.hyeok02.excelaiagent.integration.ai.model.AiFormulaRiskSummary;
 import com.hyeok02.excelaiagent.integration.ai.model.AiSheetSummary;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record AiWorkbookSummary(
 		String filename,
 		@JsonProperty("sheet_count") int sheetCount,

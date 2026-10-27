@@ -12,6 +12,15 @@ class QueryColumn:
     sample_values: tuple[CellValue, ...]
     number_formats: tuple[str, ...] = ()
     context: tuple[tuple[str, str], ...] = ()
+    # Coordinate-bound header ancestors, unlike nearby descriptive context.
+    # The leaf stays unchanged so its value can be read back from the source.
+    header_path: tuple[tuple[str, str], ...] = ()
+    # Identifiers in a labeled metadata band identify columns, not record rows.
+    source_identifiers: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def display_header(self):
+        return " / ".join(dict.fromkeys([text for _, text in self.header_path] + [self.header]))
 
 
 @dataclass(frozen=True)
@@ -34,3 +43,4 @@ class QueryTable:
     context: tuple[tuple[str, str], ...] = ()
     hidden_columns: frozenset[str] = frozenset()
     source_kind: str = "sample"
+    metadata_rows: frozenset[int] = frozenset()

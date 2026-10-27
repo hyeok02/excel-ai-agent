@@ -11,6 +11,10 @@ from app.services.workbook_parsing.models import (
 )
 from app.services.workbook_parsing.sheets import build_sheet_summaries
 from app.services.worksheet_filter import evaluate_worksheet_inclusion
+from app.services.workbook_data_model import (
+    DATA_MODEL_LIMITATION, DATA_MODEL_ONLY_MESSAGE, LEGACY_XLS_MESSAGE,
+    has_embedded_data_model, has_worksheet_data,
+)
 from app.services.workbook_loading import (
     InvalidWorkbookError, close_workbook, load_workbook_pair,
 )
@@ -22,6 +26,8 @@ def parse_workbook(
     filename: str, content: bytes, include_hidden: bool = False
 ) -> WorkbookSummary:
     extension = Path(filename).suffix.lower()
+    if extension == ".xls":
+        raise InvalidWorkbookError(LEGACY_XLS_MESSAGE)
     if extension not in SUPPORTED_EXTENSIONS:
         raise InvalidWorkbookError(".xlsx 또는 .xlsm 파일만 업로드할 수 있습니다.")
     workbook, value_workbook = load_workbook_pair(content, keep_vba=extension == ".xlsm")
@@ -36,6 +42,7 @@ def parse_workbook(
             for sheet in workbook.worksheets
         }
         classifications = classify_sheets(workbook, formulas, inclusions)
+        embedded_data_model = has_embedded_data_model(content)
         sheets, excluded = build_sheet_summaries(
             workbook,
             value_workbook,
@@ -47,6 +54,10 @@ def parse_workbook(
             workbook.sheetnames,
             [(sheet.name, sheet.formulas) for sheet in sheets],
             workbook.worksheets,
+        )
+        data_model_only = embedded_data_model and not any(
+            has_worksheet_data(workbook[sheet.name], classifications[sheet.name])
+            for sheet in sheets
         )
     finally:
         close_workbook(workbook)
@@ -63,6 +74,10 @@ def parse_workbook(
         excluded_sheets=excluded,
         dependency_summary=dependencies,
         formula_risk_summary=formula_risks,
+        embedded_data_model=embedded_data_model,
+        data_model_only=data_model_only,
+        limitations=([DATA_MODEL_ONLY_MESSAGE if data_model_only else DATA_MODEL_LIMITATION]
+                     if embedded_data_model else []),
     )
 
 

@@ -1,7 +1,7 @@
 """Recover complete original rectangles; never use a sampled table as a series."""
 from openpyxl.utils import coordinate_to_tuple, get_column_letter, range_boundaries
 
-from app.agent.query.streaming_tabular_rows import header_matches, source_scope
+from app.agent.query.streaming_tabular_rows import header_matches, metadata_matches, source_scope
 from app.agent.query.tabular_validation import validated_table
 from app.agent.query.workbook_source import source_for
 from app.agent.query.workbook_source_models import SourceReadError
@@ -16,7 +16,7 @@ def table_rows(table, tables, index, question):
         rows = [IndexedRow(row.sheet_name, row.row_number, tuple(
             cell for cell in row.cells if left <= coordinate_to_tuple(cell.address)[1] <= right))
                 for row in index.rows if row.sheet_name == table.sheet_name
-                and top <= row.row_number <= bottom]
+                and top <= row.row_number <= bottom and row.row_number not in table.metadata_rows]
         return rows, None
     provider = source_for(index)
     if provider is None:
@@ -34,12 +34,14 @@ def table_rows(table, tables, index, question):
                     return [], "incomplete_source"
                 if not rows and not header_matches(row, table):
                     return [], "source_mismatch"
+                if row.row_number in table.metadata_rows and not metadata_matches(row, table):
+                    return [], "source_mismatch"
                 rows.append(row)
                 if len(rows) > 20_001:
                     return [], "resource_limit"
         if not scan.complete or len(rows) != bottom - top + 1:
             return [], "incomplete_source"
-        return rows, None
+        return [row for row in rows if row.row_number not in table.metadata_rows], None
     except (SourceReadError, ValueError, TypeError):
         return [], "incomplete_source"
 

@@ -14,6 +14,18 @@ import org.springframework.http.MediaType;
 
 class AiWorkbookSummaryClientTests extends AiServiceClientTestSupport {
 	@Test
+	void acceptsNewCapabilityFieldsWithoutBreakingExistingSummaryMapping() {
+		String payload = fixture("workbook-summary.json").replaceFirst("\\{",
+				"{\"embedded_data_model\":true,\"data_model_only\":false,\"limitations\":[\"Worksheet cells only\"],");
+		server.expect(requestTo("http://localhost:8000/api/v1/workbooks/summary"))
+				.andRespond(withSuccess(payload, MediaType.APPLICATION_JSON));
+		AiWorkbookSummary response = client.summarizeWorkbook(workbook(), false);
+		assertThat(response.filename()).isEqualTo("sales.xlsx");
+		assertThat(response.sheets()).hasSize(1);
+		server.verify();
+	}
+
+	@Test
 	void sendsWorkbookAndReturnsSummary() {
 		server.expect(once(), requestTo("http://localhost:8000/api/v1/workbooks/summary"))
 				.andExpect(method(POST))

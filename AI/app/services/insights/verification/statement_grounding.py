@@ -2,7 +2,7 @@
 from app.services.insights.verification.claim_grounding import grounded_claim
 from app.services.insights.verification.derived_claim_grounding import grounded_derivation
 from app.services.insights.verification.numeric_validation import unmatched_numbers
-from app.services.insights.verification.relation_grounding import grounded_relations
+from app.services.insights.verification.relation_grounding import grounded_relations, grounded_metric_owner
 from app.services.insights.verification.review_points import grounded_tokens, mask_known_names
 from app.services.insights.verification.unit_grounding import grounded_units
 from app.services.insights.verification.validation_index import REFERENCE_PATTERN
@@ -19,4 +19,5 @@ def grounded_statement(text, index, resolved):
                                 {label for item in index.observations for label in item.labels})
         and grounded_units(text, sources, resolved, index.numeric_changes)
         and grounded_relations(REFERENCE_PATTERN.sub(" ", text), resolved, index.observations)
+        and grounded_metric_owner(REFERENCE_PATTERN.sub(" ", text), resolved, index.observations)
     )

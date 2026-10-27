@@ -88,7 +88,7 @@ def requested_units_match(question, selected_headers):
     """Raw aggregation has no exchange-rate or unit-conversion executor."""
     if not selected_headers:
         return True
-    if re.search(r"환산|변환|\b(?:convert\w*|exchange\s+rate)\b", question, re.I):
+    if re.search(r"환산|변환|(?<![A-Za-z0-9_])(?:convert[a-z]*|exchange\s+rate)(?![A-Za-z0-9_])", question, re.I):
         return False
     requested = {unit for unit in _CURRENCIES | _MAGNITUDES if _mentioned(unit, question)}
     if not requested:

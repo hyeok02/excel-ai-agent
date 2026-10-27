@@ -102,7 +102,7 @@ def _title_cell(values):
 
 def _field(cell):
     label = _display_label(cell)
-    value = _display_value(cell)
+    value = display_value(cell)
     return f"‘{label}: {value}’" if label else f"‘{value}’"
 
 
@@ -114,7 +114,7 @@ def _display_label(cell):
     return _text(label)
 
 
-def _display_value(cell):
+def display_value(cell):
     raw = cell.get("value")
     if date_value(raw):
         return period(raw)

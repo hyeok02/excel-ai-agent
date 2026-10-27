@@ -1,9 +1,11 @@
 from io import BytesIO
 
 from openpyxl import Workbook
+import pytest
 
 from app.agent.query.index import build_workbook_data_index
 from app.agent.writeback.candidates import select_writeback_candidates
+from tests.support.writeback_target_fixtures import proposal
 
 
 def _workbook_with_a_wide_leading_sheet() -> bytes:
@@ -65,3 +67,46 @@ def test_explicit_anchored_address_with_korean_particle_stays_a_priority():
 def test_explicit_range_prioritizes_all_interior_cells():
     references = _references("Headcount!$b$2:$c$3을 999로 바꿔줘")
     assert {"Headcount!B2", "Headcount!C2", "Headcount!B3", "Headcount!C3"} <= references
+
+
+def _replacement_collision_workbook(sheet_name, period, metric, replacement):
+    book = Workbook()
+    wide = book.active
+    wide.title = "Unrelated Overview"
+    wide.append([f"Measure {column}" for column in range(40)])
+    for _ in range(20):
+        wide.append([replacement] * 40)
+    source = book.create_sheet(sheet_name)
+    source.append(["Period", metric, "Other measure"])
+    source.append([period, 37, 18])
+    source.append(["Other period", 17, replacement])
+    buffer = BytesIO()
+    book.save(buffer)
+    book.close()
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize("sheet_name,period,metric,replacement", [
+    ("Measured Volumes", "2008 Jan", "Predominantly food stores", 38),
+    ("실험_집계", "2024 하반기", "납품 건수", 912),
+])
+def test_replacement_values_cannot_crowd_source_labels_out_of_candidate_budget(sheet_name, period, metric, replacement):
+    content = _replacement_collision_workbook(sheet_name, period, metric, replacement)
+    instruction = f"'{sheet_name}' {period} {metric} 값을 {replacement}로 수정해줘"
+    index = build_workbook_data_index("unrelated-file-name.xlsx", content)
+    selected = select_writeback_candidates(instruction, index)
+    assert f"{sheet_name}!B2" in {cell.reference for cell in selected}
+    body = proposal(instruction, [(sheet_name, "B2", replacement)], content)
+    assert body["status"] == "ready", body
+    for reference, value in [("B3", replacement), ("C2", replacement), ("B2", replacement + 1)]:
+        wrong = proposal(instruction, [(sheet_name, reference, value)], content)
+        assert wrong["status"] == "blocked", wrong
+
+
+def test_new_text_labels_are_not_source_retrieval_anchors():
+    content = _replacement_collision_workbook("Catalog", "Unique period", "Caption", "Replacement")
+    index = build_workbook_data_index("text-labels.xlsx", content)
+    instruction = "Catalog Unique period Caption 값을 'Replacement'로 수정해줘"
+    selected = select_writeback_candidates(instruction, index)
+    assert "Catalog!B2" in {cell.reference for cell in selected}
+    assert all(cell.sheet_name == "Catalog" for cell in selected)

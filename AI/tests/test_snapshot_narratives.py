@@ -25,7 +25,7 @@ def test_reports_current_levels_largest_first() -> None:
     items, overview = snapshot_report(context(FIGURES, "VALUATION"))
     assert items
     assert items[0].fact.startswith(
-        "VALUATION의 주요 수치는 시가총액(Market Cap) 1,018,667, 기업가치(TEV) 1,081,598"
+        "이 표의 주요 수치는 시가총액(Market Cap) 1,018,667, 기업가치(TEV) 1,081,598"
     )
     assert (items[0].fact.index("총부채(Total Debt) 67,095")
             < items[0].fact.index("3 Year Beta"))

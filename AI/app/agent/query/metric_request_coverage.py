@@ -79,6 +79,14 @@ def uncovered_request_tokens(question, observations, named_sheets):
 
 
 def _remove_source_phrase(text, source):
+    if not source.strip():
+        return text
+    # First consume the actual source spelling, including unit punctuation.
+    # Dropping only words from "Share (%)" used to leave a stray % that was
+    # then misclassified as an unrequested ratio calculation.
+    particles = "|".join(map(re.escape, sorted(KOREAN_SUFFIXES, key=len, reverse=True)))
+    literal = r"(?<![a-z0-9_가-힣])" + r"\s+".join(map(re.escape, source.casefold().split()))
+    text = re.sub(literal + r"(?:" + particles + r")?(?![a-z0-9_가-힣])", " ", text)
     tokens = re.findall(r"[a-z0-9_가-힣]+", source.casefold())
     if not tokens:
         return text
@@ -86,6 +94,5 @@ def _remove_source_phrase(text, source):
     if re.search(r"[가-힣]", source):
         pattern += r"(?:총|전체)?"
     pattern += r"[^a-z0-9_가-힣]*".join(map(re.escape, tokens))
-    particles = "|".join(map(re.escape, sorted(KOREAN_SUFFIXES, key=len, reverse=True)))
     pattern += r"(?:액|수)?(?:" + particles + r")?(?![a-z0-9_가-힣])"
     return re.sub(pattern, " ", text)

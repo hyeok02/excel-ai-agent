@@ -61,7 +61,7 @@ class StreamResult:
                     parts.append(f"그 외 {len(entries) - 30}종 {sum(count for _, count in entries[30:])}건")
                     limitations.append("값 종류가 많아 일부 항목은 나머지 건수로 묶어 표시했습니다.")
                 text = ", ".join(parts) + f" (총 {self.count}건)"
-            lines.append(f"‘{column.header}’: {text}.")
+            lines.append(f"‘{column.display_header}’: {text}.")
         return "\n".join(lines), list(dict.fromkeys(limitations))
 
 
@@ -98,9 +98,14 @@ def stream_answer(question, table, needed, result, *, source_scanned=True):
             bottom = "".join(character for character in last if character.isdigit())
             evidence.append(QuestionAnswerEvidence(
                 kind=EvidenceKind.RANGE, sheet_name=table.sheet_name, reference=f"{first}:{column.id}{bottom}",
-                label=column.header,
+                label=column.display_header,
                 description=f"원본 표 전체 {result.population}개 행을 순차 대조해 조건에 맞는 {result.count}개 행을 집계",
             ))
+            evidence.extend(QuestionAnswerEvidence(
+                kind=EvidenceKind.CELL, sheet_name=table.sheet_name,
+                reference=reference.rpartition("!")[2], label=label, value=label,
+                description="전체 원본 재조회에서 확인한 상위 머리글",
+            ) for reference, label in column.header_path)
     if not evidence:
         evidence = [QuestionAnswerEvidence(
             kind=EvidenceKind.RANGE, sheet_name=table.sheet_name, reference=table.reference, label="전체 원본 표",

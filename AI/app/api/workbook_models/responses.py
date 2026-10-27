@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.workbook_models.dependencies import DependencySummaryResponse
 from app.api.workbook_models.details import (
@@ -104,6 +104,9 @@ class WorkbookSummaryResponse(BaseModel):
     excluded_sheets: list[ExcludedSheetSummaryResponse]
     dependency_summary: DependencySummaryResponse
     formula_risk_summary: FormulaRiskSummaryResponse
+    embedded_data_model: bool = False
+    data_model_only: bool = False
+    limitations: list[str] = Field(default_factory=list)
 
 
 class WorkbookInsightsResponse(BaseModel):

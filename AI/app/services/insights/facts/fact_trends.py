@@ -64,6 +64,11 @@ def date_value(value: object) -> datetime | None:
     try:
         return datetime.fromisoformat(value)
     except ValueError:
+        # Share unambiguous month-name/year parsing with Q&A, but do not turn
+        # standalone numeric years/identifiers into a daily time axis.
+        from app.agent.query.metric_observation_periods import source_period, source_period_grain
+        if source_period_grain(value) == "month":
+            return source_period(value)
         return None
 
 

@@ -63,6 +63,34 @@ def grounded_relations(text, references, observations):
     return True
 
 
+def grounded_metric_owner(text, references, observations):
+    """A metric name cannot become the owner of unrelated metric values.
+
+    Check this even for source-generated/canonical prose. A region caption can
+    be a heuristic copy of the first metric label, so matching canonical text
+    is not independent evidence for that relationship.
+    """
+    labels = {label for item in observations for label in item.labels}
+    owners = [(end, label) for _, end, label in label_spans(text, labels)
+              if re.match(r"의\s+(?:주요\s*)?(?:수치|지표|항목|내용)", text[end:])]
+    if not owners:
+        return True
+    cited = [item for item in observations if all(
+        any(matching_references(ref, {required}) for ref in references)
+        for required in item.references
+    )]
+    all_spans = label_spans(text, labels)
+    for end, owner in owners:
+        for match in NUMBER_PATTERN.finditer(text, end):
+            if any(start <= match.start() < stop for start, stop, _ in all_spans):
+                continue
+            candidates = [item for item in cited if _matches(match, text, item.value)]
+            if candidates and not any(owner in (*item.labels, *item.qualifiers)
+                                      for item in candidates):
+                return False
+    return True
+
+
 def _matches(match, text, source):
     if negative(source) != match.group().startswith("-"):
         return False

@@ -10,8 +10,10 @@ from app.services.insights.models import WorkbookInsight
 
 def number(value):
     parsed = float(value)
-    if parsed.is_integer() or abs(parsed) >= 1000:
+    if parsed.is_integer():
         return f"{parsed:,.0f}"
+    if 0 < abs(parsed) < 0.01:
+        return f"{parsed:.6g}"
     return f"{parsed:,.2f}".rstrip("0").rstrip(".")
 
 
@@ -57,6 +59,9 @@ def finite(value):
 
 
 def period(value):
+    from app.agent.query.metric_observation_periods import source_period, source_period_grain
+    if source_period_grain(value) == "month" and (date := source_period(value)):
+        return f"{date.year}년 {date.month}월"
     try:
         date = datetime.fromisoformat(str(value))
         return f"{date.year}년 {date.month}월 {date.day}일"

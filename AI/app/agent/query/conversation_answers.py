@@ -7,6 +7,7 @@ from app.agent.query.conversation_checks import CONTEXT_CUE, resolution_is_safe,
 from app.agent.query.conversation_language import scope_only_followup, standalone_wording
 from app.agent.query.conversation_periods import RELATIVE_YEAR, bound_relative_question
 from app.agent.query.conversation_scopes import bound_scope_question
+from app.agent.query.conversation_aggregate_conditions import SAME_CONDITIONS, bound_aggregate_conditions
 from app.agent.query.conversation_sources import source_bound_context
 from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -27,7 +28,8 @@ async def answer_in_conversation(question, context, sources, resolver, answer_cu
         if direct is not None:
             return direct.model_copy(update={"question": question})
     label_only = subject_only_followup(question, sources.index)
-    depends_on_context = label_only or bool(CONTEXT_CUE.search(question) or RELATIVE_YEAR.search(question))
+    depends_on_context = label_only or bool(CONTEXT_CUE.search(question) or RELATIVE_YEAR.search(question)
+                                            or SAME_CONDITIONS.match(question.strip()))
     if context is None or not depends_on_context:
         return await answer_current(question, sources)
     unresolved_parent = bool(context.turns and context.turns[-1].needs_clarification)
@@ -43,6 +45,8 @@ async def answer_in_conversation(question, context, sources, resolver, answer_cu
         period_question = bound_relative_question(question, entries)
         draft = bound_choice_operation(question, context, entries, sources.summary)
         draft = draft or bound_scope_question(question, context, entries, sources.index)
+        draft = draft or await asyncio.to_thread(bound_aggregate_conditions, question, context, entries,
+                                                sources.summary, sources.index)
         if draft is None:
             if resolver is None:
                 return context_clarification(question)

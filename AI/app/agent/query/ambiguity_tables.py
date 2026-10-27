@@ -71,9 +71,9 @@ def scoped_tables(question, tables):
     named = mentioned_sources((table.sheet_name for table in tables), question)
     if named:
         tables = [table for table in tables if table.sheet_name in named]
-    ranges = explicit_ranges(question)
+    ranges = explicit_ranges(question, include_unqualified=True)
     if ranges:
-        tables = [table for table in tables if any(sheet == table.sheet_name
+        tables = [table for table in tables if any((not sheet or sheet == table.sheet_name)
                   and _inside(reference, table.reference) for sheet, reference in ranges)]
     contexts = mentioned_sources((text for table in tables for _, text in table.context
                                   if len(normalize_label(text)) >= 4), question)

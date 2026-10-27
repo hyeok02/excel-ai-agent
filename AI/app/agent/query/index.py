@@ -84,6 +84,13 @@ def build_workbook_data_index(
     try:
         for sheet_index, formula_sheet in enumerate(selected_sheets):
             value_sheet = values[formula_sheet.title]
+            # The OOXML <dimension> is only an exporter-maintained hint. Some
+            # valid files leave it at A1 although their XML contains a full
+            # table. Stream actual rows instead of silently indexing one cell
+            # and claiming that the source is complete. The existing cell and
+            # nonempty-row budgets still bound what we retain.
+            formula_sheet.reset_dimensions()
+            value_sheet.reset_dimensions()
             indexed_row_count = 0
             for row_number, (formula_row, value_row) in enumerate(
                 zip(formula_sheet.iter_rows(), value_sheet.iter_rows()), start=1
