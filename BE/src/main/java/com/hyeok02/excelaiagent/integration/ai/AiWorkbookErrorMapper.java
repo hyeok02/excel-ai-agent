@@ -19,7 +19,8 @@ final class AiWorkbookErrorMapper {
 
 	static RuntimeException translate(RestClientException exception) {
 		if (exception instanceof RestClientResponseException response
-				&& (response.getStatusCode().value() == 400 || response.getStatusCode().value() == 502)) {
+				&& (response.getStatusCode().value() == 400 || response.getStatusCode().value() == 422
+					|| response.getStatusCode().value() == 502)) {
 			String body = response.getResponseBodyAsString();
 			if (body.length() <= 2048) {
 				try {
@@ -36,6 +37,12 @@ final class AiWorkbookErrorMapper {
 					}
 					if (UnreadableExcelFileException.INVALID_FORMAT_MESSAGE.equals(detail)) {
 						return UnreadableExcelFileException.invalidFormat();
+					}
+					if (UnreadableExcelFileException.DATA_MODEL_MESSAGE.equals(detail)) {
+						return UnreadableExcelFileException.dataModelOnly();
+					}
+					if (UnreadableExcelFileException.LEGACY_XLS_MESSAGE.equals(detail)) {
+						return UnreadableExcelFileException.legacyXls();
 					}
 				}
 				catch (JacksonException ignored) {

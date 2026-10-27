@@ -6,12 +6,14 @@ current level of each figure, largest first.
 """
 from app.services.insights.display.derived_metrics import derived_metric, magnitude_weight
 from app.services.insights.display.glossary import readable
-from app.services.insights.narratives.narrative_values import finite, insight, number, reference
+from app.services.insights.narratives.narrative_values import finite, insight, reference
 from app.services.insights.narratives.topic_labels import source_topic
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.narratives.table_dates import column as col
 from app.services.insights.narratives.table_dates import date_axis
 from app.services.insights.facts.table_inputs import narrative_regions
+from app.services.insights.facts.fact_trends import date_value
+from app.services.insights.narratives.record_display import display_value
 
 MIN_FIGURES = 3
 MAX_LISTED = 4
@@ -53,16 +55,19 @@ def _region_report(sheet, rows, title, title_cell=None):
     if len(measured) < MIN_FIGURES:
         return None
     measured.sort(key=lambda figure: magnitude_weight(figure[1]["value"]), reverse=True)
-    scope = f"{' '.join(str(title).split())}의" if title else "이 표의"
     cited_title = (title_cell if isinstance(title_cell, dict) and title_cell.get("cell")
                    and " ".join(str(title_cell.get("value", "")).split())
-                   == " ".join(str(title or "").split()) else None)
+                   == " ".join(str(title or "").split())
+                   and _standalone_caption(rows, title_cell) else None)
+    # Region titles are heuristics: the first metric or record is not the owner
+    # of every later value. Only a separate source caption may introduce scope.
+    scope = f"{' '.join(str(title).split())}의" if cited_title else "이 표의"
     topic = source_topic(title) if cited_title else source_topic(measured[0][0]["value"])
     evidence = _evidence(sheet, measured[:MAX_LISTED])
     if cited_title:
         evidence.insert(0, reference(sheet, cited_title["cell"]))
     items = [insight(
-        f"{' '.join(str(title).split())} 주요 수치" if title else "주요 수치",
+        f"{' '.join(str(title).split())} 주요 수치" if cited_title else "주요 수치",
         f"{scope} 주요 수치는 {_listing(measured[:MAX_LISTED])}입니다.",
         evidence, "metric", topic=topic,
     )]
@@ -88,6 +93,8 @@ def _figure(row):
     if not labels:
         return None
     label = min(labels, key=col)
+    if date_value(label["value"]) is not None:
+        return None
     name = " ".join(str(label["value"]).split())
     if len(name) > MAX_LABEL_LENGTH:
         return None
@@ -96,9 +103,17 @@ def _figure(row):
 
 def _listing(figures):
     return ", ".join(
-        f"{readable(label['value'])} {number(value['value'])}"
+        f"{readable(label['value'])} {display_value(value)}"
         for label, value, _ in figures
     )
+
+
+def _standalone_caption(rows, title_cell):
+    for row in rows:
+        populated = [cell for cell in row if cell.get("value") not in (None, "")]
+        if any(cell.get("cell") == title_cell["cell"] for cell in populated):
+            return len(populated) == 1 and isinstance(title_cell.get("value"), str)
+    return False
 
 
 def _evidence(sheet, figures):

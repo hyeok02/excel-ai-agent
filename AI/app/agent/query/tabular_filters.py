@@ -47,6 +47,14 @@ def matches(value, condition, number_format="General", header=""):
     if operator == "contains":
         return isinstance(value, str) and isinstance(condition.value, str) and condition.value.casefold() in value.casefold()
     percent = getattr(condition, "value_unit", "raw") == "percent"
+    if isinstance(value, str) and finite_number(condition.value) and not percent:
+        from app.agent.query.source_numeric_intervals import source_numeric_interval, interval_comparison
+        interval = source_numeric_interval(value)
+        if interval is not None:
+            spec = parse_number_format(number_format)
+            if spec.percent or spec.multiplier != 1 or spec.divisor != 1 or spec.prefix or spec.suffix:
+                return None
+            return interval_comparison(interval, operator, condition.value)
     if operator in {"equals", "not_equals"} and not percent:
         equal = (value.casefold() == condition.value.casefold()
                  if isinstance(value, str) and isinstance(condition.value, str)

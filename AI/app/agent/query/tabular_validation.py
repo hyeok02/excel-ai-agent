@@ -2,6 +2,7 @@
 from openpyxl.utils import coordinate_to_tuple, get_column_letter, range_boundaries
 
 from app.agent.query.tabular_filters import filtered_rows, ordered_rows, same_value as _same_value
+from app.agent.query.tabular_metadata_headers import MAX_METADATA_ROWS, series_metadata_rows
 
 
 def query_columns(plan, table) -> list[str] | None:
@@ -33,6 +34,13 @@ def validated_table(table, index, needed: set[str]) -> bool:
     cells = {cell.address: cell for row in index.rows if row.sheet_name == table.sheet_name
              for cell in row.cells}
     left, top, right, bottom = range_boundaries(table.reference)
+    metadata = series_metadata_rows(table.reference, {
+        address: {"value": cell.value, "formula": cell.formula, "cached_value": cell.value}
+        for number in range(left, right + 1) for row in range(top, min(bottom, top + MAX_METADATA_ROWS) + 1)
+        if (cell := cells.get(address := f"{get_column_letter(number)}{row}")) is not None
+    })
+    if table.metadata_rows != metadata:
+        return False
     if index.truncated_for({table.sheet_name}):
         cutoff = max((coordinate_to_tuple(address) for address in cells), default=(0, 0))
         if cutoff < (bottom, right):
@@ -42,6 +50,17 @@ def validated_table(table, index, needed: set[str]) -> bool:
         cell = cells.get(address)
         if cell is None or not isinstance(cell.value, str) or cell.value.strip() != column.header:
             return False
+        for reference, label in column.header_path:
+            parent = cells.get(reference.rpartition("!")[2])
+            if parent is None or not isinstance(parent.value, str) or parent.value.strip() != label:
+                return False
+        for reference, identifier in column.source_identifiers:
+            source = cells.get(reference.rpartition("!")[2])
+            if (reference != f"{table.sheet_name}!{column.id}{top + 1}"
+                    or source is None or not isinstance(source.value, str)
+                    or source.value.strip() != identifier
+                    or coordinate_to_tuple(source.address)[0] not in metadata):
+                return False
     source_rows = {row.row_number: row for row in table.rows}
     for row in table.rows:
         for column in columns:
@@ -60,7 +79,7 @@ def validated_table(table, index, needed: set[str]) -> bool:
                 return False
     for address, cell in cells.items():
         row, column_number = coordinate_to_tuple(address)
-        if (top < row <= bottom and row not in table.excluded_rows
+        if (top < row <= bottom and row not in table.excluded_rows | table.metadata_rows
                 and get_column_letter(column_number) in columns):
             if (cell.formula or cell.value not in (None, "")) and row not in source_rows:
                 return False

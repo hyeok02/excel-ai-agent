@@ -7,6 +7,7 @@ from app.services.insights.models import WorkbookInsightReport
 from app.services.insights.narratives.ranked_narratives import ranked_report
 from app.services.insights.facts.sheet_scope import comparison_sheet
 from app.services.insights.narratives.snapshot_narratives import snapshot_report
+from app.services.insights.narratives.numeric_table_narratives import numeric_table_report
 from app.services.insights.narratives.table_narratives import table_report
 from app.services.insights.narratives.trend_narratives import trend_report
 from app.services.insights.verification.validation_index import extract_references
@@ -17,7 +18,7 @@ def source_narrative_report(context):
     reporters = (
         comparable_transaction_report, trend_report, ranked_report,
         table_report, horizontal_trend_report, flag_matrix_report,
-        categorical_report, snapshot_report,
+        categorical_report, snapshot_report, numeric_table_report,
     )
     for mode_order, reporter in enumerate(reporters):
         items, overview = reporter(context)

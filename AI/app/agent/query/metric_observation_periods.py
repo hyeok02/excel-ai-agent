@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.agent.query.question_date_mentions import calendar_mentions
+from app.agent.query.source_named_months import named_month as _named_month
 
 GRAINS = {
     "annual": re.compile(r"회계연도|연간|연도별|\b(?:annual|fiscal\s+year|fy)(?:\b|(?=\d))", re.I),
@@ -52,6 +53,8 @@ def source_period(value: object) -> datetime | None:
         return datetime(int(value), 1, 1) if 1900 <= value <= 2100 and value == int(value) else None
     if not isinstance(value, str):
         return None
+    if named := _named_month(value):
+        return named
     if match := _YEAR_FIRST.fullmatch(value.strip()):
         try:
             return datetime(int(match[1]), int(match[3]), int(match[4] or 1))
@@ -66,6 +69,8 @@ def source_period(value: object) -> datetime | None:
 
 def source_period_grain(value: object) -> str | None:
     """An explicit year-month names a month, not an invented first-day record."""
+    if isinstance(value, str) and _named_month(value):
+        return "month"
     match = _YEAR_FIRST.fullmatch(value.strip()) if isinstance(value, str) else None
     return "month" if match and match[4] is None and source_period(value) is not None else None
 

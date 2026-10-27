@@ -74,6 +74,16 @@ value_unit=raw입니다. 단순 이름/ID 일치는 equals, 명시적인 부분 
 상위/하위 N개는 order_by에 정렬할 열 ID, descending과 limit=N을 설정하고
 집계합니다. 지정한 행 순서만 요구하는 경우 order_by=null로 원본 순서를
 유지합니다. 조건이 없는 일반 질문에는 limit=null입니다.
+'가장 많은/적은·높은/낮은 항목은 어디/무엇'은 kind=row_list,
+operation=row_list로 대상 식별자와 수치 열을 함께 column_ids에 넣고,
+그 수치 열의 order_by, descending, limit=1을 지정하세요.
+최댓값/최솟값 자체만 묻는 경우에만 numeric_summary의 max/min을 사용하세요.
+반복된 자식 머리글은 qualified_header의 부모 항목까지 비교해 선택하세요.
+전체/전국 합계의 원본 총계 행이 명확하면 그 행을 lookup하고,
+총계 행과 상세 행을 다시 더하지 마세요. 총계·단위·범위는 코드가 검증합니다.
+질문에 시트·셀 범위가 명시되면 해당 범위의 표만 선택하세요.
+열의 source_identifiers는 원본 메타데이터의 열 식별자이며 행 조건이 아닙니다.
+matching_source_rows는 원본 일부를 찾기 위한 단서이며 전체 모집단이 아닙니다.
 all_attributes는 frequencies에서만 사용하고, 그 밖의 연산은 selected로
 두세요. 특정 열만 요청하면 identity_column_ids=[]이며, 그룹 내 개체 순위 검증은 예외입니다.
 기간별 증감 등 위 연산으로 답할 수 없는

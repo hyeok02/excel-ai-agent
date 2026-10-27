@@ -26,7 +26,7 @@ def aggregate_text(operation, columns, rows, statistic="all"):
                 if value is None and row.formulas.get(column.id):
                     return None, []
                 text = _display_cell(value, row.number_formats.get(column.id, "General"))
-                parts.append(f"{column.header}: {text}")
+                parts.append(f"{column.display_header}: {text}")
             lines.append("; ".join(parts))
         limitations = ([f"해당하는 {len(rows)}개 행 중 앞의 50개 행만 표시했습니다."]
                        if len(rows) > 50 else [])
@@ -43,7 +43,7 @@ def aggregate_text(operation, columns, rows, statistic="all"):
                 return None, []
         else:
             return None, []
-        lines.append(f"‘{column.header}’: {result}.")
+        lines.append(f"‘{column.display_header}’: {result}.")
         limitations.extend(limited)
     return "\n".join(lines), list(dict.fromkeys(limitations))
 
@@ -57,7 +57,7 @@ def _display_cell(value, number_format):
 
 
 def scope_description(plan, table):
-    columns = {column.id: column.header for column in table.columns}
+    columns = {column.id: column.display_header for column in table.columns}
     operators = {"equals": "=", "not_equals": "≠", "contains": "포함",
                  "is_blank": "빈칸", "not_blank": "비어 있지 않음",
                  "greater_than": ">", "greater_than_or_equal": "≥",
@@ -114,9 +114,14 @@ def query_evidence(table, needed, rows, include_identity):
         last = f"{column_id}{table.rows[-1].row_number}"
         evidence.append(QuestionAnswerEvidence(
             kind=EvidenceKind.RANGE, sheet_name=table.sheet_name,
-            reference=f"{first}:{last}", label=column.header,
+            reference=f"{first}:{last}", label=column.display_header,
             description=f"원본 열 {len(table.rows)}개 행을 대조해 조건에 맞는 {len(rows)}개 행을 집계",
         ))
+        evidence.extend(QuestionAnswerEvidence(
+            kind=EvidenceKind.CELL, sheet_name=table.sheet_name,
+            reference=reference.rpartition("!")[2], label=label, value=label,
+            description="요청한 항목을 구분하는 원본 상위 머리글",
+        ) for reference, label in column.header_path)
     if not evidence:
         evidence.append(QuestionAnswerEvidence(
             kind=EvidenceKind.RANGE, sheet_name=table.sheet_name,

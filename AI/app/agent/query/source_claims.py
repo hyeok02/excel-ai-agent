@@ -1,14 +1,24 @@
 """Resolve structured claims against current tool evidence and render source values."""
 import re
+from dataclasses import dataclass
 
 from app.agent.execution import AgentStepStatus
 from app.agent.query.claim_scope import claim_scope_matches
 from app.agent.query.comparison_evidence import matched_comparison_evidence
 from app.agent.query.references import normalize_reference
+from app.agent.query.source_claim_matrix import matrix_claim_binding, matrix_evidence_descriptions
+from app.agent.query.matrix_request_scope import plain_matrix_lookup
 from app.agent.query.verified_insight_constraints import insight_intent_matches
 from app.agent.query.verified_insight_matching import MIN_RELEVANCE_SCORE, verified_insight_score
 
 CELL = re.compile(r"([A-Z]+)([1-9]\d*)", re.I)
+
+
+@dataclass(frozen=True)
+class RenderedClaim:
+    sentence: str
+    evidence: list
+    complete_lookup: bool = False
 
 
 def render_claim(claim, question, available, execution):
@@ -25,21 +35,31 @@ def render_claim(claim, question, available, execution):
         return None
     if value.value is None or any(item and item.formula for item in (subject, prop, period)):
         return None
-    if any(item and not _same_row(value, item) for item in (subject, period)):
+    matrix = matrix_claim_binding(value, subject, prop, period, question, execution)
+    if matrix is False:
         return None
-    if prop and not _property_matches(value, prop, execution):
+    if not matrix and any(item and not _same_row(value, item) for item in (subject, period)):
+        return None
+    if not matrix and prop and not _property_matches(value, prop, execution):
         return None
     evidence = list(dict.fromkeys(ref for ref in refs if ref))
     selected = [available[normalize_reference(ref)] for ref in evidence]
     if not claim_scope_matches(question, selected, available, normalize_reference(claim.value_reference)):
         return None
+    if matrix:
+        selected = matrix_evidence_descriptions(selected, matrix)
+        prop, period = available[matrix["row_reference"]], available[matrix["column_reference"]]
+        sentence = (f"행 항목 {_quoted(prop.value)}({_reference(prop)})과 "
+                    f"열 항목 {_quoted(period.value)}({_reference(period)})의 교차점인 "
+                    f"{_reference(value)}에 {_quoted(value.value)}이(가) 기록되어 있습니다.")
+        return RenderedClaim(sentence, selected, plain_matrix_lookup(question, matrix))
     # Row adjacency is a structural fact, not proof of a business relationship.
     # Expose original labels and addresses; never infer symbols, polarity or causes.
     context = [f"{_quoted(item.value)}({_reference(item)})" for item in (subject, period) if item]
     prefix = f"{' · '.join(context)}와 같은 행에서, " if context else ""
     label = f"열 이름 {_quoted(prop.value)}({_reference(prop)})의 " if prop else ""
     sentence = f"{prefix}{label}{_reference(value)}에 {_quoted(value.value)}이(가) 기록되어 있습니다."
-    return sentence, selected
+    return RenderedClaim(sentence, selected)
 
 
 def _verified_fact(claim, question, available, execution):
@@ -61,7 +81,7 @@ def _verified_fact(claim, question, available, execution):
                 continue
             asked = re.sub(r"(값|수|열|행)(?:은|는|이|가|의|을|를)(?=\s|[?!.]|$)", r"\1", question)
             if verified_insight_score(asked, asked, fact) >= MIN_RELEVANCE_SCORE:
-                return claim.fact, evidence
+                return RenderedClaim(claim.fact, evidence)
     return None
 
 

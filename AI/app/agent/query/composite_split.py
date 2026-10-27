@@ -1,7 +1,7 @@
 """Conservative exact-coverage splitting; source text is never paraphrased."""
 import re
 from dataclasses import dataclass
-from app.agent.query.composite_source_text import mask_source_literals, merge_format_continuations
+from app.agent.query.composite_source_text import mask_source_literals, merge_format_continuations, source_qualifier_end
 
 _ACTION = re.compile(r"(?:비교하|계산하|요약하|조회하|분석하|정리하|확인하|보여주|알려주|구하|찾아주)고(?=\s|,)")
 _RANGE = re.compile(r"\$?[A-Z]{1,3}\$?[1-9]\d*:\$?[A-Z]{1,3}\$?[1-9]\d*", re.I)
@@ -34,8 +34,18 @@ def split_compound_question(question, sources=None):
         if match.end() < len(question) and not question[match.end()].isspace():
             continue
         end = match.end() + re.match(r"\s*", question[match.end():]).end()
+        # A resolver may append the original sheet/range after the question
+        # mark. Keep that scope verbatim with its request, not as a new task.
+        boundary = match.end()
+        while (qualifier_end := source_qualifier_end(question, end, sources)) is not None:
+            boundary = qualifier_end
+            end = boundary + re.match(r"\s*", question[boundary:]).end()
+        if boundary != match.end():
+            punctuation = re.match(r"[.?!。？！]*", question[end:])
+            boundary = end + punctuation.end()
+            end = boundary + re.match(r"\s*", question[boundary:]).end()
         if question[end:].strip() and not _MARKER_SUFFIX.match(question[end:]):
-            separators.append((match.end(), end))
+            separators.append((boundary, end))
     for match in _ACTION.finditer(mask):
         if _AUXILIARY.match(question[match.end():]):
             continue

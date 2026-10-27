@@ -6,7 +6,7 @@ from app.agent.query.metric_observation_units import _currency
 from app.agent.query.metric_semantics import people_number_formats
 
 ROLE_HEADERS = {"row role", "row type", "record type", "행 구분", "행 유형"}
-_TOTAL = r"(?:sub[ -]?total|grand total|total|소계|총계|합계|총합)"
+_TOTAL = r"(?:sub[ -]?total|grand total|total|소계|총계|합계|총합계|총합)"
 _TOTAL_END = re.compile(r"(?:^|[\s:])" + _TOTAL + r"\s*$", re.I)
 _TOTAL_START = re.compile(r"^" + _TOTAL + r"\s+(?:of\s+)?(.+)$", re.I)
 _MONEY = re.compile(r"\b(?:revenue|sales|amount|cost|price|income|profit|balance|cash|assets?|debt|tax)\b|"

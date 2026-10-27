@@ -33,7 +33,34 @@ def grouping_constraints_match(text, plan, table):
         spans.extend(_ENGLISH.finditer(masked))
     requested = {identifiers[int(number)] for span in spans
                  for number in re.findall(r"§(\d+)§", span.group())}
+    # "지역별 금액을 모두 더해줘" requests one roll-up, not one
+    # result per region. Do not apply this to a sum of means/ratios or to an
+    # unknown grouping field; those require a separate computation plan.
+    rollup = re.search(r"(?:모두|전부)\s*(?:더해|합산)", masked)
+    if rollup and requested:
+        remaining = masked
+        for span in sorted(spans, key=lambda match: match.start(), reverse=True):
+            remaining = remaining[:span.start()] + " " * (span.end() - span.start()) + remaining[span.end():]
+        math_text = re.sub(r"(?:모두|전부)\s*(?:더해|합산)", " ", remaining)
+        from app.agent.query.tabular_request_categories import value_matches
+        for condition in plan.filters:
+            if isinstance(condition.value, str):
+                for match in reversed(value_matches(math_text, condition.value)):
+                    math_text = math_text[:match.start()] + " " * len(match.group()) + math_text[match.end():]
+        return (not grouped and plan.operation == "numeric_summary" and plan.statistic == "sum"
+                and re.fullmatch(r"[\s?!.]*(?:(?:줘|주세요|해줘|해주세요|서|알려줘|알려주세요|보여줘|보여주세요)[\s?!.]*)*",
+                                 masked[rollup.end():]) is not None
+                and not re.search(r"평균|최솟값|최댓값|중앙값|건수|개수|\b(?:average|mean|count)\b", masked, re.I)
+                and not _UNSUPPORTED.search(masked)
+                and not _derived_request(math_text)
+                and not re.search(r"두\s*배|세\s*배|절반|제곱|루트|\d+(?:\.\d+)?\s*배|나누|나눈|곱해|곱하|"
+                                  r"빼줘|빼고|뺀|차감|더해|더하|[+*/×÷^]|\s-\s|"
+                                  r"\b(?:multiply|subtract|deduct|double|twice|half|square)\b", math_text, re.I)
+                and not re.search(r"[^\s§]+별|\bby\b", remaining, re.I))
     if not grouped:
+        if (plan.operation == "numeric_summary" and not requested
+                and re.search(r"[^\s§]+별(?=\s|$)|\b(?:group(?:ed)?\s+)?by\b", masked, re.I)):
+            return False
         return not requested or (plan.operation == "frequencies"
                                   and requested <= set(plan.column_ids))
     if plan.operation not in {"numeric_summary", "row_count", "distinct_count", "row_list"} or requested != set(grouped):

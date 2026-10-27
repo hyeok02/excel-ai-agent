@@ -38,7 +38,10 @@ def _number_tokens(value: str) -> list[NumberToken]:
             number = abs(Decimal(normalized))
         except InvalidOperation:
             continue
-        decimal_places = len(normalized.partition(".")[2])
+        # Scientific notation expresses precision at its exponent, too.
+        # Treating 1e-6 as an integer gave it a 0.5 tolerance and could certify
+        # an unrelated fractional source value.
+        decimal_places = -number.as_tuple().exponent
         suffix = value[match.end() :]
         scale = _magnitude_scale(suffix)
         values = {(number, Decimal(1))}

@@ -8,6 +8,7 @@ from app.agent.contracts import (
 )
 from app.agent.query.comparison_scope import comparison_scope
 from app.agent.query.claim_header_bindings import source_header_bindings
+from app.agent.query.source_matrix_bindings import source_matrix_bindings
 from app.agent.query.query_rows import (
     query_scope_truncated,
     selected_question_rows,
@@ -76,7 +77,6 @@ class WorkbookDataSearchTool:
         rows = with_relevant_priority_rows(context.data_index.rows, rows, verified)
         detected = detect_header_rows(context.data_index.rows)
         headers = build_header_context(context.data_index.rows, rows, detected)
-        # 분류기 대상은 검색 힌트다. 계산 범위와 셀 선택은 원래 질문으로 정한다.
         scope = comparison_scope(context.workbook, original)
         # 시계열은 검색이 가져온 행이 아니라 그 시트 전체에서 모은다. 검색
         # 결과에 따라 비교 기간이 달라지면 같은 질문의 답이 매번 바뀐다.
@@ -131,6 +131,7 @@ class WorkbookDataSearchTool:
             data={
                 "query": query,
                 "source_header_bindings": source_header_bindings(context.workbook, context.data_index, evidence),
+                "source_matrix_bindings": source_matrix_bindings(context.workbook, context.data_index, evidence),
                 "workbook_summary_query": summary_question,
                 "brief_answer": bool(intent.brief),
                 "summary_answer_allowed": bool(intent.wants_a_summary),

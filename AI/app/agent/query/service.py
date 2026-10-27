@@ -4,7 +4,7 @@ from app.agent.execution import AgentToolExecutor
 from app.agent.query.answer_validation import validate_answer
 from app.agent.query.ambiguity_answers import ambiguous_source_answer
 from app.agent.query.conversation_answers import answer_in_conversation
-from app.agent.query.quota_errors import raise_for_quota_exhaustion
+from app.agent.query.question_intent_resolution import resolve_question_intent
 from app.agent.query.conversation_models import QuestionConversation, QuestionContextResolver
 from app.agent.query.header_relation_answers import header_relation_answer
 from app.agent.query.metric_observation_answers import metric_observation_answer
@@ -26,6 +26,7 @@ from app.agent.query.relational_routing import missing_relational_plan_answer
 from app.agent.query.router import build_question_plan
 from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.source_count_answers import source_count_answer
+from app.agent.query.source_aggregate_answers import source_aggregate_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
 from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
@@ -35,6 +36,7 @@ from app.agent.query.structured_question_answers import structured_question_answ
 from app.agent.query.composite_execution import composite_answer
 from app.agent.registry import AgentToolRegistry
 from app.services.workbook_parsing.models import WorkbookSummary
+from app.agent.query.question_capabilities import unavailable_workbook_answer, with_workbook_limitations
 class WorkbookQuestionService:
     def __init__(
         self,
@@ -53,12 +55,15 @@ class WorkbookQuestionService:
         self, question: str, summary: WorkbookSummary, data_index: WorkbookDataIndex,
         context: QuestionConversation | None = None,
     ) -> QuestionAnswer:
+        if unavailable := unavailable_workbook_answer(question, summary):
+            return unavailable
         sources = await asyncio.to_thread(prepare_formula_sources, summary, data_index)
         answer = await answer_in_conversation(
             question, context, sources, self._context_resolver, self._answer_prepared
         )
-        return (answer if "composite_question" in answer.selected_tools else
-                finish_interpretation_answer(finish_formula_answer(answer, sources)))
+        answer = (answer if "composite_question" in answer.selected_tools else
+                  finish_interpretation_answer(finish_formula_answer(answer, sources)))
+        return with_workbook_limitations(answer, summary)
     async def _answer_prepared(self, question, sources, *, intent_override=None,
                                allow_replan=True, allow_composite=True) -> QuestionAnswer:
         return await answer_with_replanning(self, question, sources, intent_override=intent_override,
@@ -66,6 +71,9 @@ class WorkbookQuestionService:
     async def _answer_once(self, question, sources, *, intent_override=None,
                            allow_composite=True, allow_generation=True, intents=None) -> QuestionAnswer:
         summary, data_index = sources.summary, sources.index
+        # An address lookup must not be redirected by words in a sheet name.
+        if direct := await asyncio.to_thread(source_lookup_answer, question, sources):
+            return direct
         structured = await structured_question_answer(self, question, sources,
             intent_override=intent_override, allow_composite=allow_composite, intents=intents)
         if structured is not None:
@@ -74,8 +82,6 @@ class WorkbookQuestionService:
             return incompatible
         if trend := await asyncio.to_thread(time_series_answer, question, summary, data_index):
             return trend
-        if direct := await asyncio.to_thread(source_lookup_answer, question, sources):
-            return direct
         if counted := await asyncio.to_thread(source_count_answer, question, summary, data_index):
             return counted
         if clarification := vague_question_answer(question, data_index):
@@ -88,6 +94,10 @@ class WorkbookQuestionService:
         if intent.composite_query is not None:
             return (await composite_answer(question, sources, intent, self._answer_prepared)
                     if allow_composite else unavailable_plan(question))
+        # Explicit plans face their own checks; the fallback cannot bypass them.
+        if intent.tabular_query is None and intent.relational_query is None:
+            if aggregated := await asyncio.to_thread(source_aggregate_answer, question, summary, data_index):
+                return aggregated
         if relation := header_relation_answer(question, summary, data_index, intent):
             return relation
         if clarification := missing_relational_plan_answer(question, summary, intent):
@@ -137,10 +147,4 @@ class WorkbookQuestionService:
     async def _question_intent(
         self, question: str, summary: WorkbookSummary
     ) -> QuestionIntent:
-        if self._classifier is None:
-            return QuestionIntent.from_keywords(question)
-        try:
-            return await self._classifier.classify(question, summary)
-        except Exception as exception:
-            raise_for_quota_exhaustion(exception)
-            return QuestionIntent.from_keywords(question)
+        return await resolve_question_intent(self._classifier, question, summary)

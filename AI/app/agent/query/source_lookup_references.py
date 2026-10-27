@@ -11,7 +11,8 @@ _ADDRESS = re.compile(r"(?<![A-Za-z0-9_])\$?[A-Za-z]{1,3}\$?[1-9]\d*(?::\$?[A-Za
 _WORDS = frozenset((
     "셀 범위 값 값은 값을 값이 수치 수치는 수치를 내용 내용은 내용을 원본 저장된 현재 "
     "의 에 은 는 이 가 을 를 알려줘 알려주세요 보여줘 보여주세요 조회 조회해줘 확인 확인해줘 "
-    "뭐야 무엇 무엇이야 얼마 얼마야 얼마인지 각각 그대로 "
+    "뭐야 무엇 무엇이야 얼마 얼마야 얼마인지 얼마인가요 얼마입니까 각각 그대로 "
+    "계산 결과 결과는 결과를 결과가 "
     "what is are the value values of in cell cells range show tell me please stored contents content read"
 ).split())
 
@@ -69,6 +70,14 @@ def direct_references(question, source):
     # Unknown words, numbers, operators, units, filters and business labels keep
     # the question on its normal planning path, never a partial direct answer.
     remaining = re.sub(r"[\s?？!.,，、‘’“”\"'()]+", " ", remaining).strip().casefold()
-    if any(word not in _WORDS for word in remaining.split()):
+    if any(not _lookup_word(word) for word in remaining.split()):
         return None
     return [bind_source_reference(reference, source) for reference in dict.fromkeys(references)]
+
+
+def _lookup_word(word):
+    if word in _WORDS:
+        return True
+    # Korean particles attach to the lookup noun. Match the whole token so a
+    # filter, arithmetic operation or different business metric is never erased.
+    return bool(re.fullmatch(r"(?:셀|범위|값|수치|내용|원본|결과)(?:의|에|은|는|이|가|을|를)", word))

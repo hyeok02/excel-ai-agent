@@ -61,6 +61,9 @@ def _supported(
 
 
 def _fallback_lead(report: ValidatedWorkbookInsightReport) -> str:
+    if report.insights and all(item.fact.startswith("확인된 내용은 ")
+                               for item in report.insights):
+        return "이 파일은 원본 표의 항목별 기록을 정리한 자료입니다."
     topics = []
     for item in report.insights[:2]:
         topic = " ".join(item.title.split()).strip(" .")

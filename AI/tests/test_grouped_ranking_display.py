@@ -58,3 +58,16 @@ def test_group_cutoff_tie_is_disclosed_and_does_not_expand_exact_n(tiny_caps):
     assert answer.verification.level == "request_checked"
     assert "Alpha" in answer.answer and "Beta" not in answer.answer
     assert any("동점" in limitation for limitation in answer.limitations)
+
+
+def test_ranked_output_preserves_coordinate_bound_parent_header():
+    from app.agent.query.streaming_ranked_rows import RankedRows
+    from app.agent.query.tabular_catalog_models import QueryColumn, QueryRow
+    from app.agent.query.tabular_query_models import TabularQueryPlan
+    plan = TabularQueryPlan(operation="row_list", table_id="Inventory!A1:C5",
+                            column_ids=["B"], order_by="B", descending=True, limit=1)
+    column = QueryColumn("B", "계", "B2", (), header_path=(("B1", "재고량"),))
+    ranked = RankedRows(plan, [column])
+    assert ranked.add(QueryRow(3, {"B": 42}, {}, {}))
+    text, _ = ranked.render()
+    assert text == "재고량 / 계: 42"

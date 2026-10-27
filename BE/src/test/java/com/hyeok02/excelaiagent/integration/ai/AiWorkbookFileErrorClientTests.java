@@ -39,6 +39,30 @@ class AiWorkbookFileErrorClientTests extends AiServiceClientTestSupport {
 	}
 
 	@ParameterizedTest
+	@EnumSource(Endpoint.class)
+	void explainsUnsupportedEmbeddedModelInsteadOfReportingServiceOutage(Endpoint endpoint) {
+		server.expect(requestTo(endpoint.url()))
+				.andRespond(withStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+						.contentType(MediaType.APPLICATION_JSON)
+						.body("{\"detail\":\"" + UnreadableExcelFileException.DATA_MODEL_MESSAGE + "\"}"));
+		assertThatThrownBy(() -> invoke(endpoint))
+				.isInstanceOf(UnreadableExcelFileException.class)
+				.hasMessage(UnreadableExcelFileException.DATA_MODEL_MESSAGE);
+		server.verify();
+	}
+
+	@ParameterizedTest
+	@EnumSource(Endpoint.class)
+	void doesNotExposeUnknownUnsupportedMessages(Endpoint endpoint) {
+		server.expect(requestTo(endpoint.url()))
+				.andRespond(withStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+						.contentType(MediaType.APPLICATION_JSON)
+						.body("{\"detail\":\"private trace api_key=secret\"}"));
+		assertThatThrownBy(() -> invoke(endpoint)).isInstanceOf(AiServiceUnavailableException.class);
+		server.verify();
+	}
+
+	@ParameterizedTest
 	@MethodSource("unsafeResponses")
 	void doesNotExposeUnknownOrMalformedUpstreamBodies(Endpoint endpoint, String body) {
 		server.expect(requestTo(endpoint.url()))
@@ -97,7 +121,9 @@ class AiWorkbookFileErrorClientTests extends AiServiceClientTestSupport {
 						"Excel 호환 서식을 읽을 수 없습니다. 파일을 Excel에서 다시 저장한 뒤 업로드해 주세요.",
 						UnreadableExcelFileException.STYLE_MESSAGE),
 				Arguments.of(endpoint, UnreadableExcelFileException.INVALID_FORMAT_MESSAGE,
-						UnreadableExcelFileException.INVALID_FORMAT_MESSAGE)));
+						UnreadableExcelFileException.INVALID_FORMAT_MESSAGE),
+				Arguments.of(endpoint, UnreadableExcelFileException.LEGACY_XLS_MESSAGE,
+						UnreadableExcelFileException.LEGACY_XLS_MESSAGE)));
 	}
 
 	private static Stream<Arguments> unsafeResponses() {

@@ -20,10 +20,18 @@ _OPS = {
 _SUFFIX = re.compile(rf"(?P<number>{_NUMBER})\s*(?P<unit>{_UNIT})\s*(?P<op>이상|초과|이하|미만|보다\s+큰|보다\s+작은)", re.I)
 _PREFIX = re.compile(rf"(?P<op>>=|<=|≥|≤|>|<|=|at least|at most|greater than|more than|less than|above|below|equal to)\s*(?P<number>{_NUMBER})\s*(?P<unit>{_UNIT})", re.I)
 _PERCENT_EQUALS = re.compile(rf"(?P<number>{_NUMBER})\s*(?P<unit>%|퍼센트|percent)\s*(?:인|와 같은|와 동일한|equal)", re.I)
+_INTERVAL = re.compile(rf"(?P<lower>{_NUMBER})\s*(?:부터|\bto\b)\s*(?P<upper>{_NUMBER})"
+                       r"\s*(?:까지)?", re.I)
 
 
 def numeric_constraints_match(text, plan, table, rank_filters=frozenset()):
     requests = []
+    for match in _INTERVAL.finditer(text):
+        lower, upper = _number(match["lower"]), _number(match["upper"])
+        if lower is None or upper is None or lower > upper or _preceding_column(text, match.start(), table) is None:
+            return False
+        requests.extend([(match.start(), match.end(), "greater_than_or_equal", lower, False),
+                         (match.start(), match.end(), "less_than_or_equal", upper, False)])
     for pattern in (_SUFFIX, _PREFIX, _PERCENT_EQUALS):
         for match in pattern.finditer(text):
             operation = _OPS.get(" ".join((match.groupdict().get("op") or "=").casefold().split()))

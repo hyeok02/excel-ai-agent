@@ -3,6 +3,7 @@ import re
 
 from app.agent.query.metric_request_coverage import _remove_source_phrase
 from app.agent.query.search_terms import KOREAN_SUFFIXES
+from app.agent.query.blank_predicate_language import PRESENT_VALUE
 
 _GRAMMAR = set((
     "시트 표 파일 원본 전체 총 행 기록 요청 거래 장비 항목 자료 데이터 건수 개수 수 건 개 대 곳 "
@@ -15,6 +16,7 @@ _GRAMMAR = set((
 
 def count_scope_covered(question, plan, table):
     text = question.casefold()
+    text = PRESENT_VALUE.sub(" ", text)
     sources = [table.sheet_name, *(column.header for column in table.columns),
                *(str(item.value) for item in plan.filters if item.value is not None)]
     for source in sorted(sources, key=len, reverse=True):

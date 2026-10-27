@@ -10,7 +10,7 @@ from app.agent.query.ambiguity_labels import label_base
 from app.agent.query.tabular_request_literals import without_literals
 
 STATISTICS = {
-    "sum": r"합계|총합|\bsum\b|\btotal\b",
+    "sum": r"합계|총합|합산|모두\s*더해|전부\s*더해|\bsum\b|\btotal\b",
     "average": r"평균|\baverage\b|\bmean\b",
     "min": r"최솟값|최소값|\bminimum\b",
     "max": r"최댓값|최대값|\bmaximum\b",

@@ -50,8 +50,11 @@ def matches_constraints(question, plan, table, tables, *, streaming=False) -> bo
 
 def _without_source_names(question, tables):
     text = question
+    header_parents = {label for table in tables for column in table.columns
+                      for _, label in column.header_path}
     captions = {str(value) for table in tables for _, value in table.context
-                if isinstance(value, str) and len(value.strip()) >= 4}
+                if isinstance(value, str) and len(value.strip()) >= 4
+                and value not in header_parents}
     # A table titled TOP 30 HOLDERS is a source scope, not a user-requested top-N.
     for caption in sorted(captions, key=len, reverse=True):
         text = re.sub(re.escape(caption), " ", text, flags=re.I)

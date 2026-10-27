@@ -1,5 +1,6 @@
 from app.agent.execution.models import AgentExecution
 from app.services.insights.verification.statement_grounding import grounded_statement
+from app.services.insights.verification.relation_grounding import grounded_metric_owner
 from app.services.insights.models import (
     InsightValidationStatus, ValidatedWorkbookInsight,
     ValidatedWorkbookInsightReport, WorkbookInsight, WorkbookInsightReport,
@@ -72,6 +73,8 @@ def _validate_insight(
     source_text = [text for ref in resolved for text in index.reference_text.get(ref, [])]
     def supported(text: str | None, fact=False) -> bool:
         if not text:
+            return False
+        if not grounded_metric_owner(REFERENCE_PATTERN.sub(" ", text), resolved, index.observations):
             return False
         if any(text in ((item.fact,) if fact else (item.fact, item.title)) and required_citations(item, references)
                for item in canonical):

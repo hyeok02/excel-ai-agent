@@ -15,7 +15,9 @@ from app.agent.query.intent_classifier import LangChainQuestionIntentClassifier
 from app.agent.query.conversation_models import QuestionConversation
 from app.agent.query.conversation_resolver import LangChainQuestionContextResolver
 from app.api.agent_tools import get_agent_tool_registry
-from app.api.workbooks import HIDDEN_SHEETS, parse_or_bad_request, read_upload
+from app.api.workbooks import (
+    HIDDEN_SHEETS, parse_or_bad_request, read_upload, require_accessible_worksheet_data,
+)
 from app.services.insights.models import (
     InsightConfigurationError,
     InsightGenerationError,
@@ -58,6 +60,7 @@ async def ask_workbook_question(
     summary = await parse_or_bad_request(
         file.filename or "", content, include_hidden_sheets
     )
+    require_accessible_worksheet_data(summary)
     data_index = await run_in_threadpool(
         build_question_data_index, summary.filename, content, summary
     )

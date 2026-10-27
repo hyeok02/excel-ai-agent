@@ -1,6 +1,7 @@
 """Read explicit categorical predicates even when no source row has the value."""
 import re
-
+from app.agent.query.blank_predicate_language import PRESENT_VALUE
+from app.agent.query.tabular_predicate_tail import unsupported_tail as _unsupported_tail
 _PREFIX = re.compile(
     r"^\s*(?:(?P<operator>is\s+not|are\s+not|not\s+equal\s+to|!=|≠|"
     r"contains?|includes?|is|are|equals?|=|에\s*포함된|에\s*포함한|포함)\s*|"
@@ -18,6 +19,14 @@ def categorical_predicates(text, headers):
     for column, header in headers:
         stop = min((other.start() for _, other in headers if other.start() >= header.end()),
                    default=len(text))
+        presence = PRESENT_VALUE.match(text[header.end():stop].lstrip())
+        if presence:
+            tail = text[header.end():stop].lstrip()[presence.end():]
+            if _unsupported_tail(tail):
+                predicates.append((column, ("unparsed", tail), "unsupported_predicate"))
+            else:
+                predicates.append((column, _key(None), "not_blank"))
+            continue
         match = _PREFIX.match(text[header.end():stop])
         if match is None:
             continue
@@ -53,9 +62,10 @@ def categorical_predicates(text, headers):
             continue
         value = normalize(raw.strip(" \t'\"‘’“”"))
         # Numeric comparisons, dates and percent scales have a separate parser.
+        from app.agent.query.tabular_request_numeric import _INTERVAL
         if not value or len(value) > 300 or re.fullmatch(
-            r"[-+]?\d[\d,./:% -]*(?:이상|이하|미만|초과|보다\s*(?:큰|작은))?", value,
-        ):
+            r"(?:[<>]=?|[≥≤=])?\s*[-+]?\d[\d,./:% -]*(?:이상|이하|미만|초과|보다\s*(?:큰|작은))?", value,
+        ) or _INTERVAL.fullmatch(value):
             continue
         prefix_op, suffix_op = _operator(prefix), _operator(suffix_operator)
         if prefix and prefix_op != "equals" and suffix_op not in {"equals", prefix_op}:
@@ -70,26 +80,6 @@ def categorical_predicates(text, headers):
             value = value == "true"
         predicates.append((column, _key(value), operator))
     return predicates
-
-
-def _unsupported_tail(remainder, conjunctive=False):
-    tail = remainder.strip()
-    if not tail:
-        return False
-    if conjunctive:
-        return True
-    if re.search(r"['\"‘“]", tail):
-        return True
-    if re.search(r"\b(?:and|or|but|except|excluding|not|without)\b\s+\S|"
-                 r"(?:이면서|이거나|또는|혹은|빼고|제외|아닌|포함)\s*\S", tail, re.I):
-        return True
-    # A separator can terminate a sentence or separate another literal. Only
-    # an empty tail or an output request is harmless without another field.
-    if tail[0] in ",;.!?":
-        rest = tail.lstrip(",;.!? ").strip()
-        return bool(rest) and not re.fullmatch(
-            r"(?:rows?|records?|count|list|show|please|보여줘|알려줘|목록|건수|개수)[\s?!.]*", rest, re.I)
-    return False
 
 
 def _quoted_value(body):
@@ -119,7 +109,8 @@ def local_operator(text, start, end, headers):
     after_end = min((header.start() for _, header in headers if header.start() >= end), default=len(text))
     before = re.split(r"[,;]", text[before_start:start])[-1]
     after = re.split(r"[,;]", text[end:after_end])[0]
-    negative = bool(re.match(r"\s*(?:[이가]\s*)?(?:아닌|아니|제외|외의)", after)
+    negative = bool(re.match(r"\s*(?:(?:행|항목|레코드)(?:은|는|을|를)?\s*)?"
+                            r"(?:[이가을를은는]\s*)?(?:아닌|아니|제외|외의)", after)
                     or re.search(r"(?:not|except|excluding)\s*['\"‘“]?\s*$", before, re.I))
     contains = bool(re.search(r"포함|contains?", before[-16:] + after[:10], re.I))
     return "not_equals" if negative else "contains" if contains else "equals"

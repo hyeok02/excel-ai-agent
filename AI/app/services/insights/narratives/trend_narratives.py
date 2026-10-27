@@ -118,7 +118,8 @@ def _timeline(change, records, unit):
         if not cells or not record.get("location"):
             continue
         date = date_value(cells[0].get("value"))
-        if date is None or not str(change["earliest_period"]) <= str(cells[0]["value"]) <= str(change["latest_period"]):
+        start, end = date_value(change["earliest_period"]), date_value(change["latest_period"])
+        if date is None or start is None or end is None or not start <= date <= end:
             continue
         for cell in cells[1:]:
             if cell.get("label") == change["metric"] and finite(cell.get("value")):

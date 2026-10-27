@@ -60,7 +60,7 @@ class RankedRows:
                 if value is None and row.formulas.get(column.id):
                     return None, []
                 rendered = _display_cell(value, row.number_formats.get(column.id, "General"))
-                parts.append(f"{column.header}: {rendered}")
+                parts.append(f"{column.display_header}: {rendered}")
             lines.append("; ".join(parts))
         limitations = []
         if self.plan.limit is None and self.count > limit:
