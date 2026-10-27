@@ -1,5 +1,6 @@
 """Format source-derived statistics without interpreting category symbols."""
 from collections import Counter
+import json
 
 from app.agent.query.excel_number_formats import display_value, parse_number_format
 from app.agent.query.models import QuestionAnswerEvidence
@@ -64,9 +65,14 @@ def scope_description(plan, table):
     parts = []
     for condition in plan.filters:
         value = "" if condition.operator in {"is_blank", "not_blank"} else str(condition.value)
+        if getattr(plan, "filter_expression", None) is not None and isinstance(condition.value, str):
+            value = json.dumps(condition.value, ensure_ascii=False)
         if condition.value_unit == "percent":
             value += "%"
         parts.append(f"{columns[condition.column_id]} {operators[condition.operator]} {value}".strip())
+    if getattr(plan, "filter_expression", None) is not None:
+        from app.agent.query.boolean_filters import render_expression
+        parts = [render_expression(plan.filter_expression, parts)]
     if plan.order_by:
         parts.append(f"{columns[plan.order_by]} {'내림차순' if plan.descending else '오름차순'}")
     if plan.limit:

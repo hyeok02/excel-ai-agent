@@ -7,20 +7,13 @@ import json
 from pathlib import Path
 
 from evals.offline_api import ModelRequired, offline_client
-from evals.run_conversations import check_response, request_context
-from evals.run_questions import evidence_errors
+from evals.run_conversations import request_context
+from evals.response_checks import check_response
 from tests.support.offline_network import ExternalNetworkForbidden
 
 
 def check_case(case, status, body):
-    errors = check_response({"statuses": ["answered"], **case}, status, body)
-    errors.extend(evidence_errors(case.get("evidence_targets", []), body.get("evidence", [])))
-    level = body.get("verification", {}).get("level", "unverified")
-    if case.get("verified") and level != "request_checked":
-        errors.append("Request-bound verification missing")
-    if case.get("verification_levels") and level not in case["verification_levels"]:
-        errors.append(f"Unexpected verification: {level}")
-    return errors
+    return check_response(case, status, body)
 
 
 def validate_cases(cases):
@@ -58,7 +51,7 @@ async def run(cases, paths):
                         files={"file": (case["file"], contents[case["file"]])})
                     body = response.json()
                     record.update(http_status=response.status_code, response=body,
-                                  outcome=body.get("status", "http_error"),
+                                  outcome=body.get("status", "http_error") if isinstance(body, dict) else "invalid_response",
                                   errors=check_case(case, response.status_code, body))
                 except ModelRequired as error:
                     record.update(outcome="model_required", errors=[str(error)])

@@ -2,7 +2,9 @@
 import math
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.agent.query.boolean_filter_models import BooleanFilterExpression, validate_expression
 
 
 class TabularFilter(BaseModel):
@@ -50,6 +52,7 @@ class TabularQueryPlan(BaseModel):
     group_by: list[str] = Field(default_factory=list, max_length=3)
     identity_column_ids: list[str] = Field(default_factory=list, max_length=24)
     filters: list[TabularFilter] = Field(default_factory=list, max_length=8)
+    filter_expression: BooleanFilterExpression | None = None
     having: list[TabularAggregateCondition] = Field(default_factory=list, max_length=4)
     share_of_total: bool = False
     per_group_limit: int | None = Field(default=None, ge=1, le=100)
@@ -57,3 +60,8 @@ class TabularQueryPlan(BaseModel):
     descending: bool = True
     limit: int | None = Field(default=None, ge=1, le=100)
     statistic: Literal["all", "sum", "average", "min", "max"] = "all"
+
+    @model_validator(mode="after")
+    def boolean_shape(self):
+        validate_expression(self.filter_expression, len(self.filters))
+        return self

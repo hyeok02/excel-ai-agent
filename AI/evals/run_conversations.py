@@ -14,9 +14,15 @@ import time
 
 import httpx
 
+if __package__:
+    from .response_checks import check_response
+else:
+    from response_checks import check_response
+
 
 def context_turn(result):
     body = result.get("response", {})
+    body = body if isinstance(body, dict) else {}
     references = []
     for item in body.get("evidence", []):
         sheet = item.get("sheet_name", "").replace("'", "''")
@@ -31,23 +37,6 @@ def context_turn(result):
     if body.get("status") == "insufficient_evidence":
         turn["needs_clarification"] = True
     return turn
-
-
-def check_response(case, status, body):
-    errors = []
-    if status != 200:
-        errors.append(f"HTTP {status}")
-    if case.get("statuses") and body.get("status") not in case["statuses"]:
-        errors.append(f"status={body.get('status')}")
-    for pattern in case.get("required_patterns") or []:
-        if not re.search(pattern, body.get("answer", ""), re.I):
-            errors.append(f"Missing answer pattern: {pattern}")
-    for pattern in case.get("forbidden_patterns") or []:
-        if re.search(pattern, body.get("answer", ""), re.I):
-            errors.append(f"Forbidden answer pattern: {pattern}")
-    if case.get("forbid_request_checked") and body.get("verification", {}).get("level") == "request_checked":
-        errors.append("Unsupported request-level verification")
-    return errors
 
 
 def request_context(case, previous=None):
@@ -104,6 +93,7 @@ async def main(args):
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2))
         body = record.get("response", {})
+        body = body if isinstance(body, dict) else {}
         print(json.dumps({"id": case["id"], "seconds": record["seconds"],
                           "errors": record["errors"], "status": body.get("status"),
                           "answer": body.get("answer"), "resolved": body.get("resolved_question"),

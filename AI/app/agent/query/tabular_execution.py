@@ -44,7 +44,7 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     if bounded_query:
         from app.agent.query.indexed_accumulation_execution import execute_indexed_accumulation
         return execute_indexed_accumulation(plan, table, selected, needed, question, data_index)
-    rows = filtered_rows(table, filters)
+    rows = filtered_rows(table, filters, plan.filter_expression)
     if rows is None:
         return None
     rows = ordered_rows(rows, plan)

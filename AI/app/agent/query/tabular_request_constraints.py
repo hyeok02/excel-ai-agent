@@ -18,10 +18,20 @@ from app.agent.query.tabular_having_language import without_checked_having
 
 
 def matches_constraints(question, plan, table, tables, *, streaming=False) -> bool:
+    ranking_plan = plan
+    from app.agent.query.boolean_filter_scope import checked_boolean_request
+    checked = checked_boolean_request(question, plan, table, tables)
+    if checked is False:
+        return False
+    if checked is not None:
+        # Logic and every predicate were independently matched above. Reuse
+        # output validators without reinterpreting OR leaves as conjunctions.
+        plan = plan.model_copy(update={"filters": [], "filter_expression": None})
+        question = checked
     text = _without_source_names(question, tables)
     # The current plan's filters are conjunctions. Never interpret an explicit
     # OR request as AND, even if all individual filter values occur in it.
-    if re.search(r"\b(?:or|either)\b|또는|혹은", without_literals(text), re.I):
+    if re.search(r"\b(?:or|either)\b|또는|혹은|이거나", without_literals(text), re.I):
         return False
     if not advanced_operations_match(text, plan, table):
         return False
@@ -34,7 +44,7 @@ def matches_constraints(question, plan, table, tables, *, streaming=False) -> bo
         return False
     if not extra_filters_supported(text, plan, table):
         return False
-    ranking_ok, rank_filters = ranking_constraints_match(text, plan, table, streaming=streaming)
+    ranking_ok, rank_filters = ranking_constraints_match(text, ranking_plan, table, streaming=streaming)
     return ranking_ok and numeric_constraints_match(predicate_text, plan, table, rank_filters)
 
 

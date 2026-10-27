@@ -3,19 +3,13 @@ from app.agent.contracts import AgentToolContext
 from app.agent.execution import AgentToolExecutor
 from app.agent.query.answer_validation import validate_answer
 from app.agent.query.ambiguity_answers import ambiguous_source_answer
-from app.agent.query.comparison_answers import validated_comparison_answer
 from app.agent.query.conversation_answers import answer_in_conversation
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.conversation_models import QuestionConversation, QuestionContextResolver
-from app.agent.query.grouped_change_answers import validated_grouped_change_answer
 from app.agent.query.header_relation_answers import header_relation_answer
-from app.agent.query.metric_change_answers import validated_metric_change_answer
-from app.agent.query.metric_period_answers import validated_metric_period_answer
-from app.agent.query.metric_snapshot_answers import validated_metric_snapshot_answer
 from app.agent.query.metric_observation_answers import metric_observation_answer
 from app.agent.query.metric_scalar_answers import metric_scalar_answer
 from app.agent.query.metric_semantic_guard import incompatible_metric_answer
-from app.agent.query.row_list_answers import validated_row_list_answer
 from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
 from app.agent.query.identifier_answers import missing_identifier_answer
@@ -30,14 +24,15 @@ from app.agent.query.question_search_scope import search_scope_truncated as _sea
 from app.agent.query.relational_execution import relational_query_answer
 from app.agent.query.relational_routing import missing_relational_plan_answer
 from app.agent.query.router import build_question_plan
-from app.agent.query.structure_answers import validated_structure_answer
 from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.source_count_answers import source_count_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
 from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
-from app.agent.query.workbook_summary_answers import validated_workbook_summary_answer
-from app.agent.query.verified_insight_answers import validated_verified_insight_answer
+from app.agent.query.query_replanning import answer_with_replanning, unavailable_plan
+from app.agent.query.question_canonical_answers import canonical_answer
+from app.agent.query.structured_question_answers import structured_question_answer
+from app.agent.query.composite_execution import composite_answer
 from app.agent.registry import AgentToolRegistry
 from app.services.workbook_parsing.models import WorkbookSummary
 class WorkbookQuestionService:
@@ -62,9 +57,19 @@ class WorkbookQuestionService:
         answer = await answer_in_conversation(
             question, context, sources, self._context_resolver, self._answer_prepared
         )
-        return finish_interpretation_answer(finish_formula_answer(answer, sources))
-    async def _answer_prepared(self, question, sources) -> QuestionAnswer:
+        return (answer if "composite_question" in answer.selected_tools else
+                finish_interpretation_answer(finish_formula_answer(answer, sources)))
+    async def _answer_prepared(self, question, sources, *, intent_override=None,
+                               allow_replan=True, allow_composite=True) -> QuestionAnswer:
+        return await answer_with_replanning(self, question, sources, intent_override=intent_override,
+            allow_replan=allow_replan, allow_composite=allow_composite)
+    async def _answer_once(self, question, sources, *, intent_override=None,
+                           allow_composite=True, allow_generation=True, intents=None) -> QuestionAnswer:
         summary, data_index = sources.summary, sources.index
+        structured = await structured_question_answer(self, question, sources,
+            intent_override=intent_override, allow_composite=allow_composite, intents=intents)
+        if structured is not None:
+            return structured
         if incompatible := incompatible_metric_answer(question, summary, data_index):
             return incompatible
         if trend := await asyncio.to_thread(time_series_answer, question, summary, data_index):
@@ -77,13 +82,19 @@ class WorkbookQuestionService:
             return clarification
         if missing := missing_identifier_answer(question, data_index):
             return missing
-        intent = await self._question_intent(question, summary)
+        intent = intent_override or await self._question_intent(question, summary)
+        if intents is not None:
+            intents.append(intent)
+        if intent.composite_query is not None:
+            return (await composite_answer(question, sources, intent, self._answer_prepared)
+                    if allow_composite else unavailable_plan(question))
         if relation := header_relation_answer(question, summary, data_index, intent):
             return relation
         if clarification := missing_relational_plan_answer(question, summary, intent):
             return clarification
         if clarification := ambiguous_source_answer(question, summary, data_index, intent):
-            return await clarified_answer(question, summary, data_index, intent, clarification)
+            return (await clarified_answer(question, summary, data_index, intent, clarification)
+                    if allow_generation else clarification)
         if formula := direct_formula_answer(question, sources, intent):
             return formula
         if relational := relational_query_answer(intent.relational_query, summary, data_index, question, intent):
@@ -95,7 +106,8 @@ class WorkbookQuestionService:
             return scalar
         tabular = await asyncio.to_thread(planned_tabular_answer, intent, summary, data_index, question)
         if tabular is not None and "clarify_source_scope" in tabular.selected_tools:
-            return await clarified_answer(question, summary, data_index, intent, tabular)
+            return (await clarified_answer(question, summary, data_index, intent, tabular)
+                    if allow_generation else tabular)
         if tabular is not None and tabular.status != "insufficient_evidence":
             return tabular
         if scalar:
@@ -112,26 +124,10 @@ class WorkbookQuestionService:
             self._registry,
         )
         truncated = _search_scope_truncated(execution)
-        if canonical := validated_comparison_answer(question, execution, truncated):
+        if canonical := canonical_answer(question, execution, truncated, summary, data_index, intent):
             return canonical
-        if canonical := validated_grouped_change_answer(question, execution, truncated):
-            return canonical
-        if canonical := validated_metric_period_answer(question, execution, truncated):
-            return canonical
-        if canonical := validated_metric_snapshot_answer(question, execution, truncated):
-            return canonical
-        if canonical := validated_metric_change_answer(question, execution, truncated):
-            return canonical
-        if canonical := validated_row_list_answer(question, execution, truncated, summary=summary, data_index=data_index):
-            return canonical
-        if canonical := validated_structure_answer(question, execution, truncated):
-            return canonical
-        if canonical := validated_workbook_summary_answer(question, execution, truncated):
-            return canonical
-        if canonical := validated_verified_insight_answer(
-            question, execution, truncated, intent
-        ):
-            return canonical
+        if not allow_generation:
+            return unavailable_plan(question)
         draft = await self._generator.generate(
             question, summary.filename, execution_context(execution)
         )

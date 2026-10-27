@@ -60,6 +60,9 @@ def source_row(row, table):
 
 
 def row_eligible(row, plan, table):
+    if getattr(plan, "filter_expression", None) is not None:
+        from app.agent.query.boolean_filters import evaluate_filters
+        return evaluate_filters(row, plan.filters, {column.id: column for column in table.columns}, plan.filter_expression)
     headers = {column.id: column.header for column in table.columns}
     for condition in plan.filters:
         result = matches(row.values[condition.column_id], condition,

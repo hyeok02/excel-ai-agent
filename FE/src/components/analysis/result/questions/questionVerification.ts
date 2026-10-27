@@ -1,6 +1,7 @@
 import type { WorkbookQuestionAnswer } from '../../../../api/analysis/questionTypes.ts'
 import { boundedQuestionVerification } from './questionBoundedVerification.ts'
 import { composedQuestionVerification } from './questionComposedVerification.ts'
+import { compoundQuestionVerification } from './questionCompoundVerification.ts'
 import { requestQuestionVerification } from './questionRequestVerification.ts'
 
 /** Answer availability and source citations are not a correctness certificate. */
@@ -33,6 +34,8 @@ export const questionVerificationPresentation = (answer: WorkbookQuestionAnswer)
     }
     return { label: '답변 검증 불가', tone: 'neutral', explanation: '' } as const
   }
+  const compound = compoundQuestionVerification(answer, checks)
+  if (compound) return compound
   if (checks.includes('bounded_recalculation')) {
     return {
       label: '수식 재계산',

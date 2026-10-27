@@ -13,8 +13,12 @@ def same_value(expected, actual):
     return expected == actual
 
 
-def filtered_rows(table, filters):
+def filtered_rows(table, filters, expression=None):
     columns = {column.id: column for column in table.columns}
+    if expression is not None:
+        from app.agent.query.boolean_filters import evaluate_filters
+        accepted = [(row, evaluate_filters(row, filters, columns, expression)) for row in table.rows]
+        return None if any(value is None for _, value in accepted) else [row for row, value in accepted if value]
     rows = list(table.rows)
     for condition in filters:
         if condition.column_id not in columns:
