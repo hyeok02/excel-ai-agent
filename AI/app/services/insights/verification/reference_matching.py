@@ -1,5 +1,8 @@
 import re
+from bisect import bisect_left, bisect_right
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 
 REFERENCE_BOX_PATTERN = re.compile(
     r"^(?P<sheet>.+)!(?P<start_column>[a-z]{1,3})(?P<start_row>\d+)"
@@ -25,13 +28,60 @@ class ReferenceBox:
         )
 
 
+@dataclass(frozen=True)
+class _SheetReferences:
+    start_rows: tuple[int, ...]
+    references: tuple[tuple[str, ReferenceBox], ...]
+
+
+@dataclass(frozen=True)
+class ReferenceIndex:
+    """Parsed snapshot reused only within the owning evidence index/request."""
+
+    _sheets: Mapping[str, _SheetReferences]
+
+    @classmethod
+    def from_references(cls, available: Iterable[str]) -> "ReferenceIndex":
+        sheets: dict[str, list[tuple[str, ReferenceBox]]] = {}
+        for reference in available:
+            box = _box(reference)
+            if box is not None:
+                sheets.setdefault(box.sheet, []).append((reference, box))
+        prepared = {}
+        for sheet, references in sheets.items():
+            references.sort(key=lambda item: item[1].min_row)
+            prepared[sheet] = _SheetReferences(
+                start_rows=tuple(box.min_row for _, box in references),
+                references=tuple(references),
+            )
+        return cls(MappingProxyType(prepared))
+
+    def _contained(self, cited_box: ReferenceBox) -> set[str]:
+        sheet = self._sheets.get(cited_box.sheet)
+        if sheet is None:
+            return set()
+        start = bisect_left(sheet.start_rows, cited_box.min_row)
+        end = bisect_right(sheet.start_rows, cited_box.max_row)
+        return {
+            reference
+            for reference, candidate in sheet.references[start:end]
+            if _contains(cited_box, candidate)
+        }
+
+
 def resolve_references(
-    citations: set[str], available: set[str]
+    citations: set[str], available: set[str] | ReferenceIndex
 ) -> tuple[set[str], set[str]]:
     resolved = set()
     unmatched = set()
+    if not citations:
+        return resolved, unmatched
+    prepared = (
+        available if isinstance(available, ReferenceIndex)
+        else ReferenceIndex.from_references(available)
+    )
     for citation in citations:
-        matches = matching_references(citation, available)
+        matches = matching_references(citation, prepared)
         if matches:
             resolved.update(matches)
         else:
@@ -39,20 +89,22 @@ def resolve_references(
     return resolved, unmatched
 
 
-def matching_references(citation: str, available: set[str]) -> set[str]:
+def matching_references(
+    citation: str, available: set[str] | ReferenceIndex
+) -> set[str]:
     cited_box = _box(citation)
     if cited_box is None or cited_box.area > MAX_CITATION_AREA:
         return set()
-    parsed = [(reference, _box(reference)) for reference in available]
-    contained = {
-        reference
-        for reference, candidate in parsed
-        if candidate and _contains(cited_box, candidate)
-    }
-    if contained:
-        return contained
     # A smaller citation cannot borrow values from a larger enclosing sample.
-    return set()
+    if isinstance(available, ReferenceIndex):
+        return available._contained(cited_box)
+    # Grounding checks commonly compare a single required reference. Do not
+    # allocate/sort an index for these one-off comparisons.
+    return {
+        reference for reference in available
+        if (candidate := _box(reference)) is not None
+        and _contains(cited_box, candidate)
+    }
 
 
 def related_references(source: str, targets: set[str]) -> bool:
