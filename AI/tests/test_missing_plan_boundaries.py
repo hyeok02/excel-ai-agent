@@ -126,4 +126,3 @@ def test_missing_plan_cannot_reset_an_exhausted_stream_budget(tiny_caps, limits)
     assert len(planner.repairs) == 1
     assert len(seen_sources) == 2 and seen_sources[0] is seen_sources[1]
     assert seen_sources[1].index.source_provider is provider and provider._budget is budget
-
