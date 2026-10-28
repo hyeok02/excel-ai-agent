@@ -1,7 +1,6 @@
 import asyncio
 from app.agent.contracts import AgentToolContext
 from app.agent.execution import AgentToolExecutor
-from app.agent.query.answer_validation import validate_answer
 from app.agent.query.ambiguity_answers import ambiguous_source_answer
 from app.agent.query.conversation_answers import answer_in_conversation
 from app.agent.query.question_intent_resolution import resolve_question_intent
@@ -10,13 +9,12 @@ from app.agent.query.header_relation_answers import header_relation_answer
 from app.agent.query.metric_observation_answers import metric_observation_answer
 from app.agent.query.metric_scalar_answers import metric_scalar_answer
 from app.agent.query.metric_semantic_guard import incompatible_metric_answer
-from app.agent.query.context import execution_context
 from app.agent.query.index import WorkbookDataIndex
 from app.agent.query.identifier_answers import missing_identifier_answer
 from app.agent.query.intent_models import QuestionIntent, QuestionIntentClassifier
 from app.agent.query.interpretation_answers import asks_interpretation, finish_interpretation_answer
 from app.agent.query.models import QuestionAnswer, QuestionAnswerGenerator
-from app.agent.query.question_validation import unclear_draft_answer, vague_question_answer
+from app.agent.query.question_validation import vague_question_answer
 from app.agent.query.question_formula_answers import direct_formula_answer, missing_formula_answer
 from app.agent.query.question_formula_evidence import finish_formula_answer
 from app.agent.query.question_formula_sources import prepare_formula_sources
@@ -30,8 +28,11 @@ from app.agent.query.source_aggregate_answers import source_aggregate_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
 from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
-from app.agent.query.query_replanning import answer_with_replanning, unavailable_plan
+from app.agent.query.query_replanning import (
+    answer_with_replanning, missing_plan_answer, missing_plan_repairable, unavailable_plan,
+)
 from app.agent.query.question_canonical_answers import canonical_answer
+from app.agent.query.question_generation import generate_answer
 from app.agent.query.structured_question_answers import structured_question_answer
 from app.agent.query.composite_execution import composite_answer
 from app.agent.registry import AgentToolRegistry
@@ -69,7 +70,8 @@ class WorkbookQuestionService:
         return await answer_with_replanning(self, question, sources, intent_override=intent_override,
             allow_replan=allow_replan, allow_composite=allow_composite)
     async def _answer_once(self, question, sources, *, intent_override=None,
-                           allow_composite=True, allow_generation=True, intents=None) -> QuestionAnswer:
+                           allow_composite=True, allow_generation=True, intents=None,
+                           pending_generation=None) -> QuestionAnswer:
         summary, data_index = sources.summary, sources.index
         # An address lookup must not be redirected by words in a sheet name.
         if direct := await asyncio.to_thread(source_lookup_answer, question, sources):
@@ -138,13 +140,10 @@ class WorkbookQuestionService:
             return canonical
         if not allow_generation:
             return unavailable_plan(question)
-        draft = await self._generator.generate(
-            question, summary.filename, execution_context(execution)
-        )
-        if clarification := unclear_draft_answer(question, draft):
-            return clarification
-        return validate_answer(question, draft, execution, truncated)
-    async def _question_intent(
-        self, question: str, summary: WorkbookSummary
-    ) -> QuestionIntent:
+        if (pending_generation is not None
+                and missing_plan_repairable(question, intent, summary)):
+            pending_generation.append((execution, truncated))
+            return missing_plan_answer(question)
+        return await generate_answer(self._generator, question, summary, execution, truncated)
+    async def _question_intent(self, question: str, summary: WorkbookSummary) -> QuestionIntent:
         return await resolve_question_intent(self._classifier, question, summary)
