@@ -1,6 +1,8 @@
 """Format source-derived statistics without interpreting category symbols."""
 from collections import Counter
+from datetime import datetime, time
 import json
+import re
 
 from app.agent.query.excel_number_formats import display_value, parse_number_format
 from app.agent.query.models import QuestionAnswerEvidence
@@ -94,6 +96,11 @@ def _frequencies(values):
 
 
 def _label(value):
+    # A date cell with no time of day reads as the date the source shows.
+    if isinstance(value, datetime) and value.time() == time.min:
+        return value.date().isoformat()
+    if isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}T00:00:00", value):
+        return value[:10]
     if isinstance(value, float):
         return str(int(value)) if value.is_integer() else str(value)
     return str(value)
