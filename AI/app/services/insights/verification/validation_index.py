@@ -126,9 +126,8 @@ def _walk_items(value: Any):
 
 
 def _add_reference_numbers(index: EvidenceIndex, reference: str, value: Any) -> None:
-    if value is None:
-        return
-    index.reference_numbers.setdefault(reference, set()).update(numbers(str(value)))
+    if value is not None:
+        index.reference_numbers.setdefault(reference, set()).update(numbers(str(value)))
 
 
 def extract_references(value: str) -> set[str]:
