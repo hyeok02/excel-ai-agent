@@ -17,12 +17,16 @@ export const QUESTION_SUGGESTIONS = GENERAL_QUESTIONS
  * 제목에서 `변화`, `분포` 같은 말을 지운 뒤 모두 `알려줘`로 바꾸면 질문이
  * 실제 인사이트보다 모호해진다. 카테고리와 제목의 의미를 질문에 남겨서, 같은
  * 원본 근거를 다시 찾을 수 있는 질문만 제안한다.
+ *
+ * 근거 셀이 똑같은 인사이트는 이름만 다를 뿐 같은 원본을 묻는다(예: 한 열의
+ * '구성'과 '분포'). 그런 질문은 같은 답을 내므로 하나만 제안한다.
  */
 export const buildQuestionSuggestions = (
   report: InsightReportResult | null,
 ): string[] => {
   const derived: string[] = []
   const seen = new Set(GENERAL_QUESTIONS.map(questionKey))
+  const seenSources = new Set<string>()
 
   const visibleInsights = report
     ? prepareInsightReportPresentation(report).report.insights
@@ -30,9 +34,11 @@ export const buildQuestionSuggestions = (
   for (const insight of visibleInsights) {
     const question = derivedQuestion(insight)
     const key = questionKey(question)
-    if (!question || seen.has(key)) continue
+    const source = sourceKey(insight)
+    if (!question || seen.has(key) || (source && seenSources.has(source))) continue
 
     seen.add(key)
+    if (source) seenSources.add(source)
     derived.push(question)
     if (derived.length >= MAX_DERIVED) break
   }
@@ -99,6 +105,11 @@ const stripSuffix = (value: string, ...suffixes: string[]) => {
   }
   return value
 }
+
+const sourceKey = (insight: InsightResult) =>
+  [...new Set(insight.evidence.map((value) => value.replace(/\s+/g, '')))]
+    .sort()
+    .join('|')
 
 const questionKey = (question: string) =>
   question.replace(/[^0-9A-Za-z가-힣]+/g, '').toLocaleLowerCase('ko')
