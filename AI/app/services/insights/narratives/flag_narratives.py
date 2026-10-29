@@ -9,12 +9,14 @@ from app.services.insights.narratives.categorical_dates import counted_range
 from app.services.insights.narratives.narrative_values import (
     insight, number, reference, topic_particle,
 )
+from app.services.insights.narratives.table_dates import column as col
 from app.services.insights.narratives.topic_labels import source_topic
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.table_inputs import narrative_regions
 
 MIN_RECORDS = 4
 MAX_COLUMN_ITEMS = 4
+MAX_NAMED_BLANKS = 6
 
 
 def flag_matrix_report(context):
@@ -60,11 +62,14 @@ def _items(sheet, header, records, label, run):
     subject = subject_of(label, records)
     blanks = blank_records(records, run)
     checked = len(records) - len(blanks)
-    state = (f" {number(checked)}건이 점검됐고 {number(len(blanks))}건은 "
+    named = _blank_names(label, blanks)
+    listed = f"({', '.join(str(item['value']) for item in named)})" if named else ""
+    state = (f" {number(checked)}건이 점검됐고 {number(len(blanks))}건{listed}은 "
              "아직 아무 항목도 표시되지 않았습니다.") if blanks else ""
     cited = [reference(sheet, cell["cell"]) for _, cell, _, _ in run]
     if label:
         cited.insert(0, reference(sheet, label["cell"]))
+    cited.extend(reference(sheet, item["cell"]) for item in named)
     head = insight(
         f"{subject} 점검 현황",
         f"{subject} {number(len(records))}건을 {check_names(run)} 항목으로 "
@@ -72,6 +77,17 @@ def _items(sheet, header, records, label, run):
         cited, topic=source_topic(subject),
     )
     return [head, *_columns(sheet, records, run)]
+
+
+def _blank_names(label, blanks):
+    """Name the unchecked rows when there are few enough to list; all or none."""
+    if label is None or len(blanks) > MAX_NAMED_BLANKS:
+        return []
+    position = col(label)
+    named = [next((item for item in record if col(item) == position
+                   and isinstance(item.get("value"), str) and item["value"].strip()), None)
+             for record in blanks]
+    return named if all(named) else []
 
 
 def _columns(sheet, records, run):

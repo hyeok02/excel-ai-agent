@@ -144,6 +144,6 @@ class WorkbookQuestionService:
                 and missing_plan_repairable(question, intent, summary)):
             pending_generation.append((execution, truncated))
             return missing_plan_answer(question)
-        return await generate_answer(self._generator, question, summary, execution, truncated)
+        return await generate_answer(self._generator, question, summary, execution, truncated, data_index)
     async def _question_intent(self, question: str, summary: WorkbookSummary) -> QuestionIntent:
         return await resolve_question_intent(self._classifier, question, summary)

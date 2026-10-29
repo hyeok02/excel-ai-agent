@@ -70,9 +70,21 @@ def test_head_names_the_checks_and_where_the_work_stalls() -> None:
     items, overview = flag_matrix_report(_context())
 
     assert "‘작업’, ‘네트워크 안정’, ‘자료 유무’ 3가지" in items[0].fact
-    assert "5건이 점검됐고 2건은 아직 아무 항목도 표시되지 않았습니다" in items[0].fact
+    assert "5건이 점검됐고 2건(CVD #6, CVD #7)은 아직 아무 항목도 표시되지 않았습니다" in items[0].fact
+    assert {"'작업현황'!B7", "'작업현황'!B8"} <= set(items[0].evidence)
     assert "‘네트워크 안정’이 x인 건이 2건으로 가장 많습니다" in items[0].fact
     assert overview
+
+
+def test_many_unchecked_rows_are_counted_without_a_long_name_list() -> None:
+    context = _context()
+    rows = context["sheets"][0]["business_facts"]["table_rows"]
+    for number in range(9, 15):
+        rows.append([{"cell": f"A{number}", "value": f"10.0.0.{number}"},
+                     {"cell": f"B{number}", "value": f"CVD #{number}"}])
+    items, _ = flag_matrix_report(context)
+
+    assert "5건이 점검됐고 8건은 아직 아무 항목도 표시되지 않았습니다" in items[0].fact
 
 
 def test_overview_adds_a_check_the_head_has_not_named() -> None:
