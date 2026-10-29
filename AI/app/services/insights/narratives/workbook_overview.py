@@ -52,7 +52,9 @@ def _supported(
         return False
     for item in report.insights:
         requested = set().union(*(extract_references(ref) for ref in item.evidence))
-        resolved, unmatched = resolve_references(requested, index.references)
+        resolved, unmatched = resolve_references(
+            requested, index.reference_index if index.reference_index is not None else index.references
+        )
         if unmatched or not resolved:
             continue
         if grounded_statement(lead, index, resolved):

@@ -9,6 +9,7 @@ from app.agent.execution.models import AgentExecution, AgentStepStatus
 from app.services.insights.verification.numeric_validation import numbers
 from app.services.insights.verification.reference_values import index_reference_numbers
 from app.services.insights.verification.relation_index import sheet_observations
+from app.services.insights.verification.reference_matching import ReferenceIndex
 from app.services.provenance import EvidenceKind
 
 REFERENCE_PATTERN = re.compile(
@@ -28,6 +29,7 @@ class EvidenceIndex:
     evidence_text: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
     observations: list = field(default_factory=list)
+    reference_index: ReferenceIndex | None = field(default=None, repr=False)
 
 
 def workbook_evidence_index(context: dict[str, object]) -> EvidenceIndex:
@@ -46,6 +48,9 @@ def workbook_evidence_index(context: dict[str, object]) -> EvidenceIndex:
         )
     if int(context.get("omitted_sheet_count", 0)) > 0:
         index.limitations.append("일부 시트는 인사이트 입력 범위에서 제외되었습니다.")
+    # Prepare only after all source references are collected. This lookup belongs
+    # to this analysis; it never borrows another workbook's evidence.
+    index.reference_index = ReferenceIndex.from_references(index.references)
     return index
 
 
@@ -76,6 +81,7 @@ def agent_evidence_index(execution: AgentExecution) -> EvidenceIndex:
                     index.cause_references.add(reference)
     if execution.failed_step_count or execution.skipped_step_count:
         index.limitations.append("실패하거나 건너뛴 Agent 단계의 정보는 검증에 포함되지 않았습니다.")
+    index.reference_index = ReferenceIndex.from_references(index.references)
     return index
 
 
@@ -120,9 +126,8 @@ def _walk_items(value: Any):
 
 
 def _add_reference_numbers(index: EvidenceIndex, reference: str, value: Any) -> None:
-    if value is None:
-        return
-    index.reference_numbers.setdefault(reference, set()).update(numbers(str(value)))
+    if value is not None:
+        index.reference_numbers.setdefault(reference, set()).update(numbers(str(value)))
 
 
 def extract_references(value: str) -> set[str]:
