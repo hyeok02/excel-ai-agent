@@ -4,6 +4,7 @@ from app.agent.query.intent_models import QuestionIntent
 from app.agent.query.interpretation_answers import asks_interpretation
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.question_generation import generate_answer
+from app.agent.query.source_value_settling import settled_answer
 from app.agent.query.replanning_scope import single_table_recovery_allowed
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
@@ -90,8 +91,9 @@ async def answer_with_replanning(service, question, sources, *, intent_override=
         # Resume the exact original generation context; do not reclassify,
         # repeat source scans or leak rejected retry targets into the fallback.
         execution, truncated = pending[0]
-        return await generate_answer(service._generator, question, sources.summary, execution, truncated)
-    return first
+        return await generate_answer(service._generator, question, sources.summary, execution, truncated,
+                                     sources.index)
+    return settled_answer(question, sources, first)
 
 
 async def _recover(service, question, sources, replan, feedback):

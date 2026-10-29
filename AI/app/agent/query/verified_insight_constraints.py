@@ -7,10 +7,11 @@ _REQUIRED_CONCEPTS = (
     ("중앙값", "median"),
     ("합계", "총합", "sum"),
     (
-        "최고", "최대", "가장 높은", "가장 많", "1위", "highest",
-        "maximum", "max", "top",
+        "최고", "최대", "가장 높은", "가장 많", "가장 큰", "제일 큰", "제일 많", "제일 높은", "1위",
+        "highest", "maximum", "max", "top", "largest", "biggest",
     ),
-    ("최저", "최소", "가장 낮은", "lowest", "minimum", "min"),
+    ("최저", "최소", "가장 낮은", "가장 작은", "가장 적", "제일 작은", "제일 적", "제일 낮은",
+     "lowest", "minimum", "min", "smallest"),
     ("몇 개", "몇개", "개수", "건수", "how many", "count"),
     ("최근", "가장 최근", "latest", "recent"),
 )

@@ -32,7 +32,7 @@ def _candidates(sheets, owner=("", ())):
     for source_order, sheet in sheets:
         facts = sheet.get("business_facts", {})
         extracted = facts.get("horizontal_series", [])
-        derived = {_signature(item) for item in extracted if _derived(item)}
+        derived = {_signature(item) for item in extracted if _derived(item) or _copies_derived(item, extracted)}
         unit = amount_unit(sheet)
         for series_order, series in enumerate(extracted):
             insight = _insight(str(sheet.get("name", "")), series, owner, unit)
@@ -48,6 +48,28 @@ def _candidates(sheets, owner=("", ())):
                 )
                 results.append((priority, insight))
     return results
+
+
+def _copies_derived(series, extracted):
+    """A plain-named row repeating a growth/ratio row's numbers is that rate.
+
+    Chart data often copies "1 Year Growth (%) / Total Revenue" under the bare
+    name "Total Revenue"; the copy must not be narrated as revenue itself.
+    """
+    own = _values(series)
+    for item in extracted:
+        other = _values(item) if item is not series and _derived(item) else {}
+        shared = own.keys() & other.keys()
+        if len(shared) >= 2 and all(abs(own[key] - other[key]) <= 1e-9 * max(abs(own[key]), 1)
+                                    for key in shared):
+            return True
+    return False
+
+
+def _values(series):
+    return {str(point.get("period", ""))[:10]: point.get("value")
+            for point in series.get("observations") or series.get("points", [])
+            if isinstance(point.get("value"), (int, float)) and not isinstance(point.get("value"), bool)}
 
 
 def _settled(series):

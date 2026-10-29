@@ -30,7 +30,7 @@ def test_reads_a_checklist_written_in_another_language_and_other_marks() -> None
 
     assert items[0].title == "Branch 점검 현황"
     assert "‘Fire Safety’, ‘Food Licence’, ‘Signage’ 3가지" in items[0].fact
-    assert "6건이 점검됐고 1건은" in items[0].fact
+    assert "6건이 점검됐고 1건(Coimbra Velha)은" in items[0].fact
 
 
 def test_reports_marks_as_the_sheet_writes_them() -> None:
