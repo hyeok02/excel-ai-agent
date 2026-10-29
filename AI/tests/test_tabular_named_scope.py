@@ -56,3 +56,26 @@ def test_a_date_without_a_time_of_day_is_shown_as_the_date() -> None:
     assert _label(datetime(2025, 12, 9)) == "2025-12-09"
     assert _label("2025-12-09T00:00:00") == "2025-12-09"
     assert _label(datetime(2025, 12, 9, 8, 40)) == "2025-12-09 08:40:00"
+
+
+def _routed(question, plan_update, kind="aggregation"):
+    from app.agent.query.intent_models import QuestionIntent
+    from app.agent.query.tabular_routing import planned_tabular_answer
+
+    summary, index = table_fixture([(1, 1, MATRIX)])
+    table = build_query_tables(summary)[0]
+    plan = TabularQueryPlan(operation="frequencies", table_id=table.id, column_ids=["B"]).model_copy(update=plan_update)
+    return planned_tabular_answer(QuestionIntent(False, kind, from_model=True, tabular_query=plan),
+                                  summary, index, question)
+
+
+def test_an_unusable_distribution_plan_still_counts_the_named_column() -> None:
+    for update, kind in (({"table_id": "Arbitrary!A2:D4"}, "aggregation"), ({}, "other"),
+                         ({"column_scope": "all_attributes", "identity_column_ids": ["Z"]}, "aggregation")):
+        answer = _routed("사건 발생일(Event Date) 분포를 항목별로 요약해줘", update, kind)
+        assert answer.status == "answered" and answer.answer.startswith("‘Event Date’: ‘2025-12-01’ 1건")
+
+
+def test_a_condition_or_calculation_keeps_the_refusal() -> None:
+    for question in ("12월 Event Date 분포", "Event Date가 2025-12-09인 사건은?", "Event Date에서 가장 많은 날은?"):
+        assert _routed(question, {"table_id": "Arbitrary!A2:D4"}).status == "insufficient_evidence"

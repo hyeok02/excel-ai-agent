@@ -14,18 +14,23 @@ from app.agent.query.tabular_request_scope import header_request_text
 def named_column_scope(question, plan, table, tables):
     if plan.operation != "frequencies" or plan.column_scope != "all_attributes":
         return plan
-    text = header_request_text(question, mentioned_sources((item.sheet_name for item in tables), question))
-    skipped = set(plan.identity_column_ids) | set(getattr(table, "hidden_columns", ()))
-    named = [column for column in table.columns if column.id not in skipped
-             and len(_normal(column.header)) >= 4 and _mentioned(column.header, text)]
-    named = [column for column in named if not any(
-        _normal(column.header) != _normal(other.header) and _normal(column.header) in _normal(other.header)
-        for other in named)]
+    named = named_columns(question, table, tables, skipped=plan.identity_column_ids)
     if not named:
         return plan
     return plan.model_copy(update={
         "column_scope": "selected", "column_ids": [column.id for column in named], "identity_column_ids": [],
     })
+
+
+def named_columns(question, table, tables, skipped=()):
+    """Visible columns whose whole header the question writes; a header inside a longer named one is dropped."""
+    text = header_request_text(question, mentioned_sources((item.sheet_name for item in tables), question))
+    skipped = set(skipped) | set(getattr(table, "hidden_columns", ()))
+    named = [column for column in table.columns if column.id not in skipped
+             and len(_normal(column.header)) >= 4 and _mentioned(column.header, text)]
+    return [column for column in named if not any(
+        _normal(column.header) != _normal(other.header) and _normal(column.header) in _normal(other.header)
+        for other in named)]
 
 
 def _mentioned(header, text):

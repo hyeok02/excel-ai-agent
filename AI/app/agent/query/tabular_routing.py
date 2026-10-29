@@ -1,6 +1,7 @@
 """Do not replace a failed scoped query with an unrelated workbook overview."""
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
 from app.agent.query.tabular_execution import execute_tabular_query
+from app.agent.query.tabular_named_fallback import named_frequency_answer
 from app.agent.query.tabular_partial_categories import partial_category_answer
 from app.agent.query.tabular_scope_conflicts import scope_clarification
 
@@ -16,6 +17,8 @@ def planned_tabular_answer(intent, summary, data_index, question):
     partial = partial_category_answer(intent, summary, data_index, question)
     if partial is not None:
         return partial
+    if named := named_frequency_answer(intent.tabular_query, summary, data_index, question):
+        return named
     return QuestionAnswer(
         question=question,
         answer=(
