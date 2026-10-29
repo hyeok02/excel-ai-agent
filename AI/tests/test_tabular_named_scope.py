@@ -71,7 +71,8 @@ def _routed(question, plan_update, kind="aggregation"):
 
 def test_an_unusable_distribution_plan_still_counts_the_named_column() -> None:
     for update, kind in (({"table_id": "Arbitrary!A2:D4"}, "aggregation"), ({}, "other"),
-                         ({"column_scope": "all_attributes", "identity_column_ids": ["Z"]}, "aggregation")):
+                         ({"column_scope": "all_attributes", "identity_column_ids": ["Z"]}, "aggregation"),
+                         ({"operation": "row_list", "column_ids": ["Z"]}, "row_list")):
         answer = _routed("사건 발생일(Event Date) 분포를 항목별로 요약해줘", update, kind)
         assert answer.status == "answered" and answer.answer.startswith("‘Event Date’: ‘2025-12-01’ 1건")
 

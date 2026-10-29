@@ -16,7 +16,9 @@ from app.agent.query.tabular_query_models import TabularQueryPlan
 
 
 def named_frequency_answer(plan, summary, data_index, question):
-    if plan is None or plan.operation != "frequencies" or plan.filters or plan.group_by:
+    # The question decides, not the failed plan: GPT may have planned a row count,
+    # a list or a lookup for the same distribution request.
+    if plan is None:
         return None
     tables = build_query_tables(summary)
     sheets = mentioned_sources((table.sheet_name for table in tables), question)
