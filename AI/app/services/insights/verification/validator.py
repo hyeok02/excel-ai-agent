@@ -67,7 +67,9 @@ def _validate_insight(
     if any(not references for references in cited):
         return None
     references = set().union(*cited)
-    resolved, unmatched = resolve_references(references, index.references)
+    resolved, unmatched = resolve_references(
+        references, index.reference_index if index.reference_index is not None else index.references
+    )
     if unmatched or not resolved:
         return None
     source_text = [text for ref in resolved for text in index.reference_text.get(ref, [])]
