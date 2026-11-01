@@ -12,7 +12,7 @@ MATRIX = [
     ["Headline", "Event Date", "Event Type", "Description"],
     ["Alpha opens plant", "2025-12-01T00:00:00", "Expansion", "long text one"],
     ["Beta pays dividend", "2025-12-09T00:00:00", "Dividend", "long text two"],
-    ["Gamma at conference", "2025-12-09T00:00:00", "Conference", "long text three"],
+    ["Gamma at conference", "2025-12-09T00:00:00", "Dividend", "long text three"],
 ]
 
 
@@ -80,3 +80,17 @@ def test_an_unusable_distribution_plan_still_counts_the_named_column() -> None:
 def test_a_condition_or_calculation_keeps_the_refusal() -> None:
     for question in ("12월 Event Date 분포", "Event Date가 2025-12-09인 사건은?", "Event Date에서 가장 많은 날은?"):
         assert _routed(question, {"table_id": "Arbitrary!A2:D4"}).status == "insufficient_evidence"
+
+
+def test_a_suggested_question_repeating_an_insight_title_counts_its_cited_column(monkeypatch) -> None:
+    from app.agent.query import tabular_insight_columns
+
+    cited = ["'Arbitrary'!C1", "'Arbitrary'!C2:C4"]
+    monkeypatch.setattr(tabular_insight_columns, "build_verified_question_context", lambda _summary: {
+        "insights": [{"title": "주요 사건 구성", "evidence": ["'Arbitrary'!A1", *cited]},
+                     {"title": "사건 발생일 분포", "evidence": ["'Arbitrary'!B1", "'Arbitrary'!B2:B4"]}]})
+
+    answer = _routed("주요 사건 구성을 항목별로 요약해줘", {"table_id": "Arbitrary!A2:D4"})
+    assert answer.status == "answered" and answer.answer.startswith("‘Event Type’: ")
+    assert "Headline" not in answer.answer
+    assert _routed("주요 사건 구성 중 12월만 요약해줘", {"table_id": "Arbitrary!A2:D4"}).status == "insufficient_evidence"
