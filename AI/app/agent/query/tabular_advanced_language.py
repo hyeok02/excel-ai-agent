@@ -16,7 +16,10 @@ def advanced_operations_match(text, plan, table):
     if masked is None:
         return not (getattr(plan, "share_of_total", False) or plan.operation == "distinct_count")
     distinct = bool(DISTINCT.search(masked))
-    share = bool(SHARE.search(masked))
+    # "비중" over a column that already stores shares (PERCENT HELD (%)) names
+    # that field; only over plain amounts does it ask for a share of the total.
+    share = bool(SHARE.search(masked)) and not (
+        not getattr(plan, "share_of_total", False) and _reads_stored_shares(plan, table))
     if distinct != (plan.operation == "distinct_count") or share != plan.share_of_total:
         return False
     if distinct and (not COUNT.search(masked) or not _distinct_fields(masked, plan, identifiers)):
@@ -44,6 +47,15 @@ def advanced_operations_match(text, plan, table):
     if plan.operation == "row_list" and plan.group_by and per is None:
         return False
     return True
+
+
+_STORED_SHARE = re.compile(r"%|\b(?:percent|percentage|share|pct)\b|비중|비율|지분율|점유율", re.I)
+
+
+def _reads_stored_shares(plan, table):
+    measured = set(plan.column_ids) - set(plan.group_by)
+    columns = [column for column in table.columns if column.id in measured]
+    return bool(columns) and all(_STORED_SHARE.search(str(column.header)) for column in columns)
 
 
 def _distinct_fields(text, plan, identifiers):
