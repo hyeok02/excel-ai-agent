@@ -91,6 +91,7 @@ class LangChainQuestionIntentClassifier:
             max_retries=0,
             # Up to four bounded plans, including Boolean trees, share one response.
             max_completion_tokens=4096,
+            **_sampling(),
         ).with_structured_output(QuestionIntentDraft, method="json_schema")
 
     async def replan(self, question, summary, feedback):
@@ -121,3 +122,15 @@ def _timeout() -> float:
         return float(os.getenv("OPENAI_INTENT_TIMEOUT_SECONDS", DEFAULT_TIMEOUT))
     except ValueError:
         return DEFAULT_TIMEOUT
+
+
+def _sampling() -> dict[str, float]:
+    """The same question must get the same plan; sampling only adds plan drift.
+
+    OPENAI_INTENT_TEMPERATURE= (empty) omits the setting for models that reject it.
+    """
+    value = os.getenv("OPENAI_INTENT_TEMPERATURE", "0").strip()
+    try:
+        return {"temperature": float(value)} if value else {}
+    except ValueError:
+        return {"temperature": 0.0}

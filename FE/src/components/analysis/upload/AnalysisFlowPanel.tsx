@@ -58,7 +58,7 @@ const AnalysisFlowPanel = ({
         : '파일 선택 대기'
 
   return (
-    <article className="panel flex h-full flex-col overflow-hidden p-6">
+    <article className="panel relative flex h-full flex-col overflow-hidden p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold tracking-[0.12em] text-slate-400">분석 단계</p>
@@ -124,8 +124,9 @@ const AnalysisFlowPanel = ({
         })}
       </ol>
 
+      {/* 하단 여백 안에 겹쳐 띄운다. 흐름에 넣으면 대기 안내가 뜨고 사라질 때마다 단계 목록이 들썩인다. */}
       {processingStatus === 'QUEUED' && (
-        <p className="mt-3 text-center text-[11px] font-semibold text-brand-600">
+        <p className="absolute inset-x-6 bottom-1.5 text-center text-[11px] leading-4 font-semibold text-brand-600">
           서버 작업 순서를 기다리고 있어요
         </p>
       )}

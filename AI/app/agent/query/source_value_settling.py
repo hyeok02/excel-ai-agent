@@ -4,6 +4,7 @@ Deliberate refusals (a semantic mismatch, a missing context, a capability,
 formula or join limit) keep their explanation. A clarification stays unless
 every source the question can match shows one and the same value.
 """
+from app.agent.query.insight_title_answers import insight_title_answer
 from app.agent.query.source_series_answers import source_series_answer
 from app.agent.query.source_value_answers import source_value_answer
 
@@ -18,6 +19,8 @@ def settled_answer(question, sources, answer):
         return answer
     if not answer.selected_tools:
         return answer
+    if named := insight_title_answer(question, sources.summary, sources.index):
+        return named
     if answer.selected_tools == ["chronological_trend"]:
         return source_series_answer(question, sources.summary, sources.index) or answer
     return source_value_answer(question, sources.summary, sources.index) or answer

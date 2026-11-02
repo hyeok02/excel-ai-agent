@@ -3,6 +3,7 @@ import asyncio
 from hmac import compare_digest
 
 from app.agent.query.ambiguity_answers import ambiguous_source_answer
+from app.agent.query.clarification_table_options import named_table_option
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus
 from app.agent.query.trend_answers import trend_answer
 
@@ -18,6 +19,11 @@ async def answer_selected_source(question, selection, sources, answer_current):
     option = next((option for option in current.clarification_options
                    if compare_digest(option.id, selection.option_id)
                    and option.question == question), None) if current else None
+    if option is None:
+        # A plan-scoped clarification (another table could run the same plan) is
+        # not reproducible without the model; its option still names its own
+        # table, so rebuild that table's candidates and match the bound identifier.
+        option = await asyncio.to_thread(named_table_option, question, selection, sources)
     if option is None:
         return invalid_selection_answer(question)
     answer = await answer_current(option.question, sources)
