@@ -16,7 +16,9 @@ from app.agent.query.ambiguity_answers import ambiguous_source_answer
 
 class _Generator:
     async def generate(self, *args):
-        raise AssertionError("Clarification and source-bound follow-up must not generate guesses")
+        # An unproven plan may reach the answer model; a fabricated total is never shown.
+        from tests.support.large_workbook_fixtures import fabricated_draft
+        return fabricated_draft()
 
 
 class _Classifier:

@@ -25,7 +25,7 @@ from app.agent.query.router import build_question_plan
 from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.source_count_answers import source_count_answer
 from app.agent.query.source_aggregate_answers import source_aggregate_answer
-from app.agent.query.tabular_routing import planned_tabular_answer
+from app.agent.query.tabular_routing import planned_tabular_answer, unproven_note, unverified_plan
 from app.agent.query.natural_relative_ranking import natural_relative_answer
 from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
@@ -129,22 +129,21 @@ class WorkbookQuestionService:
             return scalar
         if missing := missing_formula_answer(question, sources, intent):
             return missing
-        if tabular is not None and not asks_interpretation(question):
+        unproven = unverified_plan(tabular)  # an unproven plan goes on to a checked draft
+        if tabular is not None and not asks_interpretation(question) and (not unproven or not allow_generation):
             return tabular
         plan = build_question_plan(question)
-        execution = await asyncio.to_thread(
-            self._executor.execute, plan,
-            AgentToolContext(summary, data_index, question, intent), self._registry,
-        )
+        execution = await asyncio.to_thread(self._executor.execute, plan,
+                                            AgentToolContext(summary, data_index, question, intent), self._registry)
         truncated = _search_scope_truncated(execution)
         if canonical := canonical_answer(question, execution, truncated, summary, data_index, intent):
             return canonical
         if not allow_generation:
             return unavailable_plan(question)
-        if (pending_generation is not None
-                and missing_plan_repairable(question, intent, summary)):
-            pending_generation.append((execution, truncated))
-            return missing_plan_answer(question)
-        return await generate_answer(self._generator, question, summary, execution, truncated, data_index)
+        if pending_generation is not None and (unproven or missing_plan_repairable(question, intent, summary)):
+            pending_generation.append((execution, truncated))  # a plan repair is tried first
+            return tabular if unproven else missing_plan_answer(question)
+        answer = await generate_answer(self._generator, question, summary, execution, truncated, data_index)
+        return unproven_note(answer) if unproven else answer
     async def _question_intent(self, question: str, summary: WorkbookSummary) -> QuestionIntent:
         return await resolve_question_intent(self._classifier, question, summary)

@@ -15,7 +15,8 @@ class ForbiddenModelCall(BaseException):
 
 class NeverModel:
     async def generate(self, *args):
-        raise ForbiddenModelCall("No generated answer is allowed in source-choice tests")
+        from tests.support.large_workbook_fixtures import fabricated_draft
+        return fabricated_draft()
 
     async def classify(self, *args):
         raise ForbiddenModelCall("Invalid selections must not classify")

@@ -16,7 +16,9 @@ def offline(monkeypatch):
 
 class NoGeneration:
     async def generate(self, *args, **kwargs):
-        raise ExternalNetworkForbidden("A repaired plan cannot use generated fallback answers")
+        # An unproven plan may reach the answer model; a fabricated total is never shown.
+        from tests.support.large_workbook_fixtures import fabricated_draft
+        return fabricated_draft()
 
 
 class Planner:

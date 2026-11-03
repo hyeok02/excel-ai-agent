@@ -5,6 +5,7 @@ from app.agent.query.interpretation_answers import asks_interpretation
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.question_generation import generate_answer
 from app.agent.query.source_value_settling import settled_answer
+from app.agent.query.tabular_routing import unproven_note, unverified_plan
 from app.agent.query.replanning_scope import single_table_recovery_allowed
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
@@ -91,8 +92,9 @@ async def answer_with_replanning(service, question, sources, *, intent_override=
         # Resume the exact original generation context; do not reclassify,
         # repeat source scans or leak rejected retry targets into the fallback.
         execution, truncated = pending[0]
-        return await generate_answer(service._generator, question, sources.summary, execution, truncated,
-                                     sources.index)
+        generated = await generate_answer(service._generator, question, sources.summary, execution, truncated,
+                                          sources.index)
+        return unproven_note(generated) if unverified_plan(first) else generated
     return settled_answer(question, sources, first)
 
 
@@ -111,9 +113,13 @@ async def _recover(service, question, sources, replan, feedback):
         raise_for_quota_exhaustion(error)
         return None
     # A retry cannot turn mere citations or generated text into request proof.
+    # A ranking recomputed over every source row is shown with its full order and
+    # its field reading stated, so it is accepted as the limited answer it is.
+    ranked = (retried.selected_tools == ["ranked_group_query"] and retried.status == "limited"
+              and "ranking" in retried.verification.checks)
     if (retried.status not in {"answered", "limited"} or not retried.evidence
-            or retried.verification.level != "request_checked"
-            or "request_alignment" not in retried.verification.checks):
+            or not ranked and (retried.verification.level != "request_checked"
+                               or "request_alignment" not in retried.verification.checks)):
         return None
     return retried.model_copy(update={"verification": retried.verification.model_copy(update={
         "checks": list(dict.fromkeys([*retried.verification.checks, "plan_replanned"]))})})
