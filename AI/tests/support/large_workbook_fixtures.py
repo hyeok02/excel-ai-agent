@@ -77,8 +77,15 @@ def equal(column, value):
 
 
 class NoGeneratedAnswer:
+    """An unproven plan may reach the answer model; its fabricated total must never be shown."""
+
     async def generate(self, *args):
-        raise ForbiddenExternalCall("Source-rescan tests may not fall back to an answer model")
+        return fabricated_draft()
+
+
+def fabricated_draft():
+    from app.agent.query.models import QuestionAnswerDraft
+    return QuestionAnswerDraft(answer="합계는 987654321입니다.", confidence=0.9, evidence=["Records!B2"])
 
 
 class FixedClassifier:
