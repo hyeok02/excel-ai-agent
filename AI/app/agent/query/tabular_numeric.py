@@ -1,7 +1,7 @@
 """Aggregate compatible source units with decimal arithmetic and Excel formats."""
 import math
 from dataclasses import replace
-from decimal import Decimal, localcontext
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 
 from app.agent.query.excel_number_formats import display_value, parse_number_format
 
@@ -53,6 +53,10 @@ def _unit_identity(spec):
 
 def _render(value, spec):
     if spec.mode == "raw":
+        # Binary float noise and long means are cut to a readable precision.
+        with localcontext() as context:
+            context.prec = max(28, value.adjusted() + _places(value) + 3)
+            value = value.quantize(Decimal(1).scaleb(-_places(value)), rounding=ROUND_HALF_UP)
         if value == value.to_integral_value():
             return f"{int(value):,}"
         whole, fraction = format(value, "f").split(".")
@@ -62,5 +66,12 @@ def _render(value, spec):
         scaled = value * spec.multiplier / spec.divisor
         decimals = max(0, -scaled.normalize().as_tuple().exponent)
         # Computed means can need more decimals than the original integer cells.
-        spec = replace(spec, maximum_decimals=max(spec.maximum_decimals, min(decimals, 12)))
+        spec = replace(spec, maximum_decimals=max(spec.maximum_decimals, min(decimals, _places(scaled))))
     return display_value(value, spec)
+
+
+def _places(value):
+    """Two decimals from 1 up; three significant digits below 1 (0.00123), at most 12."""
+    if not value or abs(value) >= 1:
+        return 2
+    return min(12, 2 - abs(value).adjusted())
