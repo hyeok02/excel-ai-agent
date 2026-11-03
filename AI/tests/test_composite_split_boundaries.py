@@ -17,6 +17,7 @@ def sources(*values):
 @pytest.mark.parametrize("question", [
     "총부채(Total Debt)는 얼마야? 단위도 알려줘.",
     "Operating Income은 2023년에서 2024년으로 얼마나 증가했어? 금액과 증가율을 알려줘.",
+    "천식 유병률이 가장 많이 증가한 구간은 어디야? 년 단위로",
     "이 파일은 무엇을 비교하고 있어?",
     "매출을 계산하고 싶어",
     "Status가 ?인 행 수", "Status가 ? 인 행 수",

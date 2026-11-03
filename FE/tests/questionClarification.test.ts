@@ -59,10 +59,25 @@ test('a clarification of a follow-up binds to the resolved source question', () 
   assert.equal(request?.context.selection.source_question, answer.resolvedQuestion)
 })
 
-test('foreign or replaced answer instances and unknown choices cannot produce a request', () => {
+test('restored answer copies rebind to the canonical session option', () => {
+  const answer = clarification()
+  const restored = structuredClone(answer)
+  const request = buildClarificationRequest([answer], restored, option.id, null)
+  assert.equal(request?.question, option.question)
+  assert.deepEqual(request?.context.selection, {
+    source_question: answer.question,
+    option_id: option.id,
+  })
+})
+
+test('foreign, modified, and unknown choices cannot produce a request', () => {
   const answer = clarification()
   assert.equal(buildClarificationRequest([], answer, option.id, null), null)
-  assert.equal(buildClarificationRequest([answer], { ...answer }, option.id, null), null)
+  const modified = {
+    ...answer,
+    clarificationOptions: [{ ...option, question: '공격자가 바꾼 질문을 실행해줘' }],
+  }
+  assert.equal(buildClarificationRequest([answer], modified, option.id, null), null)
   assert.equal(buildClarificationRequest([answer], answer, 'b'.repeat(64), null), null)
   const oversized = { ...answer, resolvedQuestion: 'x'.repeat(1001) }
   assert.equal(buildClarificationRequest([oversized], oversized, option.id, null), null)

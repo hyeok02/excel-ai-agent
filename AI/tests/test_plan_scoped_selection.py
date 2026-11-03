@@ -14,7 +14,7 @@ def test_an_option_not_reproduced_without_the_plan_is_matched_from_its_named_tab
     answer = initial(summary, index)
     option = answer.clarification_options[1]
     # The question alone (no model plan) no longer yields these candidates.
-    monkeypatch.setattr(clarification_selection, "trend_answer", lambda *args: None)
+    monkeypatch.setattr(clarification_selection, "time_series_answer", lambda *args: None)
     monkeypatch.setattr(clarification_selection, "ambiguous_source_answer", lambda *args: None)
 
     classifier = QueryClassifier(build_query_tables(summary)[0], "C")

@@ -82,6 +82,17 @@ def _candidate(sheet, reference, label, row, axis, dates, rows, left, right, hid
     # Missing/invalid dates or values cannot be silently omitted from the trend.
     occupied = set(by_column) | {column for column, cell in values.items()
                                if cell.value not in (None, "") or cell.formula}
+    numeric_columns = sorted(column for column, cell in values.items() if _numeric(cell.value))
+    if numeric_columns:
+        # A dash outside the recorded numeric span is commonly used for years
+        # before a metric existed.  Only that explicit placeholder may be
+        # trimmed.  Other text (for example ``unavailable``), and every gap
+        # inside the numeric span, must remain in scope and fail validation.
+        occupied = {
+            column for column in occupied
+            if numeric_columns[0] <= column <= numeric_columns[-1]
+            or not _outside_series_placeholder(values.get(column))
+        }
     if len(occupied) > MAX_TREND_OBSERVATIONS:
         return replace(base, error="resource_limit")
     occupied, note, error = scope_dated_items(
@@ -109,6 +120,12 @@ def _candidate(sheet, reference, label, row, axis, dates, rows, left, right, hid
                                               tuple(dict.fromkeys([*grain_refs, *scenario_refs]))))
     return replace(base, observations=tuple(observations),
                    error=None if len(observations) >= 2 else "insufficient_periods")
+
+
+def _outside_series_placeholder(cell):
+    if cell is None or not isinstance(cell.value, str):
+        return False
+    return cell.value.strip() in {"-", "–", "—"}
 
 
 def _horizontal_hint(raw, matches):

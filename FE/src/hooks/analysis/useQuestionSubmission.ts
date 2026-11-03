@@ -34,14 +34,7 @@ export const useQuestionSubmission = (
   }, [scope, sourceAvailable])
 
   const submit = async (question: string, context?: WorkbookQuestionContext) => {
-    if (
-      !canSubmitQuestion(
-        session,
-        active.current?.scope,
-        pendingScope.current,
-        active.current?.sourceAvailable === true,
-      )
-    )
+    if (!canSubmitQuestion(session, scope, pendingScope.current, sourceAvailable))
       return false
     const normalized = question.trim()
     const message = getQuestionValidationMessage(normalized)

@@ -22,6 +22,7 @@ SEMANTIC_ALIASES = {
     "연구개발": ("research development", "r&d"),
     "날짜": ("date", "dates"),
     "비율": ("rate", "ratio", "%"),
+    "유병률": ("prevalence",),
     "중앙값": ("median",),
     "비교군": ("comparable", "comparables", "peer", "peers"),
     "거래": ("transaction", "deal"),

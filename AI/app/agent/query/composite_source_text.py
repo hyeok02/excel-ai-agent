@@ -7,6 +7,13 @@ _QUALIFIER = re.compile(
 )
 _CHANGE = re.compile(r"증가|감소|변화|증감|\bchange\b|\bgrowth\b", re.I)
 _CHANGE_FORMAT = re.compile(r"금액\s*과\s*(?:증가율|감소율|증감률|변화율)을?\s*알려\s*줘[.!?。？！]*")
+_TEMPORAL_UNIT = re.compile(
+    r"(?:연|년|월|분기|주|일)\s*(?:단위(?:로|별)?|간격(?:으로)?)[.!?。？！]*"
+)
+_TEMPORAL_CHANGE = re.compile(
+    r"증가|감소|변화|증감|상승|하락|반등|가장|최대|최소|구간|년도|연도|"
+    r"\b(?:change|growth|increase|decrease|interval|year)\b", re.I
+)
 _DELIMITING_LITERAL = re.compile(r"[;；\n?？:：]|"
     r"(?:비교하|계산하|요약하|조회하|분석하|정리하|확인하|보여주|알려주|구하|찾아주)고(?:\s|,|$)")
 _SOURCE_SCOPE_SUFFIX = re.compile(
@@ -68,7 +75,8 @@ def merge_format_continuations(question, spans):
         current = question[start:end].strip()
         prior = question[merged[-1][0]:merged[-1][1]] if merged else ""
         if merged and (_QUALIFIER.fullmatch(current)
-                       or (_CHANGE.search(prior) and _CHANGE_FORMAT.fullmatch(current))):
+                       or (_CHANGE.search(prior) and _CHANGE_FORMAT.fullmatch(current))
+                       or (_TEMPORAL_CHANGE.search(prior) and _TEMPORAL_UNIT.fullmatch(current))):
             merged[-1] = (merged[-1][0], end)
         else:
             merged.append((start, end))
