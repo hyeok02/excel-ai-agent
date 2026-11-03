@@ -29,6 +29,14 @@ def test_ambiguous_categories_require_context():
     assert source_label('Occupancy rate') == '점유율'
 
 
+def test_air_quality_share_caption_explains_the_denominator():
+    caption = source_label(
+        'Percentage of days with good, moderate, or unhealthy air quality for '
+        'children ages 0 to 17 years, 1999-2023'
+    )
+    assert caption == '1년 전체 날짜 중 각 공기질 등급에 해당하는 날의 비율 (0~17세 아동, 1999~2023년)'
+
+
 def test_sections_preserve_comparison_basis_and_only_drop_opaque_sheet_names():
     assert narrative_scope('Sheet1', 'Annual Totals') == '연간 합계'
     assert narrative_scope('Table_1_01', 'Year to Date') == '연초 이후 누적'
