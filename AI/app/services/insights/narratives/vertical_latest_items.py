@@ -3,6 +3,7 @@ import re
 
 from app.services.insights.display.source_labels import narrative_scope, section_label, source_label, source_unit
 from app.services.insights.facts.series_scalars import displayed_value, unit
+from app.services.insights.narratives.category_share_subject import category_share_subject
 from app.services.insights.narratives.narrative_values import direction_particle, finite, insight, number, overall, reference, topic_particle
 from app.services.insights.narratives.table_schema import column
 from app.services.insights.narratives.year_to_date_scope import year_to_date_scope
@@ -44,9 +45,11 @@ def _items(sheet, header, section, section_cell, records, unit_note, series):
         window, window_refs = year_to_date_scope(sheet, section, position, records, series=series)
         if window:
             scope = f"{scope} {window}".strip()
+        share = category_share_subject(section, metric, [item.get("value") for item in header[1:]])
         metric_display = source_label(metric, f"{sheet.get('name', '')} {section}")
         scope += "".join(f" · {source_label(label)}: {value}" for label, value, _ in dimensions)
-        subject = f"{scope}의 {metric_display}" if scope else metric_display
+        subject = share[1] if share and not dimensions and not window else (
+            f"{scope}의 {metric_display}" if scope else metric_display)
         latest_amount = f"{number(right)}{_suffix(units)}"
         fact = (f"{subject}{topic_particle(metric_display)} {_period(previous)} {number(left)}{_suffix(units)}에서 "
                 f"{_period(latest)} {latest_amount}{direction_particle(latest_amount)} ")
@@ -71,10 +74,11 @@ def _items(sheet, header, section, section_cell, records, unit_note, series):
         fact += path
         evidence.extend(path_refs)
         priority = (0, position) if overall(metric) and not re.search(r"estimated|추정", metric, re.I) else (1 if units == "%" else 2, len(metric), position)
-        title_section = section_label(section)
+        title_section = share[2] if share else section_label(section)
         if window:
             title_section = f"{title_section} {window}".strip()
-        title = f"{metric_display} 최근 변화" + (f" · {title_section}" if title_section and len(title_section) <= 40 else "")
+        title_metric = share[0] if share else metric_display
+        title = f"{title_metric} 최근 변화" + (f" · {title_section}" if title_section and len(title_section) <= 40 else "")
         options.append((priority, units, insight(title, fact, evidence, "change", topic=metric)))
     ordered = sorted(options, key=lambda option: option[0])
     if any(option[1] != "%" for option in ordered):
