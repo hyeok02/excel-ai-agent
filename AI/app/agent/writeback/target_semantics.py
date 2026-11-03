@@ -6,7 +6,10 @@ from app.agent.writeback.references import column_number
 from app.agent.writeback.natural_operations import ASSIGNMENT
 from app.agent.writeback.target_syntax import sheet_mentions
 
-ALL = re.compile(r"모두|전체|각각|모든|\ball\b|\bevery\b", re.I)
+ALL = re.compile(r"모두|전부|일괄|전체|각각|모든|\ball\b|\bevery\b", re.I)
+# "단가를 전부 2로": a quantifier right after the object marker and before a number
+# scopes the rows. Before text ("모두 완료로") it is part of the replacement value.
+LEADING_ALL = re.compile(r"\s*(?:모두|전부|일괄|전체|각각)\s+(?=[-+]?\d)")
 
 
 def semantic_target_risk(cell, instruction, index, headers) -> str | None:
@@ -69,7 +72,8 @@ def semantic_target_risk(cell, instruction, index, headers) -> str | None:
         return "요청한 행 조건을 원본 항목과 대조하지 못했습니다. 대상 이름 또는 셀을 확인해 주세요."
     if columns and column_number(cell.address) not in columns:
         return "요청한 항목의 원본 열과 변경 대상 열이 다릅니다."
-    if not _all_rows_requested(prefix, local, named):
+    parts = ASSIGNMENT.split(instruction, maxsplit=1)
+    if not (_all_rows_requested(prefix, local, named) or len(parts) == 2 and LEADING_ALL.match(parts[1])):
         if rows and sum(signatures[number] == signatures[row_number] for number in rows) > 1:
             return "같은 항목이 여러 원본 행에 있어 추가 조건 또는 전체 적용 여부를 지정해야 합니다."
         if columns and not rows:
@@ -106,12 +110,17 @@ def _label_matches(value, instruction):
 
 def _unknown_subject(prefix, local, named):
     labels = {*named, *(str(item.value) for _, matched, _ in local for item in matched)}
+    return bool(unknown_subject_tokens(prefix, labels, named))
+
+
+def unknown_subject_tokens(prefix, labels, named=()):
+    """Words of the target part that name no source label, sheet or grammar."""
     for label in sorted(labels, key=len, reverse=True):
         prefix = re.sub(re.escape(label), " ", prefix, flags=re.I)
     prefix = re.sub(r"\b(?:set|change|update|the|values?|of|in|sheet|row|column|please|all|every|and|or)\b", " ", prefix, flags=re.I)
-    prefix = re.sub(r"원본|현재|기존|항목|시트|모든|모두|전체|각각|수정|변경|바꿔|그리고|또는|에서|으로|값|열|행|의|은|는|을|를|에|만|와|과|및", " ", prefix)
-    return any(not any(token.casefold() in name.casefold() for name in named)
-               for token in re.findall(r"[A-Za-z0-9가-힣]+", prefix))
+    prefix = re.sub(r"원본|현재|기존|항목|시트|모든|모두|전부|일괄|전체|각각|수정|변경|바꿔|그리고|또는|에서|으로|값|열|행|의|은|는|을|를|에|만|와|과|및", " ", prefix)
+    return [token for token in re.findall(r"[A-Za-z0-9가-힣]+", prefix)
+            if not any(token.casefold() in name.casefold() for name in named)]
 
 
 def _all_rows_requested(prefix, local, named):
