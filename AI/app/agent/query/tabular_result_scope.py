@@ -20,6 +20,10 @@ def result_scope(plan, table):
         parts.append(f"{label} {'내림차순' if plan.descending else '오름차순'}")
     if plan.per_group_limit is not None:
         parts.append(f"각 그룹에서 앞의 {plan.per_group_limit}개 행")
+    elif plan.relative_rank:
+        anchor = plan.relative_rank
+        parts.append(f"{columns[anchor.column_id]}={anchor.value!r} 기준 "
+                     + ("다음" if anchor.direction == "after" else "이전") + " 순위(동점 전체)")
     elif plan.limit:
         parts.append(f"앞의 {plan.limit}개 그룹")
     if plan.having:

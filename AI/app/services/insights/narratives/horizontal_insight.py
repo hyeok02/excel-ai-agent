@@ -4,18 +4,19 @@ import re
 from app.services.insights.display.amount_units import PER_SHARE
 from app.services.insights.display.display_quality import metric_family
 from app.services.insights.display.derived_metrics import derived_metric
-from app.services.insights.display.glossary import readable
+from app.services.insights.display.glossary import readable, translate
+from app.services.insights.display.source_labels import source_label, source_unit
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.facts.series_scalars import displayed_value, scalar, unit as cell_unit
 from app.services.insights.models import WorkbookInsight
-from app.services.insights.narratives.narrative_values import number, period, reference
+from app.services.insights.narratives.narrative_values import direction_particle, number, period, reference
 from app.services.insights.narratives.series_path import path_direction
 from app.services.insights.narratives.topic_labels import scoped_source_topic
 
 _CATEGORIES = re.compile(r"\b(?:roles?|departments?|countries|regions?)\b|직무|부서|국가|지역", re.I)
 
 
-def horizontal_insight(sheet, series, owner=("", ()), unit=("", ())):
+def horizontal_insight(sheet, series, owner=("", ()), unit=("", ()), *, caption=("", "", ())):
     points = series.get("observations") or series.get("points", [])
     dates = [date_value(str(point.get("period", ""))) for point in points]
     if (len(points) < 2 or any(date is None for date in dates)
@@ -32,30 +33,49 @@ def horizontal_insight(sheet, series, owner=("", ()), unit=("", ())):
     earliest, latest = points[0], points[-1]
     old, new = values[0], values[-1]
     metric, scope = str(series.get("metric", "")).strip(), str(series.get("scope") or "").strip()
+    basis = str(series.get("basis") or "").strip()
     category = bool(_CATEGORIES.search(scope)) or cell_unit(earliest) == "명"
-    metric_text = metric if category else readable(metric)
-    subject = f"{readable(scope)}의 {metric_text}" if scope else metric_text
+    metric_text = metric if category else (
+        readable(metric) if translate(metric) and metric.casefold() != "sales"
+        else source_label(metric, f"{scope} {basis}"))
+    caption_metric, caption_unit, caption_refs = caption
+    if caption_metric and caption_metric not in metric_text:
+        metric_text = f"{metric_text} {caption_metric}"
+    subject = f"{source_label(scope)}의 {metric_text}" if scope else metric_text
+    if basis and basis.casefold() != scope.casefold():
+        basis_text = source_label(basis)
+        if metric.casefold() in {"total", "overall"} and re.search(r"\btotal\b|전체$", basis, re.I):
+            subject = f"{basis_text} {caption_metric}".strip()
+        else:
+            subject = f"{basis_text} · {subject}"
     topic = (subject if category else scoped_source_topic(
         metric, series.get("label_cell"), scope, series.get("scope_cell")))
-    money, money_refs = _unit(metric, scope, earliest, unit)
+    if basis:
+        topic = f"{basis} · {topic}"
+    declared = series.get("declared_unit")
+    declared_display = (f" {source_unit(declared['value'])}", [reference(sheet, declared['cell'])]) if declared else None
+    money, money_refs = _unit(metric, f"{scope} {basis}", earliest, unit, declared_display)
+    if not money and caption_unit and not derived_metric(f"{scope} {basis} {metric}", points):
+        money, money_refs = caption_unit, list(caption_refs)
     fact = _change(subject, earliest, latest, old, new, money)
     if len(points) > 2:
         indexes = sorted({0, len(points) // 3, 2 * len(points) // 3, len(points) - 1})
-        timeline = " → ".join(f"{period(points[index]['period'])} {number(values[index])}{money}"
+        timeline = " → ".join(f"{_period(points[index])} {_display(points[index], values[index])}{money}"
                               for index in indexes)
         coverage = "기간별 기록" if len(indexes) == len(points) else "주요 시점의 기록"
         fact += f" {coverage}은 {timeline}입니다. {path_direction(values)}"
-    evidence = [series.get("scope_cell"), series.get("label_cell"),
+        fact += " 최근 구간은 " + _change(subject, points[-2], latest, values[-2], new, money).split(": ", 1)[-1]
+    evidence = [series.get("scope_cell"), series.get("label_cell"), *series.get("label_cells", []), series.get("basis_cell"),
                 *(point.get(key) for point in points for key in ("period_cell", "value_cell"))]
     return WorkbookInsight(
         title=f"{subject} 변화", fact=fact, category="change",
-        severity="info", evidence=[*owner[1], *money_refs,
+        severity="info", evidence=[*owner[1], *money_refs, *caption_refs,
                                   *(reference(sheet, cell) for cell in dict.fromkeys(evidence) if cell)],
         confidence=1.0, topic=topic,
     )
 
 
-def _unit(metric, scope, point, sheet_unit):
+def _unit(metric, scope, point, sheet_unit, declared_unit=None):
     explicit = cell_unit(point)
     if explicit:
         return explicit, []
@@ -64,20 +84,33 @@ def _unit(metric, scope, point, sheet_unit):
     family = metric_family(metric)
     if family == "headcount":
         return "명", []
+    if declared_unit:
+        return declared_unit
     if PER_SHARE.search(f"{scope} {metric}") or _CATEGORIES.search(scope):
         return "", []
     return sheet_unit if family else ("", [])
 
 
 def _change(subject, earliest, latest, old, new, unit):
-    before, after = (f"{period(point['period'])} {number(value)}{unit}"
+    before, after = (f"{_period(point)} {_display(point, value)}{unit}"
                      for point, value in ((earliest, old), (latest, new)))
     if old == new:
-        return f"{subject}: {before}과 {after}으로 시작과 마지막 값이 같습니다."
+        return f"{subject}: {before}과 {after}{direction_particle(after)} 시작과 마지막 값이 같습니다."
     direction = "감소" if new < old else "증가"
     if unit == "%":
         return f"{subject}: {before}에서 {after}로 {direction}했습니다."
     delta = f"{number(abs(new - old))}{unit}"
     if old:
         delta += f"({abs((new - old) / old * 100):.2f}%)"
-    return f"{subject}: {before}에서 {after}로 {delta} {direction}했습니다."
+    return f"{subject}: {before}에서 {after}{direction_particle(after)} {delta} {direction}했습니다."
+
+
+def _period(point):
+    text = point.get("period_label") or period(point["period"])
+    return re.sub(r"^(\d{4}년) 중간$", r"\1 중반", text)
+
+
+def _display(point, value):
+    from app.agent.query.excel_number_formats import number_text, parse_number_format
+    spec = parse_number_format(point.get("number_format"))
+    return number(value) if spec.mode == "raw" else number_text(value, spec)

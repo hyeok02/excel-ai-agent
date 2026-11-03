@@ -1,6 +1,6 @@
 """Describe a checklist by what each check column says, blanks included."""
 from app.services.insights.facts.categorical_headers import header_index
-from app.services.insights.facts.flag_columns import blank_records, flag_matrix
+from app.services.insights.facts.flag_columns import blank_records, checklist_records, flag_matrix
 from app.services.insights.narratives.checklist_subject import (
     check_names, stalled_check, subject_of,
 )
@@ -41,6 +41,12 @@ def _sheet_report(name, sheet):
         found = flag_matrix(header, records)
         if not found:
             continue
+        records = checklist_records(records, *found)
+        if len(records) < MIN_RECORDS:
+            continue
+        found = flag_matrix(header, records)
+        if not found:
+            continue
         items = _items(name, header, records, *found)
         if items:
             return items[:5], _overview(items)
@@ -70,6 +76,10 @@ def _items(sheet, header, records, label, run):
     if label:
         cited.insert(0, reference(sheet, label["cell"]))
     cited.extend(reference(sheet, item["cell"]) for item in named)
+    # Counts are derived from the rows, so the lead must cite those rows rather
+    # than borrowing the column headers as proof of the counts.
+    cited.extend(reference(sheet, record[0]["cell"] + ":" + record[-1]["cell"])
+                 for record in records if record)
     head = insight(
         f"{subject} 점검 현황",
         f"{subject} {number(len(records))}건을 {check_names(run)} 항목으로 "

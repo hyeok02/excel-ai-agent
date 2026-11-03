@@ -29,6 +29,11 @@ def matches_constraints(question, plan, table, tables, *, streaming=False) -> bo
         plan = plan.model_copy(update={"filters": [], "filter_expression": None})
         question = checked
     text = _without_source_names(question, tables)
+    from app.agent.query.relative_ranking_language import relative_request_text
+    ranking_text = text
+    text = relative_request_text(text, plan, table)
+    if text is None:
+        return False
     # The current plan's filters are conjunctions. Never interpret an explicit
     # OR request as AND, even if all individual filter values occur in it.
     if re.search(r"\b(?:or|either)\b|또는|혹은|이거나", without_literals(text), re.I):
@@ -44,7 +49,7 @@ def matches_constraints(question, plan, table, tables, *, streaming=False) -> bo
         return False
     if not extra_filters_supported(text, plan, table):
         return False
-    ranking_ok, rank_filters = ranking_constraints_match(text, ranking_plan, table, streaming=streaming)
+    ranking_ok, rank_filters = ranking_constraints_match(ranking_text, ranking_plan, table, streaming=streaming)
     return ranking_ok and numeric_constraints_match(predicate_text, plan, table, rank_filters)
 
 

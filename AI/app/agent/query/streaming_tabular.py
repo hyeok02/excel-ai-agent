@@ -87,7 +87,8 @@ def execute_streaming_tabular(plan, table, tables, index, question, intent):
             return None
         answer = stream_answer(question, table, needed, result)
         if answer is not None:
-            answer.answer = population.description() + answer.answer
+            detail = population.description()
+            answer.answer = answer.answer + ("\n" + detail if detail else "") if plan.relative_rank else detail + answer.answer
         return answer
     except (SourceReadError, ValueError, TypeError, ArithmeticError):
         return None

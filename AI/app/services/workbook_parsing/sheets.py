@@ -15,6 +15,7 @@ from app.services.workbook_parsing.provenance import (
     with_classification_provenance,
     with_inclusion_provenance,
 )
+from app.services.workbook_parsing.pivot_units import pivot_unit_sources
 
 
 def build_sheet_summaries(
@@ -70,6 +71,7 @@ def build_sheet_summaries(
                 tables=tables,
                 charts=charts,
                 sheet_classification=classification,
+                pivot_unit_sources=pivot_unit_sources(workbook, worksheet, value_worksheet),
             )
         )
     return sheets, excluded

@@ -104,6 +104,13 @@ def _verify_insights(
 ) -> ValidatedWorkbookInsightReport:
     profile = select_analysis_profile(summary, depth)
     validated = validate_workbook_insights(report, build_workbook_context(summary, profile))
+    if report._generation_notice:
+        validated.limitations = list(dict.fromkeys([
+            *validated.limitations, report._generation_notice,
+        ]))
+        validated.validation.notices = list(dict.fromkeys([
+            *validated.validation.notices, report._generation_notice,
+        ]))
     if summary.limitations:
         validated = validated.model_copy(update={
             "limitations": list(dict.fromkeys([*validated.limitations, *summary.limitations])),

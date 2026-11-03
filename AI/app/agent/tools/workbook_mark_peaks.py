@@ -85,6 +85,6 @@ def _asked_mark(normalized: str) -> str | None:
         suffix = token[1:]
         if len(suffix) > MAX_PARTICLE or not all(is_hangul(ch) for ch in suffix):
             continue
-        if (mark := mark_of(token)) is not None:
+        if (mark := mark_of(token[0])) is not None:
             return mark
     return None

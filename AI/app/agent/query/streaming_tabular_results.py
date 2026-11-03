@@ -120,10 +120,14 @@ def stream_answer(question, table, needed, result, *, source_scanned=True):
         description="전체 원본 재조회에서 직접 확인한 집계 대상 표의 열 머리글",
     ) for column in table.columns if column.id in needed or not needed and column.id not in table.hidden_columns)
     checks = ["source_values", "table_scope", "request_alignment", "calculation"]
+    if result.plan.relative_rank:
+        checks.append("relative_group_rank")
     if source_scanned:
         checks.append("full_source_scan")
+    scope = _result_scope(result.plan, table)
+    rendered = text + "\n" + scope.strip() if result.plan.relative_rank else scope + text
     return QuestionAnswer(
-        question=question, answer=_result_scope(result.plan, table) + text,
+        question=question, answer=rendered,
         status="limited" if limitations else "answered", confidence=0.9 if limitations else 1,
         selected_tools=["tabular_query", "stream_original_table"] if source_scanned else ["tabular_query"],
         evidence=evidence, limitations=limitations,

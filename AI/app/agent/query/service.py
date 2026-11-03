@@ -26,6 +26,7 @@ from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.source_count_answers import source_count_answer
 from app.agent.query.source_aggregate_answers import source_aggregate_answer
 from app.agent.query.tabular_routing import planned_tabular_answer
+from app.agent.query.natural_relative_ranking import natural_relative_answer
 from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
 from app.agent.query.query_replanning import (
@@ -96,6 +97,8 @@ class WorkbookQuestionService:
         if intent.composite_query is not None:
             return (await composite_answer(question, sources, intent, self._answer_prepared)
                     if allow_composite else unavailable_plan(question))
+        if ranked := await asyncio.to_thread(natural_relative_answer, question, summary, data_index, intent):
+            return ranked
         # Explicit plans face their own checks; the fallback cannot bypass them.
         if intent.tabular_query is None and intent.relational_query is None:
             if aggregated := await asyncio.to_thread(source_aggregate_answer, question, summary, data_index):

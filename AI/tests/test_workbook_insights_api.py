@@ -70,6 +70,30 @@ def test_rejects_unknown_analysis_depth() -> None:
     assert response.status_code == 422
 
 
+def test_source_fallback_notice_survives_api_validation() -> None:
+    from app.services.insights.generator import SOURCE_FALLBACK_NOTICE
+
+    class FallbackGenerator(StubInsightGenerator):
+        async def generate(self, summary, depth=AnalysisDepth.AUTO):
+            report = await super().generate(summary, depth)
+            report._generation_notice = SOURCE_FALLBACK_NOTICE
+            return report
+
+    app.dependency_overrides[get_insight_generator] = FallbackGenerator
+    try:
+        response = client.post(
+            "/api/v1/workbooks/insights",
+            files=upload("sales.xlsx", create_workbook_file()),
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200
+    report = response.json()["report"]
+    assert SOURCE_FALLBACK_NOTICE in report["limitations"]
+    assert SOURCE_FALLBACK_NOTICE in report["validation"]["notices"]
+    assert report["insights"][0]["validation_status"] == "verified"
+
+
 def test_returns_service_unavailable_without_openai_api_key(
     monkeypatch: MonkeyPatch,
 ) -> None:

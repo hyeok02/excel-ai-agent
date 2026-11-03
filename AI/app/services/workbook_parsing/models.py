@@ -32,6 +32,7 @@ class SheetSummary:
     tables: list[TableSummary] = field(default_factory=list)
     charts: list[ChartSummary] = field(default_factory=list)
     sheet_classification: SheetClassification | None = None
+    pivot_unit_sources: list[dict] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

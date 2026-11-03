@@ -20,12 +20,14 @@ def date_axis(rows, index, row):
     for cell in sorted((cell for cell in row if is_date(cell.get("value"))), key=column):
         key = _date_key(cell["value"])
         if key in seen:
-            continue
+            # Repeated periods often belong to different parent metrics.
+            # Horizontal series extraction handles those explicit groups.
+            return None
         seen.add(key)
         found[column(cell)] = cell
     if len(found) < 2 or _reporting_basis(rows, index, found):
         return None
-    return index, dict(list(found.items())[:7])
+    return index, dict(sorted(found.items(), key=lambda pair: _date_key(pair[1]["value"])))
 
 
 def is_date(value):
@@ -46,7 +48,12 @@ def _column_of(address):
 
 def _date_key(value):
     parsed = date_value(value)
-    return parsed.isoformat() if parsed else " ".join(str(value).split())
+    if parsed:
+        return parsed.isoformat()
+    if isinstance(value, str) and KOREAN_DAY.fullmatch(value):
+        month, day = map(int, re.findall(r"\d+", value)[:2])
+        return f"0000-{month:02d}-{day:02d}"
+    return " ".join(str(value).split())
 
 
 def _reporting_basis(rows, index, dates):

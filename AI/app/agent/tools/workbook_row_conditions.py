@@ -121,7 +121,7 @@ def _mark_polarity(residue: str) -> str | None:
         suffix = token[1:]
         if len(suffix) > MAX_PARTICLE or not all(is_hangul(ch) for ch in suffix):
             continue
-        if (mark := mark_of(token)) in NEGATIVE_MARKS:
+        if (mark := mark_of(token[0])) in NEGATIVE_MARKS:
             return "negative"
         if mark in POSITIVE_MARKS:
             return "positive"

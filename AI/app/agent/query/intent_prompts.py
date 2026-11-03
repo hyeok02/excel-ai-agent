@@ -74,9 +74,13 @@ value_unit=raw입니다. 단순 이름/ID 일치는 equals, 명시적인 부분 
 상위/하위 N개는 order_by에 정렬할 열 ID, descending과 limit=N을 설정하고
 집계합니다. 지정한 행 순서만 요구하는 경우 order_by=null로 원본 순서를
 유지합니다. 조건이 없는 일반 질문에는 limit=null입니다.
-'가장 많은/적은·높은/낮은 항목은 어디/무엇'은 kind=row_list,
+'가장 많은/적은·높은/낮은 항목은 어디/무엇'이 개별 행의 순위이면 kind=row_list,
 operation=row_list로 대상 식별자와 수치 열을 함께 column_ids에 넣고,
 그 수치 열의 order_by, descending, limit=1을 지정하세요.
+같은 품목이 여러 거래 행에 반복되는 판매표의 '많이 팔린 품목'은 개별 행의
+최댓값이 아니라 품목별 판매수량 합계 순위입니다. 이때 kind=aggregation,
+numeric_summary, group_by, statistic=sum을 사용합니다. 판매금액·매출을 명시하면
+금액 합계이며, 판매수량 질문을 금액으로 바꾸지 마세요.
 최댓값/최솟값 자체만 묻는 경우에만 numeric_summary의 max/min을 사용하세요.
 반복된 자식 머리글은 qualified_header의 부모 항목까지 비교해 선택하세요.
 전체/전국 합계의 원본 총계 행이 명확하면 그 행을 lookup하고,

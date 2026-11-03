@@ -64,6 +64,15 @@ def _title_cell(region, title) -> str:
     for row in region.get("rows", []):
         for cell in row:
             if " ".join(str(cell.get("value", "")).split()) == title:
+                # A region extractor may use its first data label as a title.
+                # A metric alongside observations is not the owner of the table.
+                # Standalone titles and merged/repeated title bands remain valid.
+                if any(
+                    other.get("value") is not None
+                    and " ".join(str(other.get("value", "")).split()) not in {"", title}
+                    for other in row
+                ):
+                    continue
                 return str(cell.get("cell", ""))
     return ""
 

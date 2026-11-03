@@ -34,6 +34,10 @@ export const questionVerificationPresentation = (answer: WorkbookQuestionAnswer)
     }
     return { label: '답변 검증 불가', tone: 'neutral', explanation: '' } as const
   }
+  if (checks.includes('rank_interpretation')) {
+    const interpreted = boundedQuestionVerification(answer, checks)
+    if (interpreted) return interpreted
+  }
   const compound = compoundQuestionVerification(answer, checks)
   if (compound) return compound
   if (checks.includes('bounded_recalculation')) {

@@ -2,6 +2,9 @@
 
 
 def valid_aggregate_plan(plan, columns, measures):
+    from app.agent.query.relative_group_ranking import relative_plan_valid
+    if plan.relative_rank is not None and not relative_plan_valid(plan):
+        return False
     groups = plan.group_by
     if (plan.operation not in {"numeric_summary", "row_count", "distinct_count"}
             or plan.column_scope != "selected" or plan.per_group_limit is not None

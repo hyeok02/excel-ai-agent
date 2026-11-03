@@ -8,6 +8,15 @@ export const boundedQuestionVerification = (
   const sourceChecked =
     answer.verification?.level === 'source_checked' ||
     answer.verification?.level === 'request_checked'
+  if (checks.includes('rank_interpretation')) {
+    return {
+      label: sourceChecked ? '해석 후 원본 대조' : '순위 해석 확인 필요',
+      tone: sourceChecked ? 'limited' : 'neutral',
+      explanation: sourceChecked
+        ? '질문의 대상명과 순위 기준(집계 항목·방식)을 해석한 뒤 원본 값을 대조했습니다. 위의 해석한 질문이 의도와 맞는지 확인해 주세요.'
+        : '질문의 대상명과 순위 기준을 해석했지만 원본 대조를 완료하지 못했습니다. 해석한 질문과 확인 한계를 확인해 주세요.',
+    } as const
+  }
   if (checks.includes('semantic_alias_resolved')) {
     return {
       label: sourceChecked ? '대상 해석 · 원본 확인' : '대상 해석 확인 필요',

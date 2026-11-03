@@ -6,6 +6,7 @@ from app.services.insights.narratives.table_dates import date_axis, is_date
 from app.services.insights.facts.table_inputs import narrative_regions
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.narratives.transposed_tables import adjacent_date_regions, transposed_region
+from app.services.insights.facts.series_scalars import displayed_value, unit
 
 
 def table_report(context):
@@ -50,7 +51,8 @@ def _region_report(sheet, rows):
         labels = [c for c in row if col(c) < min(dates)
                   and isinstance(c.get("value"), str)]
         label = min(labels, key=col) if labels else None
-        if all(finite(cell["value"]) for _, cell in values) and label:
+        if (len(values) == len(dates) and all(finite(cell["value"]) for _, cell in values)
+                and len({unit(cell) for _, cell in values}) == 1 and label):
             numeric.append(_numeric(sheet, label, values))
         elif all(isinstance(cell["value"], str) for _, cell in values):
             texts = [cell["value"] for _, cell in values]
@@ -91,15 +93,17 @@ def _text_row(sheet, label, values):
 
 
 def _numeric(sheet, label, values):
-    low = min(values, key=lambda pair: pair[1]["value"])
-    high = max(values, key=lambda pair: pair[1]["value"])
+    low = min(values, key=lambda pair: displayed_value(pair[1]))
+    high = max(values, key=lambda pair: displayed_value(pair[1]))
+    suffix = unit(low[1])
+    low_value, high_value = displayed_value(low[1]), displayed_value(high[1])
     name = " ".join(str(label["value"]).split())
-    fact = (f"{name}의 날짜별 값은 {number(low[1]['value'])}~{number(high[1]['value'])}입니다. "
-            f"가장 낮은 날은 {period(low[0]['value'])}({number(low[1]['value'])}), "
-            f"가장 높은 날은 {period(high[0]['value'])}({number(high[1]['value'])})입니다.")
-    if low[1]["value"] == high[1]["value"]:
-        fact = f"{name}는 표시된 {len(values)}개 날짜에서 모두 {number(low[1]['value'])}입니다."
-    title = (f"{name}의 날짜별 동일 값" if low[1]["value"] == high[1]["value"]
+    fact = (f"{name}의 날짜별 값은 {number(low_value)}{suffix}~{number(high_value)}{suffix}입니다. "
+            f"가장 낮은 날은 {period(low[0]['value'])}({number(low_value)}{suffix}), "
+            f"가장 높은 날은 {period(high[0]['value'])}({number(high_value)}{suffix})입니다.")
+    if low_value == high_value:
+        fact = f"{name}는 표시된 {len(values)}개 날짜에서 모두 {number(low_value)}{suffix}입니다."
+    title = (f"{name}의 날짜별 동일 값" if low_value == high_value
              else f"{name}의 날짜별 값 범위")
     return insight(title, fact, _evidence(sheet, label, values), "metric",
                    topic=source_topic(label["value"]))

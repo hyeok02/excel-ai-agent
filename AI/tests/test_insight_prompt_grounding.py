@@ -13,7 +13,9 @@ def test_prompt_has_no_canned_subject_numbers_or_corporate_framing() -> None:
 
     for foreign_example in ("Riot", "6,101", "5,417", "684", "동종기업", "대상 기업"):
         assert foreign_example not in prompt
-    assert "원문 표기를 그대로" in prompt
+    assert "고유명사는 원문을 유지" in prompt
+    assert "일반 열 이름은 문맥이 확인될 때 쉬운 한국어" in prompt
+    assert "뜻이 다른 항목을 번역으로 합치지 마세요" in prompt
     assert "insights를 빈 배열" in prompt
     assert "현재 요청의 workbook_metadata" in prompt
 

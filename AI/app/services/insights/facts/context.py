@@ -1,4 +1,5 @@
 from dataclasses import asdict
+import re
 
 from app.services.analysis_strategy import AnalysisProfile, STANDARD_PROFILE
 from app.services.insights.facts.business_facts import build_business_facts
@@ -87,6 +88,7 @@ def _sheet_context(sheet: object, profile: AnalysisProfile) -> dict[str, object]
     sheet_data["region_samples"] = select_region_samples(
         regions, profile.max_regions_per_sheet
     )
+    sheet_data["source_notes"] = _source_notes(regions)
     sheet_data["omitted_region_count"] = max(
         0, len(regions) - profile.max_regions_per_sheet
     )
@@ -115,6 +117,36 @@ def _sheet_context(sheet: object, profile: AnalysisProfile) -> dict[str, object]
         for chart in charts[:profile.max_charts_per_sheet]
     ]
     return sheet_data
+
+
+def _source_notes(regions):
+    """Retain bounded, source-addressed status notes even when tables omit prose.
+
+    Long footnotes are intentionally absent from numeric table samples. Their
+    explicit year/status qualifications still matter to a reported figure, so
+    keep the original cell text without truncating a sentence or its negation.
+    """
+    result, seen, size = [], set(), 0
+    for region in regions:
+        for row in region.get("analysis_rows", []):
+            for cell in row:
+                address, value = cell.get("address"), cell.get("value")
+                if not address or address in seen or not isinstance(value, str):
+                    continue
+                if (not re.search(r"(?<!\d)(?:19|20)\d{2}(?!\d)", value)
+                        or not re.search(
+                            r"\b(?:preliminary|provisional|final|revised)\b|잠정|확정|수정치",
+                            value, re.I,
+                        )):
+                    continue
+                if len(value) > 8000 or size + len(value) > 16000:
+                    continue
+                result.append({"cell": address, "value": value})
+                seen.add(address)
+                size += len(value)
+                if len(result) >= 20:
+                    return result
+    return result
 
 
 def _sheet_priority(sheet: object) -> tuple[int, int, int]:

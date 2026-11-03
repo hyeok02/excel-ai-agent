@@ -40,6 +40,17 @@ def joining_particle(text):
     return "과" if subject_particle(text) == "이" else "와"
 
 
+def direction_particle(text):
+    """로/으로 for a displayed amount, including Korean units and numbers."""
+    last = str(text).strip()[-1:]
+    if last and "가" <= last <= "힣":
+        final = (ord(last) - 0xAC00) % 28
+        return "로" if final in (0, 8) else "으로"
+    if last and last.isascii() and last.isdigit():
+        return "으로" if last in "036" else "로"
+    return "로"
+
+
 def workbook_identity(context):
     """The subject can sit on a sheet other than the one being narrated."""
     for sheet in context.get("sheets", []):
