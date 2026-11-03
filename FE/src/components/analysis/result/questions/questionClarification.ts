@@ -40,9 +40,33 @@ export const buildClarificationRequest = (
   optionId: string,
   report: InsightReportResult | null,
 ) => {
-  if (!answers.includes(answer)) return null
-  const option = getClarificationOptions(answer).find((item) => item.id === optionId)
-  const source = answer.resolvedQuestion || answer.question
+  const requestedSource = answer.resolvedQuestion || answer.question
+  const requestedOption = getClarificationOptions(answer).find(
+    (item) => item.id === optionId,
+  )
+  if (!requestedOption || !bounded(requestedSource, 2, 1000)) return null
+
+  // Restored answers are deserialized into new objects, so reference equality is
+  // not a stable authorization boundary. Rebind the click to the canonical
+  // answer currently stored in the session, while still requiring the complete
+  // server-issued option payload to match before it can become a request.
+  const canonicalAnswer = answers.find((candidate) => {
+    const source = candidate.resolvedQuestion || candidate.question
+    if (source !== requestedSource) return false
+    const option = getClarificationOptions(candidate).find((item) => item.id === optionId)
+    return (
+      option?.label === requestedOption.label &&
+      option.scope === requestedOption.scope &&
+      option.details === requestedOption.details &&
+      option.question === requestedOption.question
+    )
+  })
+  if (!canonicalAnswer) return null
+
+  const option = getClarificationOptions(canonicalAnswer).find(
+    (item) => item.id === optionId,
+  )
+  const source = canonicalAnswer.resolvedQuestion || canonicalAnswer.question
   if (!option || !bounded(source, 2, 1000)) return null
   return {
     question: option.question,

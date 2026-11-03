@@ -97,4 +97,36 @@ def _period_cells(row):
                    for cell in found)
     header = any(isinstance(cell.value, str) and _DATE_HEADER.search(cell.value)
                  for cell in row.cells if cell not in found)
-    return found if explicit or header else []
+    return found if explicit or header or _sequential_year_axis(found) else []
+
+
+def _sequential_year_axis(cells):
+    """Accept a dense row of calendar years as an explicit period axis.
+
+    Plain numeric years are common in exported spreadsheets, but a lone
+    year-like value is also common in ordinary data.  Requiring at least
+    three contiguous columns in strictly increasing one-year steps keeps the
+    inference bounded to a recognizable axis instead of treating arbitrary
+    values as dates.
+    """
+    ordered = sorted(cells, key=_column)
+    if len(ordered) < 3:
+        return False
+    values = []
+    for cell in ordered:
+        value = cell.value
+        if isinstance(value, bool):
+            return False
+        if isinstance(value, int):
+            year = value
+        elif isinstance(value, float) and value.is_integer():
+            year = int(value)
+        elif isinstance(value, str) and re.fullmatch(r"\d{4}", value.strip()):
+            year = int(value.strip())
+        else:
+            return False
+        if not 1900 <= year <= 2100:
+            return False
+        values.append(year)
+    return (all(_column(right) == _column(left) + 1 for left, right in zip(ordered, ordered[1:]))
+            and all(right == left + 1 for left, right in zip(values, values[1:])))
