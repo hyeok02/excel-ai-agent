@@ -113,9 +113,13 @@ async def _recover(service, question, sources, replan, feedback):
         raise_for_quota_exhaustion(error)
         return None
     # A retry cannot turn mere citations or generated text into request proof.
+    # A ranking recomputed over every source row is shown with its full order and
+    # its field reading stated, so it is accepted as the limited answer it is.
+    ranked = (retried.selected_tools == ["ranked_group_query"] and retried.status == "limited"
+              and "ranking" in retried.verification.checks)
     if (retried.status not in {"answered", "limited"} or not retried.evidence
-            or retried.verification.level != "request_checked"
-            or "request_alignment" not in retried.verification.checks):
+            or not ranked and (retried.verification.level != "request_checked"
+                               or "request_alignment" not in retried.verification.checks)):
         return None
     return retried.model_copy(update={"verification": retried.verification.model_copy(update={
         "checks": list(dict.fromkeys([*retried.verification.checks, "plan_replanned"]))})})
