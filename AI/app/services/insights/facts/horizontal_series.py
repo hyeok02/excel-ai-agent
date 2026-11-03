@@ -1,14 +1,14 @@
 """Extract metric series whose dates run horizontally across worksheet regions."""
-from collections import defaultdict
 import re
-
-from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 
 from app.services.insights.display.display_quality import business_priority, is_presentable_label, is_identifier_label
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.narratives.narrative_values import finite
 from app.services.insights.facts.series_scalars import unit
 from app.services.insights.facts.horizontal_context import axis_dates, declared_axis_unit, period_label
+from app.services.insights.facts.horizontal_rows import (
+    coordinates as _coordinates, raw as _raw, worksheet_rows as _worksheet_rows,
+)
 from app.services.insights.narratives.narrative_values import overall
 
 MAX_SERIES = 24
@@ -30,24 +30,6 @@ def extract_horizontal_series(regions):
     )
     return [{key: value for key, value in item.items() if key != "row"}
             for item in results[:MAX_SERIES]]
-
-
-def _worksheet_rows(regions):
-    rows = defaultdict(dict)
-    for region in regions:
-        for source_row in region.get("analysis_rows") or region.get("preview_rows", []):
-            for cell in source_row:
-                address = str(cell.get("address", ""))
-                if not address:
-                    continue
-                column, row = _coordinates(address)
-                raw = _raw(cell)
-                if raw not in (None, ""):
-                    rows[row][column] = {
-                        "cell": address, "value": raw,
-                        "number_format": cell.get("number_format"),
-                    }
-    return rows
 
 
 def _axes(row, cells, rows):
@@ -151,12 +133,3 @@ def _basis(cells, axis):
     return next((cells[column] for column, _, _ in axis
                  if column in cells and isinstance(cells[column]["value"], str)
                  and is_presentable_label(cells[column]["value"])), None)
-
-
-def _raw(cell):
-    return cell.get("cached_value") if cell.get("formula") else cell.get("value")
-
-
-def _coordinates(address):
-    column, row = coordinate_from_string(address.replace("$", ""))
-    return column_index_from_string(column), row

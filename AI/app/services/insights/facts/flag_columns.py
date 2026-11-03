@@ -3,14 +3,8 @@ from collections import Counter
 import re
 
 from app.services.insights.narratives.table_dates import column as col
+from app.services.insights.facts.flag_marks import SYMBOLS, mark_of
 
-SYMBOLS = {
-    "o": "o", "0": "o", "○": "o", "◯": "o", "●": "o",
-    "x": "x", "×": "x", "✕": "x", "✗": "x",
-    "△": "△", "▲": "△", "▽": "△",
-    "v": "v", "✓": "v", "✔": "v", "√": "v",
-    "?": "?", "-": "-", "ー": "-", "–": "-",
-}
 MIN_ITEMS = 4
 MIN_COLUMNS = 2
 MAX_MARKS = 5
@@ -43,18 +37,6 @@ def blank_records(records, run):
     return [record for record in records
             if not any(col(item) in positions and item.get("value") not in (None, "")
                        for item in record)]
-
-
-def mark_of(value):
-    # A fraction such as 0.34, a negative number or a word beginning with x/o
-    # is not a mark. Notes are permitted only after a separated mark or an
-    # opening bracket, as in "△(pending)" and "✓ inspected".
-    if not isinstance(value, str):
-        return None
-    text = value.strip()
-    if not text or (len(text) > 1 and not re.match(r"[\s(（\[]", text[1])):
-        return None
-    return SYMBOLS.get(text[:1].casefold())
 
 
 def checklist_records(records, label, run):

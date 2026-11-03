@@ -35,8 +35,12 @@ def horizontal_insight(sheet, series, owner=("", ()), unit=("", ()), *, caption=
     metric, scope = str(series.get("metric", "")).strip(), str(series.get("scope") or "").strip()
     basis = str(series.get("basis") or "").strip()
     category = bool(_CATEGORIES.search(scope)) or cell_unit(earliest) == "명"
+    # A bare Sales label can name a role. Translate it as revenue only when
+    # the same series explicitly carries a currency, outside category scopes.
+    monetary_sales = metric.casefold() == "sales" and re.search(
+        r"\b(?:USD|EUR|KRW|GBP|JPY|INR)\b|[$€₩£¥₹]", cell_unit(earliest), re.I)
     metric_text = metric if category else (
-        readable(metric) if translate(metric) and metric.casefold() != "sales"
+        readable(metric) if translate(metric) and (metric.casefold() != "sales" or monetary_sales)
         else source_label(metric, f"{scope} {basis}"))
     caption_metric, caption_unit, caption_refs = caption
     if caption_metric and caption_metric not in metric_text:

@@ -30,7 +30,6 @@ MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 HIDDEN_SHEETS = "숨김 시트도 분석에 포함할지 여부"
 READ_CHUNK_SIZE = 1024 * 1024
 
-
 def get_insight_generator() -> InsightGenerator:
     try:
         return LangChainInsightGenerator.from_environment()
@@ -145,8 +144,6 @@ async def parse_or_bad_request(
 
 
 __all__ = [
-    "SemanticClassificationResponse",
-    "get_insight_generator",
-    "parse_or_bad_request",
-    "router",
+    "SemanticClassificationResponse", "get_insight_generator",
+    "parse_or_bad_request", "router",
 ]

@@ -1,25 +1,23 @@
 """Totals and concentration from complete, uniquely keyed source records."""
 import math
 import re
-from collections import defaultdict
 
-from app.services.insights.display.record_labels import record_group_label, record_header
+from app.services.insights.display.record_labels import record_header
 from app.services.insights.facts.series_scalars import displayed_value, unit
 from app.services.insights.facts.table_inputs import narrative_regions
-from app.services.insights.narratives.narrative_values import finite, insight, number, reference
+from app.services.insights.narratives.narrative_values import finite, insight, reference
 from app.services.insights.narratives.table_schema import column
 from app.services.insights.narratives.record_context import describe_records
 from app.services.insights.narratives.record_units import linked_record_currency, record_value
+from app.services.insights.narratives.record_summary_support import _words, _range
+from app.services.insights.narratives.record_concentration import append_concentration
+
 
 _KEY = re.compile(r"\b(?:id|identifier|policy|invoice|order|transaction|reference|record)\b|번호|식별자", re.I)
 _ADDITIVE = re.compile(r"\b(?:total|amount|value|revenue|sales|quantity|qty|units|count)\b|금액|매출|수량|건수", re.I)
 _NONADDITIVE = re.compile(r"\b(?:unit|per|average|avg|rate|ratio|percent|percentage|margin|price)\b|단가|평균|비율|비중|률", re.I)
 _TOTAL = re.compile(r"\b(?:grand\s+total|sub\s*total|total)\b|합계|총계|소계", re.I)
 _BASIS = re.compile(r"(?:(?:currency|unit|units|scale|scenario|version|basis)(?:\s+(?:code|name))?|통화(?:\s*코드)?|단위|배율|시나리오|버전|기준)", re.I)
-
-
-def _words(value):
-    return re.sub(r"([a-z])([A-Z])", r"\1 \2", str(value)).replace("_", " ")
 
 
 def record_summary_report(context):
@@ -126,50 +124,5 @@ def _report(sheet_data, header, rows, context):
         title = f"{description.subject} {label} 합계".strip()
         items.append(insight(title, fact, evidence, "metric", topic=name))
     overview = f"{description.lead(len(records))} {', '.join(totals)}입니다."
-    _, p, name, cells, values, units, unit_refs = measures[0]
-    total = math.fsum(values)
-    categories = []
-    for q, header_cell in headers.items():
-        if q in keys or q == p:
-            continue
-        labels = [row.get(q, {}).get("value") for row in records]
-        if not all(isinstance(v, str) and v.strip() and len(v) <= 60 for v in labels):
-            continue
-        if not 2 <= len(set(labels)) <= 12 or len(set(labels)) > len(rows) * .6:
-            continue
-        if set(v.casefold() for v in labels) <= {"y", "n", "yes", "no", "true", "false"}:
-            continue
-        priority = (0 if re.search(r"category|type|class|group|분류|유형|구분", _words(header_cell["value"]), re.I)
-                    else 1 if re.search(r"state|status|region|지역|상태", _words(header_cell["value"]), re.I) else 2)
-        categories.append((priority, q, header_cell, labels))
-    if categories and total > 0 and all(v >= 0 for v in values):
-        _, q, category, labels = min(categories, key=lambda c: c[:2])
-        grouped = defaultdict(list)
-        for label, value in zip(labels, values):
-            grouped[label].append(value)
-        ranked = sorted(((math.fsum(v), k) for k, v in grouped.items()), reverse=True)
-        top, label = ranked[0]
-        winners = [k for v, k in ranked if math.isclose(v, top, rel_tol=1e-12)]
-        label_text = ", ".join(f"‘{winner}’" for winner in winners)
-        category_label, measure_label = record_group_label(category["value"], headers), display_names[name]
-        tied = len(winners) > 1
-        fact = (f"{category_label}별로 보면 {label_text}의 {measure_label} 합계가 "
-                f"{'각각 ' if tied else ''}{record_value(top, units)}로 {'공동으로 ' if tied else ''}가장 큽니다. "
-                f"{'각 항목은 ' if tied else '이 항목은 '}전체 {measure_label}의 "
-                f"{number(top / total * 100)}%를 차지합니다.")
-        evidence = [reference(sheet, category["cell"]), reference(sheet, headers[p]["cell"]),
-                    _range(sheet, [row[q] for row in records]), _range(sheet, cells), key_ref,
-                    *basis_refs, *description.evidence, *unit_refs]
-        if category_label != record_header(category["value"]):
-            # The geographic reading of State needs the neighboring schema
-            # just as the numeric statement needs the source value range.
-            evidence += [reference(sheet, cell["cell"]) for cell in headers.values()
-                         if _words(cell["value"]).casefold() in {"city", "region", "country", "location"}]
-            evidence = list(dict.fromkeys(evidence))
-        items.append(insight(f"{category_label}별 {measure_label} 비중", fact, evidence, "summary", topic=name))
-        overview += f" {fact}"
-    return items, overview
-
-
-def _range(sheet, cells):
-    return reference(sheet, f"{cells[0]['cell']}:{cells[-1]['cell']}")
+    return append_concentration(sheet, rows, headers, records, keys, measures, key_ref, description,
+                                display_names, basis_refs, items, overview)

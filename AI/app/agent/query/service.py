@@ -133,10 +133,8 @@ class WorkbookQuestionService:
             return tabular
         plan = build_question_plan(question)
         execution = await asyncio.to_thread(
-            self._executor.execute,
-            plan,
-            AgentToolContext(summary, data_index, question, intent),
-            self._registry,
+            self._executor.execute, plan,
+            AgentToolContext(summary, data_index, question, intent), self._registry,
         )
         truncated = _search_scope_truncated(execution)
         if canonical := canonical_answer(question, execution, truncated, summary, data_index, intent):
