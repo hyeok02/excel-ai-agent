@@ -6,7 +6,7 @@
 읽으면 되므로 계산을 추측하지 않는다.
 """
 import re
-from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, localcontext
 
 from app.agent.writeback.change_direction import direction_after
 from app.agent.writeback.value_authorization import as_number, value_is_authorized
@@ -103,16 +103,27 @@ def _multiple(instruction: str, current: Decimal, target: Decimal) -> str | None
     return None
 
 
+def _clean(value: Decimal) -> Decimal:
+    """1.7699999999999998처럼 이진 부동소수 잡음이 붙은 원본 값은 1.77로 본다."""
+    exponent = value.as_tuple().exponent
+    if not isinstance(exponent, int) or exponent >= -10:
+        return value
+    with localcontext() as context:
+        context.prec = max(60, value.adjusted() + 15)
+        return value.quantize(Decimal("1e-10"), rounding=ROUND_HALF_UP).normalize()
+
+
 def derived_value(current_value: object, new_value: object, instruction: str) -> str | None:
     """계산으로 설명되면 그 과정을 문장으로, 아니면 None."""
     current, target = as_number(current_value), as_number(new_value)
     if current is None or target is None or TRANSITION.search(instruction):
         return None
-    return (
-        _percent(instruction, current, target)
-        or _multiple(instruction, current, target)
-        or _amount(instruction, current, target)
-    )
+    for base in dict.fromkeys([current, _clean(current)]):
+        found = (_percent(instruction, base, target) or _multiple(instruction, base, target)
+                 or _amount(instruction, base, target))
+        if found:
+            return found
+    return None
 
 
 def authorize_value(current_value, new_value, instruction, formula) -> tuple:
