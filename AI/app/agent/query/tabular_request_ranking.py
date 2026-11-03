@@ -11,6 +11,10 @@ _FIRST = re.compile(r"(?:앞의|처음|첫|first)\s*(\d+)", re.I)
 
 
 def ranking_constraints_match(text, plan, table, *, streaming=False):
+    from app.agent.query.relative_ranking_language import relative_request_text
+    text = relative_request_text(text, plan, table)
+    if text is None:
+        return False, frozenset()
     grouped = getattr(plan, "group_by", ())
     per = getattr(plan, "per_group_limit", None)
     request = ranking_request(text, table, grouped=bool(grouped), excluded=grouped)
@@ -22,6 +26,10 @@ def ranking_constraints_match(text, plan, table, *, streaming=False):
             return not plan.order_by and not grouped and plan.limit == int(first.group(1)), frozenset()
         return plan.limit is None and plan.order_by is None and per is None, frozenset()
     count, descending, requested_metric = request.count, request.descending, request.metric
+    if getattr(plan, "relative_rank", None) is not None:
+        if count not in (None, 1):
+            return False, frozenset()
+        count = 1
     if grouped:
         if per is not None:
             return (plan.operation == "row_list" and plan.limit is None and per == count

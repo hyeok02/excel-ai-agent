@@ -18,7 +18,8 @@ def unit(cell):
     spec = parse_number_format(fmt)
     if spec.percent:
         return "%"
-    literals = [part.strip() for part in re.findall(r'"([^"]+)"', fmt) if part.strip()]
+    literals = list(dict.fromkeys(part.strip() for part in re.findall(r'"([^"]+)"', fmt)
+                                 if part.strip() and part.strip() not in {"-", "–", "—", "+"}))
     escaped = "".join(re.findall(r"\\([A-Za-z가-힣])", fmt))
     if escaped:
         literals.append(escaped)

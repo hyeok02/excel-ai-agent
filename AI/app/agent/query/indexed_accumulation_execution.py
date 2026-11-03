@@ -29,7 +29,8 @@ def execute_indexed_accumulation(plan, table, selected, needed, question, index)
                 return None
     answer = stream_answer(question, table, needed, result, source_scanned=False)
     if answer is not None:
-        answer.answer = population.description() + answer.answer
+        detail = population.description()
+        answer.answer = answer.answer + ("\n" + detail if detail else "") if plan.relative_rank else detail + answer.answer
     if answer is not None and index.truncated_for({table.sheet_name}):
         answer.limitations.append("이 표의 셀은 모두 대조했지만 같은 시트의 일부 다른 셀은 검색 범위에서 제외되었습니다.")
         answer.status, answer.confidence = "limited", 0.9

@@ -38,7 +38,9 @@ def test_horizontal_percentage_is_a_grounded_info_change():
     assert len(items) == 1
     assert items[0].category == "change"
     assert items[0].severity == "info"
-    assert "6.03%" in overview and "4.72%" in overview
+    # Preserve the source's one-decimal display precision without scaling its
+    # escaped literal percent values as fraction-formatted percentages.
+    assert "6.0%" in overview and "4.7%" in overview
     assert "159" not in overview
     assert items[0].evidence == [
         "'CompanySummary'!B99", "'CompanySummary'!B100",

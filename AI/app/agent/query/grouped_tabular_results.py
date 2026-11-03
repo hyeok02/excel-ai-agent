@@ -22,27 +22,49 @@ class GroupedAccumulator:
             return None, []
         groups = list(self.state.groups.values())
         if not groups:
+            if self.plan.relative_rank is not None:
+                return None, []  # An absent population cannot establish the requested anchor.
             return "지정한 조건에 맞는 행이 없어 집계할 그룹이 없습니다.", []
         original_count = len(groups)
         postprocess = AggregatePostprocess(self.state)
         groups = postprocess.select(groups)
         if groups is None:
             return None, []
+        relative_notes, relative_header, relative_lead = [], None, None
+        if self.plan.relative_rank:
+            from app.agent.query.relative_group_ranking import select_relative_groups
+            relative = select_relative_groups(self.plan, self.state, groups)
+            if relative is None:
+                return None, []
+            groups, anchor, relative_notes = relative
+            from app.agent.query.relative_ranking_render import relative_rank_summary
+            relative_lead = relative_rank_summary(self.plan, self.state, groups, anchor)
+            value = (anchor.numeric[self.plan.order_by].render(self.plan.statistic) if self.plan.order_by
+                     else f"집계 건수 {self._rank_value(anchor)}건")
+            direction = "다음" if self.plan.relative_rank.direction == "after" else "이전"
+            relative_header = (f"기준 항목 {anchor.labels[0]}: {value}. "
+                               f"같은 집계값은 같은 순위로 보고 바로 {direction}의 서로 다른 값 순위를 조회했습니다.")
         ranked = self.plan.order_by is not None or self.plan.limit is not None
         if ranked:
             if any(self._rank_value(group) is None for group in groups):
                 return None, []
             # Stable sort: ties retain the first original-row occurrence order.
             groups.sort(key=self._rank_value, reverse=self.plan.descending)
-        limit = self.plan.limit or MAX_DISPLAY_GROUPS
-        visible, limitations = groups[:limit], self._limitations()
+        limit = len(groups) if self.plan.relative_rank else self.plan.limit or MAX_DISPLAY_GROUPS
+        visible, limitations = groups[:limit], self._limitations() + relative_notes
         if self.plan.limit is None and len(groups) > limit:
             limitations.append(f"총 {len(groups)}개 그룹 중 앞의 {limit}개 그룹만 표시했습니다.")
         if ranked and len(groups) > limit and self._rank_value(groups[limit - 1]) == self._rank_value(groups[limit]):
             limitations.append("순위 경계에 동점이 있어 원본에서 먼저 등장한 그룹을 우선 표시했습니다.")
         lines = [f"조건에 맞는 {self.count}개 행을 {original_count}개 그룹으로 집계했습니다."]
+        if relative_lead:
+            lines.insert(0, relative_lead)
         if not self.plan.group_by:
             lines = [f"조건에 맞는 {self.count}개 행 전체를 집계했습니다."]
+        if relative_header:
+            lines.append(relative_header)
+            if not groups:
+                lines.append("해당하는 다음/이전 순위의 그룹은 없습니다.")
         if self.plan.having:
             lines.append(f"전체 집계 후 조건을 만족하는 그룹은 {len(groups)}개입니다.")
         if self.plan.share_of_total:

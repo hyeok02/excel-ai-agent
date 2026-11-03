@@ -6,6 +6,7 @@ from app.services.insights.models import (
     ValidatedWorkbookInsightReport, WorkbookInsight, WorkbookInsightReport,
 )
 from app.services.insights.verification.numeric_validation import numbers
+from app.services.insights.verification.checklist_grounding import grounded_checklist_source
 from app.services.insights.verification.reference_matching import resolve_references
 from app.services.insights.verification.topic_grounding import grounded_topic, required_citations
 from app.services.insights.verification.validated_report import assemble_report, add_source_fallback
@@ -29,6 +30,7 @@ def validate_workbook_insights(
     )
     result = _validate(report, index, canonical.insights)
     validated = None
+    overview_has_context = False
     if canonical.insights:
         baseline = _validate(canonical, index, canonical.insights)
         if len(baseline.insights) == len(canonical.insights):
@@ -36,6 +38,7 @@ def validate_workbook_insights(
             baseline.validation.overview_validated = True
             _merge_model_findings(baseline, result, not comparison_is_complete)
             validated = baseline
+            overview_has_context = canonical._overview_has_context
     if validated is None:
         if result.insights:
             validated = result
@@ -43,7 +46,8 @@ def validate_workbook_insights(
             from app.services.insights.quality import build_source_report
             fallback = _validate(build_source_report(context), index)
             validated = add_source_fallback(result, fallback)
-    return add_workbook_context(report, validated, context, index)
+    # Only a fully validated source overview may omit the generic introduction.
+    return validated if overview_has_context else add_workbook_context(report, validated, context, index)
 
 
 def validate_agent_insights(
@@ -75,6 +79,8 @@ def _validate_insight(
     source_text = [text for ref in resolved for text in index.reference_text.get(ref, [])]
     def supported(text: str | None, fact=False) -> bool:
         if not text:
+            return False
+        if not grounded_checklist_source(text, source_text):
             return False
         if not grounded_metric_owner(REFERENCE_PATTERN.sub(" ", text), resolved, index.observations):
             return False

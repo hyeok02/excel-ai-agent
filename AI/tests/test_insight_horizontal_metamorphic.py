@@ -74,6 +74,27 @@ def test_explicit_person_units_do_not_translate_a_sales_role_into_revenue():
     assert "Sales" in insight.fact and "매출" not in insight.fact
 
 
+@pytest.mark.parametrize("number_format", ["$#,##0", '0"EUR"', '0"KRW"'])
+def test_explicit_currency_keeps_sales_measure_readable(number_format):
+    [insight], _ = _horizontal(_source((0, 1, 2), formats=[number_format] * 3, label="Sales"))
+    assert "매출" in insight.title and "매출" in insight.fact
+
+
+def test_bare_sales_does_not_acquire_revenue_meaning_without_units():
+    [insight], _ = _horizontal(_source((0, 1, 2), label="Sales"))
+    assert "Sales" in insight.fact and "매출" not in insight.fact
+
+
+def test_department_sales_keeps_category_meaning_even_with_currency_format():
+    source = _source((0, 1, 2), formats=["$#,##0"] * 3, label="Sales")
+    series = extract_horizontal_series([source])
+    series[0].update(scope="Department", scope_cell="A1")
+    [insight], _ = horizontal_trend_report({"sheets": [{
+        "name": "Teams", "business_facts": {"horizontal_series": series},
+    }]})
+    assert "Sales" in insight.fact and "매출" not in insight.fact
+
+
 def test_duplicate_dates_require_equal_values_or_explicit_separate_bases():
     source = region([cell("B1", "2024-01-01"), cell("C1", "2024-01-01"), cell("D1", "2025-01-01")],
                     [cell("A2", "Output"), cell("B2", 100), cell("C2", 500), cell("D2", 600)])

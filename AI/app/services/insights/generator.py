@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -20,6 +21,12 @@ from app.services.insights.prompts import SYSTEM_PROMPT, build_user_prompt_from_
 from app.services.insights.quality import ensure_business_report
 from app.services.insights.narratives.source_narratives import source_narrative_report
 from app.services.workbook_parser import WorkbookSummary
+
+
+logger = logging.getLogger(__name__)
+SOURCE_FALLBACK_NOTICE = (
+    "AI 설명을 생성하지 못해 원본 표에서 직접 계산·확인한 결과를 표시합니다."
+)
 
 
 class LangChainInsightGenerator:
@@ -97,9 +104,11 @@ class LangChainInsightGenerator:
             return ensure_business_report(report, context)
         except Exception as exception:
             # Optional model prose must not make a complete, source-verified analysis fail.
+            logger.warning("Insight model generation failed (%s)", type(exception).__name__)
             if context is not None:
                 source_report = source_narrative_report(context)
                 if source_report.insights:
+                    source_report._generation_notice = SOURCE_FALLBACK_NOTICE
                     return source_report
             raise InsightGenerationError(
                 "AI 인사이트를 생성하지 못했습니다."

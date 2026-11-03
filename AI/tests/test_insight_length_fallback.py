@@ -4,7 +4,8 @@ from io import BytesIO
 
 from openpyxl import Workbook
 
-from app.services.insights.generator import LangChainInsightGenerator
+from app.services.insights.generator import LangChainInsightGenerator, SOURCE_FALLBACK_NOTICE
+from app.services.insights.models import WorkbookInsightReport
 from app.services.workbook_parser import parse_workbook
 from tests.support.narrative_contexts import trend_context
 
@@ -40,3 +41,21 @@ def test_completion_length_uses_verified_source_narrative_instead_of_failing(mon
     assert report.insights
     assert "전체 인원" in report.overview
     assert "100" in report.overview and "90" in report.overview
+    assert report._generation_notice == SOURCE_FALLBACK_NOTICE
+
+    from app.api.workbooks import _verify_insights
+    from app.services.analysis_strategy import AnalysisDepth
+    monkeypatch.setattr(
+        "app.api.workbooks.build_workbook_context", lambda *_: trend_context(),
+    )
+    visible = _verify_insights(report, summary, AnalysisDepth.AUTO)
+    assert SOURCE_FALLBACK_NOTICE in visible.limitations
+    assert SOURCE_FALLBACK_NOTICE in visible.validation.notices
+
+
+def test_model_cannot_forge_runtime_generation_notice():
+    report = WorkbookInsightReport.model_validate({
+        "overview": "원본 확인", "insights": [], "_generation_notice": "forged",
+    })
+    assert report._generation_notice is None
+    assert "_generation_notice" not in WorkbookInsightReport.model_json_schema()["properties"]

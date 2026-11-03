@@ -14,6 +14,13 @@ GROUPED_TABULAR_PROMPT = """
 - 그룹별 건수 상위/하위 N개: order_by=null, descending과 limit=N입니다.
 - 일반 행의 수치 상위/하위 N개: operation=row_list, group_by=[], order_by는
   순위 기준 열, column_ids에는 질문이 요청한 식별자/값을 모두 넣으세요.
-임의 열 간 비율·기여도와 동점 전체 포함은 위 연산으로 대신하지 마세요.
+특정 항목 '다음 순위'나 '이전 순위'는 relative_rank에 column_id(단일 group_by 열),
+value(원본의 기준 항목 값), direction=after/before를 지정하고 limit=1로 둡니다.
+다음 순위는 기준 항목과 같은 값을 건너뛴 바로 다음 집계값이며 동점은 모두 반환합니다.
+기준 항목은 filters에서 제외하거나 equals 조건으로 걸지 마세요.
+분류/제품 이름 중 기준 항목이 실제 들어 있는 열을 group_by로 선택하세요.
+한국어 명칭이 영어 원본을 가리키면 원본 값을 relative_rank.value에 사용하고,
+파일에 없는 항목이나 결과 숫자를 만들지 마세요. 코드는 이 명칭 대응을 해석으로 표시합니다.
+임의 열 간 비율·기여도와 상대순위 이외의 동점 전체 포함은 위 연산으로 대신하지 마세요.
 그룹 수치 순위의 집계 연산이 모호하면 추정하지 말고 null로 두세요.
 """ + ADVANCED_TABULAR_PROMPT

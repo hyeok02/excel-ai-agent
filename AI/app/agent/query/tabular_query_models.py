@@ -2,7 +2,7 @@
 import math
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
 from app.agent.query.boolean_filter_models import BooleanFilterExpression, validate_expression
 
@@ -42,6 +42,30 @@ class TabularAggregateCondition(BaseModel):
         return value
 
 
+class RelativeGroupRank(BaseModel):
+    """A source group is an ordering anchor, not an excluded row predicate."""
+    model_config = ConfigDict(extra="forbid")
+
+    column_id: str
+    value: str | int | float | bool
+    direction: Literal["after", "before"] = "after"
+    _original_request_label: str | None = PrivateAttr(default=None)
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def nonblank_finite_value(cls, value):
+        if isinstance(value, str) and value.strip() and len(value) <= 300:
+            return value
+        if isinstance(value, bool):
+            return value
+        try:
+            if isinstance(value, (int, float)) and math.isfinite(value):
+                return value
+        except OverflowError:
+            pass
+        raise ValueError("Relative rank needs one finite, nonblank source identity")
+
+
 class TabularQueryPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -56,6 +80,7 @@ class TabularQueryPlan(BaseModel):
     having: list[TabularAggregateCondition] = Field(default_factory=list, max_length=4)
     share_of_total: bool = False
     per_group_limit: int | None = Field(default=None, ge=1, le=100)
+    relative_rank: RelativeGroupRank | None = None
     order_by: str | None = None
     descending: bool = True
     limit: int | None = Field(default=None, ge=1, le=100)

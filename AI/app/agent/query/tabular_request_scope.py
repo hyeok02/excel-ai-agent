@@ -117,6 +117,8 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
                    and identifier.casefold() not in range_addresses]
     filters = {str(item.value).casefold() for item in plan.filters
                if item.operator == "equals"}
+    if getattr(plan, "relative_rank", None):
+        filters.add(str(plan.relative_rank.value).casefold())
     # Keep the full source value as the identity when the request contains a
     # compound key (for example "Unit #21"), not just its regex ID fragment.
     source_values = {str(value).casefold() for row in table.rows for value in row.values.values()}

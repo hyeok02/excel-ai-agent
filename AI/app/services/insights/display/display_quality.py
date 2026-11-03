@@ -64,15 +64,15 @@ def is_field_label(label: object, raw: object) -> bool:
 
 
 def business_priority(value: object) -> int:
-    text = " ".join(str(value).split()).casefold()
+    text = _semantic_text(value)
     for index, term in enumerate(BUSINESS_TERMS):
-        if term in text:
+        if _contains_term(text, term):
             return len(BUSINESS_TERMS) - index
     return 0
 
 
 def metric_family(value: object) -> str:
-    text = " ".join(str(value).split()).casefold()
+    text = _semantic_text(value)
     families = (
         ("revenue", ("revenue", "매출")),
         ("net_income", ("net income", "순이익")),
@@ -84,4 +84,16 @@ def metric_family(value: object) -> str:
         ("debt", ("debt", "부채")),
         ("cash", ("cash", "현금")),
     )
-    return next((name for name, terms in families if any(term in text for term in terms)), "")
+    return next((name for name, terms in families if any(_contains_term(text, term) for term in terms)), "")
+
+
+def _semantic_text(value):
+    # Preserve normal compound column names while not matching inside entities.
+    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", str(value)).replace("_", " ")
+    return " ".join(text.split()).casefold()
+
+
+def _contains_term(text, term):
+    if term.isascii():
+        return bool(re.search(r"(?<![a-z])" + re.escape(term) + r"(?:s)?(?![a-z])", text))
+    return term in text

@@ -19,6 +19,8 @@ def bind_tabular_plan(plan, table):
             "having": [condition.model_copy(update={"column_id": resolve(condition.column_id)
                         if condition.column_id else None}) for condition in plan.having],
             "order_by": resolve(plan.order_by) if plan.order_by else None,
+            "relative_rank": (plan.relative_rank.model_copy(update={
+                "column_id": resolve(plan.relative_rank.column_id)}) if plan.relative_rank else None),
         })
     except ValueError:
         return None

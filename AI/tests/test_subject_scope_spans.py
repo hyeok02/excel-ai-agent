@@ -28,3 +28,27 @@ def test_repeated_header_above_evidence_remains_a_subject() -> None:
     ]}
 
     assert visible_subject(context, {"a!i5:i20"}) == "Sample Company"
+
+
+def test_first_data_label_inferred_as_region_title_is_not_the_table_owner() -> None:
+    context = {"sheets": [{"name": "Measures", "business_facts": {"table_regions": [{
+        "title": "Purchased power",
+        "rows": [
+            [_cell("A7", "Purchased power"), _cell("B7", 80), _cell("C7", 60)],
+            [_cell("A14", "All energy"), _cell("B14", 300), _cell("C14", 240)],
+        ],
+    }]}}]}
+
+    assert visible_subject(context, {"measures!a14:c14"}) == ""
+
+
+def test_standalone_region_title_still_names_the_table_owner() -> None:
+    context = {"sheets": [{"name": "Measures", "business_facts": {"table_regions": [{
+        "title": "North Research Institute",
+        "rows": [
+            [_cell("A1", "North Research Institute"), _cell("B1", None)],
+            [_cell("A7", "Purchased power"), _cell("B7", 80)],
+        ],
+    }]}}]}
+
+    assert visible_subject(context, {"measures!b7"}) == "North Research Institute"

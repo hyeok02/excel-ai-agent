@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from app.services.analysis_strategy import AnalysisDepth
 from app.services.workbook_parser import WorkbookSummary
@@ -36,6 +36,11 @@ class WorkbookInsight(BaseModel):
 
 
 class WorkbookInsightReport(BaseModel):
+    # Runtime provenance must never be authored by the model or enter its schema.
+    _generation_notice: str | None = PrivateAttr(default=None)
+    # Set only by a source narrator that includes record scope in its overview.
+    _overview_has_context: bool = PrivateAttr(default=False)
+
     overview: str = Field(
         description="검증 가능한 원본 사실의 요약. 없는 대상·시점·비교를 만들지 않음"
     )

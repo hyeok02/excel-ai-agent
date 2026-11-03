@@ -3,6 +3,7 @@ from dataclasses import asdict
 from app.services.analysis_strategy import AnalysisProfile, STANDARD_PROFILE
 from app.services.insights.facts.business_facts import build_business_facts
 from app.services.insights.facts.content_outline import build_content_outline
+from app.services.insights.facts.source_notes import source_notes as _source_notes
 from app.services.insights.facts.samples import (
     MAX_REFERENCES_PER_FORMULA,
     select_formula_samples,
@@ -87,6 +88,7 @@ def _sheet_context(sheet: object, profile: AnalysisProfile) -> dict[str, object]
     sheet_data["region_samples"] = select_region_samples(
         regions, profile.max_regions_per_sheet
     )
+    sheet_data["source_notes"] = _source_notes(regions)
     sheet_data["omitted_region_count"] = max(
         0, len(regions) - profile.max_regions_per_sheet
     )

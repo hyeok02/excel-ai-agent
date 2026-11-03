@@ -1,19 +1,14 @@
 """Checklist tables: short status marks repeated across neighbouring columns."""
 from collections import Counter
+import re
 
 from app.services.insights.narratives.table_dates import column as col
+from app.services.insights.facts.flag_marks import SYMBOLS, mark_of
 
-SYMBOLS = {
-    "o": "o", "0": "o", "○": "o", "◯": "o", "●": "o",
-    "x": "x", "×": "x", "✕": "x", "✗": "x",
-    "△": "△", "▲": "△", "▽": "△",
-    "v": "v", "✓": "v", "✔": "v", "√": "v",
-    "?": "?", "-": "-", "ー": "-", "–": "-",
-}
 MIN_ITEMS = 4
 MIN_COLUMNS = 2
 MAX_MARKS = 5
-MIN_MARK_SHARE = 0.7
+MIN_MARK_SHARE = .7
 
 
 def flag_matrix(header, records):
@@ -26,7 +21,12 @@ def flag_matrix(header, records):
     marked = [found for cell in header
               if (found := _marked_column(cell, records)) is not None]
     run = _longest_run(marked)
-    if len(run) < MIN_COLUMNS:
+    # Zeroes, dashes and question marks alone can be ordinary missing/numeric
+    # data. At least one explicit status symbol must establish a checklist.
+    explicit = any(mark_of(item["value"]) is not None
+                   and str(item["value"]).strip()[:1].casefold() not in {"0", "-", "ー", "–", "?"}
+                   for _, _, _, filled in run for item in filled)
+    if len(run) < MIN_COLUMNS or not explicit:
         return None
     return _label_column(header, records, run[0][0]), run
 
@@ -39,9 +39,37 @@ def blank_records(records, run):
                        for item in record)]
 
 
-def mark_of(value):
-    text = str(value or "").strip()
-    return SYMBOLS.get(text[:1].casefold()) if text else None
+def checklist_records(records, label, run):
+    """Keep item rows, not a source note below the table, in the denominator."""
+    positions = {position for position, *_ in run}
+    checked = [record for record in records if any(
+        col(item) in positions and mark_of(item.get("value")) is not None
+        for item in record
+    )]
+    if not checked:
+        return []
+    # Key fields present on every marked row identify unmarked item rows too.
+    # In a table with both ID and name, a note in the ID column is not an item.
+    keys = set.intersection(*[
+        {col(item) for item in record if col(item) < min(positions)
+         and item.get("value") not in (None, "")}
+        for record in checked
+    ])
+    if label is not None:
+        keys.add(col(label))
+    result = []
+    for record in records:
+        filled = [item for item in record if item.get("value") not in (None, "")]
+        if any(col(item) in positions and mark_of(item.get("value")) is not None for item in filled):
+            result.append(record)
+        elif keys and keys <= {col(item) for item in filled}:
+            if len(filled) == 1 and re.match(
+                r"^(?:source|sources|note|notes|footnote|출처|자료|주|비고)\s*[:：.]",
+                str(filled[0]["value"]).strip(), re.I,
+            ):
+                continue
+            result.append(record)
+    return result
 
 
 def _marked_column(cell, records):
@@ -54,8 +82,21 @@ def _marked_column(cell, records):
               if col(item) == position and item.get("value") not in (None, "")]
     marks = [(found, str(item["value"]).strip()[:1]) for item in filled
              if (found := mark_of(item.get("value")))]
-    if len(filled) < MIN_ITEMS or len(marks) < len(filled) * MIN_MARK_SHARE:
+    if len(filled) < MIN_ITEMS or len(marks) / len(filled) < MIN_MARK_SHARE:
         return None
+    # Some checklists combine marks with a few written statuses. Preserve each
+    # such category in the distribution; numeric/missing values cannot become
+    # statuses and unknown values must never disappear from the total.
+    for item in filled:
+        value = item["value"]
+        if mark_of(value) is not None:
+            continue
+        if not isinstance(value, str):
+            return None
+        text = value.strip()
+        if len(text) > 80 or not re.search(r"[^\W\d_]", text):
+            return None
+        marks.append((f"text:{text}", text))
     counts = _as_written(marks)
     if not 1 <= len(counts) <= MAX_MARKS:
         return None

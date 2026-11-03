@@ -3,15 +3,18 @@ from app.services.insights.display.derived_metrics import derived_metric
 from app.services.insights.display.display_quality import business_priority, metric_family
 from datetime import date
 from app.services.insights.display.amount_units import amount_unit
-from app.services.insights.narratives.narrative_values import workbook_identity
+from app.services.insights.narratives.narrative_values import workbook_identity, overall
 from app.services.insights.narratives.horizontal_insight import horizontal_insight as _insight
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
+from app.services.insights.narratives.source_context import source_table_context
+from app.services.insights.narratives.caption_series import qualified_series_caption
 
 
 def horizontal_trend_report(context):
     primary, comparisons = narrative_sheet_groups(context)
     owner = workbook_identity(context)
-    candidates = _candidates(primary, owner) or _candidates(comparisons, owner)
+    sources = {}
+    candidates = _candidates(primary, owner, sources) or _candidates(comparisons, owner, sources)
     selected, seen, families = [], set(), set()
     for _, insight in sorted(candidates, key=lambda item: item[0], reverse=True):
         metric = insight.title.rsplit(" 변화", 1)[0].casefold()
@@ -21,13 +24,18 @@ def horizontal_trend_report(context):
         seen.add(metric)
         if family:
             families.add(family)
-        selected.append(insight)
+        sheet, series, source_unit = sources[id(insight)]
+        caption, refs = source_table_context(context, insight)
+        measure, count_unit, refs = qualified_series_caption(sheet, series, caption, refs)
+        qualified = _insight(str(sheet.get("name", "")), series, owner, source_unit,
+                             caption=(measure, count_unit, refs)) if measure else insight
+        selected.append(qualified or insight)
         if len(selected) == 5:
             break
     return selected, " ".join(item.fact for item in selected[:2])
 
 
-def _candidates(sheets, owner=("", ())):
+def _candidates(sheets, owner=("", ()), sources=None):
     results = []
     for source_order, sheet in sheets:
         facts = sheet.get("business_facts", {})
@@ -37,8 +45,11 @@ def _candidates(sheets, owner=("", ())):
         for series_order, series in enumerate(extracted):
             insight = _insight(str(sheet.get("name", "")), series, owner, unit)
             if insight:
+                if sources is not None:
+                    sources[id(insight)] = sheet, series, unit
                 priority = (
                     not _derived(series) and _signature(series) not in derived,
+                    overall(series.get("metric", "")),
                     business_priority(series.get("metric")),
                     _settled(series),
                     _basis_priority(series.get("basis")),

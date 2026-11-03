@@ -33,7 +33,7 @@ class AnalysisProfile:
 FAST_PROFILE = AnalysisProfile(
     strategy=AnalysisStrategy.FAST,
     model_env_name="OPENAI_FAST_MODEL",
-    default_model="gpt-4.1-nano",
+    default_model="gpt-4.1-mini",
     max_sheets=10,
     max_formulas_per_sheet=4,
     max_regions_per_sheet=3,
