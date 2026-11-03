@@ -10,7 +10,6 @@ import re
 from app.services.insights.display.glossary import translate
 from app.services.insights.display.source_vocabulary import AIR as _AIR, TERMS as _TERMS, UNITS as _UNITS
 
-
 def source_label(value, context=""):
     """Translate known source words while retaining unknown qualifiers verbatim."""
     text = " ".join(str(value or "").split())
@@ -25,8 +24,8 @@ def source_label(value, context=""):
     )
     if caption:
         subject = source_label(caption[1])
-        years = f" ({caption[2]}~{caption[3]}년)" if caption[2] else ""
-        return f"{subject}의 대기질별 일수 비율{years}"
+        years = f", {caption[2]}~{caption[3]}년" if caption[2] else ""
+        return f"1년 전체 날짜 중 각 공기질 등급에 해당하는 날의 비율 ({subject}{years})"
     scope = f"{context} {text}"
     if re.search(r"\bair\s+quality\b|대기질", scope, re.I) and text.casefold() in _AIR:
         return _AIR[text.casefold()]
@@ -75,6 +74,8 @@ def source_caption(value):
     text = re.sub(r"^[A-Z]{2,}\d+\s*:\s*", "", text)
     if not text:
         return ""
+    if re.fullmatch(r"percentage of days with .+? air quality for .+", text, re.I):
+        return source_label(text)
     beds = re.fullmatch(r"number of (.+? beds) by (.+?) averaged over (?:a )?complete month\.?\s*(?:data for (.+?)\.?)?", text, re.I)
     if beds:
         measure = source_label(re.sub(r"available and occupied beds", "beds available · beds occupied", beds[1], flags=re.I))

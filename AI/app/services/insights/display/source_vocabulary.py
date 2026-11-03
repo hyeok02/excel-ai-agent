@@ -4,7 +4,7 @@ TERMS = {
     "population estimates": "인구 추정치", "population estimate": "인구 추정치",
     "population": "인구", "asthma attack prevalence": "천식 발작 경험 비율",
     "current asthma prevalence": "현재 천식 유병률", "asthma prevalence": "천식 유병률",
-    "air quality": "대기질", "greenhouse gas emissions": "온실가스 배출량",
+    "air quality": "공기질", "greenhouse gas emissions": "온실가스 배출량",
     "carbon dioxide emissions": "이산화탄소 배출량", "emissions": "배출량",
     "average price of electricity": "평균 전기요금", "electricity prices": "전기요금",
     "electricity price": "전기요금", "electricity generation": "발전량",
