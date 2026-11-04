@@ -1,5 +1,7 @@
 """Typed, unit-aware predicates and ordering over a validated table population."""
 import math
+import re
+from datetime import date, datetime
 from decimal import Decimal
 
 from app.agent.query.excel_number_formats import parse_number_format
@@ -47,6 +49,8 @@ def matches(value, condition, number_format="General", header=""):
     if operator == "contains":
         return isinstance(value, str) and isinstance(condition.value, str) and condition.value.casefold() in value.casefold()
     percent = getattr(condition, "value_unit", "raw") == "percent"
+    if operator in DATE_COMPARISONS and (dates := _dates(value, condition.value)) is not None:
+        return DATE_COMPARISONS[operator](*dates)
     if isinstance(value, str) and finite_number(condition.value) and not percent:
         from app.agent.query.source_numeric_intervals import source_numeric_interval, interval_comparison
         interval = source_numeric_interval(value)
@@ -81,6 +85,34 @@ def matches(value, condition, number_format="General", header=""):
             return None
         actual *= spec.multiplier
     return comparisons[operator](actual, threshold)
+
+
+DATE_COMPARISONS = {
+    "equals": lambda left, right: left == right, "not_equals": lambda left, right: left != right,
+    "greater_than": lambda left, right: left > right, "greater_than_or_equal": lambda left, right: left >= right,
+    "less_than": lambda left, right: left < right, "less_than_or_equal": lambda left, right: left <= right,
+}
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?")
+
+
+def _dates(value, bound):
+    """A source date against a date bound ("2023-12-31"); a day bound compares days."""
+    actual, limit = _date(value), _date(bound)
+    if actual is None or limit is None:
+        return None
+    if isinstance(bound, str) and len(bound.strip()) == 10:
+        return actual.date(), limit.date()
+    return actual, limit
+
+
+def _date(value):
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, date):
+        return datetime(value.year, value.month, value.day)
+    if isinstance(value, str) and _ISO_DATE.fullmatch(value.strip()):
+        return datetime.fromisoformat(value.strip())
+    return None
 
 
 def ordered_rows(rows, plan):

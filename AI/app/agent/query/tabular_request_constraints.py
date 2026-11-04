@@ -13,6 +13,7 @@ from app.agent.query.tabular_request_categories import categories_match
 from app.agent.query.tabular_request_literals import without_literals
 from app.agent.query.tabular_request_grouping import grouping_constraints_match
 from app.agent.query.tabular_request_operations import operation_matches
+from app.agent.query.tabular_request_periods import period_filters, without_periods
 from app.agent.query.tabular_advanced_language import advanced_operations_match, categorical_request_text
 from app.agent.query.tabular_having_language import without_checked_having
 
@@ -29,6 +30,11 @@ def matches_constraints(question, plan, table, tables, *, streaming=False) -> bo
         plan = plan.model_copy(update={"filters": [], "filter_expression": None})
         question = checked
     text = _without_source_names(question, tables)
+    # Date filters selecting exactly a period the request names are its own conditions.
+    if dated := period_filters(text, plan, table):
+        plan = plan.model_copy(update={"filters": [item for index, item in enumerate(plan.filters)
+                                                   if index not in dated]})
+        text = without_periods(text)
     from app.agent.query.relative_ranking_language import relative_request_text
     ranking_text = text
     text = relative_request_text(text, plan, table)
