@@ -23,16 +23,21 @@ _CHANGE_MARKERS = (
 _OVER_TIME = re.compile(r"변화|변동|증감|추이|변했|달라졌|늘었|줄었|늘어|줄어|"
                         r"(?:시작|처음|최초).*(?:마지막|최근|끝)|\b(?:change|trend|grew|fell|rose)\b", re.I)
 _COUNT_VALUE = re.compile(r"(?<!\d)\d[\d,]*(?:건|개|명|대)(?![가-힣])")
+_DAY = r"(?:19|20)\d{2}\s*년?(?:\s*\d{1,2}\s*월)?(?:\s*\d{1,2}\s*일)?"
+_PERIOD = re.compile(rf"{_DAY}\s*(?:부터|~|∼|–|—|-|\bto\b)\s*{_DAY}(?:\s*까지)?", re.I)
 
 
 def required_concepts_match(question: str, text: str) -> bool:
     normalized = question.casefold()
     if not requested_identifiers_match(normalized, text):
         return False
+    # "2022년 1월 1일부터 2023년 12월 30일까지의 합계" is a fact about the whole
+    # period, not about 2023: a period's end points do not match a single year.
+    points = text if _PERIOD.search(normalized) else _PERIOD.sub(" ", text)
     years = set(re.findall(r"(?:19|20)\d{2}", normalized))
-    if years and not years.issubset(set(re.findall(r"(?:19|20)\d{2}", text))):
+    if years and not years.issubset(set(re.findall(r"(?:19|20)\d{2}", points))):
         return False
-    if not _specific_dates_match(normalized, text):
+    if not _specific_dates_match(normalized, points):
         return False
     ranks = _ranks(normalized)
     if ranks and not ranks.issubset(_ranks(text)):
