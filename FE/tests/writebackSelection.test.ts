@@ -7,6 +7,7 @@ import {
   approvalButtonLabel,
   brokenDependencies,
   changeKey,
+  nextShownCount,
   toggleChangeKey,
   toggleSelection,
   unselectedRelated,
@@ -126,4 +127,11 @@ test('관련 셀이 없는 제안은 예전과 똑같이 동작한다', () => {
   assert.deepEqual(toggleSelection(changes, ['매출!B12', '매출!C12'], '매출!B12'), [
     '매출!C12',
   ])
+})
+
+test('folded changes open ten at a time and never past the total', () => {
+  assert.equal(nextShownCount(0, 91), 10)
+  assert.equal(nextShownCount(10, 91), 20)
+  assert.equal(nextShownCount(90, 91), 91)
+  assert.equal(nextShownCount(0, 3), 3)
 })
