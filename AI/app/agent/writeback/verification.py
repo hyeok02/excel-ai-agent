@@ -20,8 +20,10 @@ def workbook_fingerprint(content: bytes, keep_vba: bool) -> dict[str, object]:
 
 def compare_fingerprints(before, after, changes) -> list[VerificationCheck]:
     targets = {(change.sheet_name, change.reference) for change in changes}
+    formula_targets = {(change.sheet_name, change.reference) for change in changes
+                       if _is_formula_value(change.new_value)}
     unchanged_formula_targets = {
-        target for target in targets if not _is_formula_change(changes, target)
+        target for target in targets if target not in formula_targets
     }
     formulas_preserved = all(
         before["formulas"].get(target) == after["formulas"].get(target)
@@ -104,14 +106,6 @@ def _check(name: str, passed: bool, detail: str) -> VerificationCheck:
 
 def _is_formula_value(value: object) -> bool:
     return isinstance(value, str) and value.lstrip().startswith("=")
-
-
-def _is_formula_change(changes, target: tuple[str, str]) -> bool:
-    return any(
-        (change.sheet_name, change.reference) == target
-        and _is_formula_value(change.new_value)
-        for change in changes
-    )
 
 
 def _features(content: bytes) -> tuple[bytes, ...]:

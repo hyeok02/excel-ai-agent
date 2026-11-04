@@ -6,8 +6,10 @@ from app.agent.writeback.models import (
     WritebackProposal,
     WritebackStatus,
 )
-from app.agent.writeback.references import MAX_CHANGES, key
+from app.agent.writeback.references import key
 from app.agent.writeback.row_scope import every_row_drafts
+from app.agent.writeback.rule_proposals import ruled_proposal
+from app.agent.writeback.writeback_tables import writeback_catalog
 from app.agent.writeback.validation import validate_changes
 
 
@@ -16,7 +18,7 @@ class WorkbookWritebackProposalService:
         self._generator = generator
 
     async def propose(
-        self, instruction: str, data_index: WorkbookDataIndex
+        self, instruction: str, data_index: WorkbookDataIndex, summary=None
     ) -> WritebackProposal:
         candidates = select_writeback_candidates(instruction, data_index)
         available = {
@@ -25,7 +27,6 @@ class WorkbookWritebackProposalService:
         }
         context = {
             "truncated": data_index.truncated,
-            "max_changes": MAX_CHANGES,
             "supports": [
                 "value",
                 "clear",
@@ -43,8 +44,14 @@ class WorkbookWritebackProposalService:
                 }
                 for cell in candidates
             ],
+            # Source tables for condition rules: ids, headers and their source values.
+            "tables": writeback_catalog(summary, data_index) if summary is not None else [],
         }
         draft = await self._generator.generate(instruction, data_index.filename, context)
+        if draft.rules and summary is not None:
+            ruled = ruled_proposal(instruction, draft.rules, summary, data_index)
+            if ruled is not None:
+                return ruled
         checked, note = interpreted_instruction(instruction, draft.changes, data_index)
         changes, risks = validate_changes(draft.changes, available, data_index, checked)
         changes, risks, scope = _every_row(checked, changes, risks, data_index)

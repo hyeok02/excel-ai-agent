@@ -22,8 +22,8 @@ class UnsafeWritebackError(ValueError):
 def apply_writeback(
     filename: str, content: bytes, changes: list[WritebackChange]
 ) -> tuple[bytes, WritebackManifest]:
-    if not changes or len(changes) > 50:
-        raise UnsafeWritebackError("한 번에 1~50개의 검증된 변경만 적용할 수 있습니다.")
+    if not changes:
+        raise UnsafeWritebackError("적용할 검증된 변경이 없습니다.")
     changes = [change.model_copy(update={"reference": change.reference.upper()}) for change in changes]
     try:
         for change in changes:

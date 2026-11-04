@@ -38,10 +38,9 @@ def test_a_stated_value_after_the_object_marker_reaches_every_row() -> None:
     assert proposal("Carrot UnitPrice를 2.5로 바꿔줘", [("Sales", "D4", 2.5)], _content())["status"] == "blocked"
 
 
-def test_more_rows_than_one_proposal_blocks_instead_of_cutting() -> None:
-    body = proposal("모든 Carrot의 UnitPrice를 10% 올려줘", [("Sales", "D2", 1.947)], _content(carrots=60))
-    assert body["status"] == "blocked" and not body["changes"]
-    assert any("60개" in risk for risk in body["risks"])
+def test_every_matching_row_is_proposed_however_many_there_are() -> None:
+    body = proposal("모든 Carrot의 UnitPrice를 10% 올려줘", [("Sales", "D2", 1.947)], _content(carrots=210))
+    assert body["status"] == "ready" and len(body["changes"]) == 210
 
 
 def test_a_korean_column_word_is_read_as_the_one_drafted_header_and_said_so() -> None:

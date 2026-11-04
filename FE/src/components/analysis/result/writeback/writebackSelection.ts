@@ -80,3 +80,10 @@ export const approvalButtonLabel = (selectedCount: number, totalCount: number) =
   if (selectedCount === totalCount) return '승인하고 수정본 만들기'
   return `선택한 ${selectedCount}개만 승인하고 수정본 만들기`
 }
+
+/** 접힌 변경은 한 번에 이만큼씩 펼친다. 수천 개를 한꺼번에 그리지 않는다. */
+export const CHANGE_PAGE_SIZE = 10
+
+/** 지금 보이는 개수에서 한 번 더 펼쳤을 때 보이는 개수. 전체를 넘지 않는다. */
+export const nextShownCount = (shown: number, total: number, page = CHANGE_PAGE_SIZE) =>
+  Math.min(total, shown + page)
