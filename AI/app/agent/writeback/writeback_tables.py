@@ -7,10 +7,14 @@ row and record rows, and is then built and checked exactly like any other table.
 Each text column lists its distinct source values so a word such as "쿠키" can be
 mapped onto a value that really exists.
 """
+import re
+from dataclasses import replace
+
 from openpyxl.utils import coordinate_to_tuple, get_column_letter, range_boundaries
 
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_catalog_builder import build_table
+from app.agent.query.tabular_catalog_models import QueryRow
 from app.agent.query.tabular_catalog_sources import cell_value, table_sources
 
 MAX_TABLES = 18
@@ -20,7 +24,8 @@ MAX_CHARACTERS = 30_000
 TITLE_ROWS = 4
 
 
-def writeback_tables(summary):
+def writeback_tables(summary, index=None):
+    """index: the edit's full index, so a sampled large table is rebuilt from every row."""
     tables = build_query_tables(summary)
     for sheet in summary.sheets:
         for reference, cells, complete, merged, hidden, _ in table_sources(sheet):
@@ -30,12 +35,34 @@ def writeback_tables(summary):
             table = build_table(sheet.name, narrowed, cells, complete, merged, hidden) if narrowed else None
             if table is not None:
                 tables.append(table)
-    return tables
+    return [_completed(table, index) for table in tables] if index is not None else tables
 
 
-def writeback_catalog(summary):
+def _completed(table, index):
+    """The summary keeps a sample of a large sheet; the edit index holds every row of it."""
+    if table.complete or index.truncated_for({table.sheet_name}):
+        return table
+    left, top, right, bottom = range_boundaries(table.reference)
+    letters = {column.id: re.search(r"([A-Z]+)\d+$", column.header_reference.upper()).group(1)
+               for column in table.columns}
+    skipped = table.excluded_rows | table.metadata_rows
+    rows = []
+    for row in index.rows:
+        if row.sheet_name != table.sheet_name or not top < row.row_number <= bottom or row.row_number in skipped:
+            continue
+        cells = {cell.address: cell for cell in row.cells}
+        found = {column: cells.get(f"{letter}{row.row_number}") for column, letter in letters.items()}
+        values = {column: cell.value if cell else None for column, cell in found.items()}
+        formulas = {column: cell.formula for column, cell in found.items() if cell and cell.formula}
+        formats = {column: cell.number_format for column, cell in found.items() if cell and cell.value not in (None, "")}
+        if formulas or any(value not in (None, "") for value in values.values()):
+            rows.append(QueryRow(row.row_number, values, formulas, formats))
+    return replace(table, rows=tuple(rows), complete=True)
+
+
+def writeback_catalog(summary, index=None):
     catalog, size = [], 0
-    for table in writeback_tables(summary)[:MAX_TABLES]:
+    for table in writeback_tables(summary, index)[:MAX_TABLES]:
         entry = {"table_id": table.id, "sheet_name": table.sheet_name, "range": table.reference,
                  "row_count": len(table.rows), "columns": [
                      {"column_id": column.id, "header": column.display_header, "values": _values(table, column.id)}

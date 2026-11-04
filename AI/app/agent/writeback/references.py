@@ -6,14 +6,14 @@ from app.agent.query.index import WorkbookDataIndex
 from app.agent.writeback.formula_ranges import covers, plain_ranges, sheet_ranges
 from app.agent.writeback.models import WritebackContextCell
 
-MAX_CHANGES = 200
 CELL_REFERENCE = re.compile(r"^[A-Z]{1,3}[1-9][0-9]{0,6}$")
 CELL_RANGE = re.compile(
     r"^[A-Z]{1,3}[1-9][0-9]{0,6}:[A-Z]{1,3}[1-9][0-9]{0,6}$"
 )
 
 
-def expand_reference(reference: str) -> list[str]:
+def expand_reference(reference: str, bounds: tuple[int, int] | None = None) -> list[str]:
+    """Cells of an address or range; bounds (last row, last column) clip a range to the used sheet."""
     normalized = reference.strip().upper().replace("$", "")
     if CELL_REFERENCE.fullmatch(normalized):
         return [normalized]
@@ -23,9 +23,8 @@ def expand_reference(reference: str) -> list[str]:
         min_col, min_row, max_col, max_row = range_boundaries(normalized)
     except ValueError:
         return []
-    count = (max_col - min_col + 1) * (max_row - min_row + 1)
-    if count > MAX_CHANGES:
-        return ["__TOO_LARGE__"] * (MAX_CHANGES + 1)
+    if bounds is not None:
+        max_row, max_col = min(max_row, bounds[0]), min(max_col, bounds[1])
     return [
         f"{get_column_letter(column)}{row}"
         for row in range(min_row, max_row + 1)
@@ -105,3 +104,13 @@ def column_number(reference: str) -> int:
 
 def key(sheet_name: str, reference: str) -> str:
     return f"{sheet_name.casefold()}!{reference.upper()}"
+
+
+def used_bounds(data_index: WorkbookDataIndex, sheet_name: str) -> tuple[int, int]:
+    """Last used row and column of a sheet: a whole-column range stops at the data."""
+    rows = columns = 0
+    for row in data_index.rows:
+        if row.sheet_name == sheet_name:
+            rows = max(rows, row.row_number)
+            columns = max([columns, *(column_number(cell.address) for cell in row.cells)])
+    return rows, columns

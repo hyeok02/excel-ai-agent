@@ -5,8 +5,7 @@ The model sees only a sample of candidate rows, so its draft for "모든 Carrot 
 reviewer approve a partial edit as if it were complete. From the accepted draft
 this derives the rule (one column of one table, the source labels the request
 names, one stated value or one stated calculation), re-applies it here to every
-data row of that table carrying those labels and computes each value itself. More
-rows than one proposal can hold block the request instead of being cut.
+data row of that table carrying those labels and computes each value itself.
 """
 import re
 from decimal import Decimal
@@ -18,12 +17,10 @@ from app.agent.writeback.derived_values import (
 )
 from app.agent.writeback.models import WritebackChangeDraft
 from app.agent.writeback.natural_operations import ASSIGNMENT
-from app.agent.writeback.references import MAX_CHANGES, column_number
+from app.agent.writeback.references import column_number
 from app.agent.writeback.target_semantics import ALL, LEADING_ALL, _label_matches
 from app.agent.writeback.value_authorization import as_number, value_is_authorized
 
-TOO_MANY = ("요청에 해당하는 행이 {count}개로, 한 번에 바꿀 수 있는 {limit}개를 넘습니다. "
-            "일부 행만 바뀌지 않도록 변경안을 만들지 않았습니다. 조건을 좁혀 나눠서 요청해 주세요.")
 NO_RULE = "요청한 행 전체에 같은 값이나 계산을 적용할 수 없어 일부 행만 바꾸지 않았습니다."
 
 
@@ -47,8 +44,6 @@ def every_row_drafts(instruction, changes, index):
     low, high = _table_rows(index, sheet, min(numbers), max(numbers))
     matching = [row for number, row in sorted(rows.items()) if low < number < high
                 and _target(row, column) is not None and labels <= _labels(row, prefix)]
-    if len(matching) > MAX_CHANGES:
-        return None, TOO_MANY.format(count=len(matching), limit=MAX_CHANGES)
     constant = changes[0].new_value if len({repr(c.new_value) for c in changes}) == 1 and value_is_authorized(
         changes[0].new_value, instruction) else None
     drafts = []

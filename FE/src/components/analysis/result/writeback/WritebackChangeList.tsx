@@ -1,4 +1,5 @@
 import { ChevronDown } from 'lucide-react'
+import { useMemo, useState } from 'react'
 
 import type { WritebackChange } from '@/api/analysis'
 import WritebackChangeCard from '@/components/analysis/result/writeback/WritebackChangeCard'
@@ -33,6 +34,10 @@ const WritebackChangeList = ({
   ).size
   const formulaCount = changes.filter((change) => change.changeType === 'formula').length
   const allSelected = selectable && selected.length === keys.length
+  // 조건으로 고른 수정은 수천 행이 될 수 있어, 선택 확인은 집합으로 하고
+  // 접힌 나머지 카드는 펼쳤을 때만 그린다.
+  const chosen = useMemo(() => new Set(selected), [selected])
+  const [expanded, setExpanded] = useState(false)
 
   const card = (change: WritebackChange) => {
     const key = changeKey(change)
@@ -43,7 +48,7 @@ const WritebackChangeList = ({
         onToggle={() => onToggle?.(key)}
         onToggleRelated={(item) => onToggle?.(item)}
         selectable={selectable}
-        selected={!selectable || selected.includes(key)}
+        selected={!selectable || chosen.has(key)}
         selectedKeys={selected}
       />
     )
@@ -77,12 +82,15 @@ const WritebackChangeList = ({
       </div>
       <div className="space-y-3">{visible.map(card)}</div>
       {remaining.length > 0 && (
-        <details className="group mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+        <details
+          className="group mt-3 rounded-2xl border border-slate-200 bg-white p-3"
+          onToggle={(event) => setExpanded(event.currentTarget.open)}
+        >
           <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-extrabold text-slate-600">
             나머지 변경 {remaining.length}개 확인
             <ChevronDown className="transition group-open:rotate-180" size={16} />
           </summary>
-          <div className="mt-3 space-y-3">{remaining.map(card)}</div>
+          {expanded && <div className="mt-3 space-y-3">{remaining.map(card)}</div>}
         </details>
       )}
     </div>

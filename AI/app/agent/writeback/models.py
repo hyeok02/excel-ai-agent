@@ -36,7 +36,7 @@ class WritebackRuleDraft(BaseModel):
 
 class WritebackProposalDraft(BaseModel):
     summary: str = Field(min_length=1, max_length=1000)
-    changes: list[WritebackChangeDraft] = Field(default_factory=list, max_length=50)
+    changes: list[WritebackChangeDraft] = Field(default_factory=list)
     rules: list[WritebackRuleDraft] = Field(default_factory=list, max_length=4)
     limitations: list[str] = Field(default_factory=list, max_length=5)
 

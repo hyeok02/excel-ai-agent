@@ -18,7 +18,7 @@ from app.agent.query.tabular_filters import filtered_rows
 from app.agent.query.tabular_validation import validated_table
 from app.agent.writeback.derived_values import _clean
 from app.agent.writeback.models import WritebackChangeDraft
-from app.agent.writeback.references import MAX_CHANGES, key
+from app.agent.writeback.references import key
 from app.agent.writeback.value_authorization import as_number
 from app.agent.writeback.writeback_tables import writeback_tables
 
@@ -40,7 +40,7 @@ class RuleNotFound(RuleRejected):
 
 def rule_drafts(rule, summary, index):
     """(drafts, reading shown to the reviewer) or RuleRejected."""
-    tables = [table for table in writeback_tables(summary) if table.id == rule.table_id]
+    tables = [table for table in writeback_tables(summary, index) if table.id == rule.table_id]
     if len(tables) != 1:
         raise RuleNotFound("해석한 표를 원본에서 찾지 못했습니다.")
     table = tables[0]
@@ -56,9 +56,6 @@ def rule_drafts(rule, summary, index):
         raise RuleRejected("해석한 조건을 원본 값과 비교하지 못했습니다.")
     if not rows:
         raise RuleRejected("해석한 조건에 맞는 원본 행이 없습니다. 원본에 있는 이름으로 다시 요청해 주세요.")
-    if len(rows) > MAX_CHANGES:
-        raise RuleRejected(f"조건에 맞는 행이 {len(rows)}개로, 한 번에 바꿀 수 있는 {MAX_CHANGES}개를 넘습니다. "
-                           "일부 행만 바뀌지 않도록 변경안을 만들지 않았습니다. 조건을 좁혀 나눠서 요청해 주세요.")
     columns = {column.id: column for column in table.columns}
     letter = re.search(r"([A-Z]+)\d+$", columns[target].header_reference.upper()).group(1)
     cells = {key(cell.sheet_name, cell.address): cell for item in index.rows
@@ -72,9 +69,10 @@ def rule_drafts(rule, summary, index):
             sheet_name=table.sheet_name, reference=cell.address, new_value=_new_value(rule, cell.value),
             reason=f"조건에 맞는 {len(rows)}개 행 모두에 같은 변경을 적용합니다. {rule.reading}"[:500]))
     conditions = ", ".join(f"‘{columns[item.column_id].display_header}’ {OPERATORS[item.operator]} {_shown(item.value)}"
-                           .rstrip() for item in filters) or "조건 없이 표 전체"
+                           .rstrip() for item in filters)
     action = OPERATIONS[rule.operation].format(amount=rule.amount)
-    reading = (f"‘{table.sheet_name}’ 표에서 {conditions}인 {len(rows)}개 행의 ‘{columns[target].display_header}’ 값을 "
+    scope = f"‘{table.sheet_name}’ 표에서 {conditions}인" if conditions else f"‘{table.sheet_name}’ 표 전체"
+    reading = (f"{scope} {len(rows)}개 행의 ‘{columns[target].display_header}’ 값을 "
                f"{action} 것으로 해석했습니다 ({rule.reading}). 승인 전에 대상 행과 열을 확인해 주세요.")
     return drafts, reading
 

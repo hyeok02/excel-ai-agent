@@ -3,13 +3,11 @@ from app.agent.writeback.derived_values import authorize_value
 from app.agent.writeback.models import WritebackChange
 from app.agent.writeback.related_cells import dedupe_related, related_cells, sheet_columns
 from app.agent.writeback.references import (
-    MAX_CHANGES,
-    affected_cells,
-    context_cells,
     expand_reference,
     key,
 )
 from app.agent.writeback.value_authorization import as_number, stated_current_value
+from app.agent.writeback.cell_lookup import CellLookup
 from app.agent.writeback.rule_execution import RuledTargets
 from app.agent.writeback.target_authorization import TargetAuthorization
 from app.agent.writeback.target_syntax import formula_spans
@@ -24,30 +22,26 @@ def validate_changes(drafts, available, data_index, instruction: str, ruled: boo
     changes, risks, seen = [], [], set()
     # Ruled cells were chosen by a source-checked rule; only their values need the request.
     authorization = RuledTargets(instruction) if ruled else TargetAuthorization(instruction, data_index)
+    lookup = CellLookup(data_index)
     sheets = sheet_columns(data_index)
     for draft in drafts:
-        references = expand_reference(draft.reference)
+        references = expand_reference(draft.reference, lookup.bounds[draft.sheet_name])
         if not references:
             risks.append(
                 f"{draft.sheet_name}!{draft.reference}: 올바른 셀 또는 범위 주소가 아닙니다."
             )
             continue
-        if len(changes) + len(references) > MAX_CHANGES:
-            risks.append(
-                f"{draft.sheet_name}!{draft.reference}: 한 번에 {MAX_CHANGES}개 셀까지 변경할 수 있어 제외했습니다."
-            )
-            continue
         for reference in references:
             _append_change(
                 changes, risks, seen, draft, reference, available,
-                data_index, authorization, sheets,
+                data_index, authorization, (sheets, lookup),
             )
     risks.extend(authorization.missing_risks(changes))
     return dedupe_related(changes), risks
 
 
 def _append_change(
-    changes, risks, seen, draft, reference, available, data_index, authorization, sheets
+    changes, risks, seen, draft, reference, available, data_index, authorization, shared
 ) -> None:
     cell_key = key(draft.sheet_name, reference)
     cell = available.get(cell_key)
@@ -87,7 +81,8 @@ def _append_change(
     if draft.new_value == old_value:
         risks.append(f"{draft.sheet_name}!{reference}: 기존 값과 동일합니다.")
         return
-    affected = affected_cells(data_index, cell.sheet_name, reference)
+    sheets, lookup = shared
+    affected = lookup.affected(cell.sheet_name, reference)
     change_type = "formula" if formula else "clear" if draft.new_value is None else "value"
     payload = draft.model_dump()
     payload["sheet_name"] = cell.sheet_name
@@ -96,7 +91,7 @@ def _append_change(
         WritebackChange(
             **payload,
             old_value=old_value,
-            context_cells=context_cells(data_index, cell),
+            context_cells=lookup.context(cell),
             change_type=change_type,
             value_type=_value_type(draft.new_value, cell.value_type, change_type),
             affected_cells=affected,

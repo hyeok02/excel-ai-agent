@@ -6,7 +6,7 @@ from app.agent.writeback.models import (
     WritebackProposal,
     WritebackStatus,
 )
-from app.agent.writeback.references import MAX_CHANGES, key
+from app.agent.writeback.references import key
 from app.agent.writeback.row_scope import every_row_drafts
 from app.agent.writeback.rule_proposals import ruled_proposal
 from app.agent.writeback.writeback_tables import writeback_catalog
@@ -27,7 +27,6 @@ class WorkbookWritebackProposalService:
         }
         context = {
             "truncated": data_index.truncated,
-            "max_changes": MAX_CHANGES,
             "supports": [
                 "value",
                 "clear",
@@ -46,7 +45,7 @@ class WorkbookWritebackProposalService:
                 for cell in candidates
             ],
             # Source tables for condition rules: ids, headers and their source values.
-            "tables": writeback_catalog(summary) if summary is not None else [],
+            "tables": writeback_catalog(summary, data_index) if summary is not None else [],
         }
         draft = await self._generator.generate(instruction, data_index.filename, context)
         if draft.rules and summary is not None:

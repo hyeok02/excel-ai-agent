@@ -69,9 +69,10 @@ class WorkbookDataIndex:
         return bool(sheet_names & self.truncated_sheet_names)
 
 
-def build_workbook_data_index(
-    filename: str, content: bytes, included_sheets: set[str] | None = None
-) -> WorkbookDataIndex:
+def build_workbook_data_index(filename: str, content: bytes, included_sheets: set[str] | None = None,
+                              max_cells: float | None = None, max_rows: float | None = None) -> WorkbookDataIndex:
+    # Questions keep the bounded budget; an edit passes inf so every row can be reached.
+    max_cells, max_rows = max_cells or MAX_INDEXED_CELLS, max_rows or MAX_ROWS_PER_SHEET
     formulas, values = load_workbook_pair(content, read_only=True)
     rows: list[IndexedRow] = []
     cell_count = 0
@@ -95,22 +96,22 @@ def build_workbook_data_index(
             for row_number, (formula_row, value_row) in enumerate(
                 zip(formula_sheet.iter_rows(), value_sheet.iter_rows()), start=1
             ):
-                if cell_count >= MAX_INDEXED_CELLS:
+                if cell_count >= max_cells:
                     truncated_sheets.update(
                         sheet.title for sheet in selected_sheets[sheet_index:]
                     )
                     break
                 cells = _indexed_cells(formula_sheet.title, formula_row, value_row)
                 if cells:
-                    if indexed_row_count >= MAX_ROWS_PER_SHEET:
+                    if indexed_row_count >= max_rows:
                         truncated_sheets.add(formula_sheet.title)
                         break
-                    remaining = MAX_INDEXED_CELLS - cell_count
-                    cells = cells[:remaining]
+                    remaining = max_cells - cell_count
+                    cells = cells if remaining == float("inf") else cells[:int(remaining)]
                     rows.append(IndexedRow(formula_sheet.title, row_number, tuple(cells)))
                     cell_count += len(cells)
                     indexed_row_count += 1
-            if cell_count >= MAX_INDEXED_CELLS:
+            if cell_count >= max_cells:
                 truncated_sheets.update(
                     sheet.title for sheet in selected_sheets[sheet_index:]
                 )

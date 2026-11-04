@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 from openpyxl import Workbook
 
 from app.agent.query.tabular_query_models import TabularFilter
-from app.agent.writeback import rule_execution
 from app.agent.writeback.models import WritebackProposalDraft, WritebackRuleDraft
 from app.api.workbook_writebacks import get_writeback_generator
 from app.main import app
@@ -76,10 +75,7 @@ def test_unsafe_or_unstated_readings_block_every_row() -> None:
         assert body["risks"]
 
 
-def test_more_rows_than_one_proposal_holds_are_not_cut(monkeypatch) -> None:
-    monkeypatch.setattr(rule_execution, "MAX_CHANGES", 2)
-    body = _propose("쿠키 단가를 10% 올려줘")
-    assert body["status"] == "blocked" and any("3개" in risk for risk in body["risks"])
+
 
 
 def test_a_reading_naming_nothing_in_the_source_falls_back_to_the_checked_cell_path() -> None:

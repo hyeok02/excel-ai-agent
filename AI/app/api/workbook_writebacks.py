@@ -1,8 +1,11 @@
+import math
 from io import BytesIO
 from typing import Annotated
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from starlette.datastructures import UploadFile as StarletteUploadFile
+from starlette.formparsers import MultiPartException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import TypeAdapter, ValidationError
 
@@ -41,8 +44,9 @@ async def propose_writeback(
         file.filename or "", content, include_hidden_sheets
     )
     included = {sheet.name for sheet in summary.sheets}
+    # An edit must reach every row it names, so the index is not cut at the question budget.
     index = await run_in_threadpool(
-        build_workbook_data_index, summary.filename, content, included
+        build_workbook_data_index, summary.filename, content, included, math.inf, math.inf
     )
     try:
         proposal = await WorkbookWritebackProposalService(generator).propose(instruction, index, summary)
@@ -51,12 +55,21 @@ async def propose_writeback(
         raise HTTPException(status_code=502, detail=str(exception)) from exception
 
 
+# The approved change list grows with the rows a rule reaches; Starlette's 1MB
+# default for a form field would refuse a few thousand rows.
+CHANGES_FIELD_BYTES = 512 * 1024 * 1024
+
+
 @router.post("/writebacks/apply")
-async def apply_approved_writeback(
-    changes: Annotated[str, Form(min_length=2)],
-    file: Annotated[UploadFile, File(description="수정할 원본 Excel 파일")],
-    include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
-):
+async def apply_approved_writeback(request: Request):
+    try:
+        form = await request.form(max_part_size=CHANGES_FIELD_BYTES)
+    except MultiPartException as exception:
+        raise HTTPException(status_code=400, detail=exception.message) from exception
+    changes, file = form.get("changes"), form.get("file")
+    if not isinstance(changes, str) or len(changes) < 2 or not isinstance(file, StarletteUploadFile):
+        raise HTTPException(status_code=422, detail="승인한 변경 목록과 원본 Excel 파일이 필요합니다.")
+    include_hidden_sheets = str(form.get("include_hidden_sheets", "")).casefold() in {"true", "1", "on", "yes"}
     content = await read_upload(file)
     await parse_or_bad_request(file.filename or "", content, include_hidden_sheets)
     try:

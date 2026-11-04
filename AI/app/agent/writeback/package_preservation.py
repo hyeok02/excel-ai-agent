@@ -38,6 +38,10 @@ def _without_calculation(xml):
 
 
 def _replace(xml, edits):
-    for start, end, replacement in sorted(edits, reverse=True):
-        xml = xml[:start] + replacement + xml[end:]
-    return xml
+    """Splice every edit in one pass; re-slicing the whole sheet per edit is quadratic."""
+    parts, position = [], 0
+    for start, end, replacement in sorted(edits):
+        parts.extend((xml[position:start], replacement))
+        position = end
+    parts.append(xml[position:])
+    return b"".join(parts) if isinstance(xml, bytes) else "".join(parts)
