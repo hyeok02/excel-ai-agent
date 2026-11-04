@@ -6,7 +6,7 @@ from app.agent.query.index import WorkbookDataIndex
 from app.agent.writeback.formula_ranges import covers, plain_ranges, sheet_ranges
 from app.agent.writeback.models import WritebackContextCell
 
-MAX_CHANGES = 50
+MAX_CHANGES = 200
 CELL_REFERENCE = re.compile(r"^[A-Z]{1,3}[1-9][0-9]{0,6}$")
 CELL_RANGE = re.compile(
     r"^[A-Z]{1,3}[1-9][0-9]{0,6}:[A-Z]{1,3}[1-9][0-9]{0,6}$"

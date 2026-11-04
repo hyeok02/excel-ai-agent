@@ -10,6 +10,7 @@ from app.agent.writeback.references import (
     key,
 )
 from app.agent.writeback.value_authorization import as_number, stated_current_value
+from app.agent.writeback.rule_execution import RuledTargets
 from app.agent.writeback.target_authorization import TargetAuthorization
 from app.agent.writeback.target_syntax import formula_spans
 
@@ -19,11 +20,10 @@ FORBIDDEN_FORMULA = re.compile(
 )
 
 
-def validate_changes(
-    drafts, available, data_index, instruction: str
-) -> tuple[list[WritebackChange], list[str]]:
+def validate_changes(drafts, available, data_index, instruction: str, ruled: bool = False):
     changes, risks, seen = [], [], set()
-    authorization = TargetAuthorization(instruction, data_index)
+    # Ruled cells were chosen by a source-checked rule; only their values need the request.
+    authorization = RuledTargets(instruction) if ruled else TargetAuthorization(instruction, data_index)
     sheets = sheet_columns(data_index)
     for draft in drafts:
         references = expand_reference(draft.reference)

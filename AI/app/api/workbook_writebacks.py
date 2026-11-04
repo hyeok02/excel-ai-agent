@@ -15,6 +15,7 @@ from app.agent.writeback import (
     apply_writeback,
 )
 from app.agent.writeback.editor import UnsafeWritebackError
+from app.agent.writeback.pivot_notice import with_pivot_notice
 from app.api.workbooks import HIDDEN_SHEETS, parse_or_bad_request, read_upload
 from app.services.insights.models import InsightConfigurationError, InsightGenerationError
 
@@ -44,7 +45,8 @@ async def propose_writeback(
         build_workbook_data_index, summary.filename, content, included
     )
     try:
-        return await WorkbookWritebackProposalService(generator).propose(instruction, index)
+        proposal = await WorkbookWritebackProposalService(generator).propose(instruction, index, summary)
+        return with_pivot_notice(proposal, content)
     except InsightGenerationError as exception:
         raise HTTPException(status_code=502, detail=str(exception)) from exception
 

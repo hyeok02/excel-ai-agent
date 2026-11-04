@@ -5,6 +5,7 @@ from openpyxl.cell.cell import MergedCell
 from app.services.workbook_loading import close_workbook, load_workbook_for_reading
 
 from app.agent.writeback.models import VerificationCheck, WritebackChange, WritebackManifest
+from app.agent.writeback.references import MAX_CHANGES
 from app.agent.writeback.application_contract import validate_application_contract
 from app.agent.writeback.package_editor import changed_worksheet_paths, patch_workbook_package
 from app.agent.writeback.macro_verification import add_macro_check
@@ -22,8 +23,8 @@ class UnsafeWritebackError(ValueError):
 def apply_writeback(
     filename: str, content: bytes, changes: list[WritebackChange]
 ) -> tuple[bytes, WritebackManifest]:
-    if not changes or len(changes) > 50:
-        raise UnsafeWritebackError("한 번에 1~50개의 검증된 변경만 적용할 수 있습니다.")
+    if not changes or len(changes) > MAX_CHANGES:
+        raise UnsafeWritebackError(f"한 번에 1~{MAX_CHANGES}개의 검증된 변경만 적용할 수 있습니다.")
     changes = [change.model_copy(update={"reference": change.reference.upper()}) for change in changes]
     try:
         for change in changes:

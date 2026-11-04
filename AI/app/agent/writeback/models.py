@@ -3,6 +3,8 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from app.agent.query.tabular_query_models import TabularFilter
+
 
 class WritebackStatus(StrEnum):
     READY = "ready"
@@ -21,9 +23,21 @@ class WritebackContextCell(BaseModel):
     value: str | int | float | bool | None
 
 
+class WritebackRuleDraft(BaseModel):
+    """조건으로 고른 행의 한 열을 같은 방식으로 바꾸는 해석. 행과 값은 코드가 정한다."""
+    table_id: str = Field(min_length=1, max_length=200)
+    target_column_id: str = Field(min_length=1, max_length=200)
+    filters: list[TabularFilter] = Field(default_factory=list, max_length=6)
+    operation: Literal["set", "clear", "percent_increase", "percent_decrease",
+                       "add", "subtract", "multiply"]
+    amount: str | int | float | bool | None = None
+    reading: str = Field(min_length=1, max_length=300)
+
+
 class WritebackProposalDraft(BaseModel):
     summary: str = Field(min_length=1, max_length=1000)
     changes: list[WritebackChangeDraft] = Field(default_factory=list, max_length=50)
+    rules: list[WritebackRuleDraft] = Field(default_factory=list, max_length=4)
     limitations: list[str] = Field(default_factory=list, max_length=5)
 
 
