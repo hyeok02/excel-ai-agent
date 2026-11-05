@@ -6,6 +6,9 @@ export interface WritebackRelatedCell {
   reference: string
   currentValue: string | number | boolean | null
   suggestedValue: string | number | boolean | null
+  /** 원본 셀 서식대로 보이는 값(0.0329 → 3.3%). 숫자가 아니면 비어 있다. */
+  currentDisplay?: string | null
+  suggestedDisplay?: string | null
   kind: 'total' | 'mirror'
   reason: string
   /** 합계 셀일 때만 채워진다. [바꾸기 전 식, 바꾼 뒤 식] */
@@ -18,6 +21,12 @@ export interface WritebackChange {
   reference: string
   oldValue: string | number | boolean | null
   newValue: string | number | boolean | null
+  /** 원본 셀 서식대로 보이는 값(0.0329 → 3.3%). 숫자가 아니면 비어 있다. */
+  oldDisplay?: string | null
+  newDisplay?: string | null
+  /** 서식이 자릿수를 감추거나 전후가 같아 보일 때의 실제 저장값. */
+  oldStored?: string | null
+  newStored?: string | null
   reason: string
   changeType?: 'value' | 'clear' | 'formula'
   valueType?: 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'blank' | 'formula'
@@ -26,6 +35,7 @@ export interface WritebackChange {
   contextCells?: Array<{
     reference: string
     value: string | number | boolean | null
+    display?: string | null
   }>
   relatedCells?: WritebackRelatedCell[]
   /** 새 값이 요청에 없고 계산으로 나온 경우, 그 계산 과정. */

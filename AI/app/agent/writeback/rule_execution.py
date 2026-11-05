@@ -15,10 +15,11 @@ from decimal import Decimal
 from app.agent.query.ambiguity_labels import resolve_unique_column
 from app.agent.query.tabular_validation import validated_table
 from app.agent.writeback.derived_values import _clean
+from app.agent.writeback.display_values import exact
 from app.agent.writeback.models import WritebackChangeDraft
 from app.agent.writeback.percent_amounts import stored_amount
 from app.agent.writeback.references import key
-from app.agent.writeback.rule_rows import matching_rows, shown
+from app.agent.writeback.rule_rows import matching_rows, shown as condition_value
 from app.agent.writeback.value_authorization import as_number
 from app.agent.writeback.writeback_tables import writeback_tables
 
@@ -72,9 +73,13 @@ def rule_drafts(rule, summary, index, instruction=""):
             drafts.append(WritebackChangeDraft(
                 sheet_name=table.sheet_name, reference=cell.address, new_value=_new_value(rule, cell, instruction),
                 reason=f"조건에 맞는 {len(rows)}개 행 모두에 같은 변경을 적용합니다. {rule.reading}"[:500]))
-    conditions = ", ".join(f"‘{columns[item.column_id].display_header}’ {OPERATORS[item.operator]} {shown(item.value)}"
+    conditions = ", ".join(f"‘{columns[item.column_id].display_header}’ {OPERATORS[item.operator]} {condition_value(item.value)}"
                            .rstrip() for item in filters)
-    action = OPERATIONS[rule.operation].format(amount=rule.amount)
+    # A value to set reads as the cells will show it: 0.013 in a 0.0% column is 1.3%.
+    shown_values = {exact(draft.new_value, cells[key(table.sheet_name, draft.reference)].number_format)
+                    for draft in drafts} if rule.operation == "set" else set()
+    amount = shown_values.pop() if len(shown_values) == 1 and None not in shown_values else rule.amount
+    action = OPERATIONS[rule.operation].format(amount=amount)
     scope = f"‘{table.sheet_name}’ 표에서 {conditions}인" if conditions else f"‘{table.sheet_name}’ 표 전체"
     headers = [columns[target].display_header for target in targets]
     reading = (f"{scope} {len(rows)}개 행의 {_named(headers)} 값을 "

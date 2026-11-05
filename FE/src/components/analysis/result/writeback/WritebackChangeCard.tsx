@@ -73,13 +73,19 @@ const WritebackChangeCard = ({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
         <span className="rounded-xl bg-slate-100 px-3 py-2 text-slate-600">
-          {show(change.oldValue)}
+          {show(change.oldValue, change.oldDisplay)}
         </span>
         <ArrowRight aria-hidden="true" className="text-slate-400" size={16} />
         <span className="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700">
-          {show(change.newValue)}
+          {show(change.newValue, change.newDisplay)}
         </span>
       </div>
+      {(change.oldStored || change.newStored) && (
+        <p className="mt-1.5 text-xs text-slate-500">
+          실제 저장값 · {change.oldStored ? `${change.oldStored} → ` : ''}
+          {change.newStored ?? show(change.newValue)}
+        </p>
+      )}
       <p className="mt-2 text-xs leading-5 text-slate-500">변경 이유: {change.reason}</p>
       {change.derivation && (
         <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-brand-50 px-3 py-2 text-xs leading-5 font-semibold text-brand-800">
@@ -91,13 +97,13 @@ const WritebackChangeCard = ({
         <p
           className="mt-2 truncate text-xs text-slate-400"
           title={change.contextCells
-            .map((cell) => `${cell.reference} ${show(cell.value)}`)
+            .map((cell) => `${cell.reference} ${show(cell.value, cell.display)}`)
             .join(' · ')}
         >
           주변 내용 ·{' '}
           {change.contextCells
             .slice(0, 3)
-            .map((cell) => `${cell.reference} ${show(cell.value)}`)
+            .map((cell) => `${cell.reference} ${show(cell.value, cell.display)}`)
             .join(' · ')}
         </p>
       )}
