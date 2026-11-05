@@ -90,3 +90,19 @@ def test_compaction_drops_whole_extra_facts_instead_of_truncating_numbers_or_uni
 def test_compaction_keeps_company_abbreviations_and_decimal_values_intact():
     fact = "U.S. Example Co.의 금액은 1,234.56입니다. 이전 기간 대비 2.7% 증가했습니다."
     assert compact_facts([item(fact)]) == "· " + fact
+
+
+def test_compaction_keeps_whole_period_beside_latest_change_on_long_series():
+    long = item("지표는 2022년 43.02%에서 2023년 40.42%로 2.6%p 감소했습니다.\n"
+                "전체 기간으로는 1999년 34.09%에서 2023년 40.42%로 6.33%p 증가했습니다.\n"
+                "가장 높았던 시점은 2020년 45.79%, 가장 낮았던 시점은 2001년 31.55%입니다.")
+    count = item("병상 수는 2025년 11월 94,325에서 2025년 12월 93,177로 1,148 감소했습니다. "
+                 "이전 기간 대비 1.22% 감소했습니다.\n"
+                 "전체 기간으로는 2020년 12월 78,418에서 2025년 12월 93,177로 14,759 증가했습니다.")
+    short = item("요금은 2025년 8월 17.57에서 2026년 8월 18.16으로 증가했습니다. 이전 기간 대비 3.36% 증가했습니다.")
+    lines = compact_facts([long, count, short], max_chars=260).splitlines()
+    assert lines[0].endswith("전체 기간으로는 1999년 34.09%에서 2023년 40.42%로 6.33%p 증가했습니다.")
+    assert "가장 높았던" not in lines[0]
+    assert lines[1].endswith("전체 기간으로는 2020년 12월 78,418에서 2025년 12월 93,177로 14,759 증가했습니다.")
+    # The added whole-period sentence does not push the next conclusion off.
+    assert lines[2].endswith("이전 기간 대비 3.36% 증가했습니다.")
