@@ -83,10 +83,10 @@ def test_compaction_keeps_long_term_decline_and_recent_rebound_together():
 
 def test_compaction_drops_whole_extra_facts_instead_of_truncating_numbers_or_units():
     originals = [item("출고량은 33.25 kg입니다."), item("생산량은 44.75 kg입니다.")]
-    assert compact_facts(originals, max_chars=25) == originals[0].fact
+    assert compact_facts(originals, max_chars=25) == "· " + originals[0].fact
     assert originals[1].fact == "생산량은 44.75 kg입니다."
 
 
 def test_compaction_keeps_company_abbreviations_and_decimal_values_intact():
     fact = "U.S. Example Co.의 금액은 1,234.56입니다. 이전 기간 대비 2.7% 증가했습니다."
-    assert compact_facts([item(fact)]) == fact
+    assert compact_facts([item(fact)]) == "· " + fact

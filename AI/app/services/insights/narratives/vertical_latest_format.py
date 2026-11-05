@@ -2,9 +2,11 @@
 import re
 
 from app.services.insights.facts.series_scalars import displayed_value, unit
-from app.services.insights.narratives.narrative_values import finite, number, period, reference
-from app.services.insights.narratives.series_path import path_direction
+from app.services.insights.narratives.narrative_values import direction_particle, finite, number, period, reference
+from app.services.insights.narratives.series_path import series_shape
 from app.services.insights.narratives.vertical_latest_series import _MONTHS
+
+MAX_PATH = 240
 
 
 def _period(record):
@@ -17,20 +19,31 @@ def _period(record):
 
 
 def _suffix(units):
-    return f" {units}" if units else ""
+    # "43.02%", not "43.02 %": a percent sign is written against its number.
+    return "" if not units else units if units == "%" else f" {units}"
 
 
 def _path(sheet, records, position, units):
-    if not 3 <= len(records) <= 12:
+    if not 3 <= len(records) <= MAX_PATH:
         return "", []
     cells = [record[2].get(position, {}) for record in records]
     if not all(finite(c.get("value")) for c in cells) or len({unit(c) for c in cells}) != 1:
         return "", []
     values = [displayed_value(c) for c in cells]
-    indexes = sorted({0, len(records) // 3, 2 * len(records) // 3, len(records) - 1})
-    timeline = " → ".join(f"{_period(records[i])} {number(values[i])}{_suffix(units)}" for i in indexes)
-    coverage = "기간별 기록" if len(indexes) == len(records) else "주요 시점의 기록"
-    text = f" {coverage}은 {timeline}입니다. {path_direction(values)}"
+    labels = [_period(record) for record in records]
+    texts = [f"{number(value)}{_suffix(units)}" for value in values]
+    lines = []
+    if len(records) > 4 and values[0] != values[-1]:
+        # A latest-change card on a long series also states the whole period.
+        delta = values[-1] - values[0]
+        lines.append(f"전체 기간으로는 {labels[0]} {texts[0]}에서 {labels[-1]} {texts[-1]}{direction_particle(texts[-1])} "
+                     f"{number(abs(delta))}{'%p' if units == '%' else _suffix(units)} "
+                     f"{'증가' if delta > 0 else '감소'}했습니다.")
+    if shape := series_shape(labels, values, texts):
+        lines.append(shape)
+    if not lines:
+        return "", []
+    text = "".join(f"\n{line}" for line in lines)
     evidence = []
     for source in ([record[1] for record in records], cells):
         ordered = sorted(source, key=lambda c: int(re.search(r"\d+$", c["cell"])[0]))

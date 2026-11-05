@@ -18,6 +18,7 @@ from app.services.insights.verification.validation_index import extract_referenc
 from app.services.insights.display.source_labels import source_caption
 from app.services.insights.narratives.source_context import compact_facts, source_table_context
 from app.services.insights.narratives.source_qualifications import source_qualifications
+from app.services.insights.narratives.source_annotations import source_annotations
 
 
 def source_narrative_report(context):
@@ -40,20 +41,30 @@ def source_narrative_report(context):
     _, _, mode, items, overview = min(preferred or primary or options,
                                    key=lambda option: (option[2], option[1]))
     has_context = reporters[mode] is record_summary_report
+    if has_context:
+        _intro_on_its_own_line(items, overview)
     if not has_context:
         captions = []
         qualifications = []
+        sources = []
         for item in items:
             caption, refs = source_table_context(context, item)
             captions.append(caption)
             if caption:
                 item.evidence = list(dict.fromkeys([*item.evidence, *refs]))
+            source, definition, refs = source_annotations(context, item)
+            if definition:
+                item.fact += "\n원본 정의: " + definition
+            if source or definition:
+                item.evidence = list(dict.fromkeys([*item.evidence, *refs]))
+            sources.append(source)
             qualification, refs = source_qualifications(context, item)
             if qualification:
-                item.fact += " " + qualification
+                item.fact += "\n" + qualification
                 item.evidence = list(dict.fromkeys([*item.evidence, *refs]))
             qualifications.append(qualification)
-        if reporters[mode] in (horizontal_trend_report, vertical_latest_report):
+        listed = reporters[mode] in (horizontal_trend_report, vertical_latest_report)
+        if listed:
             overview = compact_facts(items)
         # Status notes qualify the exact years shown, not every value in a file.
         notes = []
@@ -63,9 +74,12 @@ def source_narrative_report(context):
                 if sentence and sentence not in notes:
                     notes.append(sentence)
         if notes:
-            overview += " " + ". ".join(notes) + "."
+            overview += ("\n" if listed else " ") + ". ".join(notes) + "."
         if captions and captions[0]:
-            overview = f"이 파일에는 {source_caption(captions[0])} 자료가 담겨 있습니다. {overview}"
+            source = next((source for source in sources if source), "")
+            lead = f"이 파일에는 {source_caption(captions[0])} 자료가 담겨 있습니다."
+            lead += f" (출처: {source})" if source else ""
+            overview = lead + ("\n" if listed else " ") + overview
             has_context = True
     report = WorkbookInsightReport(overview=overview, insights=items, limitations=[])
     report._overview_has_context = has_context
@@ -86,3 +100,12 @@ def _source_scope(context, items):
                     sources.append(sheets[ref.split("!", 1)[0]])
     return (all(source[1] for source in sources),
             min((source[0] for source in sources), default=len(sheets)))
+
+
+def _intro_on_its_own_line(items, overview):
+    """Keep the file's context on a card, but on its own line above the card's fact."""
+    intro = re.split(r"(?<=다\.)\s+", overview.strip(), maxsplit=1)[0]
+    for item in items:
+        rest = item.fact[len(intro):].strip() if intro and item.fact.startswith(intro) else ""
+        if rest:
+            item.fact = f"{intro}\n{rest}"

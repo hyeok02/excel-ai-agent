@@ -10,7 +10,7 @@ from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.facts.series_scalars import displayed_value, scalar, unit as cell_unit
 from app.services.insights.models import WorkbookInsight
 from app.services.insights.narratives.narrative_values import direction_particle, number, period, reference
-from app.services.insights.narratives.series_path import path_direction
+from app.services.insights.narratives.series_path import series_shape
 from app.services.insights.narratives.topic_labels import scoped_source_topic
 
 _CATEGORIES = re.compile(r"\b(?:roles?|departments?|countries|regions?)\b|직무|부서|국가|지역", re.I)
@@ -63,12 +63,11 @@ def horizontal_insight(sheet, series, owner=("", ()), unit=("", ()), *, caption=
         money, money_refs = caption_unit, list(caption_refs)
     fact = _change(subject, earliest, latest, old, new, money)
     if len(points) > 2:
-        indexes = sorted({0, len(points) // 3, 2 * len(points) // 3, len(points) - 1})
-        timeline = " → ".join(f"{_period(points[index])} {_display(points[index], values[index])}{money}"
-                              for index in indexes)
-        coverage = "기간별 기록" if len(indexes) == len(points) else "주요 시점의 기록"
-        fact += f" {coverage}은 {timeline}입니다. {path_direction(values)}"
-        fact += " 최근 구간은 " + _change(subject, points[-2], latest, values[-2], new, money).split(": ", 1)[-1]
+        # One line per reading: whole period, latest step, then the series' shape.
+        fact += "\n최근 구간은 " + _change(subject, points[-2], latest, values[-2], new, money).split(": ", 1)[-1]
+        shape = series_shape([_period(point) for point in points], values,
+                             [f"{_display(point, value)}{money}" for point, value in zip(points, values)])
+        fact += f"\n{shape}" if shape else ""
     evidence = [series.get("scope_cell"), series.get("label_cell"), *series.get("label_cells", []), series.get("basis_cell"),
                 *(point.get(key) for point in points for key in ("period_cell", "value_cell"))]
     return WorkbookInsight(

@@ -27,4 +27,5 @@ def compact_facts(items, limit=3, max_chars=440):
         if parts and len(" ".join([*parts, first])) > max_chars:
             break
         parts.append(first)
-    return " ".join(parts)
+    # One conclusion per line; the cards keep the full paths.
+    return "\n".join(f"· {part}" for part in parts)

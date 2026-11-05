@@ -6,7 +6,7 @@ import { cn } from '@/utils/cn'
 
 const InsightCardBody = ({ insight }: { insight: InsightResult }) => (
   <>
-    <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
+    <p className="mt-2 whitespace-pre-line text-sm font-medium leading-6 text-slate-700">
       {insight.fact || '결론의 상세 내용이 저장되지 않았습니다.'}
     </p>
     {insight.cause && <Detail bordered label="확인된 원인" text={insight.cause} />}
