@@ -40,7 +40,8 @@ def test_readable_canonical_report_is_verified_against_the_original_source():
     assert len(report.insights) == len(items) == 3
     assert report.validation.overview_validated
     assert all(item.validation_status == InsightValidationStatus.VERIFIED for item in report.insights)
-    assert {item.fact for item in report.insights} == {item.fact for item in items}
+    # The shared file introduction sits on its own line above each card's fact.
+    assert {item.fact.replace("\n", " ") for item in report.insights} == {item.fact for item in items}
     assert "금액" in report.overview and "수량" in report.overview
     assert "관련 내용을 정리한 자료" not in report.overview
 

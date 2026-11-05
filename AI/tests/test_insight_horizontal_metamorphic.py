@@ -112,8 +112,10 @@ def test_sampled_timeline_does_not_present_itself_as_all_periods():
                     [cell("A2", "Output"), *[cell(f"{column}2", value)
                                               for column, value in zip("BCDEF", (100, 110, 60, 120, 130))]])
     [insight], _ = _horizontal(source)
-    assert "주요 시점의 기록" in insight.fact and "증가와 감소" in insight.fact
-    assert "'Factory'!D2" in insight.evidence  # The omitted dip remains cited and used for the path.
+    # A long path is not listed as if every period were shown; its dip is named instead.
+    assert "기간별 기록" not in insight.fact and "가장 낮았던 시점은 2025년 3월 1일 60" in insight.fact
+    assert "'Factory'!D2" in insight.evidence  # The dip remains cited and used for the path.
     context = _context([(f"2025-0{month}-01", "North", value)
                         for month, value in enumerate((100, 110, 60, 120, 130), 1)])
-    assert "주요 시점의 기록" in _report(context).insights[0].fact
+    fact = _report(context).insights[0].fact
+    assert "기간별 기록" not in fact and "가장 낮았던 시점은" in fact and "60" in fact

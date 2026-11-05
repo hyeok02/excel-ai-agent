@@ -6,7 +6,7 @@ from app.services.insights.narratives.narrative_values import (
 )
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.series_scalars import displayed_value
-from app.services.insights.narratives.series_path import path_direction
+from app.services.insights.narratives.series_path import series_shape
 
 
 def trend_report(context):
@@ -127,10 +127,6 @@ def _timeline(change, records, unit):
     ordered = [points[date] for date in sorted(points)]
     if len(ordered) < 3:
         return "", []
-    # Keep both endpoints and two evenly spaced intermediate observations.
-    indexes = sorted({0, len(ordered) // 3, 2 * len(ordered) // 3, len(ordered) - 1})
-    selected = [ordered[index] for index in indexes]
-    text = " → ".join(f"{period(date)} {number(value)}{unit}" for date, value, _ in selected)
-    trend = " 이 구간에서는 " + path_direction([point[1] for point in ordered])
-    coverage = "기간별 기록" if len(selected) == len(ordered) else "주요 시점의 기록"
-    return f" {coverage}은 {text}입니다.{trend}", [ref for _, _, ref in ordered]
+    shape = series_shape([period(date) for date, _, _ in ordered], [value for _, value, _ in ordered],
+                         [f"{number(value)}{unit}" for _, value, _ in ordered])
+    return (f"\n{shape}" if shape else ""), [ref for _, _, ref in ordered]

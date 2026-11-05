@@ -66,7 +66,7 @@ const InsightReportSection = ({ report: source }: InsightReportSectionProps) => 
         >
           한눈에 보기
         </h3>
-        <p className="mt-3 max-w-4xl text-base font-semibold leading-7 text-slate-800">
+        <p className="mt-3 max-w-4xl whitespace-pre-line text-base font-semibold leading-7 text-slate-800">
           {report.overview}
         </p>
         {report.hasIncompleteData && (
