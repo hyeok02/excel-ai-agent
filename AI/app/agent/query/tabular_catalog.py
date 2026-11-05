@@ -5,6 +5,7 @@ from dataclasses import replace
 from app.agent.query.tabular_catalog_models import QueryTable
 from app.agent.query.tabular_catalog_sources import source_cells, table_context, table_sources
 from app.agent.query.tabular_catalog_builder import build_table as _build_table
+from app.agent.query.tabular_narrowed_tables import has_numbers, narrowed_table, overlaps
 from app.agent.query.column_context import column_context
 from app.agent.query.tabular_header_paths import column_header_path
 from app.agent.query.tabular_catalog_ranking import table_relevance as _relevance
@@ -16,22 +17,33 @@ MAX_CATALOG_CHARACTERS = 30_000
 MAX_TABLE_CHARACTERS = 12_000
 
 
-def build_query_tables(summary) -> list[QueryTable]:
-    tables = []
+def build_query_tables(summary, text_regions=False) -> list[QueryTable]:
+    """text_regions: also offer narrowed regions holding only text (notes, link lists)."""
+    tables, narrowed = [], []
     for sheet in summary.sheets:
         sheet_cells = {address: cell for region in sheet.regions
                        for address, cell in source_cells(region).items()}
         hidden_columns = frozenset(column for region in sheet.regions for column in region.hidden_columns)
         parents = tuple(span for region in sheet.regions for span in region.merged_ranges)
-        for reference, cells, complete, merged, hidden, kind in table_sources(sheet):
-            table = _build_table(sheet.name, reference, cells, complete, merged, hidden)
-            if table is not None:
-                columns = tuple(replace(column, context=column_context(sheet.name, column, sheet_cells, parents, reference),
-                                        header_path=column_header_path(sheet.name, column, sheet_cells, parents, reference))
+        sources = list(table_sources(sheet))
+        typed = [(_build_table(sheet.name, reference, cells, complete, merged, hidden), kind)
+                 for reference, cells, complete, merged, hidden, kind in sources]
+        # A region with a title above or notes below is read without them, after the typed tables.
+        covered = [table.reference for table, _ in typed if table is not None]
+        extra = [(narrowed_table(sheet.name, reference, cells, complete, merged, hidden), kind)
+                 for reference, cells, complete, merged, hidden, kind in sources
+                 if not any(overlaps(found, reference) for found in covered)]
+        for target, found in ((tables, typed), (narrowed, extra)):
+            for table, kind in found:
+                if table is None or target is narrowed and not (text_regions or has_numbers(table)):
+                    continue
+                columns = tuple(replace(column, context=column_context(sheet.name, column, sheet_cells, parents, table.reference),
+                                        header_path=column_header_path(sheet.name, column, sheet_cells, parents, table.reference))
                                 for column in table.columns)
-                tables.append(replace(table, columns=columns, source_kind=kind, context=table_context(sheet.name, reference, sheet_cells),
+                target.append(replace(table, columns=columns, source_kind=kind,
+                                      context=table_context(sheet.name, table.reference, sheet_cells),
                                       hidden_columns=hidden_columns & {c.id for c in table.columns}))
-    return tables
+    return tables + narrowed
 
 
 def query_catalog(summary, question: str) -> list[dict]:
