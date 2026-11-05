@@ -1,4 +1,5 @@
 """A proposal built from source-checked rules: every matching row, or nothing."""
+from app.agent.writeback.period_columns import unread_years
 from app.agent.writeback.models import WritebackProposal, WritebackStatus
 from app.agent.writeback.references import key
 from app.agent.writeback.rule_execution import RuleNotFound, RuleRejected, rule_drafts
@@ -9,16 +10,20 @@ PARTIAL = "일부 행만 바뀌지 않도록 이 요청의 변경안을 만들�
 
 def ruled_proposal(instruction, rules, summary, index):
     """None when a rule names nothing in the source, so the cell drafts are used instead."""
-    drafts, readings = [], []
+    drafts, readings, headers, offered = [], [], [], []
     try:
         for rule in rules:
-            found, reading = rule_drafts(rule, summary, index)
+            found, reading, changed = rule_drafts(rule, summary, index, instruction)
             drafts.extend(found)
             readings.append(reading)
+            headers.extend(changed[0])
+            offered.extend(changed[1])
     except RuleNotFound:
         return None
     except RuleRejected as error:
         return _blocked(instruction, [str(error)], readings)
+    if (missing := unread_years(instruction, headers, offered)):
+        return _blocked(instruction, [f"요청한 기간 중 {', '.join(missing)}년 열이 해석에서 빠졌습니다.", PARTIAL], readings)
     every = {key(cell.sheet_name, cell.address): cell for row in index.rows for cell in row.cells}
     changes, risks = validate_changes(drafts, every, index, instruction, ruled=True)
     if risks or len(changes) != len(drafts):

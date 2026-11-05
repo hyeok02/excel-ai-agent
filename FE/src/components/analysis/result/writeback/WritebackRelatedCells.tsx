@@ -51,11 +51,11 @@ const WritebackRelatedCells = ({
               </label>
               <div className="ml-auto flex items-center gap-1.5 text-sm font-bold">
                 <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-slate-600">
-                  {showValue(cell.currentValue)}
+                  {showValue(cell.currentValue, cell.currentDisplay)}
                 </span>
                 <ArrowRight aria-hidden="true" className="text-slate-400" size={14} />
                 <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-emerald-700">
-                  {showValue(cell.suggestedValue)}
+                  {showValue(cell.suggestedValue, cell.suggestedDisplay)}
                 </span>
               </div>
             </div>

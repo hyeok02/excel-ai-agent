@@ -21,12 +21,16 @@ class WritebackChangeDraft(BaseModel):
 class WritebackContextCell(BaseModel):
     reference: str
     value: str | int | float | bool | None
+    # 원본 셀 서식대로 보이는 값(0.0329 → 3.3%). 숫자가 아니면 비운다.
+    display: str | None = None
 
 
 class WritebackRuleDraft(BaseModel):
     """조건으로 고른 행의 한 열을 같은 방식으로 바꾸는 해석. 행과 값은 코드가 정한다."""
     table_id: str = Field(min_length=1, max_length=200)
     target_column_id: str = Field(min_length=1, max_length=200)
+    # 같은 행에서 같은 변경을 받는 다른 열(머리글이 연도인 표의 2020~2024년 열 등).
+    also_target_column_ids: list[str] = Field(default_factory=list, max_length=60)
     filters: list[TabularFilter] = Field(default_factory=list, max_length=6)
     operation: Literal["set", "clear", "percent_increase", "percent_decrease",
                        "add", "subtract", "multiply"]
@@ -48,6 +52,8 @@ class WritebackRelatedCell(BaseModel):
     current_value: str | int | float | bool | None
     suggested_value: str | int | float | bool | None
     kind: Literal["total", "mirror"]
+    current_display: str | None = None
+    suggested_display: str | None = None
     reason: str = Field(min_length=1, max_length=300)
     # 합계 셀일 때만 채운다. [바꾸기 전 식, 바꾼 뒤 식]과 더하는 항목 이름.
     breakdown: list[str] = Field(default_factory=list, max_length=2)
@@ -56,6 +62,12 @@ class WritebackRelatedCell(BaseModel):
 
 class WritebackChange(WritebackChangeDraft):
     old_value: str | int | float | bool | None
+    # 원본 셀 서식대로 보이는 값. 서식이 새 값의 자릿수를 감추거나 전후가 같아 보이면
+    # 실제 저장값도 함께 준다(2.057이 $2.06으로 보일 때 등).
+    old_display: str | None = None
+    new_display: str | None = None
+    old_stored: str | None = None
+    new_stored: str | None = None
     context_cells: list[WritebackContextCell] = Field(default_factory=list, max_length=5)
     change_type: Literal["value", "clear", "formula"] = "value"
     value_type: Literal["text", "number", "boolean", "date", "datetime", "blank", "formula"] = "text"

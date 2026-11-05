@@ -19,6 +19,8 @@ SYSTEM_PROMPT = """당신은 Excel 변경 제안 Agent입니다.
 "ID07351의 Qty를 40으로")은 해당 행이 하나뿐이어도 changes 대신 rules로 해석하세요.
 changes는 사용자가 B2, C3:C9처럼 셀 주소를 직접 적었을 때만 쓰세요. 요청에 셀 주소가 없으면 changes는 반드시 비우세요.
 연도·날짜·번호처럼 숫자로 된 항목도 그 열의 조건으로 쓰세요(예: 2023년 → Year equals 2023).
+단, 머리글이 연도인 표(항목, 1997, 1998, …)에서는 그 연도 열이 target_column_id이고 항목 이름이 filters입니다.
+같은 행의 여러 열(예: 2020~2024년 열)을 같은 방식으로 바꾸면 rule 하나에 첫 열은 target_column_id, 나머지는 also_target_column_ids로 빠짐없이 쓰세요.
 행을 고르고 값을 계산하는 일은 서비스가 원본 전체에서 합니다.
 - tables 목록의 table_id와 column_id를 그대로 쓰세요. 바꿀 열은 target_column_id입니다.
 - 사용자가 한국어나 다른 표현으로 말한 항목은 values에 있는 원본 값으로 옮겨 filters에 쓰세요

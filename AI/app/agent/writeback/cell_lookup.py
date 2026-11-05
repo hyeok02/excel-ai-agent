@@ -55,6 +55,10 @@ class CellLookup:
         return list(dict.fromkeys(cell.reference for cell in found
                                   if (cell.sheet_name, cell.address) != own))[:MAX_AFFECTED]
 
+    def cell(self, sheet_name, reference):
+        row = self.rows.get((sheet_name, int(re.search(r"\d+", reference).group())))
+        return next((item for item in row.cells if item.address == reference.upper()), None) if row else None
+
     def context(self, target):
         target_column = column_number(target.address)
         target_row = int(re.search(r"\d+", target.address).group())

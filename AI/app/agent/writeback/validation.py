@@ -8,6 +8,7 @@ from app.agent.writeback.references import (
 )
 from app.agent.writeback.value_authorization import as_number, stated_current_value
 from app.agent.writeback.cell_lookup import CellLookup
+from app.agent.writeback.display_values import with_displays
 from app.agent.writeback.rule_execution import RuledTargets
 from app.agent.writeback.target_authorization import TargetAuthorization
 from app.agent.writeback.target_syntax import formula_spans
@@ -87,7 +88,7 @@ def _append_change(
     payload = draft.model_dump()
     payload["sheet_name"] = cell.sheet_name
     payload["reference"] = reference
-    changes.append(
+    changes.append(with_displays(
         WritebackChange(
             **payload,
             old_value=old_value,
@@ -100,8 +101,7 @@ def _append_change(
             related_cells=related_cells(
                 sheets, cell.sheet_name, reference, draft.new_value
             ),
-        )
-    )
+        ), cell, lookup))
 
 
 def _formula_value(value: object) -> str | None:
