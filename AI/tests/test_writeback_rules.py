@@ -85,7 +85,7 @@ def test_a_reading_naming_nothing_in_the_source_falls_back_to_the_checked_cell_p
 
 def test_a_date_range_selects_rows_by_their_source_dates() -> None:
     from datetime import datetime
-    from app.agent.writeback.rule_execution import _rows
+    from app.agent.writeback.rule_rows import matching_rows as _rows
 
     class Row:
         def __init__(self, day, category):

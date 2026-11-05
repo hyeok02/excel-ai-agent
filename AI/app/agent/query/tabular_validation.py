@@ -48,7 +48,7 @@ def validated_table(table, index, needed: set[str]) -> bool:
     for column in table.columns:
         address = column.header_reference.rpartition("!")[2]
         cell = cells.get(address)
-        if cell is None or not isinstance(cell.value, str) or cell.value.strip() != column.header:
+        if cell is None or _header_text(cell.value) != column.header:
             return False
         for reference, label in column.header_path:
             parent = cells.get(reference.rpartition("!")[2])
@@ -84,3 +84,12 @@ def validated_table(table, index, needed: set[str]) -> bool:
             if (cell.formula or cell.value not in (None, "")) and row not in source_rows:
                 return False
     return True
+
+
+def _header_text(value):
+    """A text header, or a whole-number year header read as its digits ("2019")."""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and float(value).is_integer():
+        return str(int(value))
+    return None

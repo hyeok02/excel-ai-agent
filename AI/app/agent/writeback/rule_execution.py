@@ -10,15 +10,15 @@ the stated value or calculation is still checked against the request itself.
 A rule that cannot be applied to every matching row is not applied at all.
 """
 import re
-from datetime import datetime
 from decimal import Decimal
 
 from app.agent.query.ambiguity_labels import resolve_unique_column
-from app.agent.query.tabular_filters import filtered_rows
 from app.agent.query.tabular_validation import validated_table
 from app.agent.writeback.derived_values import _clean
 from app.agent.writeback.models import WritebackChangeDraft
+from app.agent.writeback.percent_amounts import stored_amount
 from app.agent.writeback.references import key
+from app.agent.writeback.rule_rows import matching_rows, shown
 from app.agent.writeback.value_authorization import as_number
 from app.agent.writeback.writeback_tables import writeback_tables
 
@@ -38,79 +38,62 @@ class RuleNotFound(RuleRejected):
     """The reading names a table or column the source does not have; cell drafts may still apply."""
 
 
-def rule_drafts(rule, summary, index):
-    """(drafts, reading shown to the reviewer) or RuleRejected."""
+def rule_drafts(rule, summary, index, instruction=""):
+    """(drafts, reading shown to the reviewer, (changed headers, all headers)) or RuleRejected."""
     tables = [table for table in writeback_tables(summary, index) if table.id == rule.table_id]
     if len(tables) != 1:
         raise RuleNotFound("해석한 표를 원본에서 찾지 못했습니다.")
     table = tables[0]
-    target = resolve_unique_column(rule.target_column_id, table)
+    targets = [resolve_unique_column(column, table) for column in (rule.target_column_id, *rule.also_target_column_ids)]
     filters = [item.model_copy(update={"column_id": resolve_unique_column(item.column_id, table)})
                for item in rule.filters]
-    if target is None or any(item.column_id is None for item in filters):
+    if None in targets or any(item.column_id is None for item in filters):
         raise RuleNotFound("해석한 열 이름을 원본 표에서 하나로 찾지 못했습니다.")
-    if not validated_table(table, index, {target, *(item.column_id for item in filters)}):
+    targets = list(dict.fromkeys(targets))
+    if not validated_table(table, index, {*targets, *(item.column_id for item in filters)}):
         raise RuleRejected("표 전체를 원본에서 확인하지 못해 조건에 맞는 모든 행을 바꾼다고 보장할 수 없습니다.")
-    rows = _rows(table, filters)
+    rows = matching_rows(table, filters)
     if rows is None:
         raise RuleRejected("해석한 조건을 원본 값과 비교하지 못했습니다.")
     if not rows:
         raise RuleRejected("해석한 조건에 맞는 원본 행이 없습니다. 원본에 있는 이름으로 다시 요청해 주세요.")
     columns = {column.id: column for column in table.columns}
-    letter = re.search(r"([A-Z]+)\d+$", columns[target].header_reference.upper()).group(1)
+    letters = {target: re.search(r"([A-Z]+)\d+$", columns[target].header_reference.upper()).group(1)
+               for target in targets}
     cells = {key(cell.sheet_name, cell.address): cell for item in index.rows
              if item.sheet_name == table.sheet_name for cell in item.cells}
     drafts = []
     for row in rows:
-        cell = cells.get(key(table.sheet_name, f"{letter}{row.row_number}"))
-        if cell is None:
-            raise RuleRejected(f"{table.sheet_name}!{letter}{row.row_number}: 빈 셀이 있어 같은 계산을 적용할 수 없습니다.")
-        drafts.append(WritebackChangeDraft(
-            sheet_name=table.sheet_name, reference=cell.address, new_value=_new_value(rule, cell.value),
-            reason=f"조건에 맞는 {len(rows)}개 행 모두에 같은 변경을 적용합니다. {rule.reading}"[:500]))
-    conditions = ", ".join(f"‘{columns[item.column_id].display_header}’ {OPERATORS[item.operator]} {_shown(item.value)}"
+        for target in targets:
+            cell = cells.get(key(table.sheet_name, f"{letters[target]}{row.row_number}"))
+            if cell is None:
+                raise RuleRejected(f"{table.sheet_name}!{letters[target]}{row.row_number}: "
+                                   "빈 셀이 있어 같은 계산을 적용할 수 없습니다.")
+            drafts.append(WritebackChangeDraft(
+                sheet_name=table.sheet_name, reference=cell.address, new_value=_new_value(rule, cell, instruction),
+                reason=f"조건에 맞는 {len(rows)}개 행 모두에 같은 변경을 적용합니다. {rule.reading}"[:500]))
+    conditions = ", ".join(f"‘{columns[item.column_id].display_header}’ {OPERATORS[item.operator]} {shown(item.value)}"
                            .rstrip() for item in filters)
     action = OPERATIONS[rule.operation].format(amount=rule.amount)
     scope = f"‘{table.sheet_name}’ 표에서 {conditions}인" if conditions else f"‘{table.sheet_name}’ 표 전체"
-    reading = (f"{scope} {len(rows)}개 행의 ‘{columns[target].display_header}’ 값을 "
+    headers = [columns[target].display_header for target in targets]
+    reading = (f"{scope} {len(rows)}개 행의 {_named(headers)} 값을 "
                f"{action} 것으로 해석했습니다 ({rule.reading}). 승인 전에 대상 행과 열을 확인해 주세요.")
-    return drafts, reading
+    return drafts, reading, (headers, [column.display_header for column in table.columns])
 
 
-COMPARE = {"greater_than": lambda a, b: a > b, "greater_than_or_equal": lambda a, b: a >= b,
-           "less_than": lambda a, b: a < b, "less_than_or_equal": lambda a, b: a <= b}
+def _named(headers):
+    if len(headers) <= 4:
+        return ", ".join(f"‘{header}’" for header in headers)
+    return f"‘{headers[0]}’ 등 {len(headers)}개 열({', '.join(headers)})"
 
 
-def _rows(table, filters):
-    """Source filters, plus date ranges ("2023년" → 2023-01-01 ≤ Date < 2024-01-01)."""
-    dates = [item for item in filters if item.operator in COMPARE and _date(item.value) is not None]
-    rows = filtered_rows(table, [item for item in filters if item not in dates])
-    for item in dates if rows is not None else ():
-        values = [_date(row.values.get(item.column_id)) for row in rows]
-        if any(value is None for value in values):
-            return None  # a blank or non-date cell cannot be placed inside a date range
-        rows = [row for row, value in zip(rows, values) if COMPARE[item.operator](value, _date(item.value))]
-    return rows
-
-
-def _shown(value):
-    if value is None:
-        return ""
-    return re.sub(r"[T ]00:00(?::00)?$", "", value) if isinstance(value, str) else str(value)
-
-
-def _date(value):
-    if isinstance(value, datetime):
-        return value
-    if isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?", value.strip()):
-        return datetime.fromisoformat(value.strip())
-    return None
-
-
-def _new_value(rule, current):
+def _new_value(rule, cell, instruction):
+    current = cell.value
     if rule.operation == "set":
-        number = as_number(rule.amount) if isinstance(current, (int, float)) and not isinstance(current, bool) else None
-        return rule.amount if number is None or isinstance(rule.amount, bool) else _number(number)
+        numeric = isinstance(current, (int, float)) and not isinstance(current, bool)
+        number = stored_amount(rule.amount, cell, instruction) if numeric else None
+        return rule.amount if number is None else _number(number)
     if rule.operation == "clear":
         return None
     amount, value = as_number(rule.amount), as_number(current)

@@ -27,6 +27,8 @@ class WritebackRuleDraft(BaseModel):
     """조건으로 고른 행의 한 열을 같은 방식으로 바꾸는 해석. 행과 값은 코드가 정한다."""
     table_id: str = Field(min_length=1, max_length=200)
     target_column_id: str = Field(min_length=1, max_length=200)
+    # 같은 행에서 같은 변경을 받는 다른 열(머리글이 연도인 표의 2020~2024년 열 등).
+    also_target_column_ids: list[str] = Field(default_factory=list, max_length=60)
     filters: list[TabularFilter] = Field(default_factory=list, max_length=6)
     operation: Literal["set", "clear", "percent_increase", "percent_decrease",
                        "add", "subtract", "multiply"]
