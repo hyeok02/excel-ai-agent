@@ -17,6 +17,8 @@ class QueryColumn:
     header_path: tuple[tuple[str, str], ...] = ()
     # Identifiers in a labeled metadata band identify columns, not record rows.
     source_identifiers: tuple[tuple[str, str], ...] = ()
+    # Currency a native pivot totalling this whole column declares for its plain numbers.
+    currency: str = ""
 
     @property
     def display_header(self):

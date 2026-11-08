@@ -5,6 +5,7 @@ from dataclasses import replace
 from app.agent.query.tabular_catalog_models import QueryTable
 from app.agent.query.tabular_catalog_sources import source_cells, table_context, table_sources
 from app.agent.query.tabular_catalog_builder import build_table as _build_table
+from app.agent.query.tabular_linked_currency import inherit_currencies
 from app.agent.query.tabular_narrowed_tables import has_numbers, narrowed_table, overlaps
 from app.agent.query.column_context import column_context
 from app.agent.query.tabular_header_paths import column_header_path
@@ -43,7 +44,7 @@ def build_query_tables(summary, text_regions=False) -> list[QueryTable]:
                 target.append(replace(table, columns=columns, source_kind=kind,
                                       context=table_context(sheet.name, table.reference, sheet_cells),
                                       hidden_columns=hidden_columns & {c.id for c in table.columns}))
-    return tables + narrowed
+    return [inherit_currencies(summary, table) for table in tables + narrowed]
 
 
 def query_catalog(summary, question: str) -> list[dict]:

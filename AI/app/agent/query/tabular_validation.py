@@ -71,7 +71,7 @@ def validated_table(table, index, needed: set[str]) -> bool:
                 return False
             if (column in needed and isinstance(expected, (int, float))
                     and not isinstance(expected, bool) and cell is not None
-                    and (cell.number_format or "General") != row.number_formats.get(column, "General")):
+                    and _shown_format(cell.number_format, columns[column]) != row.number_formats.get(column, "General")):
                 return False
             if cell is not None and cell.formula != row.formulas.get(column):
                 return False
@@ -93,3 +93,10 @@ def _header_text(value):
     if isinstance(value, (int, float)) and not isinstance(value, bool) and float(value).is_integer():
         return str(int(value))
     return None
+
+
+def _shown_format(number_format, column):
+    """The source cell's format as the catalog shows it, with a currency its pivot declares."""
+    from app.agent.query.tabular_linked_currency import with_currency
+    style = number_format or "General"
+    return (with_currency(style, column.currency) or style) if column.currency else style

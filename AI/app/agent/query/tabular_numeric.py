@@ -1,5 +1,6 @@
 """Aggregate compatible source units with decimal arithmetic and Excel formats."""
 import math
+import re
 from dataclasses import replace
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 
@@ -14,7 +15,7 @@ def numeric_summary(values, formats, statistic="all"):
         return None, []
     specs = [parse_number_format(style) for _, style in entries]
     # An unsupported date/fraction/clock format must not silently become a plain unit.
-    if any(spec.mode == "raw" and style.casefold().strip() != "general"
+    if any(spec.mode == "raw" and re.sub(r'"[^"]*"', "", style).casefold().strip() != "general"
            for (_, style), spec in zip(entries, specs)):
         return None, []
     if len({_unit_identity(spec) for spec in specs}) != 1:
@@ -58,10 +59,12 @@ def _render(value, spec):
             context.prec = max(28, value.adjusted() + _places(value) + 3)
             value = value.quantize(Decimal(1).scaleb(-_places(value)), rounding=ROUND_HALF_UP)
         if value == value.to_integral_value():
-            return f"{int(value):,}"
-        whole, fraction = format(value, "f").split(".")
-        sign = "-" if whole.startswith("-") else ""
-        return f"{sign}{abs(int(whole)):,}.{fraction.rstrip('0')}"
+            text = f"{abs(int(value)):,}"
+        else:
+            whole, fraction = format(abs(value), "f").split(".")
+            text = f"{int(whole):,}.{fraction.rstrip('0')}"
+        # A unit inherited around General ("$"General) stays beside the number.
+        return f"{'-' if value < 0 else ''}{spec.prefix}{text}{spec.suffix}"
     if not spec.mode:
         scaled = value * spec.multiplier / spec.divisor
         decimals = max(0, -scaled.normalize().as_tuple().exponent)
