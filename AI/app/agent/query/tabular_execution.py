@@ -4,6 +4,7 @@ from app.agent.query.models import (
 )
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
+from app.agent.query.tabular_labelled_rows import label_column, labelled_text
 from app.agent.query.tabular_named_scope import named_column_scope
 from app.agent.query.tabular_results import aggregate_text, query_evidence, scope_description
 from app.agent.query.tabular_request_scope import request_matches_plan, rows_match_explicit_ranges
@@ -62,7 +63,8 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         # A sorted first row is not an exact record lookup; it can hide duplicates
         # or a missing identity condition.
         return None
-    text, limitations = aggregate_text(
+    label = label_column(plan, table, rows)
+    text, limitations = (labelled_text(label, [by_id[key] for key in selected], rows), []) if label else aggregate_text(
         plan.operation, [by_id[key] for key in selected], rows, plan.statistic,
     )
     if not text:
@@ -72,7 +74,7 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         limitations.append("이 표의 셀은 모두 대조했지만 같은 시트의 일부 다른 셀은 검색 범위에서 제외되었습니다.")
     if table.excluded_rows:
         text += f"\n숨겨진 {len(table.excluded_rows)}개 행은 제외한 결과입니다."
-    include_identity = bool(filters) or plan.operation == "row_count" or any(
+    include_identity = bool(filters) or label is not None or plan.operation == "row_count" or any(
         row.values[column] in (None, "") for row in rows for column in selected
     )
     evidence = query_evidence(table, needed, rows, include_identity)

@@ -15,11 +15,14 @@ def categories_match(text, plan, table):
     headers = source_headers(text, table)
     if not predicates_match(categorical_predicates(text, headers), plan):
         return False
+    # Only a field holding text can name a text value: in "2019 Current Asthma
+    # Prevalence" the year column beside the row name is not that name's field.
+    fields = [(column, header) for column, header in headers if column in _text_columns(table)]
     for condition in plan.filters:
         if not isinstance(condition.value, str):
             continue
         named = {column for match in value_matches(text, condition.value)
-                 for column in _adjacent_headers(text, match.start(), match.end(), headers)}
+                 for column in _adjacent_headers(text, match.start(), match.end(), fields)}
         if named and condition.column_id not in named:
             return False
     matches = []
@@ -45,7 +48,7 @@ def categories_match(text, plan, table):
         groups.setdefault((match.start(), match.end(), _normal(value)), set()).add(column)
     supported = set()
     for (start, end, value), columns in groups.items():
-        named = _adjacent_headers(text, start, end, headers)
+        named = _adjacent_headers(text, start, end, fields)
         if not named and re.fullmatch(r"[?!.,:;]+", value):
             # Workbook markers such as '?' also occur as ordinary sentence
             # punctuation. Only an explicit field binding makes them a filter.
@@ -67,6 +70,11 @@ def categories_match(text, plan, table):
     return all(not isinstance(condition.value, str) or _normal(condition.value) not in stated_values
                or (condition.column_id, _normal(condition.value), condition.operator) in supported
                for condition in plan.filters)
+
+
+def _text_columns(table):
+    return {column.id for column in table.columns
+            if any(isinstance(row.values[column.id], str) and row.values[column.id].strip() for row in table.rows)}
 
 
 def _adjacent_headers(text, start, end, headers):

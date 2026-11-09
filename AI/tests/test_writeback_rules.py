@@ -102,7 +102,7 @@ def test_a_date_range_selects_rows_by_their_source_dates() -> None:
 
 
 def test_a_titled_table_with_notes_below_is_narrowed_to_its_record_rows() -> None:
-    from app.agent.writeback.writeback_tables import _narrowed
+    from app.agent.query.tabular_narrowed_tables import _narrowed
 
     rows = [["Percentage of days with good air quality, 2021-2023"], ["Year", "Good", "Unhealthy"],
             [2021, 0.4, 0.03], [2022, 0.4, 0.03], [2023, 0.4, 0.03], ["Data: U.S. EPA"], ["Note: AQI based"]]

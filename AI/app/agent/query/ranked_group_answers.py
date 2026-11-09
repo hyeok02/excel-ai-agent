@@ -13,6 +13,7 @@ from decimal import Decimal
 import re
 
 from app.agent.query.metric_observation_render import _evidence
+from app.agent.query.ranked_group_units import shown_total, total_unit
 from app.agent.query.models import (
     QuestionAnswer, QuestionAnswerStatus, QuestionAnswerVerification, QuestionVerificationLevel,
 )
@@ -121,14 +122,15 @@ def _answer(question, table, index, group, measure, ranking, position, anchor, f
     scope = ", ".join(f"‘{headers[item.column_id].display_header}’ {item.operator} {item.value}" for item in filters
                       if item.column_id in headers) or "조건 없이 전체 행"
     metric = f"‘{headers[measure].display_header}’ 합계" if measure else "행 수"
+    unit = total_unit(table, measure)
     picked, (value, rows) = ranking[position or 0]
-    listed = ", ".join(f"{number}. {name} {_number(total)}" for number, (name, (total, _))
+    listed = ", ".join(f"{number}. {name} {shown_total(total, unit)}" for number, (name, (total, _))
                        in enumerate(ranking[:MAX_LISTED], 1))
     lead = ("" if position is None else f"‘{anchor}’ 다음은 ‘{picked}’입니다 " if anchor and position
             and ranking[position - 1][0] == anchor else f"가장 {'작은' if small else '큰'} 값은 ‘{picked}’입니다 "
             if position == 0 else f"{position + 1}위는 ‘{picked}’입니다 ")
     tied = [name for name, (total, _) in ranking if position is not None and total == value and name != picked]
-    text = (lead and f"{lead}({metric} {_number(value)}). ") + (f"‘{'’, ‘'.join(tied)}’도 같은 값이라 공동 순위입니다. " if tied else "") + (
+    text = (lead and f"{lead}({metric} {shown_total(value, unit)}). ") + (f"‘{'’, ‘'.join(tied)}’도 같은 값이라 공동 순위입니다. " if tied else "") + (
         f"‘{headers[group].display_header}’별 {metric} 순위{'(낮은 순)' if small else ''}: {listed}"
             + (f" 외 {len(ranking) - MAX_LISTED}개" if len(ranking) > MAX_LISTED else "") + ".")
     cells = [headers[group].header_reference, *([headers[measure].header_reference] if measure else [])]
@@ -143,8 +145,3 @@ def _answer(question, table, index, group, measure, ranking, position, anchor, f
         verification=QuestionAnswerVerification(level=QuestionVerificationLevel.SOURCE_CHECKED,
                                                 checks=["source_values", "calculation", "ranking"]),
     )
-
-
-def _number(value):
-    value = float(value)
-    return f"{value:,.0f}" if value.is_integer() else f"{value:,.2f}"
