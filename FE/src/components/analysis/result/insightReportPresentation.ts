@@ -22,6 +22,18 @@ const canDisplayInsight = (insight: InsightResult) => {
   )
 }
 
+/** 한눈에 보기의 첫 문장(파일 소개)을 카드마다 되풀이하지 않는다. 표시만 바꾸고 원본 문장은 그대로다. */
+const withoutSharedLead = (insights: InsightResult[], overview: string) => {
+  const lead = overview.trim().split(/(?<=다\.)\s+/)[0]
+  if (!lead || lead === overview.trim()) return insights
+  return insights.map((insight) => {
+    const rest = insight.fact.startsWith(lead)
+      ? insight.fact.slice(lead.length).trim()
+      : ''
+    return rest ? { ...insight, fact: rest } : insight
+  })
+}
+
 /** 저장된 과거 결과에도 적용하는 표시 방어선이며, 원본 검증을 대체하지 않는다. */
 export const prepareInsightReportPresentation = (source: InsightReportResult) => {
   const insights = source.insights
@@ -56,7 +68,9 @@ export const prepareInsightReportPresentation = (source: InsightReportResult) =>
           .slice(0, 2)
           .map((insight) => insight.fact)
           .join(' ') || '원본 근거로 확인할 수 있는 인사이트가 없습니다.',
-    insights,
+    insights: canPreserveOverview
+      ? withoutSharedLead(insights, source.overview)
+      : insights,
     limitations: hasSuppressedInsights ? notices : source.limitations,
     hasIncompleteData: insights.some((insight) => insight.isIncomplete),
     validation: {

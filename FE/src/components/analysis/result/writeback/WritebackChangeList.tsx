@@ -9,6 +9,8 @@ import {
 } from '@/components/analysis/result/writeback/writebackSelection'
 
 interface Props {
+  /** 적용이 끝났을 때 실제로 바뀐 셀. 없으면 아직 적용 전이다. */
+  applied?: Set<string> | null
   changes: WritebackChange[]
   selectable?: boolean
   selected?: string[]
@@ -17,6 +19,7 @@ interface Props {
 }
 
 const WritebackChangeList = ({
+  applied = null,
   changes,
   selectable = false,
   selected = [],
@@ -42,6 +45,7 @@ const WritebackChangeList = ({
     return (
       <WritebackChangeCard
         change={change}
+        excluded={applied !== null && !applied.has(key)}
         key={key}
         onToggle={() => onToggle?.(key)}
         onToggleRelated={(item) => onToggle?.(item)}
@@ -58,7 +62,9 @@ const WritebackChangeList = ({
         <span className="rounded-full bg-white px-3 py-1.5 shadow-sm">
           {selectable
             ? `선택 ${selected.length} / ${keys.length}개`
-            : `변경 ${changes.length}개`}
+            : applied
+              ? `적용 ${keys.filter((key) => applied.has(key)).length} / ${keys.length}개`
+              : `변경 ${changes.length}개`}
         </span>
         <span className="rounded-full bg-white px-3 py-1.5 shadow-sm">
           시트 {sheetCount}개

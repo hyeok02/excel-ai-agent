@@ -143,5 +143,5 @@ def _answer(question, table, index, group, measure, ranking, position, anchor, f
         selected_tools=["ranked_group_query"], evidence=evidence,
         limitations=[f"질문의 대상과 기준을 ‘{headers[group].display_header}’·{metric}로 해석해 원본 전체 행으로 다시 계산했습니다(적용 조건: {scope})."],
         verification=QuestionAnswerVerification(level=QuestionVerificationLevel.SOURCE_CHECKED,
-                                                checks=["source_values", "calculation", "ranking"]),
+                                                checks=["source_values", "calculation", "ranking", "field_interpretation"]),
     )

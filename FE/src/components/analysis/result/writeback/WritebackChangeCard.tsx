@@ -14,6 +14,8 @@ const RISK_CLASS = {
 
 interface Props {
   change: WritebackChange
+  /** 승인에서 빠져 수정본에도 원본 값이 그대로 남은 변경. */
+  excluded?: boolean
   selectable: boolean
   selected: boolean
   selectedKeys: string[]
@@ -23,6 +25,7 @@ interface Props {
 
 const WritebackChangeCard = ({
   change,
+  excluded = false,
   selectable,
   selected,
   selectedKeys,
@@ -34,7 +37,7 @@ const WritebackChangeCard = ({
   return (
     <div
       className={`rounded-2xl border p-4 transition ${
-        selectable && !selected
+        (selectable && !selected) || excluded
           ? 'border-slate-200 bg-slate-50/70 opacity-60'
           : 'border-slate-200 bg-white'
       }`}
@@ -59,8 +62,13 @@ const WritebackChangeCard = ({
           sheetName={change.sheetName}
         />
       </div>
-      {(change.riskLevel || change.changeType === 'formula') && (
+      {(change.riskLevel || change.changeType === 'formula' || excluded) && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-bold">
+          {excluded && (
+            <span className="rounded-full bg-slate-200 px-2 py-1 text-slate-600">
+              승인에서 제외 · 원본 유지
+            </span>
+          )}
           <span className={`rounded-full px-2 py-1 ${RISK_CLASS[risk]}`}>
             {RISK_LABEL[risk]}
           </span>

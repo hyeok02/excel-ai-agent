@@ -17,6 +17,15 @@ export const boundedQuestionVerification = (
         : '질문의 대상명과 순위 기준을 해석했지만 원본 대조를 완료하지 못했습니다. 해석한 질문과 확인 한계를 확인해 주세요.',
     } as const
   }
+  if (checks.includes('field_interpretation')) {
+    return {
+      label: sourceChecked ? '해석 후 원본 전체 계산' : '항목 해석 확인 필요',
+      tone: sourceChecked ? 'limited' : 'neutral',
+      explanation: sourceChecked
+        ? '질문의 항목을 원본 열로 해석해 원본 전체 행으로 다시 계산했습니다. 아래 해석이 의도와 맞는지 확인해 주세요.'
+        : '질문의 항목을 원본 열로 해석했지만 원본 계산을 완료하지 못했습니다. 아래 해석을 확인해 주세요.',
+    } as const
+  }
   if (checks.includes('semantic_alias_resolved')) {
     return {
       label: sourceChecked ? '대상 해석 · 원본 확인' : '대상 해석 확인 필요',

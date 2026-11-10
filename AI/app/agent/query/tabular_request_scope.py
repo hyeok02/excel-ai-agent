@@ -76,6 +76,8 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
         selected_headers = {column.header for column in table.columns
                             if column.id in involved and column.id not in plan.group_by}
         semantic_headers -= {column.header for column in table.columns if column.id in plan.group_by}
+        # "East" filtering Region is a value here even if another table has an East column.
+        semantic_headers = {header for header in semantic_headers if _normal(header) not in _filter_values(plan)}
         if semantic_headers and not semantic_headers <= selected_headers:
             return False
     # Prefer longest explicit labels: "Amount" must not overrule "Net Amount".
@@ -83,7 +85,8 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
     candidates = [(item, column) for item in tables
                   if not named_sheets or item.sheet_name in named_sheets
                   for column in item.columns
-                  if len(_normal(column.header)) >= 4 and _normal(column.header) in header_text]
+                  if len(_normal(column.header)) >= 4 and _normal(column.header) in header_text
+                  and _normal(column.header) not in _filter_values(plan)]
     candidates = [(item, column) for item, column in candidates
                   if not any(_normal(column.header) != _normal(other.header)
                              and _normal(column.header) in _normal(other.header)
@@ -128,6 +131,10 @@ def request_matches_plan(question, plan, table, tables, intent=None, *, streamin
     if any(identifier.casefold() not in filters | bound_ids for identifier in identifiers):
         return False
     return matches_constraints(question, plan, table, tables, streaming=streaming)
+
+
+def _filter_values(plan):
+    return {_normal(item.value) for item in plan.filters if isinstance(item.value, str)}
 
 
 def _normal(value):

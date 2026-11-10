@@ -31,6 +31,24 @@ def with_pivot_notice(proposal, content: bytes):
     sheets = pivot_sheets(content) if proposal.changes else []
     if not sheets:
         return proposal
-    notice = (f"피벗 표({', '.join(sheets)})는 저장된 집계를 따로 들고 있어, 받은 파일을 Excel에서 열고 "
-              "‘데이터 → 모두 새로 고침’을 해야 바뀐 값이 반영됩니다.")
+    if refreshes_on_open(content):
+        notice = (f"피벗 표({', '.join(sheets)})는 저장된 집계를 따로 들고 있습니다. 이 파일은 Excel에서 열 때 "
+                  "피벗을 자동으로 새로 고치도록 설정되어 있어 바뀐 값이 반영됩니다. "
+                  "Excel이 아닌 프로그램에서는 직접 새로 고쳐야 할 수 있습니다.")
+    else:
+        notice = (f"피벗 표({', '.join(sheets)})는 저장된 집계를 따로 들고 있어, 받은 파일을 Excel에서 열고 "
+                  "‘데이터 → 모두 새로 고침’을 해야 바뀐 값이 반영됩니다.")
     return proposal.model_copy(update={"limitations": [*proposal.limitations, notice]})
+
+
+def refreshes_on_open(content: bytes) -> bool:
+    """Every pivot cache in the package is set to refresh when Excel opens the file."""
+    try:
+        with ZipFile(BytesIO(content)) as package:
+            caches = [name for name in package.namelist()
+                      if re.fullmatch(r"xl/pivotCache/pivotCacheDefinition\d+\.xml", name)]
+            return bool(caches) and all(
+                re.search(rb'<(?:\w+:)?pivotCacheDefinition\b[^>]*\brefreshOnLoad="(?:1|true)"', package.read(name))
+                for name in caches)
+    except (BadZipFile, KeyError, ValueError):
+        return False
