@@ -1,7 +1,7 @@
 """Source period labels and complete short-series paths for recent changes."""
 import re
 
-from app.services.insights.facts.series_scalars import displayed_value, unit
+from app.services.insights.facts.series_scalars import displayed_text, displayed_value, unit
 from app.services.insights.narratives.change_sentence import change_sentence
 from app.services.insights.narratives.narrative_values import finite, number, period, reference
 from app.services.insights.narratives.series_path import series_shape
@@ -33,7 +33,7 @@ def _path(sheet, records, position, units):
         return "", "", []
     values = [displayed_value(c) for c in cells]
     labels = [_period(record) for record in records]
-    texts = [f"{number(value)}{_suffix(units)}" for value in values]
+    texts = [f"{displayed_text(c, value)}{_suffix(units)}" for c, value in zip(cells, values)]
     whole = change_sentence(f"{labels[0]} {texts[0]}", f"{labels[-1]} {texts[-1]}", values[0], values[-1],
                             _suffix(units))
     evidence = []

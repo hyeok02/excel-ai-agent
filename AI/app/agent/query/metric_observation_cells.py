@@ -76,6 +76,16 @@ def _text_in_question(value, question):
     return len(words) >= 2 and " ".join(words) in query or len(source) >= 5 and source in query
 
 @lru_cache(maxsize=1)
+def metric_names(label: str) -> set[str]:
+    """Every name a request may use for this source metric: the label and its semantic aliases."""
+    simple = _normal(_METRIC_MODIFIERS.sub(" ", label))
+    names = {_normal(label), simple} - {""}
+    for group in _alias_names():
+        if simple in group:
+            names |= group
+    return names
+
+
 def _alias_names():
     """별칭 묶음은 상수다. 호출마다 다시 정규화할 이유가 없다."""
     return tuple(

@@ -6,40 +6,45 @@ period first, then the latest step, then the path's shape.
 """
 import re
 
-from app.services.insights.narratives.narrative_values import direction_particle, number
+from app.services.insights.narratives.narrative_values import direction_particle, joining_particle, number
 
 _SHOWN = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 
 def _shown(text, raw):
-    """The endpoint as displayed (5.5 for a stored 5.46) and its decimals, when the text shows raw unscaled."""
-    found = _SHOWN.findall(text)
+    """(value as displayed, its decimals, scale, text after it): 5.5 for a stored 5.46, 1.2 for 1.2억."""
+    found = list(_SHOWN.finditer(text))
     if not found:
-        return raw, None
-    digits = found[-1]
+        return raw, None, 1, ""
+    digits, tail = found[-1].group(), text[found[-1].end():]
     shown, decimals = float(digits.replace(",", "")), len(digits.partition(".")[2])
-    if abs(abs(raw) - shown) > 0.5 * 10 ** -decimals + 1e-9:
-        return raw, None  # 1.2억 or 12K: a scaled display is not subtracted as written
-    return (-shown if raw < 0 else shown), decimals
+    tolerance = 0.5 * 10 ** -decimals + 1e-9
+    # 1.2억 or 12K: the display divides by a power of ten the text names after the number.
+    scales = [10 ** power for power in range(0, 13, 3)] + [10 ** 4, 10 ** 8]
+    scale = next((size for size in scales if abs(abs(raw) / size - shown) <= tolerance), None)
+    if scale is None:
+        return raw, None, 1, tail
+    return (-shown if raw < 0 else shown), decimals, scale, tail
 
 
 def _delta(before, after, old, new):
-    """The change readers can check by subtracting the two values they see."""
-    (left, left_places), (right, right_places) = _shown(before, old), _shown(after, new)
-    if left_places is None or right_places is None:
-        return abs(new - old)
-    return round(abs(right - left), max(left_places, right_places))
+    """The change readers can check by subtracting the two values they see, in the scale they see."""
+    left, left_places, left_scale, _ = _shown(before, old)
+    right, right_places, right_scale, tail = _shown(after, new)
+    if left_places is None or right_places is None or left_scale != right_scale:
+        return abs(new - old), ""
+    return round(abs(right - left), max(left_places, right_places)), tail if right_scale != 1 else ""
 
 
 def change_sentence(before, after, old, new, unit=""):
     """'1997년 5.5%에서 2024년 3.6%로 1.9%p 감소했습니다.' for already formatted endpoints."""
-    change = _delta(before, after, old, new)
+    change, scaled_unit = _delta(before, after, old, new)
     if old == new or not change:
-        return f"{before}과 {after}{direction_particle(after)} 시작과 마지막 값이 같습니다."
+        return f"{before}{joining_particle(before)} {after}{direction_particle(after)} 시작과 마지막 값이 같습니다."
     direction = "감소" if new < old else "증가"
     if unit.strip() == "%":
         return f"{before}에서 {after}{direction_particle(after)} {number(change)}%p {direction}했습니다."
-    delta = f"{number(change)}{unit}"
+    delta = f"{number(change)}{unit or scaled_unit}"
     if old:
         delta += f"({abs((new - old) / old * 100):.2f}%)"
     return f"{before}에서 {after}{direction_particle(after)} {delta} {direction}했습니다."

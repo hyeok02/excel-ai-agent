@@ -2,7 +2,8 @@
 from app.services.insights.display.glossary import translate
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.narratives.narrative_values import (
-    finite, identity, insight, metric_name, metric_unit, number, overall, period,
+    direction_particle, finite, identity, insight, joining_particle, metric_name, metric_unit, number, overall,
+    period,
 )
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.series_scalars import displayed_value
@@ -100,9 +101,10 @@ def _change(change, unit, dated=True):
     before = f"{period(change['earliest_period'])} " if dated else ""
     after = f"{period(change['latest_period'])} " if dated else ""
     if change["change"] == 0:
-        return f"{before}{old}{unit}과 {after}{new}{unit}으로 시작과 마지막 값이 같습니다"
+        return (f"{before}{old}{unit}{joining_particle(old + unit)} {after}{new}{unit}"
+                f"{direction_particle(new + unit)} 시작과 마지막 값이 같습니다")
     delta_unit = "%p" if unit == "%" else unit
-    return (f"{before}{old}{unit}에서 {after}{new}{unit}{'으로' if unit else '로'} "
+    return (f"{before}{old}{unit}에서 {after}{new}{unit}{direction_particle(new + unit)} "
             f"{delta.lstrip('-')}{delta_unit}({abs(change['change_rate_percent']):g}%) {direction}")
 
 

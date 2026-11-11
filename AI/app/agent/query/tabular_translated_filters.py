@@ -12,6 +12,7 @@ never as a request-checked one. Anything less leaves the original answer as it w
 """
 import asyncio
 import re
+from dataclasses import replace
 
 from app.agent.query.models import QuestionAnswerStatus, QuestionAnswerVerification, QuestionVerificationLevel
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -20,10 +21,11 @@ from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_execution import execute_tabular_query
 from app.agent.query.tabular_request_extras import _stated_subject
 from app.agent.query.tabular_request_predicates import normalize
+from app.agent.query.tabular_translated_names import assigned_words, contains_as_equals, metric_word, words_naming
 
 MAX_WORDS = 8
-MAX_VALUES = 250
-_PARTICLE = re.compile(r"(?:에서는|에서|으로|에는|이랑|와|과|은|는|이|가|을|를|의|에|로|도|만)$")
+MAX_CONDITIONS = 4
+_PARTICLE = re.compile(r"(?:에서는|에서|으로|에는|이랑|하고|와|과|랑|은|는|이|가|을|를|의|에|로|도|만)$")
 # Words that state the operation, period or politeness, never a record's name.
 _GENERIC = re.compile(
     r"^(?:합계|총합|평균|최대|최소|최댓값|최솟값|개수|건수|수|값|얼마|얼마야|몇|알려줘|알려주세요|보여줘|보여주세요|"
@@ -67,47 +69,54 @@ def candidate_words(question, table):
 
 async def translated_filter_answer(question, summary, data_index, intent, resolver=None, allow=True):
     plan = intent.tabular_query
-    if not allow or plan is None or getattr(plan, "filter_expression", None) is not None:
+    # "쿠키랑 크래커" is an OR of two planned values; each is still checked word by word.
+    if not allow or plan is None:
         return None
     tables = [table for table in build_query_tables(summary) if table.id == plan.table_id]
     bound = bind_tabular_plan(plan, tables[0]) if len(tables) == 1 else None
     if bound is None:
         return None
     table = tables[0]
+    plan = bound = contains_as_equals(bound, table)
+    intent = replace(intent, tabular_query=plan)
     conditions = translated_filters(bound, table, question)
     words = candidate_words(question, table)
-    if not conditions or len(conditions) > 2 or not words:
+    if not conditions or len(conditions) > MAX_CONDITIONS or not words:
         return None
     if resolver is None:
         from app.agent.query.tabular_source_alias_resolver import LangChainSourceLabelResolver
         resolver = LangChainSourceLabelResolver.from_environment()
     if resolver is None:
         return None
-    readings = []
-    for condition in conditions:
-        values = sorted({item for row in table.rows if isinstance(item := row.values.get(condition.column_id), str)
-                         and item.strip()})
-        if len(values) > MAX_VALUES:
-            return None
-        field = next(column.header for column in table.columns if column.id == condition.column_id)
-        try:
-            results = await asyncio.gather(*(resolver.resolve(word, field, values) for word in words))
-        except Exception as exception:
-            raise_for_quota_exhaustion(exception)
-            return None
-        named = [word for word, result in zip(words, results)
-                 if result.status == "resolved" and type(result.candidate_id) is int
-                 and 0 <= result.candidate_id < len(values)
-                 and normalize(values[result.candidate_id]) == normalize(condition.value)]
-        # "쿠키" and "쿠키 판매수량" are one mention: keep the shortest wording that names the value.
-        named = [word for word in named if not any(word != other and other in word for other in named)]
-        if len(named) != 1 or any(named[0] == word for word, _, _ in readings):
-            return None
-        readings.append((named[0], condition.value, field))
+    fields = {column.id: column.header for column in table.columns}
+    columns = [sorted({item for row in table.rows if isinstance(item := row.values.get(condition.column_id), str)
+                       and item.strip()}) for condition in conditions]
+    try:
+        found = await asyncio.gather(*(words_naming(resolver, words, fields[condition.column_id], values,
+                                                    condition.value) for condition, values in zip(conditions, columns)))
+    except Exception as exception:
+        raise_for_quota_exhaustion(exception)
+        return None
+    chosen = assigned_words(found)
+    if chosen is None:
+        return None
+    readings = [(word, condition.value, fields[condition.column_id]) for word, condition in zip(chosen, conditions)]
     rewritten = question
     for word, value, _ in readings:
         rewritten = rewritten.replace(word, f"{word}({value})", 1)
     answer = await asyncio.to_thread(execute_tabular_query, plan, summary, data_index, rewritten, intent)
+    if answer is None and plan.filter_expression is not None:
+        # "쿠키랑 크래커 판매수량": an OR question admits no unread word, so the metric word is read too.
+        leftover = [word for word in words if not any(word in used or used in word for used in chosen)]
+        try:
+            metric = await metric_word(resolver, leftover, table, plan) if leftover else None
+        except Exception as exception:
+            raise_for_quota_exhaustion(exception)
+            return None
+        if metric is not None:
+            readings.append((metric[0], metric[1], metric[1]))
+            rewritten = rewritten.replace(metric[0], f"{metric[0]}({metric[1]})", 1)
+            answer = await asyncio.to_thread(execute_tabular_query, plan, summary, data_index, rewritten, intent)
     if answer is None or answer.verification.level != QuestionVerificationLevel.REQUEST_CHECKED:
         return None
     reading = ", ".join(f"‘{word}’ → {value}" if normalize(field) == normalize(value)

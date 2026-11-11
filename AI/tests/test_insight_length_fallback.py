@@ -45,10 +45,11 @@ def test_completion_length_uses_verified_source_narrative_instead_of_failing(mon
 
     from app.api.workbooks import _verify_insights
     from app.services.analysis_strategy import AnalysisDepth
+    from app.services.insights.verification.prepared_validation import prepare_validation
     monkeypatch.setattr(
-        "app.api.workbooks.build_workbook_context", lambda *_: trend_context(),
+        "app.services.insights.verification.prepared_validation.build_workbook_context", lambda *_: trend_context(),
     )
-    visible = _verify_insights(report, summary, AnalysisDepth.AUTO)
+    visible = _verify_insights(report, summary, prepare_validation(summary, AnalysisDepth.AUTO))
     assert SOURCE_FALLBACK_NOTICE in visible.limitations
     assert SOURCE_FALLBACK_NOTICE in visible.validation.notices
 
