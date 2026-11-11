@@ -2,7 +2,8 @@
 import re
 
 from app.services.insights.facts.series_scalars import displayed_value, unit
-from app.services.insights.narratives.narrative_values import direction_particle, finite, number, period, reference
+from app.services.insights.narratives.change_sentence import change_sentence
+from app.services.insights.narratives.narrative_values import finite, number, period, reference
 from app.services.insights.narratives.series_path import series_shape
 from app.services.insights.narratives.vertical_latest_series import _MONTHS
 
@@ -24,28 +25,19 @@ def _suffix(units):
 
 
 def _path(sheet, records, position, units):
+    """(whole-period sentence, shape line, evidence) when every period's value is readable."""
     if not 3 <= len(records) <= MAX_PATH:
-        return "", []
+        return "", "", []
     cells = [record[2].get(position, {}) for record in records]
     if not all(finite(c.get("value")) for c in cells) or len({unit(c) for c in cells}) != 1:
-        return "", []
+        return "", "", []
     values = [displayed_value(c) for c in cells]
     labels = [_period(record) for record in records]
     texts = [f"{number(value)}{_suffix(units)}" for value in values]
-    lines = []
-    if len(records) > 4 and values[0] != values[-1]:
-        # A latest-change card on a long series also states the whole period.
-        delta = values[-1] - values[0]
-        lines.append(f"전체 기간으로는 {labels[0]} {texts[0]}에서 {labels[-1]} {texts[-1]}{direction_particle(texts[-1])} "
-                     f"{number(abs(delta))}{'%p' if units == '%' else _suffix(units)} "
-                     f"{'증가' if delta > 0 else '감소'}했습니다.")
-    if shape := series_shape(labels, values, texts):
-        lines.append(shape)
-    if not lines:
-        return "", []
-    text = "".join(f"\n{line}" for line in lines)
+    whole = change_sentence(f"{labels[0]} {texts[0]}", f"{labels[-1]} {texts[-1]}", values[0], values[-1],
+                            _suffix(units))
     evidence = []
     for source in ([record[1] for record in records], cells):
         ordered = sorted(source, key=lambda c: int(re.search(r"\d+$", c["cell"])[0]))
         evidence.append(reference(sheet, f"{ordered[0]['cell']}:{ordered[-1]['cell']}"))
-    return text, evidence
+    return whole, series_shape(labels, values, texts), evidence

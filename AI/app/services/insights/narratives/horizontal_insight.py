@@ -9,7 +9,8 @@ from app.services.insights.display.source_labels import source_label, source_uni
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.facts.series_scalars import displayed_value, scalar, unit as cell_unit
 from app.services.insights.models import WorkbookInsight
-from app.services.insights.narratives.narrative_values import direction_particle, number, period, reference
+from app.services.insights.narratives.change_sentence import change_sentence
+from app.services.insights.narratives.narrative_values import number, period, reference
 from app.services.insights.narratives.series_path import series_shape
 from app.services.insights.narratives.topic_labels import scoped_source_topic
 
@@ -97,15 +98,7 @@ def _unit(metric, scope, point, sheet_unit, declared_unit=None):
 def _change(subject, earliest, latest, old, new, unit):
     before, after = (f"{_period(point)} {_display(point, value)}{unit}"
                      for point, value in ((earliest, old), (latest, new)))
-    if old == new:
-        return f"{subject}: {before}과 {after}{direction_particle(after)} 시작과 마지막 값이 같습니다."
-    direction = "감소" if new < old else "증가"
-    if unit == "%":
-        return f"{subject}: {before}에서 {after}로 {direction}했습니다."
-    delta = f"{number(abs(new - old))}{unit}"
-    if old:
-        delta += f"({abs((new - old) / old * 100):.2f}%)"
-    return f"{subject}: {before}에서 {after}{direction_particle(after)} {delta} {direction}했습니다."
+    return f"{subject}: " + change_sentence(before, after, old, new, unit)
 
 
 def _period(point):

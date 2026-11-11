@@ -4,7 +4,8 @@ import re
 from app.services.insights.display.source_labels import narrative_scope, section_label, source_label, source_unit
 from app.services.insights.facts.series_scalars import displayed_value, unit
 from app.services.insights.narratives.category_share_subject import category_share_subject
-from app.services.insights.narratives.narrative_values import direction_particle, finite, insight, number, overall, reference, topic_particle
+from app.services.insights.narratives.change_sentence import change_fact, change_sentence
+from app.services.insights.narratives.narrative_values import finite, insight, number, overall, reference
 from app.services.insights.narratives.table_schema import column
 from app.services.insights.narratives.year_to_date_scope import year_to_date_scope
 from app.services.insights.narratives.vertical_latest_format import _period, _suffix, _path
@@ -50,16 +51,12 @@ def _items(sheet, header, section, section_cell, records, unit_note, series):
         scope += "".join(f" · {source_label(label)}: {value}" for label, value, _ in dimensions)
         subject = share[1] if share and not dimensions and not window else (
             f"{scope}의 {metric_display}" if scope else metric_display)
-        latest_amount = f"{number(right)}{_suffix(units)}"
-        fact = (f"{subject}{topic_particle(metric_display)} {_period(previous)} {number(left)}{_suffix(units)}에서 "
-                f"{_period(latest)} {latest_amount}{direction_particle(latest_amount)} ")
-        delta = right - left
-        if delta == 0:
-            fact += "변동이 없습니다."
-        else:
-            fact += f"{number(abs(delta))}{'%p' if units == '%' else _suffix(units)} {'증가' if delta > 0 else '감소'}했습니다."
-            if units != "%" and left > 0:
-                fact += f" 이전 기간 대비 {number(abs(delta / left * 100))}% {'증가' if delta > 0 else '감소'}했습니다."
+        # Same shape as a series laid out across columns: whole period, latest step, path.
+        recent = change_sentence(f"{_period(previous)} {number(left)}{_suffix(units)}",
+                                 f"{_period(latest)} {number(right)}{_suffix(units)}", left, right, _suffix(units))
+        whole, shape, path_refs = _path(sheet.get("name", ""), records, position, units)
+        label = share[0] if share and subject == share[1] else subject
+        fact = change_fact(label, whole, recent, shape) if whole else change_fact(label, recent)
         evidence = [reference(sheet.get("name", ""), c["cell"]) for c in [cell, previous[1], latest[1], *pair]]
         evidence.extend(window_refs)
         if section_cell:
@@ -70,15 +67,13 @@ def _items(sheet, header, section, section_cell, records, unit_note, series):
             evidence.append(reference(sheet.get("name", ""), applied_unit_note["cell"]))
         for _, _, dimension_cells in dimensions:
             evidence.extend(reference(sheet.get("name", ""), c["cell"]) for c in dimension_cells)
-        path, path_refs = _path(sheet.get("name", ""), records, position, units)
-        fact += path
         evidence.extend(path_refs)
         priority = (0, position) if overall(metric) and not re.search(r"estimated|추정", metric, re.I) else (1 if units == "%" else 2, len(metric), position)
         title_section = share[2] if share else section_label(section)
         if window:
             title_section = f"{title_section} {window}".strip()
         title_metric = share[0] if share else metric_display
-        title = f"{title_metric} 최근 변화" + (f" · {title_section}" if title_section and len(title_section) <= 40 else "")
+        title = f"{title_metric} 변화" + (f" · {title_section}" if title_section and len(title_section) <= 40 else "")
         options.append((priority, units, insight(title, fact, evidence, "change", topic=metric)))
     ordered = sorted(options, key=lambda option: option[0])
     if any(option[1] != "%" for option in ordered):
