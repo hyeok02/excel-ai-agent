@@ -27,7 +27,9 @@ def subject_particle(text):
         return "이" if (ord(last) - 0xAC00) % 28 else "가"
     if re.fullmatch(r"[A-Z][A-Z0-9._-]*", spoken):
         return "이" if last in "LMNRSX" else "가"
-    return "가" if last in "aeiouyAEIOUY0123456789" else "이"
+    if last.isdigit():
+        return "이" if last in "013678" else "가"  # 영·일·삼·육·칠·팔 end in a consonant; 10 is 십
+    return "가" if last in "aeiouyAEIOUY%" else "이"  # % is read 퍼센트
 
 
 def topic_particle(text):

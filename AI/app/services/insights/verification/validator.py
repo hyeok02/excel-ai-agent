@@ -19,10 +19,11 @@ from app.services.insights.verification.validation_index import (
 
 
 def validate_workbook_insights(
-    report: WorkbookInsightReport, context: dict[str, object]
+    report: WorkbookInsightReport, context: dict[str, object], prepared=None
 ) -> ValidatedWorkbookInsightReport:
-    index = workbook_evidence_index(context)
-    canonical = source_narrative_report(context)
+    # prepared: the same index and source narratives, built from this context ahead of time.
+    index = prepared.index if prepared is not None else workbook_evidence_index(context)
+    canonical = prepared.canonical if prepared is not None else source_narrative_report(context)
     comparison_is_complete = any(
         isinstance(sheet, dict) and isinstance(
             sheet.get("business_facts", {}).get("comparable_transactions"), dict

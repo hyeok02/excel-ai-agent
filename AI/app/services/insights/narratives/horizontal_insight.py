@@ -7,7 +7,7 @@ from app.services.insights.display.derived_metrics import derived_metric
 from app.services.insights.display.glossary import readable, translate
 from app.services.insights.display.source_labels import source_label, source_unit
 from app.services.insights.facts.fact_trends import date_value
-from app.services.insights.facts.series_scalars import displayed_value, scalar, unit as cell_unit
+from app.services.insights.facts.series_scalars import displayed_text, displayed_value, scalar, unit as cell_unit
 from app.services.insights.models import WorkbookInsight
 from app.services.insights.narratives.change_sentence import change_sentence
 from app.services.insights.narratives.narrative_values import number, period, reference
@@ -46,7 +46,8 @@ def horizontal_insight(sheet, series, owner=("", ()), unit=("", ()), *, caption=
     caption_metric, caption_unit, caption_refs = caption
     if caption_metric and caption_metric not in metric_text:
         metric_text = f"{metric_text} {caption_metric}"
-    subject = f"{source_label(scope)}의 {metric_text}" if scope else metric_text
+    subject = (f"{source_label(scope)}의 {metric_text}"
+               if scope and source_label(scope).casefold() != metric_text.casefold() else metric_text)
     if basis and basis.casefold() != scope.casefold():
         basis_text = source_label(basis)
         if metric.casefold() in {"total", "overall"} and re.search(r"\btotal\b|전체$", basis, re.I):
@@ -107,6 +108,4 @@ def _period(point):
 
 
 def _display(point, value):
-    from app.agent.query.excel_number_formats import number_text, parse_number_format
-    spec = parse_number_format(point.get("number_format"))
-    return number(value) if spec.mode == "raw" else number_text(value, spec)
+    return displayed_text(point, value)

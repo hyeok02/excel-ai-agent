@@ -2,7 +2,7 @@
 import re
 
 from app.services.insights.display.source_labels import narrative_scope, section_label, source_label, source_unit
-from app.services.insights.facts.series_scalars import displayed_value, unit
+from app.services.insights.facts.series_scalars import displayed_text, displayed_value, unit
 from app.services.insights.narratives.category_share_subject import category_share_subject
 from app.services.insights.narratives.change_sentence import change_fact, change_sentence
 from app.services.insights.narratives.narrative_values import finite, insight, number, overall, reference
@@ -49,11 +49,13 @@ def _items(sheet, header, section, section_cell, records, unit_note, series):
         share = category_share_subject(section, metric, [item.get("value") for item in header[1:]])
         metric_display = source_label(metric, f"{sheet.get('name', '')} {section}")
         scope += "".join(f" · {source_label(label)}: {value}" for label, value, _ in dimensions)
+        # A sheet named "Revenue" scoping a Revenue column says 매출 once, not "매출의 매출".
         subject = share[1] if share and not dimensions and not window else (
-            f"{scope}의 {metric_display}" if scope else metric_display)
+            f"{scope}의 {metric_display}" if scope and scope.casefold() != metric_display.casefold() else metric_display)
         # Same shape as a series laid out across columns: whole period, latest step, path.
-        recent = change_sentence(f"{_period(previous)} {number(left)}{_suffix(units)}",
-                                 f"{_period(latest)} {number(right)}{_suffix(units)}", left, right, _suffix(units))
+        recent = change_sentence(f"{_period(previous)} {displayed_text(pair[0], left)}{_suffix(units)}",
+                                 f"{_period(latest)} {displayed_text(pair[1], right)}{_suffix(units)}", left, right,
+                                 _suffix(units))
         whole, shape, path_refs = _path(sheet.get("name", ""), records, position, units)
         label = share[0] if share and subject == share[1] else subject
         fact = change_fact(label, whole, recent, shape) if whole else change_fact(label, recent)

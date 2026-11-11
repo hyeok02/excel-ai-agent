@@ -6,7 +6,7 @@ from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.question_generation import generate_answer
 from app.agent.query.source_value_settling import settled_answer
 from app.agent.query.tabular_routing import unproven_note, unverified_plan
-from app.agent.query.replanning_scope import single_table_recovery_allowed
+from app.agent.query.replanning_scope import keeps_named_fields, single_table_recovery_allowed
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_feature_contract import feature_contract_matches
@@ -85,7 +85,7 @@ async def answer_with_replanning(service, question, sources, *, intent_override=
     if pending is not None and intents:
         feedback = repair_feedback(question, intents[-1], first, sources.summary)
         if feedback is not None:
-            recovered = await _recover(service, question, sources, replan, feedback)
+            recovered = await _recover(service, question, sources, replan, feedback, intents[-1])
             if recovered is not None:
                 return recovered
     if pending:
@@ -98,14 +98,15 @@ async def answer_with_replanning(service, question, sources, *, intent_override=
     return settled_answer(question, sources, first)
 
 
-async def _recover(service, question, sources, replan, feedback):
+async def _recover(service, question, sources, replan, feedback, first=None):
     if not single_table_recovery_allowed(question, sources.summary):
         return None
     try:
         revised = await replan(question, sources.summary, feedback)
         if (not isinstance(revised, QuestionIntent) or revised.whole_workbook
                 or revised.composite_query or revised.relational_query or revised.header_relation
-                or revised.tabular_query is None):
+                or revised.tabular_query is None
+                or first is not None and not keeps_named_fields(first, revised, sources.summary)):
             return None
         retried = await service._answer_once(question, sources, intent_override=revised,
             allow_composite=False, allow_generation=False)

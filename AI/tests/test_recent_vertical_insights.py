@@ -10,7 +10,7 @@ def test_latest_series_sorts_dates_and_reports_percentage_points():
             [cell("A4", 2024), cell("B4", .9, "0.0%")]]
     items, overview = vertical_latest_report(context(rows))
     assert len(items) == 1
-    assert "2024년 90%" in overview and "2025년 80%" in overview
+    assert "2024년 90.0%" in overview and "2025년 80.0%" in overview  # 0.0% as the source shows it
     assert "10%p 감소" in overview
     assert "'Data'!A2" in items[0].evidence and "'Data'!A4" in items[0].evidence
 

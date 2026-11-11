@@ -1,8 +1,9 @@
 """Certify logical structure before reusing ordinary output/scope validators."""
 import re
 
-from app.agent.query.boolean_filter_language import boolean_question, expression_key, parse_boolean
+from app.agent.query.boolean_filter_language import ParsedBoolean, boolean_question, expression_key, parse_boolean
 from app.agent.query.boolean_filter_models import validate_expression
+from app.agent.query.metric_observation_cells import metric_names
 from app.agent.query.tabular_request_literals import without_literals
 
 
@@ -18,7 +19,12 @@ def checked_boolean_request(question, plan, table, tables):
         return False
     parsed = parse_boolean(question, table)
     if parsed is None:
-        return False
+        from app.agent.query.boolean_value_lists import value_list
+        listed = value_list(question, table)
+        if listed is None:
+            return False
+        filters, tree, remainder = listed
+        parsed = ParsedBoolean(tree, filters, remainder)
     try:
         validate_expression(expression, len(plan.filters))
         if expression_key(expression, plan.filters) != expression_key(parsed.expression, parsed.filters):
@@ -35,9 +41,13 @@ def remaining_scope_supported(text, table, tables):
     # this bounded output vocabulary explicit; original validators still check
     # operation, metric, grouping, rankings, units and all source scopes.
     names = {column.header for column in table.columns}
+    # "판매수량" names Qty as much as "Qty" does; the metric itself is still checked elsewhere.
+    names |= {name for column in table.columns for name in metric_names(column.header) if len(name) >= 2}
     names |= {item.sheet_name for item in tables}
     names |= {value for item in tables for _, value in item.context if isinstance(value, str)}
     for name in sorted(names, key=len, reverse=True):
+        # "판매수량(Qty)": a word written beside the header it was read as is that header.
+        text = re.sub(r"[가-힣A-Za-z0-9]+\(" + re.escape(name) + r"\)", " ", text, flags=re.I)
         text = re.sub(re.escape(name), " ", text, flags=re.I)
     text = re.sub(r"(?:'[^']+'|[\w .-]+)!\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?", " ", text, flags=re.I)
     if without_literals(text) != text:  # Unbound quoted values are not output instructions.

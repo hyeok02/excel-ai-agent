@@ -87,3 +87,23 @@ def _source_terms(tables):
         terms.update(value.strip().casefold() for value in values
                      if isinstance(value, str) and value.strip() and _JOIN.search(value))
     return terms
+
+
+def keeps_named_fields(first, revised, summary):
+    """A repair fixes a plan; it does not move to a table lacking a field the first reading named.
+
+    "동부 지역 판매금액" was first read as Region and TotalPrice. A repair that sums the East
+    column of a Qty summary table drops both. A target that is also a value somewhere (East is
+    a Region value) is not counted as a field name.
+    """
+    tables = build_query_tables(summary)
+    normal = lambda value: " ".join(str(value).casefold().split())
+    values = {normal(value) for table in tables for row in table.rows for value in row.values.values()
+              if isinstance(value, str)}
+    headers = {normal(column.header) for table in tables for column in table.columns}
+    named = {normal(target) for target in getattr(first, "targets", ())
+             if normal(target) in headers and normal(target) not in values}
+    if not named:
+        return True
+    table = next((item for item in tables if item.id == revised.tabular_query.table_id), None)
+    return table is not None and named <= {normal(column.header) for column in table.columns}

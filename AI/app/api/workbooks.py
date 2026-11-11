@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -8,7 +9,7 @@ from app.api.workbook_models import (
     WorkbookInsightsResponse,
     WorkbookSummaryResponse,
 )
-from app.services.analysis_strategy import AnalysisDepth, select_analysis_profile
+from app.services.analysis_strategy import AnalysisDepth
 from app.services.insight_generator import (
     InsightConfigurationError,
     InsightGenerationError,
@@ -16,11 +17,11 @@ from app.services.insight_generator import (
     LangChainInsightGenerator,
 )
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
-from app.services.insights.facts.context import build_workbook_context
 from app.services.insights.models import (
     ValidatedWorkbookInsightReport,
     WorkbookInsightReport,
 )
+from app.services.insights.verification.prepared_validation import PreparedValidation, prepare_validation
 from app.services.insights.verification.validator import validate_workbook_insights
 from app.services.workbook_parsing.models import WorkbookSummary
 from app.services.workbook_data_model import DATA_MODEL_ONLY_MESSAGE
@@ -80,18 +81,18 @@ async def generate_workbook_insights(
     ] = AnalysisDepth.AUTO,
     include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
 ) -> WorkbookInsightsResponse:
-    summary = await parse_or_bad_request(
-        file.filename or "", await read_upload(file), include_hidden_sheets
-    )
+    summary = await parse_or_bad_request(file.filename or "", await read_upload(file), include_hidden_sheets)
     require_accessible_worksheet_data(summary)
+    # Source-side validation inputs do not depend on the model's report: build them meanwhile.
+    prepared = asyncio.ensure_future(run_in_threadpool(prepare_validation, summary, depth))
     try:
         report = await insight_generator.generate(summary, depth)
-    except InsightGenerationError as exception:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exception),
-        ) from exception
-    validated_report = await run_in_threadpool(_verify_insights, report, summary, depth)
+    except BaseException as exception:
+        prepared.add_done_callback(lambda task: task.cancelled() or task.exception())  # never left unread
+        if isinstance(exception, InsightGenerationError):
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exception)) from exception
+        raise
+    validated_report = await run_in_threadpool(_verify_insights, report, summary, await prepared)
     return WorkbookInsightsResponse(
         workbook=WorkbookSummaryResponse.model_validate(summary),
         report=validated_report,
@@ -99,10 +100,9 @@ async def generate_workbook_insights(
 
 
 def _verify_insights(
-    report: WorkbookInsightReport, summary: WorkbookSummary, depth: AnalysisDepth
+    report: WorkbookInsightReport, summary: WorkbookSummary, prepared: PreparedValidation
 ) -> ValidatedWorkbookInsightReport:
-    profile = select_analysis_profile(summary, depth)
-    validated = validate_workbook_insights(report, build_workbook_context(summary, profile))
+    validated = validate_workbook_insights(report, prepared.context, prepared)
     if report._generation_notice:
         validated.limitations = list(dict.fromkeys([
             *validated.limitations, report._generation_notice,
