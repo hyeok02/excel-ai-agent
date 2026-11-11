@@ -32,15 +32,19 @@ const GROUP_PRESENTATION: Pick<InsightGroup, 'key' | 'description'>[] = [
   },
 ]
 
+const HANGUL = /[가-힣]/
+
 const topicHeading = (insights: InsightResult[], category: InsightGroupKey) => {
   const topics = [
     ...new Set(
       insights
         .map((insight) => {
-          if (insight.topic) return insight.topic
-          return /^(?:원본에서 확인한 내용|인사이트 \d+)$/.test(insight.title)
-            ? null
-            : insight.title
+          const generic = /^(?:원본에서 확인한 내용|인사이트 \d+)$/.test(insight.title)
+          // 원본 열 이름(TotalPrice)보다 한국어로 쓴 카드 제목이 읽기 쉽다.
+          const sourceHeader =
+            insight.topic && !HANGUL.test(insight.topic) && HANGUL.test(insight.title)
+          if (insight.topic && !(sourceHeader && !generic)) return insight.topic
+          return generic ? null : insight.title
         })
         .filter((topic): topic is string => topic !== null),
     ),
@@ -49,7 +53,7 @@ const topicHeading = (insights: InsightResult[], category: InsightGroupKey) => {
   if (topics.length > 2)
     return `${topics.slice(0, 2).join(' · ')} 외 ${topics.length - 2}개 주제`
   if (topics.length > 1) return topics.join(' · ')
-  if (!insights[0].topic) return topics[0]
+  if (!insights[0].topic || topics[0] === insights[0].title) return topics[0]
   if (category === 'trend') return `${topics[0]} 추이`
   if (category === 'change') return `${topics[0]} 증감`
   return topics[0]

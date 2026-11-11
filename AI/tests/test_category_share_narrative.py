@@ -31,5 +31,5 @@ def test_category_share_narrative_names_denominator_and_category():
         "(0~17세 아동, 1999~2023년)"
     ) in report.overview
     assert "대기질별 일수 비율" not in report.overview
-    assert "전체 날짜 중 공기질이 '좋음'으로 분류된 날의 비율" in report.overview
-    assert report.insights[0].title == "공기질이 '좋음'인 날의 비율 최근 변화 · 1999~2023년"
+    assert "· 공기질이 '좋음'인 날의 비율: " in report.overview
+    assert report.insights[0].title == "공기질이 '좋음'인 날의 비율 변화 · 1999~2023년"

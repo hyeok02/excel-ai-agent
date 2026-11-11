@@ -5,6 +5,7 @@ import QuestionClarificationChoices, {
 } from '@/components/analysis/result/questions/QuestionClarificationChoices'
 import { resolvedQuestionLabel } from '@/components/analysis/result/questions/questionContext'
 import QuestionEvidenceList from '@/components/analysis/result/questions/QuestionEvidenceList'
+import { interpretationOnly } from '@/components/analysis/result/questions/questionInterpretation'
 import { questionVerificationPresentation } from '@/components/analysis/result/questions/questionVerification'
 
 const TOOL_LABELS: Record<string, string> = {
@@ -113,8 +114,15 @@ const QuestionAnswerCard = ({
       </div>
       <QuestionEvidenceList evidence={answer.evidence} />
       {answer.limitations.length > 0 && (
-        <div className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-          <strong>확인 한계:</strong> {answer.limitations.join(' ')}
+        <div
+          className={`mt-3 rounded-2xl px-3 py-2 text-xs leading-5 ${
+            interpretationOnly(answer)
+              ? 'bg-slate-50 text-slate-600'
+              : 'bg-amber-50 text-amber-800'
+          }`}
+        >
+          <strong>{interpretationOnly(answer) ? '해석:' : '확인 한계:'}</strong>{' '}
+          {answer.limitations.join(' ')}
         </div>
       )}
     </article>

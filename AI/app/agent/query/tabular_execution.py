@@ -5,6 +5,7 @@ from app.agent.query.models import (
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_labelled_rows import label_column, labelled_text
+from app.agent.query.tabular_subtotal_rows import without_subtotals
 from app.agent.query.tabular_named_scope import named_column_scope
 from app.agent.query.tabular_results import aggregate_text, query_evidence, scope_description
 from app.agent.query.tabular_request_scope import request_matches_plan, rows_match_explicit_ranges
@@ -56,6 +57,9 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         return None
     if not rows_match_explicit_ranges(question, table, selected, rows):
         return None
+    subtotal_notes = []
+    if plan.operation == "numeric_summary":
+        rows, subtotal_notes = without_subtotals(rows, selected, table.sheet_name)
     population = NumericPopulationContext(plan, table)
     if not all(population.add(row) for row in rows):
         return population.unavailable(question)
@@ -69,6 +73,7 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     )
     if not text:
         return None
+    limitations = [*limitations, *subtotal_notes]
     text = scope_description(plan, table) + population.description() + text
     if data_index.truncated_for({table.sheet_name}):
         limitations.append("이 표의 셀은 모두 대조했지만 같은 시트의 일부 다른 셀은 검색 범위에서 제외되었습니다.")

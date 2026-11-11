@@ -1,4 +1,8 @@
-import type { WritebackChange, WritebackRelatedCell } from '@/api/analysis'
+import type {
+  WorkbookWriteback,
+  WritebackChange,
+  WritebackRelatedCell,
+} from '@/api/analysis'
 
 /** 변경을 가리키는 키. 근거 셀 목록과 같은 `시트!셀` 형식을 쓴다. */
 export const changeKey = (change: WritebackChange) =>
@@ -87,3 +91,16 @@ export const CHANGE_PAGE_SIZE = 10
 /** 지금 보이는 개수에서 한 번 더 펼쳤을 때 보이는 개수. 전체를 넘지 않는다. */
 export const nextShownCount = (shown: number, total: number, page = CHANGE_PAGE_SIZE) =>
   Math.min(total, shown + page)
+
+/** 적용이 끝난 제안에서 실제로 바뀐 셀. 일부만 승인했으면 나머지는 원본 그대로다. */
+export const appliedChangeKeys = (item: WorkbookWriteback) =>
+  item.status === 'APPLIED' && item.verification
+    ? new Set(item.verification.changedCells)
+    : null
+
+export const appliedSummary = (changes: WritebackChange[], applied: Set<string>) => {
+  const count = changes.filter((change) => applied.has(changeKey(change))).length
+  return count === changes.length
+    ? `승인한 ${count}개 셀을 수정본에 적용했습니다.`
+    : `제안한 ${changes.length}개 중 승인한 ${count}개 셀을 수정본에 적용했습니다. 나머지 ${changes.length - count}개는 원본 그대로입니다.`
+}

@@ -5,6 +5,7 @@ import re
 
 from app.agent.query.tabular_source_alias import alias_lookup_request, source_label_alias_answer
 from app.agent.query.tabular_source_alias_resolver import LangChainSourceLabelResolver
+from app.agent.query.tabular_translated_filters import translated_filter_answer  # noqa: F401  (service entry)
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 
 

@@ -6,6 +6,7 @@ from app.services.workbook_loading import close_workbook, load_workbook_for_read
 
 from app.agent.writeback.models import VerificationCheck, WritebackChange, WritebackManifest
 from app.agent.writeback.application_contract import validate_application_contract
+from app.agent.writeback.cached_results import refresh_cached_results
 from app.agent.writeback.package_editor import changed_worksheet_paths, patch_workbook_package
 from app.agent.writeback.macro_verification import add_macro_check
 from app.agent.writeback.verification import (
@@ -54,6 +55,10 @@ def apply_writeback(
     )
     if not manifest.verified:
         raise UnsafeWritebackError("변경 후 보존 검증에 실패해 수정본을 생성하지 않았습니다.")
+    # Formulas reading the approved cells get their recalculated results saved too, when provable.
+    modified, refreshed = refresh_cached_results(filename, content, modified, changes)
+    if refreshed is not None:
+        manifest.checks.append(refreshed)
     return modified, manifest
 
 

@@ -23,6 +23,8 @@ def test_the_group_after_a_named_one_is_recomputed_from_every_row() -> None:
     assert answer.answer.startswith("‘Cookies’ 다음은 ‘Bars’입니다 (‘Amount’ 합계 55)")
     assert "1. Cookies 90, 2. Bars 55, 3. Crackers 10, 4. Snacks 5" in answer.answer
     assert answer.verification.level == "source_checked" and answer.limitations
+    # The field reading is shown as an interpretation, not as a missing check.
+    assert "field_interpretation" in answer.verification.checks
 
 
 def test_an_exclusion_filter_or_an_ordinal_selects_the_position() -> None:

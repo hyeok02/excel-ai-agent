@@ -60,10 +60,18 @@ def _value(item, unit):
 def _period_label(item):
     date = item.period
     text = f"{date.year}년 {date.month}월"
-    if source_period_grain(item.period_cell.value) != "month":
+    if _year_only(item.period_cell.value):
+        text = f"{date.year}년"  # a "2019" header names a year, not 1 January
+    elif source_period_grain(item.period_cell.value) != "month":
         text += f" {date.day}일"
     parts = [_GRAIN_NAMES.get(item.grain), _SCENARIO_NAMES.get(item.scenario)]
     return text + (" " + " ".join(part for part in parts if part) if any(parts) else " 기준")
+
+def _year_only(value):
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value).is_integer() and 1800 <= value <= 2200
+    return isinstance(value, str) and re.fullmatch(r"\s*(?:18|19|20|21)\d{2}\s*(?:년)?\s*", value) is not None
+
 
 def _metric_identity(label):
     from app.agent.query.search_terms import SEMANTIC_ALIASES

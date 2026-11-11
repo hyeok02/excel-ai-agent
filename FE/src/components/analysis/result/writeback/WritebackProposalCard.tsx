@@ -6,6 +6,8 @@ import WritebackApprovalPanel from '@/components/analysis/result/writeback/Write
 import WritebackChangeList from '@/components/analysis/result/writeback/WritebackChangeList'
 import {
   allChangeKeys,
+  appliedChangeKeys,
+  appliedSummary,
   brokenDependencies,
   toggleSelection,
   unselectedRelated,
@@ -41,6 +43,7 @@ const WritebackProposalCard = ({
   const blocked = item.status === 'BLOCKED'
   const failed = item.status === 'FAILED'
   const selectable = proposed && keys.length > 1
+  const applied = appliedChangeKeys(item)
 
   return (
     <article className="mt-5 rounded-3xl border border-slate-200 bg-slate-50/60 p-5">
@@ -53,13 +56,16 @@ const WritebackProposalCard = ({
             </p>
           )}
           <h3 className="mt-1 text-base font-extrabold text-slate-900">
-            {item.proposal.summary}
+            {applied && changes.length > 0
+              ? appliedSummary(changes, applied)
+              : item.proposal.summary}
           </h3>
         </div>
         <WritebackStatusBadge status={item.status} />
       </div>
       {changes.length > 0 && (
         <WritebackChangeList
+          applied={applied}
           changes={changes}
           onSelectAll={setSelected}
           onToggle={(key) =>
