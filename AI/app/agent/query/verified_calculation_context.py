@@ -79,7 +79,8 @@ def _horizontal(sheet, series_list, descriptions):
     calculations = []
     for series in series_list if isinstance(series_list, list) else []:
         points = series.get("points") if isinstance(series, dict) else None
-        if not isinstance(points, list) or len(points) < 2:
+        # Years read from a header's shape alone are an insight's stated reading, not answer evidence.
+        if not isinstance(points, list) or len(points) < 2 or series.get("axis_inferred"):
             continue
         start, end = points[0], points[-1]
         if not _number(start.get("value")) or not _number(end.get("value")):

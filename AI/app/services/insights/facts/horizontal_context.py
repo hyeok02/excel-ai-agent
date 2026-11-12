@@ -3,6 +3,7 @@ from datetime import datetime
 import re
 
 from app.services.insights.facts.fact_trends import date_value
+from app.services.insights.facts.horizontal_year_header import unlabeled_year_header
 
 _YEAR = re.compile(r"(?:(mid)[-\s])?((?:19|20|21)\d{2})(년)?", re.I)
 _YEAR_LABEL = re.compile(r"^(?:year|years|calendar year|연도|년도|연간)$", re.I)
@@ -15,7 +16,11 @@ _UNIT = re.compile(
 
 
 def axis_dates(row, cells, rows):
-    """Standalone years are dates only when the table supplies period context.
+    return axis_reading(row, cells, rows)[0]
+
+
+def axis_reading(row, cells, rows):
+    """(column -> date, inferred): standalone years are dates only when the table supplies period context.
 
     In particular, a row of four-digit quantities/identifiers alone is not a
     year axis. Explicit 'Mid-2024'/'2024년' labels or a year heading/title span
@@ -33,6 +38,9 @@ def axis_dates(row, cells, rows):
         len(endpoints & set(re.findall(r"(?<!\d)(?:19|20|21)\d{2}(?!\d)", text))) >= 2
         for text in context
     ))
+    # Only the table's shape says these are years: read them so, and say so downstream.
+    inferred = not contextual_years and unlabeled_year_header(row, cells, rows, years)
+    contextual_years = contextual_years or inferred
     result = {}
     for column, cell in cells.items():
         parsed = date_value(cell.get("value"))
@@ -41,7 +49,7 @@ def axis_dates(row, cells, rows):
             result[column] = parsed
         elif annual and (contextual_years or annual[1]):
             result[column] = datetime(annual[0], 7 if annual[2] else 1, 1)
-    return result
+    return result, inferred
 
 
 def period_label(value):
