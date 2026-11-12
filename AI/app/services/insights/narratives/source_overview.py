@@ -35,5 +35,8 @@ def compact_facts(items, limit=3, max_chars=440):
         if whole and not recent:
             first = sentences[0] + " " + whole
         parts.append(first)
-    # One conclusion per line; the cards keep the full paths.
-    return "\n".join(f"· {part}" for part in parts)
+    # One conclusion per line; the cards keep the full paths. A reading the numbers rest on
+    # ("해석: 머리글 2019~2022를 연도로 …") is stated once under the conclusions it applies to.
+    readings = dict.fromkeys(line for item in items[:len(parts)] for line in item.fact.splitlines()
+                             if line.startswith("해석: "))
+    return "\n".join([*(f"· {part}" for part in parts), *readings])
