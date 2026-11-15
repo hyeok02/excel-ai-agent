@@ -26,6 +26,7 @@ from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.source_count_answers import source_count_answer
 from app.agent.query.source_aggregate_answers import source_aggregate_answer
 from app.agent.query.tabular_routing import planned_tabular_answer, unproven_note, unverified_plan
+from app.agent.query.tabular_fixed_groups import without_fixed_groups
 from app.agent.query.natural_relative_ranking import natural_relative_answer
 from app.agent.query.tabular_source_alias_resolution import clarified_answer, translated_filter_answer
 from app.agent.query.time_series_answers import time_series_answer
@@ -89,7 +90,7 @@ class WorkbookQuestionService:
             return clarification
         if missing := missing_identifier_answer(question, data_index):
             return missing
-        intent = intent_override or await self._question_intent(question, summary)
+        intent = without_fixed_groups(intent_override or await self._question_intent(question, summary), summary)
         if intents is not None:
             intents.append(intent)
         if intent.composite_query is not None:
@@ -123,7 +124,7 @@ class WorkbookQuestionService:
                     if allow_generation else tabular)
         if tabular is not None and tabular.status != "insufficient_evidence":
             return tabular
-        if tabular is not None and (translated := await translated_filter_answer(question, summary, data_index, intent, allow=allow_generation)):
+        if tabular is not None and (translated := await translated_filter_answer(question, summary, data_index, intent)):
             return translated  # "쿠키" read as Category = Cookies, confirmed per word and stated
         if scalar:
             return scalar

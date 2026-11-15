@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
+from app.agent.query.intent_classifier import _sampling
 from app.agent.query.models import QuestionAnswerDraft
 from app.agent.query.claim_models import SourceClaim
 from app.agent.query.prompts import SYSTEM_PROMPT, build_question_prompt
@@ -45,6 +46,7 @@ class LangChainQuestionAnswerGenerator:
             timeout=self._timeout_seconds,
             max_retries=1,
             max_completion_tokens=1800,
+            **_sampling(),  # the same evidence must be written up the same way each time
         ).with_structured_output(QuestionAnswerDraft, method="json_schema")
 
     async def generate(
