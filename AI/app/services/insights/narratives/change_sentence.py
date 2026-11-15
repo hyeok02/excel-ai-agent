@@ -6,7 +6,7 @@ period first, then the latest step, then the path's shape.
 """
 import re
 
-from app.services.insights.narratives.narrative_values import direction_particle, joining_particle, number
+from app.services.insights.narratives.narrative_values import direction_particle, joining_particle, number, subject_particle
 
 _SHOWN = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
@@ -54,3 +54,9 @@ def change_fact(subject, whole, recent="", shape=""):
     """'주어: 전체 기간 변화' then '최근 구간은 …' and the shape, one reading per line."""
     lines = [f"{subject}: {whole}", f"최근 구간은 {recent}" if recent else "", shape]
     return "\n".join(line for line in lines if line)
+
+
+def inferred_axis_note(first, last):
+    """The reading a series rests on when nothing but the header's shape says its columns are years."""
+    particle = "을" if subject_particle(str(last)) == "이" else "를"
+    return f"해석: 머리글 {first}~{last}{particle} 연도로 읽어 계산했습니다. 원본에는 연도라고 적혀 있지 않습니다."

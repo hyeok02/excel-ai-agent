@@ -5,7 +5,7 @@ from app.services.insights.display.display_quality import business_priority, is_
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.narratives.narrative_values import finite
 from app.services.insights.facts.series_scalars import unit
-from app.services.insights.facts.horizontal_context import axis_dates, declared_axis_unit, period_label
+from app.services.insights.facts.horizontal_context import axis_reading, declared_axis_unit, period_label
 from app.services.insights.facts.horizontal_rows import (
     coordinates as _coordinates, raw as _raw, worksheet_rows as _worksheet_rows,
 )
@@ -19,11 +19,11 @@ def extract_horizontal_series(regions):
     rows = _worksheet_rows(regions)
     axes = [axis for row, cells in sorted(rows.items()) for axis in _axes(row, cells, rows)]
     results = []
-    for axis_row, axis in axes:
-        next_row = min((row for row, _ in axes if row > axis_row), default=10**9)
-        results.extend(_axis_series(
-            rows, axis_row, min(next_row, axis_row + MAX_AXIS_DISTANCE), axis,
-        ))
+    for axis_row, axis, inferred in axes:
+        next_row = min((row for row, _, _ in axes if row > axis_row), default=10**9)
+        series = _axis_series(rows, axis_row, min(next_row, axis_row + MAX_AXIS_DISTANCE), axis)
+        # Years only the header's shape supports: the narrative states this reading.
+        results.extend({**item, "axis_inferred": True} if inferred else item for item in series)
     results.sort(
         key=lambda item: (overall(item["metric"]), business_priority(item["metric"]), -item["row"]),
         reverse=True,
@@ -34,7 +34,7 @@ def extract_horizontal_series(regions):
 
 def _axes(row, cells, rows):
     headings = rows.get(row - 1, {})
-    dates = axis_dates(row, cells, rows)
+    dates, inferred = axis_reading(row, cells, rows)
     dated = [(column, cell, dates[column])
              for column, cell in sorted(cells.items()) if column in dates]
     runs = []
@@ -50,7 +50,7 @@ def _axes(row, cells, rows):
         current.append((column, cell, date))
     if current:
         runs.append(current)
-    return [(row, sorted(run, key=lambda point: point[2])) for run in runs if len(run) >= 2]
+    return [(row, sorted(run, key=lambda point: point[2]), inferred) for run in runs if len(run) >= 2]
 
 
 def _axis_series(rows, start, end, axis):

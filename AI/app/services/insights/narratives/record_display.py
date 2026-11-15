@@ -10,6 +10,7 @@ from app.services.insights.display.display_quality import (
 from app.services.insights.narratives.event_narrative import build_event_insight
 from app.services.insights.display.percent_format import scales_by_percent
 from app.services.insights.facts.fact_trends import date_value
+from app.services.insights.facts.horizontal_year_header import year_like_header_cells
 from app.services.insights.models import WorkbookInsight
 from app.services.insights.narratives.narrative_values import finite, number, period, reference
 from app.services.insights.narratives.topic_labels import source_topic
@@ -37,7 +38,9 @@ def build_record_insight(sheet: str, values: list[dict[str, object]]):
     title = _text(title_cell.get("value")) if title_cell else "원본 내용 확인"
     if len(title) > 70:
         title = f"{title[:67]}..."
-    details = " · ".join(_field(cell) for cell in usable[:MAX_FIELDS])
+    names = year_like_header_cells(usable)
+    details = " · ".join(f"‘{cell['value']}’" if cell["cell"] in names else _field(cell)
+                         for cell in usable[:MAX_FIELDS])
     numeric = sum(finite(cell.get("value")) for cell in usable)
     category = "metric" if numeric else "summary"
     evidence = [reference(sheet, cell["cell"]) for cell in usable[:MAX_FIELDS]]
@@ -78,8 +81,9 @@ def _usable_values(values):
             continue
         if label and is_identifier_label(label):
             continue
+        # A repeated label is one mention; a repeated number (5 · 6 · 7 · 6) is another reading.
         signature = _text(raw).casefold()
-        if signature in seen:
+        if signature in seen and not finite(raw):
             continue
         seen.add(signature)
         result.append(cell)

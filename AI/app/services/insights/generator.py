@@ -107,6 +107,10 @@ class LangChainInsightGenerator:
             logger.warning("Insight model generation failed (%s)", type(exception).__name__)
             if context is not None:
                 source_report = source_narrative_report(context)
+                if not source_report.insights:
+                    # No narrative for this table: quote its source cells rather than fail the page.
+                    from app.services.insights.quality import build_source_report
+                    source_report = build_source_report(context)
                 if source_report.insights:
                     source_report._generation_notice = SOURCE_FALLBACK_NOTICE
                     return source_report

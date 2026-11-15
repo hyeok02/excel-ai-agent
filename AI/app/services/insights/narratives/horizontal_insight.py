@@ -9,7 +9,7 @@ from app.services.insights.display.source_labels import source_label, source_uni
 from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.facts.series_scalars import displayed_text, displayed_value, scalar, unit as cell_unit
 from app.services.insights.models import WorkbookInsight
-from app.services.insights.narratives.change_sentence import change_sentence
+from app.services.insights.narratives.change_sentence import change_sentence, inferred_axis_note
 from app.services.insights.narratives.narrative_values import number, period, reference
 from app.services.insights.narratives.series_path import series_shape
 from app.services.insights.narratives.topic_labels import scoped_source_topic
@@ -70,6 +70,8 @@ def horizontal_insight(sheet, series, owner=("", ()), unit=("", ()), *, caption=
         shape = series_shape([_period(point) for point in points], values,
                              [f"{_display(point, value)}{money}" for point, value in zip(points, values)])
         fact += f"\n{shape}" if shape else ""
+    if series.get("axis_inferred"):
+        fact += "\n" + inferred_axis_note(*(date_value(str(point["period"])).year for point in (points[0], points[-1])))
     evidence = [series.get("scope_cell"), series.get("label_cell"), *series.get("label_cells", []), series.get("basis_cell"),
                 *(point.get(key) for point in points for key in ("period_cell", "value_cell"))]
     return WorkbookInsight(
