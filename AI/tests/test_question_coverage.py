@@ -62,3 +62,18 @@ def test_a_trend_the_series_route_cannot_bind_is_answered_by_the_insight_stating
     assert answer is not None and answer.answer == good["fact"] and len(answer.evidence) == 2
     assert module.verified_series_answer("공기질 비율 추이 알려줘", summary, index) is None  # 좋음·보통 tie
     assert module.verified_series_answer("미세먼지 추이 알려줘", summary, index) is None
+
+
+def test_a_yes_no_column_the_question_names_is_read_as_yes_unless_negated():
+    from app.agent.query.tabular_query_models import TabularFilter
+    rows = [["Policy", "Earthquake", "Flood"], ["P1", "Y", "N"], ["P2", "N", "Y"], ["P3", "Y", "Y"]]
+    summary, index = table_fixture([(1, 1, rows)])
+    table = build_query_tables(summary)[0]
+    plan = TabularQueryPlan(operation="row_count", table_id=table.id, column_ids=[], statistic="all",
+                            filters=[TabularFilter(column_id="B", operator="equals", value="Y")])
+    ask = lambda question: asyncio.run(translated_filter_answer(question, summary, index, QuestionIntent(
+        False, "row_count", (), True, plan), resolver=Names({"지진": "Earthquake"})))
+    answer = ask("지진 보험 가입 계약 수는?")
+    assert answer.answer.startswith("해석: ‘지진’ → Earthquake = Y") and "2건" in answer.answer
+    assert ask("지진 보험 미가입 계약 수는?") is None    # negated: the plan's Y is not what was asked
+    assert ask("홍수 보험 가입 계약 수는?") is None      # names another column than the plan's

@@ -6,9 +6,8 @@ authorizes a filter. Here the plan is not trusted either. For each such filter a
 separate, bounded call is asked which source value each remaining question word
 names, choosing only among that column's actual values. Only when exactly one
 word clearly names exactly the planned value is the question read as
-"쿠키(Cookies) 판매수량 합계는?" and run through the ordinary checks again. The
-answer states the reading and is marked as an interpreted, source-checked answer,
-never as a request-checked one. Anything less leaves the original answer as it was.
+"쿠키(Cookies) 판매수량 합계는?" and run through the ordinary checks again. The answer
+states the reading as an interpreted, source-checked one; anything less leaves it as it was.
 """
 import asyncio
 import re
@@ -23,7 +22,7 @@ from app.agent.query.tabular_request_extras import _stated_subject
 from app.agent.query.tabular_request_predicates import normalize
 from app.agent.query.tabular_translated_rows import every_row
 from app.agent.query.tabular_translated_names import (
-    assigned_words, column_words, contains_as_equals, names_no_member, words_naming)
+    affirmed_columns, assigned_words, column_words, contains_as_equals, names_no_member, words_naming)
 
 MAX_WORDS = 8
 MAX_CONDITIONS = 4
@@ -71,8 +70,7 @@ def candidate_words(question, table):
 
 async def translated_filter_answer(question, summary, data_index, intent, resolver=None, allow=True):
     plan = intent.tabular_query
-    # "쿠키랑 크래커" is an OR of two planned values; each is still checked word by word.
-    if not allow or plan is None:
+    if not allow or plan is None:  # "쿠키랑 크래커" is an OR of two values, each still read word by word
         return None
     tables = [table for table in build_query_tables(summary) if table.id == plan.table_id]
     bound = bind_tabular_plan(plan, tables[0]) if len(tables) == 1 else None
@@ -99,10 +97,11 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     fields = {column.id: column.header for column in table.columns}
     columns = [sorted({item for row in table.rows if isinstance(item := row.values.get(condition.column_id), str)
                        and item.strip()}) for condition in conditions]
-    try:
+    try:  # a yes/no column the question names is read as its "yes" ("지진" → Earthquake = Y)
+        affirmed = await affirmed_columns(resolver, words, table, conditions, question)
         found = await asyncio.gather(*(words_naming(resolver, words, fields[condition.column_id], values,
                                                     condition.value) for condition, values in zip(conditions, columns)))
-        # A total row (All Persons) no word names stands for the column when no member is named.
+        found = [[affirmed[index]] if index in affirmed else named for index, named in enumerate(found)]
         totals = [named == [] and await names_no_member(resolver, words, fields[condition.column_id], values,
                                                         condition.value)
                   for condition, values, named in zip(conditions, columns, found)]
@@ -129,8 +128,9 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     if not readings:
         return None
     rewritten = question
-    for word, value, _ in readings:
-        rewritten = rewritten.replace(word, f"{word}({value})", 1) if word else f"{rewritten.rstrip()} ({value})"
+    for word, value, field in readings:
+        label = f"{field} {value}" if word in affirmed.values() else value  # "Y" alone fits every yes/no column
+        rewritten = rewritten.replace(word, f"{word}({label})", 1) if word else f"{rewritten.rstrip()} ({value})"
     answer = await asyncio.to_thread(execute_tabular_query, plan, summary, data_index, rewritten, intent)
     if answer is None or answer.verification.level != QuestionVerificationLevel.REQUEST_CHECKED:
         return None
