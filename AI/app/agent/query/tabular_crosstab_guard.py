@@ -37,7 +37,7 @@ async def checked_translated_answer(question, summary, data_index, intent, resol
     cross-tab while 판매금액 is TotalPrice): its refusal goes on to the cross-tab replan."""
     answer = await translated_filter_answer(question, summary, data_index, intent)
     if (answer is None or "member_rows" in answer.selected_tools
-            or not await _disagrees(question, summary, intent.tabular_query, answer.answer, resolver)):
+            or not await _disagrees(question, summary, intent.tabular_query, answer.answer, resolver, confirmed=True)):
         return answer
     return _another_measure(question)
 
@@ -64,7 +64,8 @@ def _number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-async def _disagrees(question, summary, plan, answer, resolver):
+async def _disagrees(question, summary, plan, answer, resolver, confirmed=False):
+    """confirmed: the shown figure must also be another measure's total over several detail rows."""
     if plan is None or plan.operation not in {"numeric_summary", "lookup"}:
         return False
     tables = build_query_tables(summary)
@@ -85,6 +86,8 @@ async def _disagrees(question, summary, plan, answer, resolver):
         return False
     shown = [float(item.replace(",", "")) for item in re.findall(r"-?\d[\d,]*(?:\.\d+)?", answer)]
     for other, _, rows in details:
+        if confirmed and len(rows) < 2:
+            continue  # one row of another table is the same entity, not the records a cross-tab sums
         measures = [column for column in other.columns
                     if any(_number(row.values.get(column.id)) for row in rows)
                     and all(_number(row.values.get(column.id)) or row.values.get(column.id) is None for row in rows)]
@@ -103,9 +106,16 @@ async def _disagrees(question, summary, plan, answer, resolver):
             values = [row.values[column.id] for row in rows if _number(row.values.get(column.id))]
             if plan.operation == "lookup" and len(values) != 1:
                 continue
-            expected = sum(values)
-            formats = [parse_number_format(item) for item in column.number_formats[:1]]
-            candidates = {expected, *(scaled_value(expected, spec) for spec in formats)}
-            if not any(abs(number - value) <= max(abs(value) * 0.005, 0.01) for number in shown for value in candidates):
+            if not _shows(shown, column, values) and (not confirmed or any(
+                    _shows(shown, other_column, [row.values[other_column.id] for row in rows
+                                                 if _number(row.values.get(other_column.id))])
+                    for other_column in measures if other_column is not column)):
                 return True
     return False
+
+
+def _shows(shown, column, values):
+    expected = sum(values)
+    formats = [parse_number_format(item) for item in column.number_formats[:1]]
+    candidates = {expected, *(scaled_value(expected, spec) for spec in formats)}
+    return any(abs(number - value) <= max(abs(value) * 0.005, 0.01) for number in shown for value in candidates)

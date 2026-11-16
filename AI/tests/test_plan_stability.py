@@ -128,15 +128,19 @@ def test_a_cross_tab_column_read_through_a_translated_word_faces_the_same_check(
     cross = next(table for table in build_query_tables(summary) if any(c.header == "East" for c in table.columns))
     east = next(c.id for c in cross.columns if c.header == "East")
     plan = TabularQueryPlan(operation="numeric_summary", table_id=cross.id, column_ids=[east], statistic="sum")
-    read = QuestionAnswer(question="q", answer="해석: ‘동부’ → East\n‘East’: 합계 5", status="limited", confidence=0.8,
-                          selected_tools=["tabular_query"], evidence=[], limitations=[])
+    shown = {}
 
     async def translated(*args, **kwargs):
-        return read
+        return QuestionAnswer(question="q", answer=f"해석: ‘동부’ → East\n‘East’: 합계 {shown['value']}", status="limited",
+                              confidence=0.8, selected_tools=["tabular_query"], evidence=[], limitations=[])
     monkeypatch.setattr(guard, "translated_filter_answer", translated)
-    ask = lambda question: asyncio.run(guard.checked_translated_answer(
-        question, summary, index, QuestionIntent(False, "aggregation", (), True, plan),
-        resolver=Unread({"판매금액": "TotalPrice", "판매수량": "Qty"})))
-    refused = ask("동부 지역 판매금액은?")
-    assert refused.answer == guard.ANOTHER_MEASURE and guard.ANOTHER_MEASURE in refused.limitations
-    assert ask("동부 지역 판매수량은?") is read
+
+    def ask(question, value):
+        shown["value"] = value
+        return asyncio.run(guard.checked_translated_answer(
+            question, summary, index, QuestionIntent(False, "aggregation", (), True, plan),
+            resolver=Unread({"판매금액": "TotalPrice", "판매수량": "Qty"}))).answer
+    assert ask("동부 지역 판매금액은?", 5) == guard.ANOTHER_MEASURE  # 5 is East's Qty: another measure
+    assert ask("동부 지역 판매수량은?", 5).endswith("합계 5")
+    # A figure that is no other measure's total is not shown to be one: the reading stands.
+    assert ask("동부 지역 판매금액은?", 7).endswith("합계 7")
