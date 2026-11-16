@@ -11,7 +11,15 @@ from app.services.insights.narratives.year_to_date_scope import year_to_date_sco
 from app.services.insights.narratives.vertical_latest_format import _period, _suffix, _path
 
 
-def _items(sheet, header, section, section_cell, records, unit_note, series):
+def metric_name(cell):
+    """A column's series name, qualified by a parent header that does not already say it."""
+    metric, parent = " ".join(str(cell.get("value", "")).split()), cell.get("_parent")
+    if parent and " ".join(str(parent["value"]).split()).casefold() not in metric.casefold():
+        metric = f"{' '.join(str(parent['value']).split())} · {metric}"
+    return metric
+
+
+def _items(sheet, header, section, section_cell, records, unit_note, series, every=False):
     if len({row[0] for row in records}) != len(records):
         return []
     records = sorted(records, key=lambda record: record[0])
@@ -22,10 +30,7 @@ def _items(sheet, header, section, section_cell, records, unit_note, series):
     options = []
     for cell in header[1:]:
         position = column(cell)
-        metric = " ".join(str(cell.get("value", "")).split())
-        parent = cell.get("_parent")
-        if parent and " ".join(str(parent["value"]).split()).casefold() not in metric.casefold():
-            metric = f"{' '.join(str(parent['value']).split())} · {metric}"
+        metric, parent = metric_name(cell), cell.get("_parent")
         if not metric or metric.startswith("#"):
             continue
         pair = [row[2].get(position, {}) for row in (previous, latest)]
@@ -78,6 +83,8 @@ def _items(sheet, header, section, section_cell, records, unit_note, series):
         title = f"{title_metric} 변화" + (f" · {title_section}" if title_section and len(title_section) <= 40 else "")
         options.append((priority, units, insight(title, fact, evidence, "change", topic=metric)))
     ordered = sorted(options, key=lambda option: option[0])
+    if every:  # a question may name any metric of the section, not only the three a report shows
+        return [item for _, _, item in ordered]
     if any(option[1] != "%" for option in ordered):
         rates = [option for option in ordered if option[1] == "%"]
         ordered = sorted([option for option in ordered if option[1] != "%"] + rates[:1], key=lambda option: option[0])

@@ -77,23 +77,28 @@ def assigned_words(found):
 
 
 async def column_words(resolver, words, table, plan):
-    """([(word, header)] naming columns the plan computes, conflict) asked among all headers.
+    """([(word, label)] naming columns the plan computes, conflict) asked among all column labels.
 
-    conflict: a word names a column the plan never reads ("영국" is United Kingdom, the plan
-    reads England). Such a plan answers some other question, however its rows were read.
+    Labels are the headers and the parent headers above them ("가정용" names Residential, the
+    parent of "August 2026"). conflict: a word names only columns the plan never reads ("영국"
+    is United Kingdom, the plan reads England); such a plan answers some other question.
     """
-    headers = [column.header for column in table.columns]
+    labels = list(dict.fromkeys([column.header for column in table.columns]
+                                + [text for column in table.columns for _, text in column.header_path]))
+    under = lambda label: {column.id for column in table.columns
+                           if column.header == label or any(text == label for _, text in column.header_path)}
     read = {*plan.column_ids, *plan.group_by, *plan.identity_column_ids, *(item.column_id for item in plan.filters),
             *([plan.order_by] if plan.order_by else [])}
-    involved = {column.header for column in table.columns if column.id in read}
-    computed = {column.header for column in table.columns if column.id in plan.column_ids}
-    results = await asyncio.gather(*(resolver.resolve(word, "column name", headers) for word in words))
-    named = [(word, headers[result.candidate_id]) for word, result in zip(words, results)
+    results = await asyncio.gather(*(resolver.resolve(word, "column name", labels) for word in words))
+    named = [(word, labels[result.candidate_id]) for word, result in zip(words, results)
              if result.status == "resolved" and type(result.candidate_id) is int
-             and 0 <= result.candidate_id < len(headers)]
-    named = [(word, header) for word, header in named if not any(word != other and other in word for other, _ in named)]
-    conflict = any(header not in involved for _, header in named)
-    return [(word, header) for word, header in named if header in computed], conflict
+             and 0 <= result.candidate_id < len(labels)]
+    named = [(word, label) for word, label in named if not any(word != other and other in word for other, _ in named)]
+    conflict = any(not under(label) & read for _, label in named)
+    # A parent over several columns is stated as the one column the plan computes under it.
+    computed = lambda label: [column for column in table.columns if column.id in under(label) & set(plan.column_ids)]
+    return [(word, computed(label)[0].display_header if len(computed(label)) == 1 else label)
+            for word, label in named if computed(label)], conflict
 
 
 _TOTAL = re.compile(r"(?:all|total|grand\s+total|overall)(?:\s+\S.*)?|전체(?:\s*\S.*)?|합계|총계|총합", re.I)
@@ -110,3 +115,28 @@ async def names_no_member(resolver, words, field, values, planned):
         return False
     results = await asyncio.gather(*(resolver.resolve(word, field, values) for word in words))
     return all(result.status == "unmatched" for result in results)
+
+
+_YES = {"y", "yes", "true", "o", "예", "있음"}
+_NO = {"n", "no", "false", "x", "아니오", "없음"}
+_NEGATED = re.compile(r"미가입|미보유|없는|없음|아닌|않은|안\s*한|제외|\bnot\b|\bno\b|\bwithout\b", re.I)
+
+
+async def affirmed_columns(resolver, words, table, conditions, question):
+    """{condition index: word} for yes/no columns the question names without negating them.
+
+    "지진 보험 가입 계약 수" names Earthquake, a column holding only Y and N, and the plan keeps
+    Y: naming the column affirms it. Any negation ("미가입", "없는") leaves it unread.
+    """
+    columns = {column.id: column for column in table.columns}
+    binary = {index: condition for index, condition in enumerate(conditions)
+              if normalize(condition.value) in _YES and {normalize(row.values.get(condition.column_id))
+                                                         for row in table.rows} - {"", "none"} <= _YES | _NO}
+    if not binary or _NEGATED.search(question):
+        return {}
+    headers = [columns[condition.column_id].header for condition in binary.values()]
+    results = await asyncio.gather(*(resolver.resolve(word, "column name", headers) for word in words))
+    named = {headers[result.candidate_id]: word for word, result in reversed(list(zip(words, results)))
+             if result.status == "resolved" and type(result.candidate_id) is int and 0 <= result.candidate_id < len(headers)}
+    return {index: named[columns[condition.column_id].header] for index, condition in binary.items()
+            if columns[condition.column_id].header in named}

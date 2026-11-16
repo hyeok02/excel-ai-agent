@@ -10,6 +10,7 @@ from app.agent.query.single_series_extreme_render import (
     unavailable,
 )
 from app.agent.query.trend_calculations import decimal_value, exact_difference
+from app.agent.query.series_binding import unbound
 from app.agent.query.trend_selection import (
     distinct_trend_candidates,
     prepare_trend_candidate,
@@ -65,10 +66,10 @@ def single_series_extreme_answer(question, summary, index):
         preserve_labels=True,
     )
     if not valid:
-        reason = next(
-            (_REASONS[candidate.error] for candidate, _ in prepared if candidate.error in _REASONS),
-            "요청한 지표의 날짜와 전체 원본 값을 연결하지 못했습니다. 날짜 축과 지표가 있는 표를 지정해 주세요.",
-        )
+        reason = next((_REASONS[candidate.error] for candidate, _ in prepared if candidate.error in _REASONS), None)
+        if reason is None:
+            return unbound(unavailable(
+                question, "요청한 지표의 날짜와 전체 원본 값을 연결하지 못했습니다. 날짜 축과 지표가 있는 표를 지정해 주세요."))
         return unavailable(question, reason)
     if any(candidate.error and candidate.error != "ambiguous_date_axis" for candidate, _ in prepared):
         return unavailable(

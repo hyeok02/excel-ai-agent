@@ -5,6 +5,7 @@ from app.agent.query.change_ranking_request import parse_change_ranking_request
 from app.agent.query.change_ranking_sources import ranking_sources
 from app.agent.query.metric_observation_render import _evidence
 from app.agent.query.models import QuestionAnswer, QuestionAnswerVerification
+from app.agent.query.series_binding import unbound
 
 
 def ranked_change_answer(question, summary, index):
@@ -17,7 +18,7 @@ def ranked_change_answer(question, summary, index):
     if not sources.series:
         if not getattr(index, "rows", ()):
             return None
-        return _unavailable(question, "질문에 맞는 전체 비교 대상과 기간별 원본 값을 연결하지 못했습니다.")
+        return unbound(_unavailable(question, "질문에 맞는 전체 비교 대상과 기간별 원본 값을 연결하지 못했습니다."))
     try:
         ranking = calculate_ranking(sources.series, request)
         net = calculate_ranking(sources.series, request, "net") if request.basis == "auto" else None

@@ -7,6 +7,8 @@ from app.agent.query.metric_unit_settings import _unambiguous_control
 from app.agent.query.models import QuestionAnswer
 from app.agent.query.tabular_population_semantics import ROLE_HEADERS as _ROLES, uses_currency, row_population_role
 
+OVERLAPPING_TOTALS = "여러 합계·소계 행의 집계 범위가 겹치지 않는지 확인하지 못했습니다. 원본 그룹별로 구분하거나 한 집계 범위를 선택해 주세요."
+MIXED_ROLES = "상세 행과 합계·소계 행이 섞여 중복 집계할 수 있습니다. 상세 행만 조건으로 지정하거나 범위를 구분해 주세요."
 _UNITS = {"currency": "currency", "통화": "currency", "magnitude": "magnitude",
           "금액 단위": "magnitude", "unit": "unit", "units": "unit", "단위": "unit"}
 
@@ -96,11 +98,11 @@ class NumericPopulationContext:
                     return False
             token = group, key
             if token in self.identities and role == "total" and dict(self.identities[token]).get("row_role") == "total":
-                self.error = "여러 합계·소계 행의 집계 범위가 겹치지 않는지 확인하지 못했습니다. 원본 그룹별로 구분하거나 한 집계 범위를 선택해 주세요."
+                self.error = OVERLAPPING_TOTALS
                 return False
             if token in self.identities and self.identities[token] != identity:
                 if dict(self.identities[token]).get("row_role") != role:
-                    self.error = "상세 행과 합계·소계 행이 섞여 중복 집계할 수 있습니다. 상세 행만 조건으로 지정하거나 범위를 구분해 주세요."
+                    self.error = MIXED_ROLES
                 else:
                     self.error = "통화·단위가 다른 값이 섞여 하나의 수치로 합산·비교하지 않았습니다. 통화·단위별로 집계하거나 조건을 지정해 주세요."
                 return False

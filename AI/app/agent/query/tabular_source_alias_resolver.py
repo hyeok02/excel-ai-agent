@@ -5,6 +5,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Literal
 
+import httpx
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -52,10 +53,7 @@ class LangChainSourceLabelResolver:
         if (found := _READINGS.get(key)) is not None:
             _READINGS.move_to_end(key)
             return found
-        model = ChatOpenAI(model=self._model, api_key=self._api_key, timeout=self._timeout,
-                           max_retries=0, max_completion_tokens=350, **_sampling()).with_structured_output(
-                               SourceLabelResolution, method="json_schema")
-        result = await model.ainvoke([
+        result = await self._structured(SourceLabelResolution, 350, [
             SystemMessage(content=_SYSTEM),
             HumanMessage(content=json.dumps({"target_name": subject, "source_field": field,
                                              "candidates": [{"candidate_id": i, "label": value}
@@ -67,3 +65,11 @@ class LangChainSourceLabelResolver:
         if len(_READINGS) > MAX_CACHED * 8:
             _READINGS.popitem(last=False)
         return resolution
+
+    async def _structured(self, schema, tokens, messages):
+        # Readings also run in worker threads, each under its own event loop: a pooled connection
+        # opened under another (closed) loop fails, so every call holds its own client.
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            model = ChatOpenAI(model=self._model, api_key=self._api_key, timeout=self._timeout, max_retries=0,
+                               max_completion_tokens=tokens, http_async_client=client, **_sampling())
+            return await model.with_structured_output(schema, method="json_schema").ainvoke(messages)

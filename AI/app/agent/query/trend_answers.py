@@ -20,6 +20,7 @@ from app.agent.query.joined_trend_answers import joined_trend_answer
 from app.agent.query.scoped_derived_answers import scoped_derived_trend_answer
 from app.agent.query.resampled_trend_answers import resampled_trend_answer
 from app.agent.query.observed_series_answers import observed_series_average
+from app.agent.query.series_binding import unbound
 
 _REASONS = {
     "ambiguous_date_axis": "한 지표에 연결할 날짜 열이 여러 개여서 임의로 선택하지 않았습니다.",
@@ -63,7 +64,9 @@ def trend_answer(question, summary, index, intent=None):
         reason = next((item.error.removeprefix("date_scope:") for item, _ in prepared
                        if item.error and item.error.startswith("date_scope:")), None)
         reason = reason or next((_REASONS[item.error] for item, _ in prepared if item.error in _REASONS), None)
-        return _unavailable(question, reason or "요청한 항목의 날짜와 전체 원본 값을 연결하지 못했습니다. 날짜 열과 지표가 있는 표를 지정해 주세요.")
+        if reason is None:
+            return unbound(_unavailable(question, "요청한 항목의 날짜와 전체 원본 값을 연결하지 못했습니다. 날짜 열과 지표가 있는 표를 지정해 주세요."))
+        return _unavailable(question, reason)
     if any(item.error and item.error not in {"ambiguous_date_axis", "outside_requested_period"}
            for item, _ in prepared):
         return _unavailable(question, "같은 항목의 다른 원본 후보에 누락값이나 확인하지 못한 범위가 있습니다. 완전한 표만 임의로 선택하지 않았습니다. 사용할 시트와 표 범위를 지정해 주세요.")
