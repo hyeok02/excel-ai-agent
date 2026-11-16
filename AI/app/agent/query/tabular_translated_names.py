@@ -1,5 +1,6 @@
 """Which question words name a planned filter value, asked only among the column's own values."""
 import asyncio
+import re
 
 from app.agent.query.tabular_request_predicates import normalize
 
@@ -25,6 +26,13 @@ async def words_naming(resolver, words, field, values, planned):
                 if any(normalize(value) == normalize(planned) for value in chunk))
     first = await asyncio.gather(*(resolver.resolve(word, field, chunks[home]) for word in words))
     named = [word for word, result in zip(words, first) if _picks(result, chunks[home], planned)]
+    # "유병률" picks Attack Prevalence when it is listed first and Current Prevalence when that
+    # is: a word fitting more than one value names neither. Asked again in reverse order, a
+    # word naming one value still picks it.
+    reverse = list(reversed(chunks[home]))
+    if named and len(reverse) > 1:
+        again = await asyncio.gather(*(resolver.resolve(word, field, reverse) for word in named))
+        named = [word for word, result in zip(named, again) if _picks(result, reverse, planned)]
     others = [chunk for index, chunk in enumerate(chunks) if index != home]
     if not named or not others:
         return named
@@ -68,13 +76,36 @@ def assigned_words(found):
     return chosen if None not in chosen and len(set(chosen)) == len(chosen) else None
 
 
-async def metric_word(resolver, words, table, plan):
-    """(word, header) when exactly one word names a column the plan computes, asked among all headers."""
+async def column_words(resolver, words, table, plan):
+    """([(word, header)] naming columns the plan computes, conflict) asked among all headers.
+
+    conflict: a word names a column the plan never reads ("영국" is United Kingdom, the plan
+    reads England). Such a plan answers some other question, however its rows were read.
+    """
     headers = [column.header for column in table.columns]
+    read = {*plan.column_ids, *plan.group_by, *plan.identity_column_ids, *(item.column_id for item in plan.filters)}
+    involved = {column.header for column in table.columns if column.id in read}
     computed = {column.header for column in table.columns if column.id in plan.column_ids}
     results = await asyncio.gather(*(resolver.resolve(word, "column name", headers) for word in words))
     named = [(word, headers[result.candidate_id]) for word, result in zip(words, results)
              if result.status == "resolved" and type(result.candidate_id) is int
-             and 0 <= result.candidate_id < len(headers) and headers[result.candidate_id] in computed]
+             and 0 <= result.candidate_id < len(headers)]
     named = [(word, header) for word, header in named if not any(word != other and other in word for other, _ in named)]
-    return named[0] if len(named) == 1 else None
+    conflict = any(header not in involved for _, header in named)
+    return [(word, header) for word, header in named if header in computed], conflict
+
+
+_TOTAL = re.compile(r"(?:all|total|grand\s+total|overall)(?:\s+\S.*)?|전체(?:\s*\S.*)?|합계|총계|총합", re.I)
+
+
+async def names_no_member(resolver, words, field, values, planned):
+    """The planned value is the column's total row and no word names any member of the column.
+
+    "잉글랜드 인구" names no Groups/Codes member (Males, Females, an age band), so the plan's
+    All Persons row is the population asked about. The same readings are asked as for the
+    words themselves, so a cached reading costs no further call.
+    """
+    if not _TOTAL.fullmatch(str(planned).strip()) or len(values) > CHUNK:
+        return False
+    results = await asyncio.gather(*(resolver.resolve(word, field, values) for word in words))
+    return all(result.status == "unmatched" for result in results)

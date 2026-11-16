@@ -21,7 +21,9 @@ from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_execution import execute_tabular_query
 from app.agent.query.tabular_request_extras import _stated_subject
 from app.agent.query.tabular_request_predicates import normalize
-from app.agent.query.tabular_translated_names import assigned_words, contains_as_equals, metric_word, words_naming
+from app.agent.query.tabular_translated_rows import every_row
+from app.agent.query.tabular_translated_names import (
+    assigned_words, column_words, contains_as_equals, names_no_member, words_naming)
 
 MAX_WORDS = 8
 MAX_CONDITIONS = 4
@@ -80,6 +82,10 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     plan = bound = contains_as_equals(bound, table)
     intent = replace(intent, tabular_query=plan)
     conditions = translated_filters(bound, table, question)
+    loose = [item for item in plan.filters if item.operator == "contains" and isinstance(item.value, str)
+             and not _stated_subject(question, item.value)]
+    if not conditions and loose:  # "contains Asthma" the question never says: a lookup shows every row
+        return await every_row(plan, summary, data_index, question, intent, loose, [[]] * len(loose), [False] * len(loose))
     words = candidate_words(question, table)
     if not conditions or len(conditions) > MAX_CONDITIONS or not words:
         return None
@@ -94,32 +100,38 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     try:
         found = await asyncio.gather(*(words_naming(resolver, words, fields[condition.column_id], values,
                                                     condition.value) for condition, values in zip(conditions, columns)))
+        # A total row (All Persons) no word names stands for the column when no member is named.
+        totals = [named == [] and await names_no_member(resolver, words, fields[condition.column_id], values,
+                                                        condition.value)
+                  for condition, values, named in zip(conditions, columns, found)]
     except Exception as exception:
         raise_for_quota_exhaustion(exception)
         return None
-    chosen = assigned_words(found)
+    chosen = assigned_words([named for named, total in zip(found, totals) if not total])
     if chosen is None:
+        return await every_row(plan, summary, data_index, question, intent, conditions, found, totals)
+    picked = iter(chosen)
+    readings = [(None if total else next(picked), condition.value, fields[condition.column_id])
+                for condition, total in zip(conditions, totals)]
+    # Words naming columns are read too: one naming a column the plan never reads rejects it,
+    # and one naming the computed column is stated ("판매수량" → Qty).
+    leftover = [word for word in words if not any(word in used or used in word for used in chosen if used)]
+    try:
+        columns_named, conflict = await column_words(resolver, leftover, table, plan) if leftover else ([], False)
+    except Exception as exception:
+        raise_for_quota_exhaustion(exception)
         return None
-    readings = [(word, condition.value, fields[condition.column_id]) for word, condition in zip(chosen, conditions)]
+    if conflict:
+        return None
+    readings += [(word, header, header) for word, header in columns_named if not _stated_subject(question, header)]
     rewritten = question
     for word, value, _ in readings:
-        rewritten = rewritten.replace(word, f"{word}({value})", 1)
+        rewritten = rewritten.replace(word, f"{word}({value})", 1) if word else f"{rewritten.rstrip()} ({value})"
     answer = await asyncio.to_thread(execute_tabular_query, plan, summary, data_index, rewritten, intent)
-    if answer is None and plan.filter_expression is not None:
-        # "쿠키랑 크래커 판매수량": an OR question admits no unread word, so the metric word is read too.
-        leftover = [word for word in words if not any(word in used or used in word for used in chosen)]
-        try:
-            metric = await metric_word(resolver, leftover, table, plan) if leftover else None
-        except Exception as exception:
-            raise_for_quota_exhaustion(exception)
-            return None
-        if metric is not None:
-            readings.append((metric[0], metric[1], metric[1]))
-            rewritten = rewritten.replace(metric[0], f"{metric[0]}({metric[1]})", 1)
-            answer = await asyncio.to_thread(execute_tabular_query, plan, summary, data_index, rewritten, intent)
     if answer is None or answer.verification.level != QuestionVerificationLevel.REQUEST_CHECKED:
         return None
-    reading = ", ".join(f"‘{word}’ → {value}" if normalize(field) == normalize(value)
+    reading = ", ".join(f"전체 행 → {' '.join(str(field).split())} = {value}" if word is None
+                        else f"‘{word}’ → {value}" if normalize(field) == normalize(value)
                         else f"‘{word}’ → {' '.join(str(field).split())} = {value}" for word, value, field in readings)
     return answer.model_copy(update={
         "question": question, "resolved_question": rewritten,
@@ -131,3 +143,4 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
             checks=[check for check in answer.verification.checks if check != "request_alignment"]
             + ["semantic_alias_resolved"]),
     })
+

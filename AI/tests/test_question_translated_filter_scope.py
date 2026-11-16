@@ -53,7 +53,7 @@ def test_a_long_column_is_asked_in_parts_and_the_word_must_match_nothing_elsewhe
     resolver = Resolver({"쿠키": "Cookies"})
     answer = _ask(LONG, "쿠키 Qty 합계는?", ["Cookies"], resolver)
     assert answer is not None and "합계 7" in answer.answer
-    assert resolver.calls == 3  # one call per part of 601 values
+    assert resolver.calls == 4  # one call per part of 601 values, and the uniqueness re-check
     unsure = Resolver({"쿠키": "Cookies"}, elsewhere={"쿠키": "Item 599"})
     assert _ask(LONG, "쿠키 Qty 합계는?", ["Cookies"], unsure) is None
 

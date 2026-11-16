@@ -118,6 +118,8 @@ async def _recover(service, question, sources, replan, feedback, first=None):
     # its field reading stated, so it is accepted as the limited answer it is.
     ranked = (retried.selected_tools == ["ranked_group_query"] and retried.status == "limited"
               and "ranking" in retried.verification.checks)
+    # So is a reading of question words as source values, re-checked as an ordinary request and stated.
+    ranked = ranked or retried.status == "limited" and "semantic_alias_resolved" in retried.verification.checks
     if (retried.status not in {"answered", "limited"} or not retried.evidence
             or not ranked and (retried.verification.level != "request_checked"
                                or "request_alignment" not in retried.verification.checks)):
