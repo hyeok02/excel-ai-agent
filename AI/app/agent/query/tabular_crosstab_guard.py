@@ -16,7 +16,7 @@ from app.agent.query.tabular_fixed_groups import without_fixed_groups  # noqa: F
 from app.agent.query.tabular_routing import planned_tabular_answer
 from app.agent.query.tabular_member_rows import member_ranking
 from app.agent.query.tabular_population_context import MIXED_ROLES, OVERLAPPING_TOTALS
-from app.agent.query.tabular_translated_filters import candidate_words
+from app.agent.query.tabular_translated_filters import candidate_words, translated_filter_answer
 
 ANOTHER_MEASURE = "요약표의 열이 질문한 항목과 다른 값을 담고 있어, 요약표 값으로 답하지 않았습니다."
 
@@ -29,6 +29,20 @@ async def checked_tabular_answer(intent, summary, data_index, question, resolver
             or tabular.selected_tools != ["tabular_query"]
             or not await _disagrees(question, summary, intent.tabular_query, tabular.answer, resolver)):
         return tabular
+    return _another_measure(question)
+
+
+async def checked_translated_answer(question, summary, data_index, intent, resolver=None):
+    """The same check for a plan read through translated words ("동부" → the East column of a quantity
+    cross-tab while 판매금액 is TotalPrice): its refusal goes on to the cross-tab replan."""
+    answer = await translated_filter_answer(question, summary, data_index, intent)
+    if (answer is None or "member_rows" in answer.selected_tools
+            or not await _disagrees(question, summary, intent.tabular_query, answer.answer, resolver)):
+        return answer
+    return _another_measure(question)
+
+
+def _another_measure(question):
     return QuestionAnswer(question=question, answer=ANOTHER_MEASURE, status=QuestionAnswerStatus.INSUFFICIENT_EVIDENCE,
                           confidence=0, selected_tools=["tabular_query"], evidence=[], limitations=[ANOTHER_MEASURE])
 

@@ -117,3 +117,26 @@ def test_a_cross_tab_column_answering_another_measure_is_refused_and_one_that_ag
     assert ask("동부 판매금액 합계는?", "‘East’: 합계 5") is True    # East TotalPrice is 12.5
     assert ask("동부 판매수량 합계는?", "‘East’: 합계 5") is False   # East Qty is 5, as answered
     assert ask("동부 합계는?", "‘East’: 합계 5") is False           # no word names a detail measure
+
+
+def test_a_cross_tab_column_read_through_a_translated_word_faces_the_same_check(monkeypatch):
+    from app.agent.query import tabular_crosstab_guard as guard
+    from app.agent.query.models import QuestionAnswer
+    detail = [["Region", "Qty", "TotalPrice"], ["East", 4, 10.5], ["West", 2, 3.0], ["East", 1, 2.0]]
+    totals = [["Category", "East", "West"], ["Cookies", 5, 2]]
+    summary, index = table_fixture([(1, 1, detail), (1, 6, totals)])
+    cross = next(table for table in build_query_tables(summary) if any(c.header == "East" for c in table.columns))
+    east = next(c.id for c in cross.columns if c.header == "East")
+    plan = TabularQueryPlan(operation="numeric_summary", table_id=cross.id, column_ids=[east], statistic="sum")
+    read = QuestionAnswer(question="q", answer="해석: ‘동부’ → East\n‘East’: 합계 5", status="limited", confidence=0.8,
+                          selected_tools=["tabular_query"], evidence=[], limitations=[])
+
+    async def translated(*args, **kwargs):
+        return read
+    monkeypatch.setattr(guard, "translated_filter_answer", translated)
+    ask = lambda question: asyncio.run(guard.checked_translated_answer(
+        question, summary, index, QuestionIntent(False, "aggregation", (), True, plan),
+        resolver=Unread({"판매금액": "TotalPrice", "판매수량": "Qty"})))
+    refused = ask("동부 지역 판매금액은?")
+    assert refused.answer == guard.ANOTHER_MEASURE and guard.ANOTHER_MEASURE in refused.limitations
+    assert ask("동부 지역 판매수량은?") is read
