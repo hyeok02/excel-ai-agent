@@ -9,10 +9,7 @@ from app.agent.query.search_terms import (
     search_terms,
 )
 from app.agent.query.verified_insight_constraints import (
-    contains_term,
-    required_concepts_match,
-    semantic_tags,
-)
+    _REQUIRED_CONCEPTS, contains_term, required_concepts_match, semantic_tags)
 
 MIN_RELEVANCE_SCORE = 8
 _TOKENS = re.compile(r"[0-9a-zA-Z_]+|[가-힣]+")
@@ -29,7 +26,9 @@ _REQUESTS = {"알려줘", "보여줘", "말해줘", "설명해줘", "뭐야", "�
 # How to show a fact, not which fact (incl. the app's own follow-up questions,
 # e.g. "… 관련 수치와 원본 근거를 보여줘"); never required inside the insight.
 _REQUEST_WORDING = {"관련", "수치", "원본", "근거", "항목별", "시작", "처음", "최초", "값", "마지막", "기준",
-                    "함께", "기록된", "확인된", "내용", "표시별", "요약", "설명"}
+                    "함께", "기록된", "확인된", "내용", "표시별", "요약", "설명",
+                    # "가장 높은 해는?" asks for a period; the word is not an item the fact must name.
+                    "해", "연도", "년도", "시점", "때", "달", "언제"}
 _ALIAS_GROUPS = tuple((concept, *values) for concept, values in SEMANTIC_ALIASES.items())
 _ALIAS_TERMS = {value for values in _ALIAS_GROUPS for value in values}
 
@@ -98,9 +97,12 @@ def _canonical_terms(text: str) -> list[str]:
 def _identity_requirements(text: str) -> list[frozenset[str]]:
     raw = normalized_query_tokens(text)
     values = set(raw)
+    # "높은" in "가장 높은" belongs to the asked maximum, checked as a required concept, not an item.
+    concepts = [alias for group in _REQUIRED_CONCEPTS for alias in group if " " in alias and alias in text.casefold()]
     terms = [
         term for term in raw
         if len(term) >= 2 and not _identity_generic(term) and term not in _REQUESTS
+        and not any(term in alias.split() for alias in concepts)
         and not any(
             len(term) - len(suffix) >= 2 and term[: -len(suffix)] in values
             for suffix in KOREAN_SUFFIXES if term.endswith(suffix)

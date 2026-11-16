@@ -89,6 +89,20 @@ def _source_terms(tables):
     return terms
 
 
+def named_field_hint(intent, summary):
+    """The fields a plan-less first reading named, and the tables holding all of them, for a repair."""
+    tables = build_query_tables(summary)
+    normal = lambda value: " ".join(str(value).casefold().split())
+    values = {normal(value) for table in tables for row in table.rows for value in row.values.values()
+              if isinstance(value, str)}
+    headers = {normal(column.header): column.header for table in tables for column in table.columns}
+    named = [headers[normal(target)] for target in getattr(intent, "targets", ())
+             if normal(target) in headers and normal(target) not in values]
+    holding = [table.id for table in tables if named
+               and {normal(field) for field in named} <= {normal(column.header) for column in table.columns}]
+    return {"named_fields": named, "tables_with_named_fields": holding} if holding else {}
+
+
 def keeps_named_fields(first, revised, summary):
     """A repair fixes a plan; it does not move to a table lacking a field the first reading named.
 

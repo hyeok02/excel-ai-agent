@@ -87,7 +87,9 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     if not conditions and loose:  # "contains Asthma" the question never says: a lookup shows every row
         return await every_row(plan, summary, data_index, question, intent, loose, [[]] * len(loose), [False] * len(loose))
     words = candidate_words(question, table)
-    if not conditions or len(conditions) > MAX_CONDITIONS or not words:
+    # Column names count too: "보험가액" for InsuredValue, when no value needs reading.
+    unstated = [c.header for c in table.columns if c.id in plan.column_ids and not _stated_subject(question, c.header)]
+    if conditions is None or len(conditions) > MAX_CONDITIONS or not words or not conditions and not unstated:
         return None
     if resolver is None:
         from app.agent.query.tabular_source_alias_resolver import LangChainSourceLabelResolver
@@ -124,6 +126,8 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     if conflict:
         return None
     readings += [(word, header, header) for word, header in columns_named if not _stated_subject(question, header)]
+    if not readings:
+        return None
     rewritten = question
     for word, value, _ in readings:
         rewritten = rewritten.replace(word, f"{word}({value})", 1) if word else f"{rewritten.rstrip()} ({value})"

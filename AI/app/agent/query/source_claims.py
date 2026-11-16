@@ -69,7 +69,7 @@ def _verified_fact(claim, question, available, execution):
         if step.status is not AgentStepStatus.SUCCEEDED or not step.result:
             continue
         for fact in step.result.data.get("verified_insights", []):
-            if not isinstance(fact, dict) or claim.fact != fact.get("fact"):
+            if not isinstance(fact, dict) or not _quotes(claim.fact, fact.get("fact")):
                 continue
             references = fact.get("support_references", fact.get("required_references", []))
             if not isinstance(references, list) or not references or not all(isinstance(r, str) for r in references):
@@ -83,6 +83,22 @@ def _verified_fact(claim, question, available, execution):
             if verified_insight_score(asked, asked, fact) >= MIN_RELEVANCE_SCORE:
                 return RenderedClaim(claim.fact, evidence)
     return None
+
+
+def _quotes(claim, fact):
+    """The whole verified fact, one of its lines, or its subject with one line, word for word.
+
+    "천식 발작 경험 비율: 가장 높았던 시점은 2002년 5.8%…" quotes the third line under the
+    fact's own subject; anything reworded or recomputed is not a quote.
+    """
+    if not isinstance(claim, str) or not isinstance(fact, str):
+        return False
+    same = lambda left, right: " ".join(left.split()) == " ".join(right.split())
+    if same(claim, fact):
+        return True
+    lines = [line for line in fact.splitlines() if line.strip()]
+    subject = lines[0].split(": ", 1)[0] if lines and ": " in lines[0] else None
+    return any(same(claim, line) or subject and same(claim, f"{subject}: {line}") for line in lines)
 
 
 def _point(reference, available):

@@ -102,3 +102,18 @@ def test_an_unstated_contains_in_a_lookup_shows_every_row_and_never_widens_a_sum
         answer = asyncio.run(translated_filter_answer("2019 유병률은?", summary, index,
                                                       QuestionIntent(False, kind, (), True, plan), resolver=Unread()))
         assert answer is None or (operation == "lookup" and "3.3" in answer.answer and "7" in answer.answer)
+
+
+def test_a_cross_tab_column_answering_another_measure_is_refused_and_one_that_agrees_kept():
+    from app.agent.query.tabular_crosstab_guard import _disagrees
+    detail = [["Region", "Qty", "TotalPrice"], ["East", 4, 10.5], ["West", 2, 3.0], ["East", 1, 2.0]]
+    totals = [["Category", "East", "West"], ["Cookies", 5, 2]]
+    summary, _ = table_fixture([(1, 1, detail), (1, 6, totals)])
+    cross = next(table for table in build_query_tables(summary) if any(c.header == "East" for c in table.columns))
+    east = next(c.id for c in cross.columns if c.header == "East")
+    plan = TabularQueryPlan(operation="numeric_summary", table_id=cross.id, column_ids=[east], statistic="sum")
+    words = {"판매금액": "TotalPrice", "판매수량": "Qty"}
+    ask = lambda question, answer: asyncio.run(_disagrees(question, summary, plan, answer, Unread(words)))
+    assert ask("동부 판매금액 합계는?", "‘East’: 합계 5") is True    # East TotalPrice is 12.5
+    assert ask("동부 판매수량 합계는?", "‘East’: 합계 5") is False   # East Qty is 5, as answered
+    assert ask("동부 합계는?", "‘East’: 합계 5") is False           # no word names a detail measure

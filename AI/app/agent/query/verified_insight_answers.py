@@ -8,7 +8,7 @@ from app.agent.query.comparison_evidence import (
 )
 from app.agent.query.intent_models import QuestionIntent
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus, QuestionAnswerVerification
-from app.agent.query.verified_insight_constraints import insight_intent_matches
+from app.agent.query.verified_insight_constraints import _REQUIRED_CONCEPTS, contains_term, insight_intent_matches
 from app.agent.query.verified_insight_selection import requested_insight_items
 from app.agent.query.verified_insight_matching import (
     MIN_RELEVANCE_SCORE,
@@ -59,7 +59,7 @@ def validated_verified_insight_answer(
     confidence = _confidence(item, 0.7 if limited else 1.0)
     return QuestionAnswer(
         question=question,
-        answer=fact,
+        answer=_asked_line(question, fact),
         status=QuestionAnswerStatus.LIMITED if limited else QuestionAnswerStatus.ANSWERED,
         confidence=confidence,
         selected_tools=[step.tool_name for step in execution.steps],
@@ -73,6 +73,18 @@ def validated_verified_insight_answer(
             level="source_checked", checks=["cited_cells", "verified_insight_fact"]
         ),
     )
+
+
+def _asked_line(question, fact):
+    """"가장 높은 해는?" is answered by the fact's highest/lowest line under its own subject."""
+    lines = [line for line in fact.splitlines() if line.strip()]
+    subject = lines[0].split(": ", 1)[0] if lines and ": " in lines[0] else ""
+    for group in _REQUIRED_CONCEPTS[3:5]:
+        if any(contains_term(question.casefold(), alias) for alias in group):
+            line = next((line for line in lines[1:] if any(contains_term(line, alias) for alias in group)), None)
+            if line and subject:
+                return f"{subject}: {line}"
+    return fact
 
 
 def _verified_items(execution: AgentExecution):
