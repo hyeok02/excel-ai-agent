@@ -11,6 +11,14 @@ from app.services.insights.narratives.year_to_date_scope import year_to_date_sco
 from app.services.insights.narratives.vertical_latest_format import _period, _suffix, _path
 
 
+def metric_name(cell):
+    """A column's series name, qualified by a parent header that does not already say it."""
+    metric, parent = " ".join(str(cell.get("value", "")).split()), cell.get("_parent")
+    if parent and " ".join(str(parent["value"]).split()).casefold() not in metric.casefold():
+        metric = f"{' '.join(str(parent['value']).split())} · {metric}"
+    return metric
+
+
 def _items(sheet, header, section, section_cell, records, unit_note, series, every=False):
     if len({row[0] for row in records}) != len(records):
         return []
@@ -22,10 +30,7 @@ def _items(sheet, header, section, section_cell, records, unit_note, series, eve
     options = []
     for cell in header[1:]:
         position = column(cell)
-        metric = " ".join(str(cell.get("value", "")).split())
-        parent = cell.get("_parent")
-        if parent and " ".join(str(parent["value"]).split()).casefold() not in metric.casefold():
-            metric = f"{' '.join(str(parent['value']).split())} · {metric}"
+        metric, parent = metric_name(cell), cell.get("_parent")
         if not metric or metric.startswith("#"):
             continue
         pair = [row[2].get(position, {}) for row in (previous, latest)]

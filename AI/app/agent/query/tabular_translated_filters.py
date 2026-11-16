@@ -17,10 +17,9 @@ from app.agent.query.models import QuestionAnswerStatus, QuestionAnswerVerificat
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
-from app.agent.query.tabular_execution import execute_tabular_query
 from app.agent.query.tabular_request_extras import _stated_subject
 from app.agent.query.tabular_request_predicates import normalize
-from app.agent.query.tabular_translated_rows import every_row
+from app.agent.query.tabular_translated_rows import every_row, ranked_members, run_checked
 from app.agent.query.tabular_translated_names import (
     affirmed_columns, assigned_words, column_words, contains_as_equals, names_no_member, words_naming)
 
@@ -131,8 +130,8 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     for word, value, field in readings:
         label = f"{field} {value}" if word in affirmed.values() else value  # "Y" alone fits every yes/no column
         rewritten = rewritten.replace(word, f"{word}({label})", 1) if word else f"{rewritten.rstrip()} ({value})"
-    answer = await asyncio.to_thread(execute_tabular_query, plan, summary, data_index, rewritten, intent)
-    if answer is None or answer.verification.level != QuestionVerificationLevel.REQUEST_CHECKED:
+    answer = await run_checked(plan, summary, data_index, rewritten, intent, question)
+    if answer is None or answer.verification.level != QuestionVerificationLevel.REQUEST_CHECKED and not ranked_members(answer):
         return None
     reading = ", ".join(f"전체 행 → {' '.join(str(field).split())} = {value}" if word is None
                         else f"‘{word}’ → {value}" if normalize(field) == normalize(value)
@@ -144,7 +143,7 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
         "limitations": [*answer.limitations, f"질문의 표현을 원본 값으로 옮긴 해석({reading})이 의도와 맞는지 확인해 주세요."],
         "verification": QuestionAnswerVerification(
             level=QuestionVerificationLevel.SOURCE_CHECKED,
-            checks=[check for check in answer.verification.checks if check != "request_alignment"]
-            + ["semantic_alias_resolved"]),
+            checks=list(dict.fromkeys([check for check in answer.verification.checks if check != "request_alignment"]
+                                      + ["semantic_alias_resolved"]))),
     })
 

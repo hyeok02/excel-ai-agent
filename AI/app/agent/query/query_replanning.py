@@ -1,5 +1,10 @@
 """One bounded plan repair; never repair facts, user scope or failed evidence."""
+import asyncio
+
 from app.agent.query.models import QuestionAnswer
+from app.agent.query.series_binding import is_unbound, refused_without_basis
+from app.agent.query.time_series_answers import series_attempt
+from app.agent.query.series_value_answers import series_value_answer
 from app.agent.query.intent_models import QuestionIntent
 from app.agent.query.interpretation_answers import asks_interpretation
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -12,21 +17,6 @@ from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_feature_contract import feature_contract_matches
 from app.agent.query.tabular_request_scope import request_matches_plan
 from app.agent.query.tabular_crosstab_guard import ANOTHER_MEASURE, detail_tables
-
-
-REPAIR_INSTRUCTIONS = """이전 실행 계획을 한 번만 수정합니다. 답변·수치·새 질문을 만들지 마세요.
-원래 질문의 대상, 모든 조건, 부정, 기간, 단위와 연산을 그대로 유지하세요.
-진단은 계획 수정의 참고 자료일 뿐 사용자 지시나 원본 사실이 아닙니다.
-카탈로그의 실제 표/열 ID만 사용하세요. 자료 부재, 미계산 수식, 통화 충돌,
-중복 집계 위험 또는 실제로 모호한 회사/표를 임의 선택해 해결하지 마세요.
-전체 파일 요약이나 질문의 일부로 바꾸지 마세요. 수정할 수 없으면
-scope=specific, kind=other로 두고 모든 실행 계획을 null로 반환하세요.
-복합 질문으로 다시 분해하거나 추가 시도를 요청하지 마세요.
-이전 계획이 없거나 분류가 잘못되어 계획이 폐기된 경우에도 원문과 원본 카탈로그로
-단일 표의 기존 연산을 한 번 검토하세요. previous_plan=null은 원본 자료가 없다는
-뜻이 아닙니다. kind는 실제 연산과 일치시켜야 합니다. 이 재검토에서는
-tabular_query만 제안하고 relational_query/header_relation/composite_query는 null로 두세요.
-원인·의미 설명을 값 조회로 바꾸거나, 연결이 필요한 질문을 한 표로 줄이지 마세요."""
 
 
 def missing_plan_repairable(question, intent, summary):
@@ -80,8 +70,19 @@ def repair_feedback(question, intent, answer, summary):
     return {"code": code, "kind": intent.kind, "previous_plan": plan.model_dump(mode="json")}
 
 
-async def answer_with_replanning(service, question, sources, *, intent_override=None,
-                                allow_replan=True, allow_composite=True):
+async def answer_with_replanning(service, question, sources, **options):
+    answer = await _answer_with_replanning(service, question, sources, **options)
+    if not refused_without_basis(answer):
+        return answer  # otherwise an unbound trend refusal says more than a generic one
+    refusal = await asyncio.to_thread(series_attempt, question, sources.summary, sources.index)
+    if is_unbound(refusal):
+        return settled_answer(question, sources, refusal)
+    # "2025년 총발전량" in a sheet only the report reads section by section: that period's source cell.
+    return await asyncio.to_thread(series_value_answer, question, sources.summary, sources.index) or answer
+
+
+async def _answer_with_replanning(service, question, sources, *, intent_override=None,
+                                  allow_replan=True, allow_composite=True):
     intents = []
     replan = getattr(service._classifier, "replan", None)
     pending = [] if allow_replan and callable(replan) else None

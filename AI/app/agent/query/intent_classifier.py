@@ -23,7 +23,7 @@ from app.agent.query.intent_models import (
 )
 from app.agent.query.intent_prompts import SYSTEM_PROMPT, build_intent_prompt
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
-from app.agent.query.query_replanning import REPAIR_INSTRUCTIONS
+from app.agent.query.repair_instructions import REPAIR_INSTRUCTIONS
 from app.services.workbook_parsing.models import WorkbookSummary
 
 DEFAULT_MODEL = "gpt-4.1-2025-04-14"
