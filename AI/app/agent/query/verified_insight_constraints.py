@@ -8,9 +8,12 @@ _REQUIRED_CONCEPTS = (
     ("합계", "총합", "sum"),
     (
         "최고", "최대", "가장 높은", "가장 많", "가장 큰", "제일 큰", "제일 많", "제일 높은", "1위",
+        # "가장 높았던 시점은 2002년" states the same maximum in the past tense.
+        "가장 높았", "가장 컸", "제일 높았", "제일 컸",
         "highest", "maximum", "max", "top", "largest", "biggest",
     ),
     ("최저", "최소", "가장 낮은", "가장 작은", "가장 적", "제일 작은", "제일 적", "제일 낮은",
+     "가장 낮았", "가장 작았", "제일 낮았", "제일 작았",
      "lowest", "minimum", "min", "smallest"),
     ("몇 개", "몇개", "개수", "건수", "how many", "count"),
     ("최근", "가장 최근", "latest", "recent"),
@@ -72,9 +75,12 @@ def insight_intent_matches(
             asked = asked.replace(str(label or "").casefold() or "\0", " ")
         return not _OVER_TIME.search(asked)
     normalized = question.casefold()
-    return any(
-        marker in normalized for marker in _CHANGE_MARKERS
-    )
+    # A series fact also states its highest/lowest point; it answers that question when it says it.
+    text = str(item.get("fact") or "").casefold()
+    if any(any(contains_term(normalized, alias) for alias in group) and any(contains_term(text, alias) for alias in group)
+           for group in _REQUIRED_CONCEPTS[3:5]):
+        return True
+    return any(marker in normalized for marker in _CHANGE_MARKERS)
 
 
 def semantic_tags(text: str) -> str:
