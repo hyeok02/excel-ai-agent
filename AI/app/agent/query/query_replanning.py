@@ -6,11 +6,12 @@ from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.question_generation import generate_answer
 from app.agent.query.source_value_settling import settled_answer
 from app.agent.query.tabular_routing import unproven_note, unverified_plan
-from app.agent.query.replanning_scope import keeps_named_fields, single_table_recovery_allowed
+from app.agent.query.replanning_scope import keeps_named_fields, named_field_hint, single_table_recovery_allowed
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_feature_contract import feature_contract_matches
 from app.agent.query.tabular_request_scope import request_matches_plan
+from app.agent.query.tabular_crosstab_guard import ANOTHER_MEASURE, detail_tables
 
 
 REPAIR_INSTRUCTIONS = """이전 실행 계획을 한 번만 수정합니다. 답변·수치·새 질문을 만들지 마세요.
@@ -52,12 +53,16 @@ def repair_feedback(question, intent, answer, summary):
     if plan is None:
         if (answer.selected_tools == ["intent_resolution"]
                 and missing_plan_repairable(question, intent, summary)):
-            return {"code": "missing_query_plan", "kind": intent.kind, "previous_plan": None}
+            return {"code": "missing_query_plan", "kind": intent.kind, "previous_plan": None,
+                    **named_field_hint(intent, summary)}
         return None
     if answer.selected_tools != ["tabular_query"]:
         return None
     tables = build_query_tables(summary)
     selected = [table for table in tables if table.id == plan.table_id]
+    if ANOTHER_MEASURE in answer.limitations:  # say where the value's rows are recorded
+        return {"code": "cross_tab_column_holds_another_measure", "kind": intent.kind,
+                "previous_plan": plan.model_dump(mode="json"), "value_recorded_in": detail_tables(summary, plan)}
     if len(selected) != 1:
         code = "unknown_table_id"
     else:

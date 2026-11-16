@@ -25,8 +25,8 @@ from app.agent.query.router import build_question_plan
 from app.agent.query.source_lookup_answers import source_lookup_answer
 from app.agent.query.source_count_answers import source_count_answer
 from app.agent.query.source_aggregate_answers import source_aggregate_answer
-from app.agent.query.tabular_routing import planned_tabular_answer, unproven_note, unverified_plan
-from app.agent.query.tabular_fixed_groups import without_fixed_groups
+from app.agent.query.tabular_routing import unproven_note, unverified_plan
+from app.agent.query.tabular_crosstab_guard import checked_tabular_answer, without_fixed_groups
 from app.agent.query.natural_relative_ranking import natural_relative_answer
 from app.agent.query.tabular_source_alias_resolution import clarified_answer, translated_filter_answer
 from app.agent.query.time_series_answers import time_series_answer
@@ -90,7 +90,7 @@ class WorkbookQuestionService:
             return clarification
         if missing := missing_identifier_answer(question, data_index):
             return missing
-        intent = without_fixed_groups(intent_override or await self._question_intent(question, summary), summary)
+        intent = without_fixed_groups(intent_override or await self._question_intent(question, summary), summary, question)
         if intents is not None:
             intents.append(intent)
         if intent.composite_query is not None:
@@ -118,7 +118,7 @@ class WorkbookQuestionService:
         scalar = metric_scalar_answer(question, summary, data_index, intent)
         if scalar and scalar.status == "answered" and scalar.verification.level == "request_checked":
             return scalar
-        tabular = await asyncio.to_thread(planned_tabular_answer, intent, summary, data_index, question)
+        tabular = await checked_tabular_answer(intent, summary, data_index, question)
         if tabular is not None and "clarify_source_scope" in tabular.selected_tools:
             return (await clarified_answer(question, summary, data_index, intent, tabular)
                     if allow_generation else tabular)

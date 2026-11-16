@@ -83,7 +83,8 @@ async def column_words(resolver, words, table, plan):
     reads England). Such a plan answers some other question, however its rows were read.
     """
     headers = [column.header for column in table.columns]
-    read = {*plan.column_ids, *plan.group_by, *plan.identity_column_ids, *(item.column_id for item in plan.filters)}
+    read = {*plan.column_ids, *plan.group_by, *plan.identity_column_ids, *(item.column_id for item in plan.filters),
+            *([plan.order_by] if plan.order_by else [])}
     involved = {column.header for column in table.columns if column.id in read}
     computed = {column.header for column in table.columns if column.id in plan.column_ids}
     results = await asyncio.gather(*(resolver.resolve(word, "column name", headers) for word in words))

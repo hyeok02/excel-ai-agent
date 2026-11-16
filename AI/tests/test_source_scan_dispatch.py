@@ -1,7 +1,7 @@
 import asyncio
 import threading
 
-from app.agent.query import service as service_module
+from app.agent.query import tabular_crosstab_guard as guard_module
 from app.agent.query import tabular_source_alias_resolution as alias_module
 from tests.support.large_workbook_fixtures import ask, offline, parsed, plan_for, tiny_caps, workbook
 
@@ -10,7 +10,7 @@ def test_service_scans_table_on_worker_thread(tiny_caps, monkeypatch):
     summary, index, _ = parsed(workbook({"Records": [
         ["Record", "Amount"], *[[f"Item{number}", number] for number in range(1, 9)],
     ]}))
-    original = service_module.planned_tabular_answer
+    original = guard_module.planned_tabular_answer
     calling_thread = threading.get_ident()
     observed = []
 
@@ -18,7 +18,7 @@ def test_service_scans_table_on_worker_thread(tiny_caps, monkeypatch):
         observed.append(threading.get_ident())
         return original(*args)
 
-    monkeypatch.setattr(service_module, "planned_tabular_answer", checked)
+    monkeypatch.setattr(guard_module, "planned_tabular_answer", checked)
     answer = ask("Records 시트 Amount 합계는?", summary, index, plan_for(summary))
     assert "합계 36" in answer.answer
     assert observed and all(thread != calling_thread for thread in observed)
