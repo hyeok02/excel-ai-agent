@@ -35,3 +35,14 @@ def test_another_grouping_or_dates_already_one_per_period_keep_the_plan():
     monthly = [["Date", "Region", "Amount"], ["2024-01-01T00:00:00", "East", 1], ["2024-02-01T00:00:00", "East", 2]]
     assert "period_group_query" not in _ask("월별 금액 알려줘", rows=monthly).selected_tools
     assert "period_group_query" not in _ask("금액 합계를 해줘").selected_tools
+
+
+def test_other_wordings_name_the_grain_and_a_total_without_grouping_is_never_held_back():
+    assert _ask("매달 금액 알려줘").answer.startswith("월별 ‘Amount’ 합계: 2024년 1월 15,")
+    assert _ask("해마다 금액 알려줘").answer == "연도별 ‘Amount’ 합계: 2024년 42, 2025년 1."
+    summary, index = table_fixture([(1, 1, ROWS)], sheet_name="Sales")
+    table = build_query_tables(summary)[0]
+    amount = next(column.id for column in table.columns if column.header == "Amount")
+    plan = TabularQueryPlan(operation="numeric_summary", table_id=table.id, column_ids=[amount], statistic="sum")
+    answer = planned_tabular_answer(QuestionIntent(False, "aggregation", (), True, plan), summary, index, "연간 금액 합계는?")
+    assert answer.status != "insufficient_evidence" and "43" in answer.answer

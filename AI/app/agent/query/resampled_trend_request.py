@@ -13,6 +13,20 @@ GRAINS = {
     "quarter": r"분기별|분기간|매분기|\bquarterly\b|\bby\s+quarter\b",
     "annual": r"연도별|연간|매년|\b(?:yearly|annually|annual)\b|\bby\s+year\b",
 }
+# Other ways to say a calendar grain. They name the grain of a date grouping and of a replanned
+# answer; the trend stage keeps GRAINS alone, so its refusals reach no question they did not reach.
+_MORE_GRAINS = {
+    "month": r"매달|달별|각\s*월|(?:월|달)\s*마다|\b(?:per\s+month|month\s+by\s+month)\b",
+    "quarter": r"각\s*분기|분기\s*(?:마다|단위)|\b(?:per\s+quarter|quarter\s+by\s+quarter)\b",
+    "annual": r"각\s*(?:연도|해)|(?:해|연도|년도|연)\s*마다|\b(?:per\s+year|year\s+by\s+year)\b",
+}
+
+
+def requested_grains(text):
+    """The calendar grains the wording asks for ("월별", "매달", "해마다" ...)."""
+    return {grain for grain in GRAINS if re.search(f"{GRAINS[grain]}|{_MORE_GRAINS[grain]}", text, re.I)}
+
+
 STATISTICS = {
     "sum": r"합계|총합|\bsum(?:s)?\b",
     "average": r"평균|\b(?:average|mean)\b",
