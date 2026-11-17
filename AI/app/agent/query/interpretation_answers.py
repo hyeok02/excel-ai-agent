@@ -20,8 +20,8 @@ def finish_interpretation_answer(answer):
     ):
         return answer
     checks = answer.verification.checks
-    if "header_positions" in checks:
-        return answer  # The structural-relation response already carries this boundary.
+    if "header_positions" in checks or "interpretation_unverified" in checks:
+        return answer  # The structural-relation or interpreted response already carries this boundary.
     note = "원본의 값·설명은 확인했지만, 질문에서 묻는 의미·원인까지 입증한 것은 아닙니다."
     level = "source_checked" if answer.verification.level == "request_checked" else answer.verification.level
     return answer.model_copy(update={
