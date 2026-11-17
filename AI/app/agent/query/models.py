@@ -39,6 +39,8 @@ class QuestionAnswerDraft(BaseModel):
     confidence: float = Field(ge=0, le=1)
     limitations: list[str] = Field(default_factory=list, max_length=5)
     claims: list[SourceClaim] = Field(default_factory=list, max_length=12)
+    # The question asks for a reading of the data (a reason, an assessment, advice), not a stored value.
+    interpretive: bool = False
 
 
 class QuestionAnswerEvidence(AgentExecutionEvidence):

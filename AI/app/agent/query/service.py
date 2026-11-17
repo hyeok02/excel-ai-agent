@@ -32,7 +32,7 @@ from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
 from app.agent.query.query_replanning import answer_with_replanning, missing_plan_answer, missing_plan_repairable, unavailable_plan
 from app.agent.query.question_canonical_answers import canonical_answer
-from app.agent.query.question_generation import generate_answer
+from app.agent.query.question_generation import generate_answer, read_whole_file
 from app.agent.query.structured_question_answers import structured_question_answer
 from app.agent.query.composite_execution import composite_answer
 from app.agent.registry import AgentToolRegistry
@@ -138,7 +138,7 @@ class WorkbookQuestionService:
                                             AgentToolContext(summary, data_index, question, intent), self._registry)
         truncated = _search_scope_truncated(execution)
         if canonical := canonical_answer(question, execution, truncated, summary, data_index, intent):
-            return canonical
+            return await read_whole_file(allow_generation and self._generator, question, summary, execution, truncated, intent, canonical)
         if not allow_generation:
             return unavailable_plan(question)
         if pending_generation is not None and (unproven or missing_plan_repairable(question, intent, summary)):

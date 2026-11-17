@@ -14,6 +14,7 @@ from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_fixed_groups import without_fixed_groups  # noqa: F401 (one service import)
 from app.agent.query.tabular_routing import planned_tabular_answer
+from app.agent.query.tabular_group_words import regrouped
 from app.agent.query.tabular_member_rows import member_ranking
 from app.agent.query.tabular_population_context import MIXED_ROLES, OVERLAPPING_TOTALS
 from app.agent.query.tabular_translated_filters import candidate_words, translated_filter_answer
@@ -22,6 +23,7 @@ ANOTHER_MEASURE = "요약표의 열이 질문한 항목과 다른 값을 담고 
 
 
 async def checked_tabular_answer(intent, summary, data_index, question, resolver=None):
+    intent = await regrouped(intent, summary, question)  # "주별" names State, not the plan's Expiry
     tabular = await asyncio.to_thread(planned_tabular_answer, intent, summary, data_index, question)
     if tabular is not None and tabular.answer in {MIXED_ROLES, OVERLAPPING_TOTALS}:  # groups ranked with members
         return await member_ranking(intent.tabular_query, summary, data_index, question) or tabular
