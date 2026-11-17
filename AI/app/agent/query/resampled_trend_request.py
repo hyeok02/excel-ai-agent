@@ -9,28 +9,24 @@ from app.agent.query.tabular_request_literals import without_literals
 from app.agent.query.trend_source_readback import table_rows
 
 GRAINS = {
-    "month": (
-        r"월별|월간|매월|매달|달별|각\s*월|(?:월|달)\s*마다|"
-        r"\b(?:monthly|by\s+month|per\s+month|month\s+by\s+month)\b"
-    ),
-    "quarter": (
-        r"분기별|분기간|매분기|각\s*분기|분기\s*(?:마다|단위)|"
-        r"\b(?:quarterly|by\s+quarter|per\s+quarter|quarter\s+by\s+quarter)\b"
-    ),
-    "annual": (
-        r"연도별|연간|매년|각\s*(?:연도|해)|(?:해|연도|년도|연)\s*마다|"
-        r"\b(?:yearly|annually|annual|by\s+year|per\s+year|year\s+by\s+year)\b"
-    ),
+    "month": r"월별|월간|매월|\bmonthly\b|\bby\s+month\b",
+    "quarter": r"분기별|분기간|매분기|\bquarterly\b|\bby\s+quarter\b",
+    "annual": r"연도별|연간|매년|\b(?:yearly|annually|annual)\b|\bby\s+year\b",
+}
+# Other ways to say a calendar grain. They name the grain of a date grouping and of a replanned
+# answer; the trend stage keeps GRAINS alone, so its refusals reach no question they did not reach.
+_MORE_GRAINS = {
+    "month": r"매달|달별|각\s*월|(?:월|달)\s*마다|\b(?:per\s+month|month\s+by\s+month)\b",
+    "quarter": r"각\s*분기|분기\s*(?:마다|단위)|\b(?:per\s+quarter|quarter\s+by\s+quarter)\b",
+    "annual": r"각\s*(?:연도|해)|(?:해|연도|년도|연)\s*마다|\b(?:per\s+year|year\s+by\s+year)\b",
 }
 
 
-def requested_grains(text: str) -> set[str]:
-    """Return the calendar grains explicitly requested in natural language."""
-    return {
-        grain
-        for grain, pattern in GRAINS.items()
-        if re.search(pattern, text, re.IGNORECASE)
-    }
+def requested_grains(text):
+    """The calendar grains the wording asks for ("월별", "매달", "해마다" ...)."""
+    return {grain for grain in GRAINS if re.search(f"{GRAINS[grain]}|{_MORE_GRAINS[grain]}", text, re.I)}
+
+
 STATISTICS = {
     "sum": r"합계|총합|\bsum(?:s)?\b",
     "average": r"평균|\b(?:average|mean)\b",
@@ -51,7 +47,7 @@ class ResampledRequest:
 
 
 def parse_resampled_request(question, summary, index=None):
-    if not requested_grains(question):
+    if not any(re.search(pattern, question, re.I) for pattern in GRAINS.values()):
         return None
     tables = build_query_tables(summary)
     protected = [match.span() for table in tables for _, match in headers_for(question, table)]

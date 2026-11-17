@@ -87,33 +87,6 @@ def period_group_answer(plan, summary, index, question):
         ))
 
 
-def period_request_allows_standard_plan(plan, summary, index, question):
-    """Allow the generic tabular route only when it preserves an explicit calendar grain."""
-    grains = requested_grains(question)
-    if not grains:
-        return True
-    if plan is None or len(grains) != 1 or len(plan.group_by) != 1 or plan.having or plan.filter_expression:
-        return False
-    if plan.operation not in {"numeric_summary", "row_count"} or plan.share_of_total or plan.per_group_limit:
-        return False
-    tables = [table for table in build_query_tables(summary) if table.id == plan.table_id]
-    bound = bind_tabular_plan(plan.model_copy(update={"order_by": None, "limit": None}), tables[0]) if len(tables) == 1 else None
-    if bound is None or bound.relative_rank is not None:
-        return False
-    table, group, grain = tables[0], bound.group_by[0], next(iter(grains))
-    measured = list(dict.fromkeys(column for column in bound.column_ids if column != group))
-    measure = measured[0] if bound.operation == "numeric_summary" and len(measured) == 1 else None
-    statistic = "count" if bound.operation == "row_count" else {
-        "sum": "sum", "all": "sum", "average": "average"
-    }.get(bound.statistic)
-    if statistic is None or (statistic != "count" and measure is None):
-        return False
-    if not validated_table(table, index, {group, *measured}):
-        return False
-    dates = [_date(row.values.get(group)) for row in table.rows if row.values.get(group) not in (None, "")]
-    return bool(dates) and None not in dates and len(set(dates)) == len({_bucket(day, grain) for day in dates})
-
-
 def _buckets(rows, group, measure, grain):
     if rows is None:
         return None
