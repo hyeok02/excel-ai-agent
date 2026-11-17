@@ -16,7 +16,7 @@ from app.agent.query.tabular_fixed_groups import without_fixed_groups  # noqa: F
 from app.agent.query.tabular_routing import planned_tabular_answer
 from app.agent.query.tabular_member_rows import member_ranking
 from app.agent.query.tabular_population_context import MIXED_ROLES, OVERLAPPING_TOTALS
-from app.agent.query.tabular_translated_filters import candidate_words
+from app.agent.query.tabular_translated_filters import candidate_words, translated_filter_answer
 
 ANOTHER_MEASURE = "요약표의 열이 질문한 항목과 다른 값을 담고 있어, 요약표 값으로 답하지 않았습니다."
 
@@ -29,6 +29,20 @@ async def checked_tabular_answer(intent, summary, data_index, question, resolver
             or tabular.selected_tools != ["tabular_query"]
             or not await _disagrees(question, summary, intent.tabular_query, tabular.answer, resolver)):
         return tabular
+    return _another_measure(question)
+
+
+async def checked_translated_answer(question, summary, data_index, intent, resolver=None):
+    """The same check for a plan read through translated words ("동부" → the East column of a quantity
+    cross-tab while 판매금액 is TotalPrice): its refusal goes on to the cross-tab replan."""
+    answer = await translated_filter_answer(question, summary, data_index, intent)
+    if (answer is None or "member_rows" in answer.selected_tools
+            or not await _disagrees(question, summary, intent.tabular_query, answer.answer, resolver, confirmed=True)):
+        return answer
+    return _another_measure(question)
+
+
+def _another_measure(question):
     return QuestionAnswer(question=question, answer=ANOTHER_MEASURE, status=QuestionAnswerStatus.INSUFFICIENT_EVIDENCE,
                           confidence=0, selected_tools=["tabular_query"], evidence=[], limitations=[ANOTHER_MEASURE])
 
@@ -50,7 +64,8 @@ def _number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-async def _disagrees(question, summary, plan, answer, resolver):
+async def _disagrees(question, summary, plan, answer, resolver, confirmed=False):
+    """confirmed: the shown figure must also be another measure's total over several detail rows."""
     if plan is None or plan.operation not in {"numeric_summary", "lookup"}:
         return False
     tables = build_query_tables(summary)
@@ -71,6 +86,8 @@ async def _disagrees(question, summary, plan, answer, resolver):
         return False
     shown = [float(item.replace(",", "")) for item in re.findall(r"-?\d[\d,]*(?:\.\d+)?", answer)]
     for other, _, rows in details:
+        if confirmed and len(rows) < 2:
+            continue  # one row of another table is the same entity, not the records a cross-tab sums
         measures = [column for column in other.columns
                     if any(_number(row.values.get(column.id)) for row in rows)
                     and all(_number(row.values.get(column.id)) or row.values.get(column.id) is None for row in rows)]
@@ -89,9 +106,16 @@ async def _disagrees(question, summary, plan, answer, resolver):
             values = [row.values[column.id] for row in rows if _number(row.values.get(column.id))]
             if plan.operation == "lookup" and len(values) != 1:
                 continue
-            expected = sum(values)
-            formats = [parse_number_format(item) for item in column.number_formats[:1]]
-            candidates = {expected, *(scaled_value(expected, spec) for spec in formats)}
-            if not any(abs(number - value) <= max(abs(value) * 0.005, 0.01) for number in shown for value in candidates):
+            if not _shows(shown, column, values) and (not confirmed or any(
+                    _shows(shown, other_column, [row.values[other_column.id] for row in rows
+                                                 if _number(row.values.get(other_column.id))])
+                    for other_column in measures if other_column is not column)):
                 return True
     return False
+
+
+def _shows(shown, column, values):
+    expected = sum(values)
+    formats = [parse_number_format(item) for item in column.number_formats[:1]]
+    candidates = {expected, *(scaled_value(expected, spec) for spec in formats)}
+    return any(abs(number - value) <= max(abs(value) * 0.005, 0.01) for number in shown for value in candidates)
