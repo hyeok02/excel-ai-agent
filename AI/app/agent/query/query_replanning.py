@@ -122,8 +122,8 @@ async def _recover(service, question, sources, replan, feedback, first=None):
     # A retry cannot turn mere citations or generated text into request proof.
     # A ranking recomputed over every source row is shown with its full order and
     # its field reading stated, so it is accepted as the limited answer it is.
-    ranked = (retried.selected_tools == ["ranked_group_query"] and retried.status == "limited"
-              and "ranking" in retried.verification.checks)
+    ranked = (retried.selected_tools in (["ranked_group_query"], ["period_group_query"]) and retried.status == "limited"
+              and {"ranking", "calendar_period"} & set(retried.verification.checks))  # or calendar-period totals
     # So is a reading of question words as source values, re-checked as an ordinary request and stated.
     ranked = ranked or retried.status == "limited" and "semantic_alias_resolved" in retried.verification.checks
     if (retried.status not in {"answered", "limited"} or not retried.evidence
