@@ -12,6 +12,9 @@ from app.agent.query.resampled_trend_calculations import LABELS, OPERATIONS, res
 from app.agent.query.resampled_trend_request import parse_resampled_request, resampling_source_question
 from app.agent.query.trend_render import _value, render_trend
 from app.agent.query.trend_request import trend_request_error
+from app.agent.query.series_binding import unbound
+
+UNBOUND_SOURCE = "기간별로 집계할 날짜·지표·원본 표를 하나로 확정하지 못했습니다. 시트·표 범위와 지표를 지정해 주세요."
 
 
 def resampled_trend_answer(question, summary, index):
@@ -21,7 +24,8 @@ def resampled_trend_answer(question, summary, index):
             return None
         sources, named = grouped_sources(resampling_source_question(request), summary, index)
         if len(sources) != 1:
-            raise ValueError("기간별로 집계할 날짜·지표·원본 표를 하나로 확정하지 못했습니다. 시트·표 범위와 지표를 지정해 주세요.")
+            # The series is not bound here: planning may still find it, and this refusal stays the fallback.
+            return unbound(resampling_unavailable(question, UNBOUND_SOURCE))
         return resampled_answer_from_source(question, sources[0], index, request, named)
     except (ValueError, TypeError, ArithmeticError) as error:
         return resampling_unavailable(question, str(error) if isinstance(error, ValueError)
