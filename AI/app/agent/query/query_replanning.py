@@ -9,6 +9,7 @@ from app.agent.query.intent_models import QuestionIntent
 from app.agent.query.interpretation_answers import asks_interpretation
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.question_generation import generate_answer
+from app.agent.query.resampled_trend_request import requested_grains
 from app.agent.query.source_value_settling import settled_answer
 from app.agent.query.tabular_routing import unproven_note, unverified_plan
 from app.agent.query.replanning_scope import keeps_named_fields, named_field_hint, single_table_recovery_allowed
@@ -122,10 +123,30 @@ async def _recover(service, question, sources, replan, feedback, first=None):
     # A retry cannot turn mere citations or generated text into request proof.
     # A ranking recomputed over every source row is shown with its full order and
     # its field reading stated, so it is accepted as the limited answer it is.
-    ranked = (retried.selected_tools in (["ranked_group_query"], ["period_group_query"]) and retried.status == "limited"
-              and {"ranking", "calendar_period"} & set(retried.verification.checks))  # or calendar-period totals
+    checks = set(retried.verification.checks)
+    ranked = (
+        retried.selected_tools == ["ranked_group_query"]
+        and retried.status == "limited"
+        and "ranking" in checks
+    )
+    period = (
+        retried.selected_tools == ["period_group_query"]
+        and retried.status == "limited"
+        and "calendar_period" in checks
+    )
+    grains = requested_grains(question)
+    if grains:
+        period = (
+            period
+            and len(grains) == 1
+            and f"calendar_grain_{next(iter(grains))}" in checks
+        )
+    ranked = ranked or period
     # So is a reading of question words as source values, re-checked as an ordinary request and stated.
-    ranked = ranked or retried.status == "limited" and "semantic_alias_resolved" in retried.verification.checks
+    ranked = ranked or (
+        retried.status == "limited"
+        and "semantic_alias_resolved" in checks
+    )
     if (retried.status not in {"answered", "limited"} or not retried.evidence
             or not ranked and (retried.verification.level != "request_checked"
                                or "request_alignment" not in retried.verification.checks)):

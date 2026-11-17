@@ -9,10 +9,28 @@ from app.agent.query.tabular_request_literals import without_literals
 from app.agent.query.trend_source_readback import table_rows
 
 GRAINS = {
-    "month": r"월별|월간|매월|\bmonthly\b|\bby\s+month\b",
-    "quarter": r"분기별|분기간|매분기|\bquarterly\b|\bby\s+quarter\b",
-    "annual": r"연도별|연간|매년|\b(?:yearly|annually|annual)\b|\bby\s+year\b",
+    "month": (
+        r"월별|월간|매월|매달|달별|각\s*월|(?:월|달)\s*마다|"
+        r"\b(?:monthly|by\s+month|per\s+month|month\s+by\s+month)\b"
+    ),
+    "quarter": (
+        r"분기별|분기간|매분기|각\s*분기|분기\s*(?:마다|단위)|"
+        r"\b(?:quarterly|by\s+quarter|per\s+quarter|quarter\s+by\s+quarter)\b"
+    ),
+    "annual": (
+        r"연도별|연간|매년|각\s*(?:연도|해)|(?:해|연도|년도|연)\s*마다|"
+        r"\b(?:yearly|annually|annual|by\s+year|per\s+year|year\s+by\s+year)\b"
+    ),
 }
+
+
+def requested_grains(text: str) -> set[str]:
+    """Return the calendar grains explicitly requested in natural language."""
+    return {
+        grain
+        for grain, pattern in GRAINS.items()
+        if re.search(pattern, text, re.IGNORECASE)
+    }
 STATISTICS = {
     "sum": r"합계|총합|\bsum(?:s)?\b",
     "average": r"평균|\b(?:average|mean)\b",
@@ -33,7 +51,7 @@ class ResampledRequest:
 
 
 def parse_resampled_request(question, summary, index=None):
-    if not any(re.search(pattern, question, re.I) for pattern in GRAINS.values()):
+    if not requested_grains(question):
         return None
     tables = build_query_tables(summary)
     protected = [match.span() for table in tables for _, match in headers_for(question, table)]
