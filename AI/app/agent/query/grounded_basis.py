@@ -91,12 +91,10 @@ def change_within_one_series(sentence, cells, available):
     named by a period, is a series; a quoted verified fact is checked by its own computation.
     """
     from app.agent.query.answer_clauses import clauses, stated_direction
-    from app.agent.query.derived_numbers import stated_cell_values
     from app.services.insights.facts.fact_trends import date_value
     if not any(stated_direction(clause) for clause in clauses(sentence)):
         return True
-    stated = [cell for cell in cells if number(cell.value) and not year(cell.value)  # a year names a period
-              and stated_cell_values(sentence, [cell])]
+    stated = [cell for cell in cells if not year(cell.value) and states_value(sentence, cell)]  # a year names a period
     if len(stated) < 2:
         return True
     rows, columns = {}, {}
@@ -108,3 +106,36 @@ def change_within_one_series(sentence, cells, available):
             columns.setdefault((cell.sheet_name, column.upper()), []).append(cell)
     # At least two of the stated values must be one series; none are when each is its own record.
     return any(len(group) >= 2 for group in (*rows.values(), *columns.values()))
+
+
+def names_its_records(sentence, cells, available):
+    """A value read from one record ("ID07351") is that record's, not its city's or category's.
+
+    A sentence stating such a value without naming the record ("Boston의 판매금액은 58.41") would
+    present one sale as a total, so it is not kept; a period, category or pivot label is no record.
+    """
+    for cell in cells:
+        label = row_label(cell, available) if number(cell.value) and not year(cell.value) else None
+        if (label is not None and isinstance(label.value, str) and _record_id(label.value)
+                and states_value(sentence, cell) and label.value.strip().casefold() not in sentence.casefold()):
+            return False
+    return True
+
+
+def _record_id(text):
+    """A code naming one record: no spaces, and mostly digits ("ID07351", "100275", "E92000001")."""
+    from app.services.insights.display.display_quality import is_identifier_label
+    text = text.strip()
+    digits = sum(character.isdigit() for character in text)
+    if re.fullmatch(r"(?:19|20|21)\d{2}", text):
+        return False  # a year names a period
+    return bool(text) and " " not in text and (is_identifier_label(text) or digits >= 3 and digits * 2 >= len(text))
+
+
+def states_value(text, cell):
+    """The text writes the cell's number, at its own rounding ("124.2" states 124.19116...)."""
+    from decimal import Decimal
+    from app.services.insights.verification.numeric_validation import unmatched_numbers
+    if not number(cell.value):
+        return False
+    return unmatched_numbers(text, {abs(Decimal(str(cell.value)))}) != unmatched_numbers(text, set())

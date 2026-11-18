@@ -20,3 +20,8 @@ def shown_total(value, unit=("", "")):
     value = float(value)
     text = f"{abs(value):,.0f}" if value.is_integer() else f"{abs(value):,.2f}"
     return f"{'-' if value < 0 else ''}{unit[0]}{text}{unit[1]}"
+
+
+def share(count, total):
+    """A category's share of all rows counted, blanks included: "‘Y’ 249건(49.8%)"."""
+    return f"({count / total * 100:.1f}%)" if total else ""

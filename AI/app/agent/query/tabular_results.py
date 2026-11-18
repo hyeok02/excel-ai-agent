@@ -4,6 +4,7 @@ from datetime import datetime, time
 import json
 import re
 
+from app.agent.query.ranked_group_units import share
 from app.agent.query.excel_number_formats import display_value, parse_number_format
 from app.agent.query.models import QuestionAnswerEvidence
 from app.agent.query.tabular_numeric import numeric_summary
@@ -85,7 +86,7 @@ def scope_description(plan, table):
 def _frequencies(values):
     counts = Counter((type(value).__name__, value) for value in values if value not in (None, ""))
     entries = list(counts.items())
-    parts = [f"‘{_label(value)}’ {count}건" for (_, value), count in entries[:MAX_DISPLAY_CATEGORIES]]
+    parts = [f"‘{_label(value)}’ {count}건{share(count, len(values))}" for (_, value), count in entries[:MAX_DISPLAY_CATEGORIES]]
     parts.append(f"빈칸 {sum(value in (None, '') for value in values)}건")
     limitations = []
     if len(entries) > MAX_DISPLAY_CATEGORIES:

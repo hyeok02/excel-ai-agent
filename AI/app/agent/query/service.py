@@ -27,7 +27,7 @@ from app.agent.query.source_count_answers import source_count_answer
 from app.agent.query.source_aggregate_answers import source_aggregate_answer
 from app.agent.query.tabular_routing import unproven_note, unverified_plan
 from app.agent.query.tabular_crosstab_guard import checked_tabular_answer, checked_translated_answer, without_fixed_groups
-from app.agent.query.natural_relative_ranking import natural_relative_answer
+from app.agent.query.member_comparison_answers import relative_or_compared
 from app.agent.query.tabular_source_alias_resolution import clarified_answer
 from app.agent.query.time_series_answers import time_series_answer
 from app.agent.query.query_replanning import answer_with_replanning, missing_plan_answer, missing_plan_repairable, unavailable_plan
@@ -96,7 +96,7 @@ class WorkbookQuestionService:
         if intent.composite_query is not None:
             return (await composite_answer(question, sources, intent, self._answer_prepared)
                     if allow_composite else unavailable_plan(question))
-        if ranked := await asyncio.to_thread(natural_relative_answer, question, summary, data_index, intent):
+        if ranked := await asyncio.to_thread(relative_or_compared, question, summary, data_index, intent):
             return ranked
         # Explicit plans face their own checks; the fallback cannot bypass them.
         if intent.tabular_query is None and intent.relational_query is None:

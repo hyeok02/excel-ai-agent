@@ -11,8 +11,8 @@ import re
 from app.agent.execution import AgentStepStatus
 from app.agent.query.change_direction import answer_directions_supported
 from app.agent.query.comparison_evidence import available_evidence, matched_comparison_evidence, present_comparison_evidence
-from app.agent.query.grounded_basis import (CELL, MAX_BASIS, change_within_one_series, column_header, names, number,
-                                             period_numbers, row_label, shown, source_cells)
+from app.agent.query.grounded_basis import (CELL, MAX_BASIS, change_within_one_series, column_header, names, names_its_records,
+                                             number, period_numbers, row_label, shown, source_cells, states_value)
 from app.agent.query.models import (QuestionAnswer, QuestionAnswerEvidence, QuestionAnswerStatus,
                                     QuestionAnswerVerification)
 from app.agent.query.numeric_support import supported_answer_numbers
@@ -69,9 +69,9 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
         if not bound and len(labels) < 2 and header and header != GENERIC and header not in parts:
             parts.append(header)  # no header cell was read: the tool's own name for the column
         value_text = shown(cell)
-        lines.append((f"{cell.sheet_name} — {' · '.join(parts) or cell.reference}: {value_text}",
-                      numbers(value_text) | numbers(str(cell.value))))
-        grounded |= lines[-1][1] | {found for label in labels for found in numbers(shown(label)) | period_numbers(label)}
+        lines.append((f"{cell.sheet_name} — {' · '.join(parts) or cell.reference}: {value_text}", cell))
+        grounded |= numbers(value_text) | numbers(str(cell.value)) | {
+            found for label in labels for found in numbers(shown(label)) | period_numbers(label)}
         evidence.update({(item.sheet_name, item.reference): item for item in (cell, *labels)})
         values.append(cell)
         direct.append(cell)
@@ -80,10 +80,11 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
     # a stated rise or fall is checked against those values, never against the years naming them.
     kept = [sentence.strip() for sentence in _SENTENCE.split(draft.answer) if sentence.strip()
             and not unmatched_numbers(sentence, grounded | supported_answer_numbers(question, cited, execution, sentence))
-            and answer_directions_supported(sentence, values) and change_within_one_series(sentence, direct, available)]
+            and answer_directions_supported(sentence, values) and change_within_one_series(sentence, direct, available)
+            and names_its_records(sentence, direct, available)]
     # A cited figure no kept sentence states is not the basis of what is shown; a quoted fact is.
-    stated = numbers(" ".join(kept))
-    lines = [line for line, own in dict(lines).items() if not own or own & stated][:MAX_BASIS]
+    stated = " ".join(kept)  # compared as the draft rounds it: 124.2 states 124.19116...
+    lines = [line for line, cell in dict(lines).items() if cell is None or states_value(stated, cell)][:MAX_BASIS]
     if not lines or not kept:
         return None
     limitations = [INTERPRETED] + (["대용량 워크북의 일부 셀은 검색 범위에서 제외되었습니다."] if index_truncated else [])

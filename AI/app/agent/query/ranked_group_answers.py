@@ -55,7 +55,7 @@ def ranked_group_answer(plan, summary, index, question, targets=()):
     # Models often list the group column among the measured ones; only one other field may remain.
     measured = list(dict.fromkeys(column for column in bound.column_ids if column != group))
     measure = measured[0] if bound.operation != "row_count" and len(measured) == 1 else None
-    if bound.operation != "row_count" and (measure is None or bound.statistic not in {"sum", "all"}):
+    if bound.operation != "row_count" and (measure is None or bound.statistic not in {"sum", "all", "average"}):
         return None
     if not validated_table(table, index, {group, *([measure] if measure else [])}):
         return None
@@ -64,6 +64,8 @@ def ranked_group_answer(plan, summary, index, question, targets=()):
     totals = _totals(rows, group, measure)
     if rows is None or totals is None or len(totals) < 2:
         return None
+    if average := bound.operation != "row_count" and bound.statistic == "average":  # each group's mean, then ranked
+        totals = {name: [total / len(numbers), numbers] for name, (total, numbers) in totals.items()}
     ranking = sorted(totals.items(), key=lambda pair: (pair[1][0] if _SMALL.search(question) else -pair[1][0], pair[0]))
     names = [name for name, _ in ranking]
     # The model's targets name source values as written ("쿠키" → "Cookies").
@@ -89,8 +91,8 @@ def ranked_group_answer(plan, summary, index, question, targets=()):
         return None
     if position is not None and position >= len(names):
         return None
-    return _answer(question, table, index, group, measure, ranking, position,
-                   anchor[0] if anchor and not nth else None, [item for item in bound.filters if item not in anchors])
+    return _answer(question, table, index, group, measure, ranking, position, anchor[0] if anchor and not nth else None,
+                   [item for item in bound.filters if item not in anchors], "평균" if average else "합계")
 
 
 def _nth(question):
@@ -116,12 +118,12 @@ def _totals(rows, group, measure):
     return dict(totals)
 
 
-def _answer(question, table, index, group, measure, ranking, position, anchor, filters):
+def _answer(question, table, index, group, measure, ranking, position, anchor, filters, statistic="합계"):
     small = bool(_SMALL.search(question))
     headers = {column.id: column for column in table.columns}
     scope = ", ".join(f"‘{headers[item.column_id].display_header}’ {item.operator} {item.value}" for item in filters
                       if item.column_id in headers) or "조건 없이 전체 행"
-    metric = f"‘{headers[measure].display_header}’ 합계" if measure else "행 수"
+    metric = f"‘{headers[measure].display_header}’ {statistic}" if measure else "행 수"
     unit = total_unit(table, measure)
     picked, (value, rows) = ranking[position or 0]
     listed = ", ".join(f"{number}. {name} {shown_total(total, unit)}" for number, (name, (total, _))

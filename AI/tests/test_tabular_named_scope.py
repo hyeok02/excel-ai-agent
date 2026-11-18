@@ -27,7 +27,7 @@ def _answer(question, identity=("A",)):
 def test_a_named_column_narrows_a_whole_table_summary() -> None:
     answer = _answer("사건 발생일(Event Date) 분포를 항목별로 요약해줘")
 
-    assert answer.answer.startswith("‘Event Date’: ‘2025-12-01’ 1건, ‘2025-12-09’ 2건")
+    assert answer.answer.startswith("‘Event Date’: ‘2025-12-01’ 1건(33.3%), ‘2025-12-09’ 2건(66.7%)")
     assert "Event Type" not in answer.answer and "long text" not in answer.answer
 
 

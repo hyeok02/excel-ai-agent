@@ -87,8 +87,8 @@ def _rows(labels):
 
 
 def test_a_rise_between_two_records_is_no_trend_while_one_between_two_periods_is():
-    records = _rows([("ID07351", 33), ("ID07594", 44)])
-    assert records.answer.endswith("해석: 수량은 33과 44입니다.")  # the two transactions are cited, not a trend
+    # Two transactions are no trend, and values no sentence ties to their record are no basis either.
+    assert _rows([("ID07351", 33), ("ID07594", 44)]) is None
     assert _rows([(2023, 33), (2024, 44)]).answer.endswith("해석: 판매수량이 33에서 44로 11 증가했습니다. 수량은 33과 44입니다.")
 
 
@@ -116,3 +116,27 @@ def test_a_period_named_by_a_header_is_grounded_as_the_sentence_writes_it():
     answer = interpreted_answer("비싼 지역의 특징은?", _draft("Hawaii는 2026년 8월 47.18로 가장 높습니다.", [claim]), execution)
     assert answer.answer == ("근거(원본 확인):\n· CatReg — Hawaii · August 2026: 47.18\n\n"
                              "해석: Hawaii는 2026년 8월 47.18로 가장 높습니다.")
+
+
+def test_a_value_read_from_one_record_is_not_kept_as_a_group_value():
+    cells = [AgentExecutionEvidence(kind="cell", sheet_name="Sales", reference=reference, description=header,
+                                    value=value, number_format="General")
+             for reference, value, header in [("A2", "ID07351", "ID"), ("D2", "Boston", "City"), ("I2", 58.41, "TotalPrice"),
+                                              ("A3", "ID07594", "ID"), ("D3", "Los Angeles", "City"), ("I3", 124.96, "TotalPrice")]]
+    execution = SimpleNamespace(steps=[SimpleNamespace(status=AgentStepStatus.SUCCEEDED, tool_name="search_workbook_data",
+                                                       result=SimpleNamespace(evidence=cells, data={}))])
+    claims = [SourceClaim(kind="cell_value", value_reference=f"Sales!I{row}") for row in (2, 3)]
+    city = _draft("Boston의 판매금액은 58.41이고, Los Angeles의 판매금액은 124.96입니다.", claims)
+    assert interpreted_answer("Boston과 LA 판매금액 차이는?", city, execution) is None  # one sale each, not the cities
+    record = _draft("ID07351 거래는 58.41, ID07594 거래는 124.96입니다.", claims)
+    assert interpreted_answer("두 거래 금액은?", record, execution).answer.endswith("해석: ID07351 거래는 58.41, ID07594 거래는 124.96입니다.")
+
+
+def test_a_figure_the_draft_rounds_still_states_its_cited_cell():
+    cells = [_cell("A52", "Domestic transport total", "TES"), _cell("D52", 124.19116920681061, "1990", "0.0"),
+             _cell("E52", 110.3864012837939, "2024", "0.0")]
+    execution = SimpleNamespace(steps=[SimpleNamespace(status=AgentStepStatus.SUCCEEDED, tool_name="search_workbook_data",
+                                                       result=SimpleNamespace(evidence=cells, data={}))])
+    claims = [SourceClaim(kind="cell_value", value_reference=f"CatReg!{column}52") for column in "DE"]
+    answer = interpreted_answer("얼마나 줄었어?", _draft("124.2에서 110.4로 감소했습니다.", claims), execution)
+    assert answer is not None and len(answer.answer.splitlines()) == 5  # header, two cited cells, blank, reading

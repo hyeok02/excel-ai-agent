@@ -3,6 +3,7 @@ from collections import Counter
 
 from app.agent.query.models import QuestionAnswer, QuestionAnswerEvidence, QuestionAnswerVerification
 from app.agent.query.streaming_tabular_numeric import NumericAccumulator
+from app.agent.query.ranked_group_units import share
 from app.agent.query.tabular_results import aggregate_text, _label
 from app.agent.query.tabular_feature_contract import feature_contract_matches
 from app.agent.query.tabular_result_scope import result_scope as _result_scope
@@ -55,7 +56,7 @@ class StreamResult:
                     return None, []
             else:
                 entries = list(self.frequencies[column.id].items())
-                parts = [f"‘{_label(value)}’ {count}건" for (_, value), count in entries[:30]]
+                parts = [f"‘{_label(value)}’ {count}건{share(count, self.count)}" for (_, value), count in entries[:30]]
                 parts.append(f"빈칸 {self.blanks[column.id]}건")
                 if len(entries) > 30:
                     parts.append(f"그 외 {len(entries) - 30}종 {sum(count for _, count in entries[30:])}건")
