@@ -62,3 +62,22 @@ def test_sections_preserve_comparison_basis_and_only_drop_opaque_sheet_names():
         assert narrative_scope("Sheet1", "Annual Totals") == "연간 합계"
         assert narrative_scope("Seoul plant", "Budget") == "Seoul plant · 예산"
     assert section_label("Year 2026") == "2026년"
+
+
+def test_readings_asked_once_are_kept_on_disk_for_the_next_process():
+    from app.services.insights.display import label_translator
+
+    class Translator:
+        async def translate(self, labels, context=(), measures=()):
+            return {label: (f"<{label}>", "") for label in labels}
+
+    class Exhausted:
+        async def translate(self, labels, context=(), measures=()):
+            raise RuntimeError("quota exhausted")
+
+    with readings({}):
+        prepare_labels("book-2", lambda: source_label("Fuel supply"), Translator())
+    label_translator._PREPARED.discard("book-2")  # a restarted process
+    with readings({}):
+        prepare_labels("book-2", lambda: source_label("Fuel supply"), Exhausted())
+        assert source_label("Fuel supply") == "<Fuel supply>"

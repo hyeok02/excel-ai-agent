@@ -12,6 +12,7 @@ import re
 from contextlib import contextmanager
 from contextvars import ContextVar
 
+from app.services.insights.display.label_cache import load_readings, save_readings
 from app.services.insights.display.label_prompt import SYSTEM as _SYSTEM
 
 MAX_LABELS, MAX_LENGTH, CHUNK, MAX_CONTEXT = 600, 160, 150, 6
@@ -69,6 +70,10 @@ def prepare_labels(key, render, translator=None, context=()):
         return
     with collecting() as found:
         render()
+    for label, (korean, unit) in load_readings(key).items():  # read before, in another process
+        _READINGS.setdefault(label, korean)
+        if unit:
+            _COUNTERS.setdefault(label, unit)
     missing = sorted(label for label in found if label.casefold() not in _READINGS)[:MAX_LABELS]
     if missing:
         translator = translator or LangChainLabelTranslator.from_environment()
@@ -84,6 +89,8 @@ def prepare_labels(key, render, translator=None, context=()):
                 _READINGS[label.casefold()] = korean
                 if isinstance(unit, str) and re.fullmatch(r"[가-힣]{1,3}", unit.strip()):
                     _COUNTERS[label.casefold()] = unit.strip()
+        save_readings(key, {label.casefold(): [_READINGS[label.casefold()], _COUNTERS.get(label.casefold(), "")]
+                            for label in found if label.casefold() in _READINGS})
     _PREPARED.add(key)
 
 

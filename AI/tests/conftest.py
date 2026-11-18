@@ -32,3 +32,9 @@ def pytest_configure(config):
 def offline_api_intent_classifier(monkeypatch):
     monkeypatch.setattr("app.api.workbook_questions._intent_classifier", None)
     monkeypatch.setattr("app.api.workbook_questions._context_resolver", None)
+
+
+@pytest.fixture(autouse=True)
+def isolated_label_readings(monkeypatch, tmp_path):
+    """Label readings saved on disk by one test are never another test's."""
+    monkeypatch.setenv("LABEL_READINGS_DIR", str(tmp_path / "label-readings"))
