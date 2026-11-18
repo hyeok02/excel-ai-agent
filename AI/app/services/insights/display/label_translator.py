@@ -9,6 +9,7 @@ the values, references and selections never depend on them.
 import asyncio
 import json
 import re
+import threading
 from contextlib import contextmanager
 from contextvars import ContextVar
 
@@ -20,6 +21,7 @@ _READINGS: dict[str, str] = {}
 _COUNTERS: dict[str, str] = {}
 _COLLECTED: ContextVar[set | None] = ContextVar("collected_labels", default=None)
 _PREPARED: set[str] = set()
+_LOCK = threading.Lock()  # the report and its validation prepare the same workbook in parallel: read it once
 _COUNTER_WORDS = {"people": "명", "households": "가구", "cases": "건", "things": "개"}
 
 
@@ -66,32 +68,33 @@ def prepare_labels(key, render, translator=None, context=()):
     ``key`` identifies the workbook so a process asks once per workbook; ``render`` is offline.
     ``context``: the workbook's own names (file, sheets), which say what field its labels belong to.
     """
-    if key in _PREPARED:
-        return
-    with collecting() as found:
-        render()
-    for label, (korean, unit) in load_readings(key).items():  # read before, in another process
-        _READINGS.setdefault(label, korean)
-        if unit:
-            _COUNTERS.setdefault(label, unit)
-    missing = sorted(label for label in found if label.casefold() not in _READINGS)[:MAX_LABELS]
-    if missing:
-        translator = translator or LangChainLabelTranslator.from_environment()
-        if translator is None:
-            return  # no model configured: labels stay as written, and a later call may still read them
-        try:
-            readings = asyncio.run(translator.translate(missing, list(context), found.measures))
-        except Exception:
+    with _LOCK:
+        if key in _PREPARED:
             return
-        for label, read in readings.items():
-            korean, unit = read if isinstance(read, tuple) else (read, "")
-            if isinstance(korean, str) and korean.strip() and len(korean) <= MAX_LENGTH:
-                _READINGS[label.casefold()] = korean
-                if isinstance(unit, str) and re.fullmatch(r"[가-힣]{1,3}", unit.strip()):
-                    _COUNTERS[label.casefold()] = unit.strip()
-        save_readings(key, {label.casefold(): [_READINGS[label.casefold()], _COUNTERS.get(label.casefold(), "")]
-                            for label in found if label.casefold() in _READINGS})
-    _PREPARED.add(key)
+        with collecting() as found:
+            render()
+        for label, (korean, unit) in load_readings(key).items():  # read before, in another process
+            _READINGS.setdefault(label, korean)
+            if unit:
+                _COUNTERS.setdefault(label, unit)
+        missing = sorted(label for label in found if label.casefold() not in _READINGS)[:MAX_LABELS]
+        if missing:
+            translator = translator or LangChainLabelTranslator.from_environment()
+            if translator is None:
+                return  # no model configured: labels stay as written, and a later call may still read them
+            try:
+                readings = asyncio.run(translator.translate(missing, list(context), found.measures))
+            except Exception:
+                return
+            for label, read in readings.items():
+                korean, unit = read if isinstance(read, tuple) else (read, "")
+                if isinstance(korean, str) and korean.strip() and len(korean) <= MAX_LENGTH:
+                    _READINGS[label.casefold()] = korean
+                    if isinstance(unit, str) and re.fullmatch(r"[가-힣]{1,3}", unit.strip()):
+                        _COUNTERS[label.casefold()] = unit.strip()
+            save_readings(key, {label.casefold(): [_READINGS[label.casefold()], _COUNTERS.get(label.casefold(), "")]
+                                for label in found if label.casefold() in _READINGS})
+        _PREPARED.add(key)
 
 
 class LangChainLabelTranslator:

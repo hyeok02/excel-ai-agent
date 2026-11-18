@@ -81,3 +81,21 @@ def test_readings_asked_once_are_kept_on_disk_for_the_next_process():
     with readings({}):
         prepare_labels("book-2", lambda: source_label("Fuel supply"), Exhausted())
         assert source_label("Fuel supply") == "<Fuel supply>"
+
+
+def test_the_validation_source_report_is_written_after_the_labels_are_read(monkeypatch):
+    from app.services.analysis_strategy import AnalysisDepth
+    from app.services.insights.display import label_translator
+    from app.services.insights.verification.prepared_validation import prepare_validation
+    from tests.tabular_query_fixtures import table_fixture
+
+    class Translator:
+        async def translate(self, labels, context=(), measures=()):
+            return {label: (f"<{label}>", "") for label in labels}
+
+    monkeypatch.setattr(label_translator.LangChainLabelTranslator, "from_environment", classmethod(lambda cls: Translator()))
+    summary, _ = table_fixture([(1, 1, [["Year", "Mystery level"], *([year, year % 7 + 1] for year in range(2010, 2024))])])
+    with readings({}):
+        canonical = prepare_validation(summary, AnalysisDepth.AUTO).canonical
+    shown = " ".join(f"{item.title} {item.fact}" for item in canonical.insights)
+    assert "<Mystery level>" in shown and "Mystery level" not in shown.replace("<Mystery level>", "")
