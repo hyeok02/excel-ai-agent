@@ -1,5 +1,5 @@
 import app.agent  # noqa: F401  (import order: the insight package imports the agent package)
-from app.services.insights.display.label_translator import collecting, prepare_labels
+from app.services.insights.display.label_translator import collecting, counter, prepare_labels
 from app.services.insights.display.source_labels import (caption_measure, narrative_scope, section_label,
                                                         source_caption, source_label, source_unit)
 from tests.label_readings import readings
@@ -32,24 +32,29 @@ def test_a_caption_names_one_measure_before_its_qualifiers_only():
         assert caption_measure("Population estimates and births by region") == ("", "")
         assert caption_measure("Population growth rate by region") == ("", "")
     assert caption_measure("Population estimates: Summary") == ("", "")  # unread: nothing to attach
+    with readings({"Population estimates": ("인구 추정치", "명")}):
+        assert caption_measure("Population estimates: Summary for the UK") == ("인구 추정치", "명")
+        assert caption_measure("Population estimates (thousands): Summary") == ("인구 추정치", "")  # not single persons
 
 
 def test_the_labels_a_report_shows_are_collected_and_read_once_per_workbook():
     class Translator:
         calls = []
 
-        async def translate(self, labels):
+        async def translate(self, labels, context=(), measures=()):
             Translator.calls.append(list(labels))
-            return {label: f"<{label}>" for label in labels}
+            return {label: (f"<{label}>", "명" if label == "Fuel supply" else "") for label in labels}
 
     with readings({}):
         prepare_labels("book-1", lambda: source_label("Fuel supply · Total"), Translator())
         prepare_labels("book-1", lambda: source_label("Fuel supply · Total"), Translator())
         assert Translator.calls == [["Fuel supply", "Total"]]
         assert source_label("Fuel supply · Total") == "<Fuel supply> · <Total>"
+        assert counter("Fuel supply") == "명" and counter("Total") == ""
     with collecting() as found:
         source_label("Annual Totals")
-    assert "Annual Totals" in found
+        caption_measure("Resident population: Summary for Wales")
+    assert "Annual Totals" in found and found.measures == {"Resident population"}  # only measures are asked a count
 
 
 def test_sections_preserve_comparison_basis_and_only_drop_opaque_sheet_names():

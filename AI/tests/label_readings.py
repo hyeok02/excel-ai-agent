@@ -8,13 +8,19 @@ from app.services.insights.display import label_translator
 
 @contextmanager
 def readings(mapping):
-    saved = dict(label_translator._READINGS)
-    label_translator._READINGS.update({label.casefold(): korean for label, korean in mapping.items()})
+    """``mapping``: label -> Korean, or label -> (Korean, counter word)."""
+    saved = dict(label_translator._READINGS), dict(label_translator._COUNTERS)
+    for label, read in mapping.items():
+        korean, unit = read if isinstance(read, tuple) else (read, "")
+        label_translator._READINGS[label.casefold()] = korean
+        if unit:
+            label_translator._COUNTERS[label.casefold()] = unit
     try:
         yield
     finally:
-        label_translator._READINGS.clear()
-        label_translator._READINGS.update(saved)
+        for store, kept in zip((label_translator._READINGS, label_translator._COUNTERS), saved):
+            store.clear()
+            store.update(kept)
 
 
 # What a model reads these test workbooks' labels as; tests that check Korean prose use it.

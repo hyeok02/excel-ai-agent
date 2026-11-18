@@ -8,7 +8,7 @@ import calendar
 import re
 
 from app.services.insights.display.glossary import translate
-from app.services.insights.display.label_translator import reading
+from app.services.insights.display.label_translator import counter, reading
 
 
 def source_label(value, context=""):
@@ -59,8 +59,12 @@ def caption_measure(value):
     if (not heading or re.search(r"\b(?:and|versus|vs)\b|[&/]", heading, re.I)
             or re.search(r"growth|change|percent|rate|ratio|density|index|per\s+|share", heading, re.I)):
         return "", ""
-    measure = reading(heading)
-    return (measure, "") if measure else ("", "")
+    unit = counter(heading)
+    if not (measure := reading(heading)):
+        return "", ""
+    # The count's counter word ("명") only for a caption counting single units, not thousands of them.
+    scaled = re.search(r"thousands?|millions?|billions?|hundreds?|천|백만|억", text, re.I)
+    return measure, "" if scaled else unit
 
 
 def _dates(text):

@@ -96,6 +96,13 @@ def test_price_category_needs_a_geographic_dimension_and_reads_its_unit():
     assert '100 센트/kWh' in items[0].fact
 
 
+def test_a_population_row_under_a_geography_reads_in_persons():
+    source, _, _ = context('United Kingdom', geography=True)
+    with readings({**POPULATION, "Population estimates": ("인구 추정치", "명")}):
+        items, _ = horizontal_trend_report(source)
+    assert '인구 추정치' in items[0].title and '100명' in items[0].fact
+
+
 def test_a_second_table_cannot_borrow_population_caption():
     source, sheet, series = context('United Kingdom')
     rows = sheet['business_facts']['table_regions'][0]['rows']

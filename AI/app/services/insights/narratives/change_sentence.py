@@ -8,7 +8,8 @@ import re
 
 from app.services.insights.narratives.narrative_values import direction_particle, joining_particle, number, subject_particle
 
-_SHOWN = re.compile(r"\d[\d,]*(?:\.\d+)?")
+# A digit inside a unit ("CO2e", "PM2.5") is part of its name, not the value shown.
+_SHOWN = re.compile(r"(?<![A-Za-z])\d[\d,]*(?:\.\d+)?")
 
 
 def _shown(text, raw):

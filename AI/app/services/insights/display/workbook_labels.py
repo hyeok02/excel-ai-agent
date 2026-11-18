@@ -18,4 +18,5 @@ def prepare_workbook_labels(summary, translator=None):
         all_series_facts(context)
 
     shape = [summary.filename, *((sheet.name, sheet.rows, sheet.columns) for sheet in summary.sheets)]
-    prepare_labels(sha256(repr(shape).encode()).hexdigest(), render, translator)
+    names = [summary.filename, *(sheet.name for sheet in summary.sheets)]
+    prepare_labels(sha256(repr(shape).encode()).hexdigest(), render, translator, names)

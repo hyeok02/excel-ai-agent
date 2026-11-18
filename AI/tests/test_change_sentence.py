@@ -25,6 +25,9 @@ def test_whole_period_comes_first_then_the_latest_step():
 
 def test_the_change_is_written_in_the_scale_and_digits_the_reader_sees():
     assert "417.4 백만 톤(" in change_sentence("1990년 790.8 백만 톤", "2024년 373.4 백만 톤", 790.84, 373.42, " 백만 톤")
+    # The 2 of CO2e names the unit; the shown values still set the digits.
+    assert "417.4 백만 톤 CO2e(" in change_sentence("1990년 790.8 백만 톤 CO2e", "2024년 373.4 백만 톤 CO2e",
+                                                   790.84, 373.42, " 백만 톤 CO2e")
     assert "0.3억(22.50%)" in change_sentence("2016년 1.2억", "2025년 1.5억", 123456789, 151234567)
     assert "3K(25.83%)" in change_sentence("2016년 12K", "2025년 15K", 12000, 15100)
     assert change_sentence("2023년 5.5%", "2024년 5.5%", 5.46, 5.54, "%").startswith("2023년 5.5%와 2024년 5.5%로")
