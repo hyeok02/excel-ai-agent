@@ -73,6 +73,8 @@ def repair_feedback(question, intent, answer, summary):
 
 async def answer_with_replanning(service, question, sources, **options):
     answer = await _answer_with_replanning(service, question, sources, **options)
+    if answer is not None and "question_unanswered" in answer.verification.checks:  # related figures only
+        return await asyncio.to_thread(final_answer, question, sources.summary, sources.index) or answer
     if not refused_without_basis(answer):
         return answer  # otherwise an unbound trend refusal says more than a generic one
     refusal = await asyncio.to_thread(series_attempt, question, sources.summary, sources.index)

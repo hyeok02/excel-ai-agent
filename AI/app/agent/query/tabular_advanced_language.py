@@ -53,9 +53,16 @@ _STORED_SHARE = re.compile(r"%|\b(?:percent|percentage|share|pct)\b|비중|비�
 
 
 def _reads_stored_shares(plan, table):
-    measured = set(plan.column_ids) - set(plan.group_by)
+    # A ranked list reads its order column ("G&A occupancy rate"); the Month beside it is a label.
+    measured = ({plan.order_by} if plan.order_by else set(plan.column_ids)) - set(plan.group_by)
     columns = [column for column in table.columns if column.id in measured]
-    return bool(columns) and all(_STORED_SHARE.search(str(column.header)) for column in columns)
+    return bool(columns) and all(_STORED_SHARE.search(str(column.header)) or _percent_formats(column)
+                                 for column in columns)
+
+
+def _percent_formats(column):
+    formats = [str(style) for style in getattr(column, "number_formats", ()) if style]
+    return bool(formats) and all("%" in style.replace('"%"', "") for style in formats)
 
 
 def _distinct_fields(text, plan, identifiers):

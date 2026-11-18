@@ -34,3 +34,11 @@ def _inside(inner, outer):
     a, b, c, d = range_boundaries(inner.replace("$", ""))
     e, f, g, h = range_boundaries(outer.replace("$", ""))
     return e <= a <= c <= g and f <= b <= d <= h
+
+
+_FOLLOW_UP = re.compile(r"^\s*(?:'(?:[^']|'')+'|[\w& .-]+)![A-Z$]+\d+(?::[A-Z$]+\d+)?\s*범위(?:의|에서)?[^:\n]*?기준으로:\s*")
+
+
+def asked_part(question):
+    """A clarification's follow-up ("'Sheet'!B13:AL74 범위의 J열 X 기준으로: 질문") without its scope prefix."""
+    return _FOLLOW_UP.sub("", question)

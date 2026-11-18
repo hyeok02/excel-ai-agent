@@ -18,11 +18,16 @@ from app.agent.query.models import (QuestionAnswer, QuestionAnswerEvidence, Ques
 from app.agent.query.numeric_support import supported_answer_numbers
 from app.agent.query.references import normalize_reference
 from app.agent.query.source_claims import _quotes
+from app.agent.query.tabular_explicit_scope import _inside, explicit_ranges
 from app.services.insights.verification.numeric_validation import numbers, unmatched_numbers
 
 GENERIC = "질문과 관련해 원본 Excel에서 조회한 셀"
 INTERPRETED = "해석 부분은 원본에 적힌 내용이 아니라, 위 근거 수치를 바탕으로 한 추정입니다."
 _SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
+# "원본에서 직접 확인할 수 없습니다" says the draft has no answer: kept as an interpretation it would
+# stand in for one, and the stages that still compute an answer would never run.
+_UNANSWERED = re.compile(r"확인(?:할|하기)?\s*(?:수\s*)?(?:없|어렵|불가)|알\s*수\s*없|제공되지\s*않|포함되어\s*있지\s*않|"
+                         r"\b(?:cannot|can't|unable to|not (?:available|provided|possible))\b", re.I)
 
 
 def interpreted_answer(question, draft, execution, index_truncated=False, index=None):
@@ -32,6 +37,13 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
     matrix = {key: value for item in data for key, value in (item.get("source_matrix_bindings") or {}).items()}
     headers = {key: value for item in data for key, value in (item.get("source_header_bindings") or {}).items()}
     lines, evidence, values, direct, grounded = [], {}, [], [], set(numbers(question))
+    # A follow-up scoped to one range ("'Timeseries type 1 acute trusts'!B13:AL83 범위의 …") is answered
+    # from that range: a fact or cell of another table answers the question the user set aside.
+    scopes = explicit_ranges(question)
+    def in_scope(sheet, reference):
+        address = reference.rpartition("!")[2].replace("$", "")
+        return not scopes or any(sheet.strip("'") == wanted and CELL.fullmatch(address) and _inside(address, bounds)
+                                 for wanted, bounds in scopes)
     for claim in draft.claims:
         if claim.kind != "verified_fact" or not isinstance(claim.fact, str):
             continue
@@ -39,7 +51,8 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
             references = fact.get("support_references", fact.get("required_references", []))
             # The fact was computed from the source by the report itself; in a large workbook the
             # search may hold only part of its cells, which are then the ones cited.
-            if not _quotes(claim.fact, fact.get("fact")) or not isinstance(references, list):
+            if not _quotes(claim.fact, fact.get("fact")) or not isinstance(references, list) or not all(
+                    in_scope(str(item).rpartition("!")[0], str(item)) for item in references):
                 continue
             found = matched_comparison_evidence(references, available)[0] or source_cells(references, index)
             if found or index_truncated:  # a workbook too large to search whole: the fact stands uncited
@@ -52,7 +65,8 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
               if claim.kind == "cell_value" and claim.value_reference}
     cells = [cell for reference in claims or draft.evidence
              if (cell := available.get(normalize_reference(reference))) is not None and cell.value not in (None, "")
-             and CELL.fullmatch(cell.reference.replace("$", "")) and (claims or number(cell.value))]
+             and CELL.fullmatch(cell.reference.replace("$", "")) and (claims or number(cell.value))
+             and in_scope(cell.sheet_name, cell.reference)]
     naming = {id(label) for cell in cells if (label := row_label(cell, available)) is not None}
     for cell in cells:
         key = normalize_reference(f"{cell.sheet_name}!{cell.reference}")
@@ -82,6 +96,8 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
             and not unmatched_numbers(sentence, grounded | supported_answer_numbers(question, cited, execution, sentence))
             and answer_directions_supported(sentence, values) and change_within_one_series(sentence, direct, available)
             and names_its_records(sentence, direct, available)]
+    declined = [sentence for sentence in kept if _UNANSWERED.search(sentence)]
+    kept = [sentence for sentence in kept if sentence not in declined]
     # A cited figure no kept sentence states is not the basis of what is shown; a quoted fact is.
     stated = " ".join(kept)  # compared as the draft rounds it: 124.2 states 124.19116...
     lines = [line for line, cell in dict(lines).items() if cell is None or states_value(stated, cell)][:MAX_BASIS]
@@ -96,4 +112,5 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
         evidence=[item if isinstance(item, QuestionAnswerEvidence) else present_comparison_evidence(item)
                   for item in evidence.values()], limitations=limitations,
         verification=QuestionAnswerVerification(
-            level="source_checked", checks=["cited_cells", "source_values", "numbers", "interpretation_unverified"]))
+            level="source_checked", checks=["cited_cells", "source_values", "numbers", "interpretation_unverified"]
+            + (["question_unanswered"] if declined else [])))  # what was asked is said to be unknown

@@ -41,3 +41,14 @@ def test_groups_and_totals_are_left_out_and_the_reading_is_stated():
 
 def test_no_kind_read_leaves_the_refusal():
     assert _rank(kinds=Kinds("unnamed")) is None
+
+
+def test_an_outline_label_heading_unlabelled_rows_is_not_ranked_by_its_first_member():
+    outline = [["Sector", "2024"], ["Transport", 59.5], [None, 18.4], ["Transport total", 77.9],
+               ["Waste", 5.1], [None, 2.0], ["Waste total", 7.1]]
+    summary, index = table_fixture([(1, 1, outline)], sheet_name="Sectors")
+    table = build_query_tables(summary)[0]
+    label, value = table.columns
+    plan = TabularQueryPlan(operation="row_list", table_id=table.id, column_ids=[label.id, value.id],
+                            order_by=value.id, descending=True, limit=1)
+    assert asyncio.run(member_ranking(plan, summary, index, "가장 많은 부문은?", classifier=Kinds())) is None

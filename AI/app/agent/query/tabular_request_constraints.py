@@ -6,6 +6,7 @@ are no workbook/company-specific terms or addresses here.
 """
 import re
 
+from app.agent.query.tabular_explicit_scope import asked_part
 from app.agent.query.tabular_request_numeric import numeric_constraints_match
 from app.agent.query.tabular_request_ranking import ranking_constraints_match
 from app.agent.query.tabular_request_extras import extra_filters_supported
@@ -29,7 +30,9 @@ def matches_constraints(question, plan, table, tables, *, streaming=False) -> bo
         # output validators without reinterpreting OR leaves as conjunctions.
         plan = plan.model_copy(update={"filters": [], "filter_expression": None})
         question = checked
-    text = _without_source_names(question, tables)
+    # A clarification's follow-up ("'Sheet'!B13:AL74 범위의 J열 X 기준으로: 질문") names its scope, which
+    # the scope checks already bound; the conditions are read from the question part.
+    text = _without_source_names(asked_part(question), tables)
     # Date filters selecting exactly a period the request names are its own conditions.
     if dated := period_filters(text, plan, table):
         plan = plan.model_copy(update={"filters": [item for index, item in enumerate(plan.filters)
