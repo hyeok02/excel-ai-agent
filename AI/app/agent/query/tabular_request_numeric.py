@@ -19,7 +19,9 @@ _OPS = {
     "greater than": "greater_than", "more than": "greater_than", "above": "greater_than",
     "less than": "less_than", "below": "less_than", "equal to": "equals",
 }
-_SUFFIX = re.compile(rf"(?P<number>{_QUANTITY})\s*(?P<unit>{_UNIT})\s*(?P<op>이상|초과|이하|미만|보다\s+큰|보다\s+작은)", re.I)
+# "100개 이상", "50명 초과": a counter between the number and the comparison is part of the number.
+_COUNTER = r"(?:개|건|명|원|달러|회|대|가구|톤|일|시간|번)?"
+_SUFFIX = re.compile(rf"(?P<number>{_QUANTITY})\s*(?P<unit>{_UNIT})\s*{_COUNTER}\s*(?P<op>이상|초과|이하|미만|보다\s+큰|보다\s+작은)", re.I)
 _PREFIX = re.compile(rf"(?P<op>>=|<=|≥|≤|>|<|=|at least|at most|greater than|more than|less than|above|below|equal to)\s*(?P<number>{_NUMBER})\s*(?P<unit>{_UNIT})", re.I)
 _PERCENT_EQUALS = re.compile(rf"(?P<number>{_NUMBER})\s*(?P<unit>%|퍼센트|percent)\s*(?:인|와 같은|와 동일한|equal)", re.I)
 _INTERVAL = re.compile(rf"(?P<lower>{_NUMBER})\s*(?:부터|\bto\b)\s*(?P<upper>{_NUMBER})"

@@ -2,7 +2,7 @@
 import asyncio
 
 from app.agent.query.models import QuestionAnswer
-from app.agent.query.series_binding import is_unbound, refused_without_basis
+from app.agent.query.series_binding import answers_nothing, is_unbound, refused_without_basis
 from app.agent.query.time_series_answers import series_attempt
 from app.agent.query.final_answers import final_answer
 from app.agent.query.intent_models import QuestionIntent
@@ -73,7 +73,7 @@ def repair_feedback(question, intent, answer, summary):
 
 async def answer_with_replanning(service, question, sources, **options):
     answer = await _answer_with_replanning(service, question, sources, **options)
-    if answer is not None and "question_unanswered" in answer.verification.checks:  # related figures only
+    if answers_nothing(answer):  # related figures, or cited cells that answer nothing: the last stages still try
         return await asyncio.to_thread(final_answer, question, sources.summary, sources.index) or answer
     if not refused_without_basis(answer):
         return answer  # otherwise an unbound trend refusal says more than a generic one

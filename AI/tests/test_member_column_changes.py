@@ -25,3 +25,9 @@ def test_no_single_row_or_group_or_no_comparison_answers_nothing(monkeypatch):
     assert _ask(monkeypatch, "메인 전기요금은 작년보다 얼마나 올랐어?", {"메인": "Maine"}) is None  # no group
     assert _ask(monkeypatch, "메인 상업용 전기요금 알려줘", {"상업용": "Commercial", "메인": "Maine"}) is None
     assert _ask(monkeypatch, "상업용 전기요금이 작년보다 오른 주는 몇 개야?", {"상업용": "Commercial"}) is None  # a count
+
+
+def test_a_phrase_naming_the_group_does_not_take_the_row_word_with_it(monkeypatch):
+    names = {"뉴욕 가정용": "Residential", "가정용": "Residential", "메인": "Maine"}
+    answer = _ask(monkeypatch, "메인 가정용 요금은 작년보다 얼마나 올랐어?", {**names, "메인 가정용": "Residential"})
+    assert answer.answer.endswith("Maine의 Residential: August 2025 28 → August 2026 32, 4(14.29%) 올랐습니다.")

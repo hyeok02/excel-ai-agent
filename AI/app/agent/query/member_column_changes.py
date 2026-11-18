@@ -48,6 +48,10 @@ async def _answer(question, index, pairs, resolver):
         parents = list(dict.fromkeys(parent for _, parent, _, _ in pairs))
         found = await asyncio.gather(*(resolver.resolve(word, "column group", parents) for word in words))
         readings = [(word, parents[item.candidate_id]) for word, item in zip(words, found) if _picked(item, parents)]
+        # "뉴욕 가정용" reads as Residential through 가정용: the group is named by the shortest word, and
+        # 뉴욕 stays free to name the row.
+        readings = [(word, parent) for word, parent in readings if not any(other != word and other in word
+                                                                         for other, _ in readings)]
         pairs = [pair for pair in pairs if pair[1] in {parent for _, parent in readings}]
         if len(pairs) != 1:
             return None  # no group, or several, named: the change is not one reading
