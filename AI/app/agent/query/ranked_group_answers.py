@@ -12,6 +12,7 @@ from collections import defaultdict
 from decimal import Decimal
 import re
 
+from app.agent.query.cell_display import _display_cell
 from app.agent.query.metric_observation_render import _evidence
 from app.agent.query.ranked_group_units import shown_total, total_unit
 from app.agent.query.models import (
@@ -113,8 +114,8 @@ def _totals(rows, group, measure):
             if measure and value not in (None, ""):
                 return None  # A non-numeric amount cannot be skipped silently.
             continue
-        totals[str(name)][0] += Decimal(str(value))
-        totals[str(name)][1].append(row.row_number)
+        key = str(name) if isinstance(name, (int, float)) else _display_cell(name, "General")  # 2022-06-21, no clock
+        totals[key] = [totals[key][0] + Decimal(str(value)), [*totals[key][1], row.row_number]]
     return dict(totals)
 
 

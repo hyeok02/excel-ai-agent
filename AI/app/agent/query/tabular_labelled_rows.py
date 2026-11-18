@@ -32,6 +32,6 @@ def labelled_text(label, columns, rows):
             value = row.values[column.id]
             if value is None and row.formulas.get(column.id):
                 return None
-            parts.append(f"{column.display_header}: {_display_cell(value, row.number_formats.get(column.id, 'General'))}")
+            parts.append(f"{column.display_header}: {_display_cell(value, row.number_formats.get(column.id, 'General'), column.header)}")
         lines.append(f"{row.values[label]} — {'; '.join(parts)}")
     return "\n".join(lines)
