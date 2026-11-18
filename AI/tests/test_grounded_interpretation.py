@@ -140,3 +140,4 @@ def test_a_figure_the_draft_rounds_still_states_its_cited_cell():
     claims = [SourceClaim(kind="cell_value", value_reference=f"CatReg!{column}52") for column in "DE"]
     answer = interpreted_answer("얼마나 줄었어?", _draft("124.2에서 110.4로 감소했습니다.", claims), execution)
     assert answer is not None and len(answer.answer.splitlines()) == 5  # header, two cited cells, blank, reading
+

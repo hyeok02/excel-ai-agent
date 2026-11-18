@@ -30,9 +30,13 @@ async def words_naming(resolver, words, field, values, planned):
     # is: a word fitting more than one value names neither. Asked again in reverse order, a
     # word naming one value still picks it.
     reverse = list(reversed(chunks[home]))
-    if named and len(reverse) > 1:
-        again = await asyncio.gather(*(resolver.resolve(word, field, reverse) for word in named))
-        named = [word for word, result in zip(named, again) if _picks(result, reverse, planned)]
+    if len(reverse) > 1:
+        # A reading can also depend on order the other way: "목조 건물" is left unmatched with Frame
+        # listed first and read as Frame with it last. When no word picks the value, a word
+        # matching nothing in one order and the planned value in the other names it.
+        asked = named or [word for word, result in zip(words, first) if result.status == "unmatched"]
+        again = await asyncio.gather(*(resolver.resolve(word, field, reverse) for word in asked))
+        named = [word for word, result in zip(asked, again) if _picks(result, reverse, planned)]
     others = [chunk for index, chunk in enumerate(chunks) if index != home]
     if not named or not others:
         return named

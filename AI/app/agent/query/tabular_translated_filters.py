@@ -6,8 +6,7 @@ authorizes a filter. Here the plan is not trusted either. For each such filter a
 separate, bounded call is asked which source value each remaining question word
 names, choosing only among that column's actual values. Only when exactly one
 word clearly names exactly the planned value is the question read as
-"쿠키(Cookies) 판매수량 합계는?" and run through the ordinary checks again. The answer
-states the reading as an interpreted, source-checked one; anything less leaves it as it was.
+"쿠키(Cookies) 판매수량 합계는?" and run through the ordinary checks again, stated as an interpreted reading.
 """
 import asyncio
 import re
@@ -17,6 +16,8 @@ from app.agent.query.models import QuestionAnswerStatus, QuestionAnswerVerificat
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
+from app.agent.query.tabular_column_values import column_values
+from app.agent.query.tabular_explicit_scope import asked_part
 from app.agent.query.tabular_request_extras import _stated_subject
 from app.agent.query.tabular_request_predicates import normalize
 from app.agent.query.tabular_translated_rows import every_row, ranked_members, run_checked
@@ -33,14 +34,14 @@ _GENERIC = re.compile(
     r"가장|제일|많이|적게|높은|낮은|큰|작은|순위)$")
 
 
-def translated_filters(plan, table, question):
+def translated_filters(plan, table, question, index=None):
     """Equality filters on text the question does not state literally, or None when any other filter is unsupported."""
     found = []
     for condition in plan.filters:
         value = condition.value
         if condition.operator != "equals" or not isinstance(value, str) or _stated_subject(question, value):
             continue
-        values = {row.values.get(condition.column_id) for row in table.rows}
+        values = set(column_values(table, condition.column_id, index))
         if not any(isinstance(item, str) and normalize(item) == normalize(value) for item in values):
             return None  # a value the source does not hold is not a translation of anything
         found.append(condition)
@@ -78,12 +79,12 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     table = tables[0]
     plan = bound = contains_as_equals(bound, table)
     intent = replace(intent, tabular_query=plan)
-    conditions = translated_filters(bound, table, question)
+    conditions = translated_filters(bound, table, question, data_index)
     loose = [item for item in plan.filters if item.operator == "contains" and isinstance(item.value, str)
              and not _stated_subject(question, item.value)]
     if not conditions and loose:  # "contains Asthma" the question never says: a lookup shows every row
         return await every_row(plan, summary, data_index, question, intent, loose, [[]] * len(loose), [False] * len(loose))
-    words = candidate_words(question, table)
+    words = candidate_words(asked_part(question), table)  # a follow-up's scope names no record
     # Column names count too: "보험가액" for InsuredValue, when no value needs reading.
     unstated = [c.header for c in table.columns if c.id in plan.column_ids and not _stated_subject(question, c.header)]
     if conditions is None or len(conditions) > MAX_CONDITIONS or not words or not conditions and not unstated:
@@ -94,8 +95,8 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
     if resolver is None:
         return None
     fields = {column.id: column.header for column in table.columns}
-    columns = [sorted({item for row in table.rows if isinstance(item := row.values.get(condition.column_id), str)
-                       and item.strip()}) for condition in conditions]
+    columns = [sorted({item for item in column_values(table, condition.column_id, data_index)
+                       if isinstance(item, str) and item.strip()}) for condition in conditions]
     try:  # a yes/no column the question names is read as its "yes" ("지진" → Earthquake = Y)
         affirmed = await affirmed_columns(resolver, words, table, conditions, question)
         found = await asyncio.gather(*(words_naming(resolver, words, fields[condition.column_id], values,

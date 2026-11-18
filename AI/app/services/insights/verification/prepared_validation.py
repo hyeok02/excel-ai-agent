@@ -21,6 +21,9 @@ class PreparedValidation:
 
 
 def prepare_validation(summary, depth) -> PreparedValidation:
+    # The source insights are written in Korean names: those are read before anything is rendered.
+    from app.services.insights.display.workbook_labels import prepare_workbook_labels
+    prepare_workbook_labels(summary)
     context = build_workbook_context(summary, select_analysis_profile(summary, depth))
     # Same order validation uses: the index first, then the source narratives.
     index = workbook_evidence_index(context)

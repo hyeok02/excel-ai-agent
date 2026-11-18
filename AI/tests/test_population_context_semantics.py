@@ -25,13 +25,15 @@ def execute(matrix, *, column="B", question="Amount 합계", **fields):
 def test_role_column_never_hides_actual_total_label(header, role, total):
     result = execute([["Item", "Amount", header], ["A", 100, role],
                       ["B", 200, role], [total, 300, role]])
-    assert result.status == "insufficient_evidence" and result.verification.level == "unverified"
+    # Never added to its own rows: refused, or the details summed with the total row set aside.
     assert "합계 600" not in result.answer
+    assert result.status == "insufficient_evidence" or ("합계 300" in result.answer and "합계 행" in " ".join(result.limitations))
 
 
 def test_metric_qualified_total_without_role_column_is_still_a_total():
     result = execute([["Item", "Amount"], ["A", 100], ["B", 200], ["Total Amount", 300]])
-    assert result.status == "insufficient_evidence" and result.verification.level == "unverified"
+    assert "합계 600" not in result.answer
+    assert result.status == "insufficient_evidence" or "합계 300" in result.answer
 
 
 def test_real_name_containing_total_is_not_an_aggregation_operator():

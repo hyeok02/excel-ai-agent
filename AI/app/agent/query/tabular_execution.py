@@ -5,7 +5,7 @@ from app.agent.query.models import (
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_labelled_rows import label_column, labelled_text
-from app.agent.query.tabular_subtotal_rows import without_subtotals
+from app.agent.query.tabular_subtotal_rows import typed_total, without_subtotals
 from app.agent.query.tabular_named_scope import named_column_scope
 from app.agent.query.tabular_results import aggregate_text, query_evidence, scope_description
 from app.agent.query.tabular_request_scope import request_matches_plan, rows_match_explicit_ranges
@@ -61,6 +61,10 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     if plan.operation == "numeric_summary":
         rows, subtotal_notes = without_subtotals(rows, selected, table.sheet_name)
     population = NumericPopulationContext(plan, table)
+    if plan.operation == "numeric_summary" and (total := typed_total(rows, selected)):  # 790.8 = the gases above it
+        rows = [row for row in rows if row is not total]
+        subtotal_notes.append(f"{table.sheet_name}!{selected[0]}{total.row_number}은(는) 위 행들을 더한 합계 행이라 "
+                              "중복 합산하지 않았습니다. 결과는 그 합계 행의 값과 같습니다.")
     if not all(population.add(row) for row in rows):
         return population.unavailable(question)
     if plan.operation == "lookup" and (plan.limit is not None or plan.order_by):

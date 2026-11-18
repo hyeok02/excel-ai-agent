@@ -93,3 +93,36 @@ def test_a_word_naming_what_each_row_is_does_not_conflict_with_a_count():
     assert answer.answer.startswith("해석: ‘목조 건물’ → Construction = Frame") and "2건" in answer.answer
     # A measured column the plan does not read still rejects the reading.
     assert ask("목조 건물 보험가액은 몇 건이야?", {"목조 건물": "Frame", "보험가액": "InsuredValue"}) is None
+
+
+def test_a_value_read_only_when_listed_last_is_still_named():
+    from app.agent.query.tabular_translated_names import words_naming
+
+    class LastOnly:  # a model leaving "목조 건물" unmatched while Frame is listed first
+        async def resolve(self, word, field, values):
+            if word == "목조 건물" and values[-1] == "Frame":
+                return SimpleNamespace(status="resolved", candidate_id=len(values) - 1)
+            return SimpleNamespace(status="unmatched", candidate_id=None)
+
+    values = ["Frame", "Masonry", "Metal Clad"]
+    assert asyncio.run(words_naming(LastOnly(), ["목조 건물", "계약"], "Construction", values, "Frame")) == ["목조 건물"]
+    assert asyncio.run(words_naming(LastOnly(), ["목조 건물"], "Construction", values, "Masonry")) == []
+
+
+def test_general_with_a_currency_literal_is_a_number_to_rank():
+    from app.agent.query.excel_number_formats import parse_number_format
+    from app.agent.query.tabular_numeric import unsupported_style
+    for style, unsupported in (('"$"General', False), ("General", False), ("mm/dd/yyyy", True), ("# ?/?", True)):
+        assert unsupported_style(parse_number_format(style), style) is unsupported, style
+
+
+def test_a_threshold_written_with_korean_units_is_the_planned_number():
+    from app.agent.query.tabular_execution import execute_tabular_query
+    from app.agent.query.tabular_query_models import TabularFilter
+    summary, index = table_fixture([(1, 1, POLICIES)])
+    table = build_query_tables(summary)[0]
+    plan = lambda value: TabularQueryPlan(operation="row_count", table_id=table.id, column_ids=[], statistic="all",
+                                          filters=[TabularFilter(column_id="C", operator="greater_than_or_equal", value=value)])
+    answer = execute_tabular_query(plan(500), summary, index, "보험가액이 5백 이상인 계약은 몇 건이야?")
+    assert answer is not None and "1건" in answer.answer
+    assert execute_tabular_query(plan(5), summary, index, "보험가액이 5백 이상인 계약은 몇 건이야?") is None

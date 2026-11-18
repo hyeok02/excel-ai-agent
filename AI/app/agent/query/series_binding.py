@@ -21,3 +21,10 @@ def refused_without_basis(answer):
 
 def is_unbound(answer):
     return refused_without_basis(answer) and UNBOUND in answer.verification.checks
+
+
+def answers_nothing(answer):
+    """A refusal citing cells it could not use, or a reading that says the asked thing is unknown: not an answer."""
+    return bool(answer is not None and not answer.clarification_options and (
+        "question_unanswered" in answer.verification.checks
+        or answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE and answer.evidence))

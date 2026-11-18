@@ -45,3 +45,13 @@ def test_a_sum_row_over_the_summed_rows_is_not_counted_twice():
     # A SUM over rows that are not all summed here, or over another column, is left alone.
     for formula in ("=SUM(C4:C8)", "=SUM(D5:D8)", "=SUMIFS(C5:C8,B5:B8,\"x\")"):
         assert len(without_subtotals([*rows[:4], row(9, formula)], ["C"], "Totals")[0]) == 5
+
+
+def test_a_total_typed_as_a_value_over_the_summed_rows_is_found():
+    from app.agent.query.tabular_subtotal_rows import typed_total
+    row = lambda number, name, value: SimpleNamespace(row_number=number, formulas={}, values={"A": name, "C": value})
+    gases = [row(7, "CO2", 597.75), row(8, "Methane", 132.04), row(9, "N2O", 46.25)]
+    assert typed_total([*gases, row(10, "Total greenhouse gas emissions", 776.04)], ["C"]).row_number == 10
+    # Labelled total but not the sum of the rows, or the sum without a total label: neither is one.
+    assert typed_total([*gases, row(10, "Total greenhouse gas emissions", 800.0)], ["C"]) is None
+    assert typed_total([*gases, row(10, "Other gases", 776.04)], ["C"]) is None

@@ -64,7 +64,8 @@ def categorical_predicates(text, headers):
         # Numeric comparisons, dates and percent scales have a separate parser.
         from app.agent.query.tabular_request_numeric import _INTERVAL
         if not value or len(value) > 300 or re.fullmatch(
-            r"(?:[<>]=?|[≥≤=])?\s*[-+]?\d[\d,./:% -]*(?:이상|이하|미만|초과|보다\s*(?:큰|작은))?", value,
+            r"(?:[<>]=?|[≥≤=])?\s*[-+]?\d[\d,./:% -]*(?:[십백천만억조]\s*)*(?:개|건|명|원|달러|회|대|가구|톤|일|시간|번)?\s*"
+            r"(?:이상|이하|미만|초과|보다\s*(?:큰|작은))?", value,
         ) or _INTERVAL.fullmatch(value):
             continue
         prefix_op, suffix_op = _operator(prefix), _operator(suffix_operator)

@@ -15,7 +15,7 @@ from app.services.insights.narratives.trend_narratives import trend_report
 from app.services.insights.narratives.record_summary import record_summary_report
 from app.services.insights.narratives.vertical_latest_narratives import vertical_latest_report
 from app.services.insights.verification.validation_index import extract_references
-from app.services.insights.display.source_labels import source_caption
+from app.services.insights.display.source_labels import source_caption, source_unit
 from app.services.insights.narratives.source_context import compact_facts, source_table_context
 from app.services.insights.narratives.source_qualifications import source_qualifications
 from app.services.insights.narratives.source_annotations import source_annotations
@@ -78,7 +78,7 @@ def source_narrative_report(context):
         if captions and captions[0]:
             source = next((source for source in sources if source), "")
             lead = f"이 파일에는 {source_caption(captions[0])} 자료가 담겨 있습니다."
-            lead += f" (출처: {source})" if source else ""
+            lead += f" (출처: {source_unit(source)})" if source else ""  # the publisher's Korean name when read
             overview = lead + ("\n" if listed else " ") + overview
             has_context = True
     report = WorkbookInsightReport(overview=overview, insights=items, limitations=[])

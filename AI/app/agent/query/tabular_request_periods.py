@@ -7,7 +7,7 @@ request's own conditions; any other date filter remains unproven and the plan is
 rejected by the ordinary checks.
 """
 import re
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from app.agent.query.tabular_filters import _date
 
@@ -31,7 +31,19 @@ def period_filters(text, plan, table):
                      and item.operator in LOWER | UPPER | {"equals"}]
         if positions and _interval([plan.filters[index] for index in positions], kind == "days") in asked:
             checked.update(positions)
+    # A month written as text ("December 2025") is the month "2025년 12월" names.
+    checked.update(index for index, item in enumerate(plan.filters)
+                   if item.operator == "equals" and _month_span(item.value) in asked)
     return checked
+
+
+def _month_span(value):
+    match = re.fullmatch(r"([A-Za-z]{3,9})\.?\s+((?:19|20)\d{2})", value.strip()) if isinstance(value, str) else None
+    try:
+        first = datetime.strptime(f"{match[1][:3]} {match[2]}", "%b %Y").date() if match else None
+    except ValueError:
+        return None
+    return (first, date(first.year + first.month // 12, first.month % 12 + 1, 1)) if first else None
 
 
 def without_periods(text):
