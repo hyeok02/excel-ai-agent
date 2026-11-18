@@ -1,8 +1,17 @@
 """Readable summaries must retain source provenance, dates, and uncertainty."""
+import app.agent  # noqa: F401  (import order: the insight package imports the agent package)
 from app.services.insights.models import WorkbookInsight, WorkbookInsightReport
 from app.services.insights.narratives.source_context import compact_facts
 from app.services.insights.narratives.source_narratives import source_narrative_report
 from app.services.insights.verification.validator import validate_workbook_insights
+import pytest
+from tests.label_readings import MODEL_READINGS, readings
+
+@pytest.fixture(autouse=True)
+def _model_readings():
+    with readings(MODEL_READINGS):
+        yield
+
 
 
 def item(fact):

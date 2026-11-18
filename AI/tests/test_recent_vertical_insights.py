@@ -1,6 +1,15 @@
 """Latest observations preserve date, entity, header, and period bases."""
+import app.agent  # noqa: F401  (import order: the insight package imports the agent package)
 from app.services.insights.narratives.vertical_latest_narratives import vertical_latest_report
 from tests.support.recent_record_fixtures import cell, context
+import pytest
+from tests.label_readings import MODEL_READINGS, readings
+
+@pytest.fixture(autouse=True)
+def _model_readings():
+    with readings(MODEL_READINGS):
+        yield
+
 
 
 def test_latest_series_sorts_dates_and_reports_percentage_points():

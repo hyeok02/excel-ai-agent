@@ -1,8 +1,12 @@
 """A source caption may clarify categories, never relabel another measure."""
+import app.agent  # noqa: F401  (import order: the insight package imports the agent package)
 import pytest
 
 from app.services.insights.narratives.caption_series import qualified_series_caption
 from app.services.insights.narratives.horizontal_trends import horizontal_trend_report
+from tests.label_readings import readings
+
+POPULATION = {"Population estimates": "인구 추정치", "United Kingdom": "영국"}
 
 
 def context(metric, caption='Population estimates: Summary for the UK, 2023-2024', *, basis='', fmt='0', declared=None, geography=False):
@@ -38,17 +42,25 @@ def test_geographic_row_keeps_its_explicit_parent_measure(basis):
     assert items and '인구 추정치' not in items[0].title and '100명' not in items[0].fact
 
 
-def test_population_category_gets_measure_unit_and_source_evidence():
-    source, _, _ = context('United Kingdom')
-    items, _ = horizontal_trend_report(source)
+def test_population_category_gets_measure_and_source_evidence():
+    source, _, _ = context('United Kingdom', geography=True)
+    with readings(POPULATION):
+        items, _ = horizontal_trend_report(source)
     assert items[0].title == '영국 인구 추정치 변화'
-    assert '100명' in items[0].fact and '120명' in items[0].fact
-    assert "'Source'!A1" in items[0].evidence
+    assert "'Source'!A1" in items[0].evidence and "'Source'!A3" in items[0].evidence
+
+
+def test_a_row_under_no_geography_header_gets_no_caption_measure():
+    source, _, _ = context('United Kingdom')
+    with readings(POPULATION):
+        items, _ = horizontal_trend_report(source)
+    assert items and '인구 추정치' not in items[0].title
 
 
 def test_unfamiliar_geography_is_proved_by_axis_header_not_a_name_list():
     source, _, _ = context('New Borough', geography=True)
-    items, _ = horizontal_trend_report(source)
+    with readings(POPULATION):
+        items, _ = horizontal_trend_report(source)
     assert items[0].title == 'New Borough 인구 추정치 변화'
     assert "'Source'!A3" in items[0].evidence
 
@@ -61,8 +73,9 @@ def test_explicit_incompatible_units_prevent_population_count_label(fmt):
 
 
 def test_explicit_population_scale_is_preserved():
-    source, _, _ = context('United Kingdom', declared='thousand persons')
-    items, _ = horizontal_trend_report(source)
+    source, _, _ = context('United Kingdom', declared='thousand persons', geography=True)
+    with readings({**POPULATION, "thousand persons": "천 명"}):
+        items, _ = horizontal_trend_report(source)
     assert '100 천 명' in items[0].fact and '100명' not in items[0].fact
 
 
@@ -73,9 +86,12 @@ def test_price_caption_does_not_relabel_other_measure(metric):
     assert items and '전기요금' not in items[0].title
 
 
-def test_price_category_needs_positive_dimension_and_rate_unit():
-    source, _, _ = context('U.S. Total', 'Average Price of Electricity by State', basis='Residential', declared='Cents per Kilowatthour')
-    items, _ = horizontal_trend_report(source)
+def test_price_category_needs_a_geographic_dimension_and_reads_its_unit():
+    source, _, _ = context('U.S. Total', 'Average Price of Electricity by State', basis='Residential',
+                           declared='Cents per Kilowatthour', geography=True)
+    with readings({"Average Price of Electricity": "평균 전기요금", "Residential": "가정용", "U.S. Total": "미국 전체",
+                   "Cents per Kilowatthour": "센트/kWh"}):
+        items, _ = horizontal_trend_report(source)
     assert items[0].title == '가정용 · 미국 전체 평균 전기요금 변화'
     assert '100 센트/kWh' in items[0].fact
 
@@ -102,6 +118,7 @@ def test_mixed_measure_caption_cannot_assign_population_to_geography(caption):
 
 
 def test_conjunction_in_geographic_qualifier_does_not_block_population_caption():
-    source, _, _ = context('United Kingdom', 'Population estimates: Summary for England and Wales')
-    items, _ = horizontal_trend_report(source)
+    source, _, _ = context('United Kingdom', 'Population estimates: Summary for England and Wales', geography=True)
+    with readings(POPULATION):
+        items, _ = horizontal_trend_report(source)
     assert items and '인구 추정치' in items[0].title

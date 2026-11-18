@@ -1,6 +1,7 @@
 """Ephemeral calculation view: never rewrite an uploaded workbook or its index."""
 from dataclasses import dataclass, replace
 
+from app.services.insights.display.workbook_labels import prepare_workbook_labels
 from app.agent.query.formula_resolution import FormulaResolver
 
 
@@ -13,6 +14,7 @@ class QuestionFormulaSources:
 
 
 def prepare_formula_sources(summary, index):
+    prepare_workbook_labels(summary)  # answers quote report facts: their labels are read first
     resolutions = {item.reference: item for item in FormulaResolver(index).resolve_all()}
     recovered = {key: item for key, item in resolutions.items() if item.status == "recovered"}
     if not recovered:

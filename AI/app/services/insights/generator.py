@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from pathlib import Path
@@ -88,6 +89,8 @@ class LangChainInsightGenerator:
     ) -> WorkbookInsightReport:
         profile = select_analysis_profile(summary, depth)
         context = None
+        from app.services.insights.display.workbook_labels import prepare_workbook_labels
+        await asyncio.to_thread(prepare_workbook_labels, summary)  # Korean names for the labels shown
         try:
             context = build_workbook_context(summary, profile)
             result = await self._build_model(profile).ainvoke(

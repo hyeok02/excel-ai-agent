@@ -1,4 +1,5 @@
 """Annual, grouped and formatted axes retain their source meaning."""
+import app.agent  # noqa: F401  (import order: the insight package imports the agent package)
 from itertools import permutations
 
 import pytest
@@ -9,6 +10,13 @@ from app.services.insights.narratives.horizontal_trends import horizontal_trend_
 from app.services.insights.narratives.table_narratives import table_report
 from app.services.insights.display.display_quality import business_priority, metric_family
 from tests.test_horizontal_series import cell, region
+from tests.label_readings import MODEL_READINGS, readings
+
+@pytest.fixture(autouse=True)
+def _model_readings():
+    with readings(MODEL_READINGS):
+        yield
+
 
 
 def report(source):

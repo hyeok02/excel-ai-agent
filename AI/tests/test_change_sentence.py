@@ -1,9 +1,18 @@
 """Series laid out across columns or down rows state a change in one shape."""
+import app.agent  # noqa: F401  (import order: the insight package imports the agent package)
 from app.services.insights.facts.series_scalars import unit
 from app.services.insights.narratives.change_sentence import change_fact, change_sentence
 from app.services.insights.narratives.narrative_values import joining_particle, subject_particle
 from app.services.insights.narratives.vertical_latest_narratives import vertical_latest_report
 from tests.support.recent_record_fixtures import cell, context
+import pytest
+from tests.label_readings import MODEL_READINGS, readings
+
+@pytest.fixture(autouse=True)
+def _model_readings():
+    with readings(MODEL_READINGS):
+        yield
+
 
 
 def test_whole_period_comes_first_then_the_latest_step():

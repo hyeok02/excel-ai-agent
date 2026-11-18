@@ -1,3 +1,4 @@
+import app.agent  # noqa: F401  (import order: the insight package imports the agent package)
 from io import BytesIO
 
 from openpyxl import Workbook
@@ -5,6 +6,14 @@ from openpyxl import Workbook
 from app.services.insights.facts.context import build_workbook_context
 from app.services.insights.narratives.source_narratives import source_narrative_report
 from app.services.workbook_parser import parse_workbook
+import pytest
+from tests.label_readings import MODEL_READINGS, readings
+
+@pytest.fixture(autouse=True)
+def _model_readings():
+    with readings(MODEL_READINGS):
+        yield
+
 
 
 def test_category_share_narrative_names_denominator_and_category():
