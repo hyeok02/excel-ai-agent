@@ -45,3 +45,9 @@ def test_a_ranked_list_of_a_percent_column_reads_its_shares_as_stored():
                             descending=True, limit=1)
     # "점유율" names the stored rate beside the Month label, not a share to compute.
     assert advanced_operations_match("병상 점유율이 가장 높았던 달은?", plan, table) is True
+
+
+def test_a_name_written_as_a_and_b_is_one_label():
+    from app.agent.query.joined_names import joined_names
+    assert "잉글랜드와 웨일스" in joined_names(["잉글랜드", "웨일스"], "잉글랜드와 웨일스 인구는 얼마야?")
+    assert joined_names(["쿠키"], "쿠키 판매수량은?") == ["쿠키"]

@@ -21,21 +21,26 @@ _HOW_MUCH = re.compile(r"얼마나|얼마|몇\s*%|몇\s*퍼센트|차이|변화|
 _COUNT = re.compile(r"몇\s*(?:개|곳|군데|건|명|주|개국)|개수")
 
 
+_COMPARE = re.compile(r"차이|비교|보다|중\s*(?:어디|어느|누가|더)|더\s*(?:비싸|싸|높|낮|많|적|크|작)")
+
+
 def member_change_answer(question, summary, index, resolver=None):
-    if summary is None or index is None or not _THAN.search(question) or not _HOW_MUCH.search(question) \
-            or _COUNT.search(question):
+    """One named row's change, or else two named rows' newest values compared ("캘리포니아와 텍사스 차이")."""
+    if summary is None or index is None or _COUNT.search(question):
         return None
+    modes = ([1] if _THAN.search(question) and _HOW_MUCH.search(question) else []) + ([2] if _COMPARE.search(question) else [])
     pairs = [pair for table in build_query_tables(summary) if table.complete for pair in _pairs(table)]
-    if not pairs:
-        return None
-    try:
-        return asyncio.run(_answer(question, index, pairs, resolver))
-    except Exception as exception:
-        raise_for_quota_exhaustion(exception)
-        return None
+    for wanted in modes if pairs else ():
+        try:
+            if answer := asyncio.run(_answer(question, index, pairs, resolver, wanted)):
+                return answer
+        except Exception as exception:
+            raise_for_quota_exhaustion(exception)
+            return None
+    return None
 
 
-async def _answer(question, index, pairs, resolver):
+async def _answer(question, index, pairs, resolver, wanted=1):
     if resolver is None:
         from app.agent.query.tabular_source_alias_resolver import LangChainSourceLabelResolver
         resolver = LangChainSourceLabelResolver.from_environment()
@@ -71,8 +76,15 @@ async def _answer(question, index, pairs, resolver):
     found = await asyncio.gather(*(resolver.resolve(word, " ".join(label.header.split()), names) for word in rest))
     named = [(word, item.candidate_id) for word, item in zip(rest, found) if _picked(item, names)]
     chosen = set(literal) | {number for _, number in named}
-    if len(chosen) != 1:
-        return None  # no row, or several, named
+    if len(chosen) != wanted:
+        return None  # not the one row a change reads, or the two rows a comparison reads
+    stated = _stated([*readings, *((word, names[number]) for word, number in named)])
+    if wanted == 2:
+        # In the order the question names them: "캘리포니아와 텍사스" compares California with Texas.
+        at = {number: min([question.find(word) for word, picked in named if picked == number] or [question.find(names[number])])
+              for number in chosen}
+        return _compared(table, parent, newer, label, [rows[number] for number in sorted(chosen, key=lambda item: at[item])],
+                         names, rows, stated, question, index)
     row = rows[next(iter(chosen))]
     before, after = row.values[older.id], row.values[newer.id]
     style = row.number_formats.get(newer.id, "General")
@@ -81,7 +93,6 @@ async def _answer(question, index, pairs, resolver):
     moved = "변화가 없습니다" if delta == 0 else (
         f"{shown(abs(round(delta, 10)))}" + (f"({abs(delta) / abs(before) * 100:.2f}%)" if before else "")
         + (" 올랐습니다" if delta > 0 else " 내렸습니다"))
-    stated = _stated([*readings, *((word, names[number]) for word, number in named)])
     text = ((f"해석: {', '.join(stated)}\n" if stated else "")
             + f"{names[rows.index(row)]}의 {parent}: {_header(older)} {shown(before)} → {_header(newer)} {shown(after)}, {moved}.")
     source = {cell.reference: cell for item in index.rows if item.sheet_name == table.sheet_name for cell in item.cells}
@@ -98,9 +109,10 @@ async def _answer(question, index, pairs, resolver):
 
 
 def _stated(readings):
-    """One wording per source name: the longest single word naming it ("하와이", not "하와")."""
+    """One wording per source name: the longest single word naming it ("하와이", not "하와"), without "와"/"과"."""
     best = {}
     for word, value in readings:
+        word = re.sub(r"(?<=[가-힣]{2})(?:와|과)$", "", word)
         rank = (" " not in word, len(word) if " " not in word else -len(word))
         if value not in best or rank > best[value][0]:
             best[value] = (rank, word)
@@ -109,3 +121,23 @@ def _stated(readings):
 
 def _picked(item, values):
     return item.status == "resolved" and type(item.candidate_id) is int and 0 <= item.candidate_id < len(values)
+
+
+def _compared(table, parent, newer, label, pair, names, rows, stated, question, index):
+    (first, second), style = pair, pair[0].number_formats.get(newer.id, "General")
+    a, b = first.values[newer.id], second.values[newer.id]
+    shown = lambda value: _display_cell(value, style)
+    name = lambda row: names[rows.index(row)]
+    gap = (f"{name(first)}가 {name(second)}보다 {shown(abs(round(a - b, 10)))} {'높습니다' if a > b else '낮습니다'}"
+           if a != b else "두 값이 같습니다")
+    text = ((f"해석: {', '.join(stated)}\n" if stated else "") + f"{parent} · {_header(newer)}: {name(first)} {shown(a)}, "
+            f"{name(second)} {shown(b)}. {gap}.")
+    source = {cell.reference: cell for item in index.rows if item.sheet_name == table.sheet_name for cell in item.cells}
+    references = [label.header_reference, newer.header_reference, *(reference for reference, _ in newer.header_path),
+                  *(f"{table.sheet_name}!{_letter(column)}{row.row_number}" for row in pair for column in (label, newer))]
+    return QuestionAnswer(
+        question=question, answer=text, status=QuestionAnswerStatus.LIMITED, confidence=0.8,
+        selected_tools=["member_column_change"],
+        evidence=[_evidence(source[key]) for key in dict.fromkeys(references) if key in source],
+        limitations=[f"질문의 표현을 원본으로 옮긴 해석({', '.join(stated)})이 의도와 맞는지 확인해 주세요."] if stated else [],
+        verification=QuestionAnswerVerification(level="source_checked", checks=["source_values", "calculation"]))

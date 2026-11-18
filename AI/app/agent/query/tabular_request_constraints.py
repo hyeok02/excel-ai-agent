@@ -73,4 +73,3 @@ def _without_source_names(question, tables):
     for caption in sorted(captions, key=len, reverse=True):
         text = re.sub(re.escape(caption), " ", text, flags=re.I)
     return text
-

@@ -5,6 +5,8 @@ checked draft) may still answer; it remains the fallback when they cannot.
 Refusals that state a data fact (missing values, duplicate periods, a period
 outside the source) keep their explanation and are never marked.
 """
+import re
+
 from app.agent.query.models import QuestionAnswerStatus, QuestionAnswerVerification
 
 UNBOUND = "series_unbound"
@@ -27,4 +29,6 @@ def answers_nothing(answer):
     """A refusal citing cells it could not use, or a reading that says the asked thing is unknown: not an answer."""
     return bool(answer is not None and not answer.clarification_options and (
         "question_unanswered" in answer.verification.checks
-        or answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE and answer.evidence))
+        or answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE and answer.evidence
+        # A share asked ("Bars가 차지하는 비중") and only an amount shown: the share is still to be computed.
+        or re.search(r"비중|차지하는|구성비", answer.question or "") and "%" not in answer.answer))

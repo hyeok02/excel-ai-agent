@@ -29,3 +29,9 @@ def test_two_years_change_and_the_highest_year_are_read_from_the_annual_rows():
 def test_a_year_the_series_lacks_or_an_unnamed_series_answers_nothing():
     assert _ask("2019년 대비 2022년 석탄 변화는?") is None
     assert _ask("2020년 대비 2022년 풍력 변화는?") is None
+
+
+def test_one_years_series_are_compared_when_no_single_series_is_named():
+    answer = _ask("2021년 가장 많은 에너지원은?")
+    assert answer is not None and "2021년 값 중 가장 높은 항목은 Gas 1,580" in answer.answer
+    assert _ask("2021년 석탄이 가장 많은 달은?") is None  # one series named: not a comparison across series

@@ -30,7 +30,7 @@ def aggregate_text(operation, columns, rows, statistic="all"):
                 if value is None and row.formulas.get(column.id):
                     return None, []
                 text = _display_cell(value, row.number_formats.get(column.id, "General"), column.header)
-                parts.append(f"{column.display_header}: {text}")
+                parts.append(f"{' '.join(column.display_header.split())}: {text}")  # "England and Wales", one line
             lines.append("; ".join(parts))
         limitations = ([f"해당하는 {len(rows)}개 행 중 앞의 50개 행만 표시했습니다."]
                        if len(rows) > 50 else [])

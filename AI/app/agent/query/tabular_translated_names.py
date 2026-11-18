@@ -2,6 +2,7 @@
 import asyncio
 import re
 
+from app.agent.query.joined_names import JOINED as _JOINED
 from app.agent.query.tabular_request_predicates import normalize
 
 CHUNK = 250
@@ -16,8 +17,7 @@ def _picks(result, chunk, planned):
 async def words_naming(resolver, words, field, values, planned):
     """Words that name exactly the planned value, or None when the column is too long to ask.
 
-    A column longer than one request is asked in parts. A word counts only when it picks
-    the planned value in the part holding it and clearly matches nothing in every other part.
+    A longer column is asked in parts: a word picks the planned value in its part and nothing elsewhere.
     """
     if len(values) > MAX_VALUES:
         return None
@@ -83,9 +83,8 @@ def assigned_words(found):
 async def column_words(resolver, words, table, plan):
     """([(word, label)] naming columns the plan computes, conflict) asked among all column labels.
 
-    Labels are the headers and the parent headers above them ("가정용" names Residential, the
-    parent of "August 2026"). conflict: a word names only columns the plan never reads ("영국"
-    is United Kingdom, the plan reads England); such a plan answers some other question.
+    Labels are the headers and their parents ("가정용" names Residential, over "August 2026"). conflict: a word
+    names only columns the plan never reads ("영국" is United Kingdom, the plan reads England).
     """
     labels = list(dict.fromkeys([column.header for column in table.columns]
                                 + [text for column in table.columns for _, text in column.header_path]))
@@ -97,14 +96,16 @@ async def column_words(resolver, words, table, plan):
     named = [(word, labels[result.candidate_id]) for word, result in zip(words, results)
              if result.status == "resolved" and type(result.candidate_id) is int
              and 0 <= result.candidate_id < len(labels)]
-    named = [(word, label) for word, label in named if not any(word != other and other in word for other, _ in named)]
+    joined = [word for word, _ in named if _JOINED.search(word)]  # a "A와 B" name wins over its parts
+    named = [(word, label) for word, label in named if word in joined or not any(word in name for name in joined)
+             and not any(word != other and other in word for other, _ in named)]
     # "계약" naming Policy, whose value is unique on every row, names what each row is: the thing counted.
     rows = lambda label: all(all(isinstance(row.values.get(column), str) for row in table.rows)
                              and len({row.values.get(column) for row in table.rows}) == len(table.rows) for column in under(label))
     conflict = any(not under(label) & read and not rows(label) for _, label in named)
     # A parent over several columns is stated as the one column the plan computes under it.
     computed = lambda label: [column for column in table.columns if column.id in under(label) & set(plan.column_ids)]
-    return [(word, computed(label)[0].display_header if len(computed(label)) == 1 else label)
+    return [(word, " ".join((computed(label)[0].display_header if len(computed(label)) == 1 else label).split()))
             for word, label in named if computed(label)], conflict
 
 

@@ -94,7 +94,9 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
     # a stated rise or fall is checked against those values, never against the years naming them.
     kept = [sentence.strip() for sentence in _SENTENCE.split(draft.answer) if sentence.strip()
             and not unmatched_numbers(sentence, grounded | supported_answer_numbers(question, cited, execution, sentence))
-            and answer_directions_supported(sentence, values) and change_within_one_series(sentence, direct, available)
+            # The rise or fall a sentence states is checked on the cells it cites; a quoted fact's whole
+            # series (1990 790.8, 1991 800.6, …, 2024 373.4) rises in places and falls overall.
+            and answer_directions_supported(sentence, direct or values) and change_within_one_series(sentence, direct, available)
             and names_its_records(sentence, direct, available)]
     declined = [sentence for sentence in kept if _UNANSWERED.search(sentence)]
     kept = [sentence for sentence in kept if sentence not in declined]

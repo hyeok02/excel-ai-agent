@@ -5,6 +5,8 @@ a generated draft). It never picks one of several different values: a single
 distinct value across all matching sources, at the newest common period when
 no period is asked, is required. Otherwise the original answer stands.
 """
+import re
+
 from app.agent.query.metric_observation_render import _period_label, _value
 from app.agent.query.models import (
     QuestionAnswer, QuestionAnswerEvidence, QuestionAnswerStatus, QuestionAnswerVerification,
@@ -18,7 +20,8 @@ from app.services.provenance import EvidenceKind
 
 def source_value_answer(question, summary, index):
     terms = question_terms(question)
-    if terms is None or summary is None or index is None:
+    # "Bars가 전체 판매금액에서 차지하는 비중" asks a share, not the one stored value beside Bars.
+    if terms is None or summary is None or index is None or re.search(r"비중|차지하는|구성비", question):
         return None
     records = table_values(terms, summary)
     if VETO in records:

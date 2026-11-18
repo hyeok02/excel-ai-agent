@@ -31,3 +31,10 @@ def test_a_phrase_naming_the_group_does_not_take_the_row_word_with_it(monkeypatc
     names = {"뉴욕 가정용": "Residential", "가정용": "Residential", "메인": "Maine"}
     answer = _ask(monkeypatch, "메인 가정용 요금은 작년보다 얼마나 올랐어?", {**names, "메인 가정용": "Residential"})
     assert answer.answer.endswith("Maine의 Residential: August 2025 28 → August 2026 32, 4(14.29%) 올랐습니다.")
+
+
+def test_two_named_rows_are_compared_on_the_newest_column(monkeypatch):
+    names = {"상업용": "Commercial", "메인": "Maine", "버몬트": "Vermont"}
+    answer = _ask(monkeypatch, "메인과 버몬트 상업용 전기요금 차이는?", names)
+    assert answer.answer.endswith("Commercial · August 2026: Maine 21, Vermont 19. Maine가 Vermont보다 2 높습니다.")
+    assert _ask(monkeypatch, "메인 상업용 전기요금 차이는?", names) is None  # one row is no comparison
