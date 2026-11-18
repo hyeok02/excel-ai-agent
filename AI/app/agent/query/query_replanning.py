@@ -4,7 +4,7 @@ import asyncio
 from app.agent.query.models import QuestionAnswer
 from app.agent.query.series_binding import is_unbound, refused_without_basis
 from app.agent.query.time_series_answers import series_attempt
-from app.agent.query.series_value_answers import series_value_answer
+from app.agent.query.final_answers import final_answer
 from app.agent.query.intent_models import QuestionIntent
 from app.agent.query.interpretation_answers import asks_interpretation
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -78,8 +78,8 @@ async def answer_with_replanning(service, question, sources, **options):
     refusal = await asyncio.to_thread(series_attempt, question, sources.summary, sources.index)
     if is_unbound(refusal):
         return settled_answer(question, sources, refusal)
-    # "2025년 총발전량" in a sheet only the report reads section by section: that period's source cell.
-    return await asyncio.to_thread(series_value_answer, question, sources.summary, sources.index) or answer
+    # Last, a question shaped for a direct source reading ("2025년 총발전량", "작년보다 오른 주는 몇 개").
+    return await asyncio.to_thread(final_answer, question, sources.summary, sources.index) or answer
 
 
 async def _answer_with_replanning(service, question, sources, *, intent_override=None,
