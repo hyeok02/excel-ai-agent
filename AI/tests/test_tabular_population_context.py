@@ -75,8 +75,8 @@ def test_filtering_details_excludes_subtotals_without_blocking_valid_sum(role_he
 
 def test_exact_total_row_is_not_added_again_and_substrings_are_not_magic():
     result = answer([["Item", "Amount"], ["A", 100], ["B", 200], ["Total", 300]], "Amount 합계")
-    unsafe(result)
-    assert "상세 행과 합계·소계 행" in result.answer
+    assert "합계 300" in result.answer and "600" not in result.answer  # the total row set aside, not added again
+    assert any("합계 행" in note for note in result.limitations)
     result = answer([["Item", "Amount"], ["Total Solutions", 100], ["B", 200]], "Amount 합계")
     assert result and "합계 300" in result.answer
 

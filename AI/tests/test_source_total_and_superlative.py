@@ -102,7 +102,9 @@ def test_total_and_details_cannot_be_added_twice():
     plan = TabularQueryPlan(operation="numeric_summary", table_id=table.id,
                             column_ids=[metric], statistic="sum")
     result = execute_tabular_query(plan, summary, index, "이용자수 합계 알려줘")
-    assert result is None or result.status == "insufficient_evidence"
+    # 총합계 1,020 is 동부 320 + 서부 700: it is set aside, never added to them (2,040).
+    assert result is None or result.status == "insufficient_evidence" or (
+        "1,020" in result.answer and "2,040" not in result.answer)
 
 
 @pytest.mark.parametrize("metric", ["Highest Score", "Lowest Cost", "가장 높은 지점"])

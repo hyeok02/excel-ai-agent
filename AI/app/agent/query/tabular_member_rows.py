@@ -35,7 +35,8 @@ async def member_ranking(plan, summary, data_index, question, classifier=None):
     # An outline label ("Domestic transport" over Passenger cars, HGVs, …) heads the unlabelled rows
     # below it: the value on its own row is its first member's, not the group's.
     if any(_number(row.values.get(metric.id)) and row.values.get(label.id) in (None, "") for row in table.rows):
-        return None
+        from app.agent.query.tabular_outline_groups import outline_ranking
+        return outline_ranking(plan, table, label, metric, data_index, question, _shown, _letter)
     if not rows or len(labels) > MAX_LABELS or len(set(labels)) != len(labels):
         return None
     if classifier is None:

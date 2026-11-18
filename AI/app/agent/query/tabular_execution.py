@@ -12,7 +12,7 @@ from app.agent.query.tabular_request_scope import request_matches_plan, rows_mat
 from app.agent.query.tabular_validation import filtered_rows, ordered_rows, query_columns, validated_table
 from app.agent.query.tabular_feature_contract import feature_contract_matches, has_bounded_features
 from app.agent.query.tabular_scope_conflicts import needed_columns, plan_scope_conflict
-from app.agent.query.tabular_population_context import MIXED_ROLES, NumericPopulationContext, population_controls
+from app.agent.query.tabular_population_context import NumericPopulationContext, population_controls
 
 
 def execute_tabular_query(plan, summary, data_index, question: str, intent=None) -> QuestionAnswer | None:
@@ -61,9 +61,10 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
     if plan.operation == "numeric_summary":
         rows, subtotal_notes = without_subtotals(rows, selected, table.sheet_name)
     population = NumericPopulationContext(plan, table)
-    if plan.operation == "numeric_summary" and typed_total(rows, selected):  # 790.8 = the gases above it
-        population.error = MIXED_ROLES
-        return population.unavailable(question)
+    if plan.operation == "numeric_summary" and (total := typed_total(rows, selected)):  # 790.8 = the gases above it
+        rows = [row for row in rows if row is not total]
+        subtotal_notes.append(f"{table.sheet_name}!{selected[0]}{total.row_number}은(는) 위 행들을 더한 합계 행이라 "
+                              "중복 합산하지 않았습니다. 결과는 그 합계 행의 값과 같습니다.")
     if not all(population.add(row) for row in rows):
         return population.unavailable(question)
     if plan.operation == "lookup" and (plan.limit is not None or plan.order_by):

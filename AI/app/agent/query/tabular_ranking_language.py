@@ -6,7 +6,7 @@ _RANK = re.compile(r"(?P<direction>상위|하위|top|bottom|높은|낮은|큰|�
 _SORT = re.compile(r"오름차순|내림차순|낮은\s*순(?:서)?|높은\s*순(?:서)?|작은\s*순(?:서)?|큰\s*순(?:서)?|\bascending\b|\bdescending\b", re.I)
 _COUNT = re.compile(r"(?<![\w.])([1-9]\d*)\s*(?:개|건|행|명|rows?\b|records?\b|items?\b)", re.I)
 _TIES = re.compile(r"동점|동률|공동\s*순위|\bties?\b|\bdense\s*rank\b", re.I)
-_EXTREME = re.compile(r"(?:가장|제일)\s*(?P<direction>많은|적은|높은|낮은|큰|작은)|"
+_EXTREME = re.compile(r"(?:가장|제일)\s*(?P<direction>많았던|적었던|높았던|낮았던|컸던|작았던|많은|적은|높은|낮은|큰|작은)|"
                       r"\b(?P<english>highest|lowest|largest|smallest)\b(?!\s*\d)", re.I)
 
 
@@ -76,5 +76,5 @@ def _header_matches(header, text):
 def _descending(direction):
     return direction.casefold().replace(" ", "") in {
         "상위", "top", "높은", "큰", "highest", "largest", "내림차순", "높은순", "높은순서",
-        "큰순", "큰순서", "descending", "많은",
+        "큰순", "큰순서", "descending", "많은", "많았던", "높았던", "컸던",
     }
