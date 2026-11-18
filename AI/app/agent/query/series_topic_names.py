@@ -19,11 +19,13 @@ def series_words(question):
     return [word for word in candidate_words(asked, SimpleNamespace(columns=())) if re.search(r"[가-힣]", word)]
 
 
+_DESCRIPTIVE = re.compile(r"연간|연도별|월별|분기별|일별|누적|최근|올해|작년|전년|평균|합계|총|전체|국내|해외|월간|연말|연초")
 _SCOPED = re.compile(r"^\s*'?[^!\n]*?'?![A-Z$]+\d+(?::[A-Z$]+\d+)?\s*범위(?:의|에서)?")
 
 
 def named_topic(words, topics, resolver=None):
-    """(word, topic, resolver) when the words name exactly one topic, else None."""
+    """(word, topic, resolver) when the words name exactly one topic, (word, None, resolver) when a word
+    specifying the named measure names no series, else None."""
     if not topics or not words:
         return None
     if resolver is None:
@@ -38,6 +40,13 @@ def named_topic(words, topics, resolver=None):
         return None
     named = [(word, topics[result.candidate_id]) for word, result in zip(words, results)
              if result.status == "resolved" and type(result.candidate_id) is int and 0 <= result.candidate_id < len(topics)]
+    # "풍력 발전량": 발전량 names the total, but 풍력, what it specifies, names no series at all. The total
+    # is not what was asked: (풍력, None) says which word the source has no series for.
+    read = {word for word, _ in named}
+    for phrase in (word for word in words if " " in word and word not in read):
+        *parts, head = phrase.split()
+        if head in read and (missing := [part for part in parts if part not in read and not _DESCRIPTIVE.fullmatch(part)]):
+            return missing[0], None, resolver
     # "발전량" inside "석탄 발전량" is the wider name: the phrase naming another series is the more specific.
     named = [(word, topic) for word, topic in named
              if not any(word != other and word in other and topic != other_topic for other, other_topic in named)]

@@ -58,6 +58,8 @@ def named_series_answer(question, summary, index, resolver=None):
     if (found := named_topic(words, topics, resolver)) is None:
         return None
     word, topic, resolver = found
+    if topic is None:
+        return _no_series(question, word, topics)
     chosen = [(priority, item) for priority, item in facts if str(item.topic) == topic]
     first = min(priority for priority, _ in chosen)
     stated = list({item.fact: item for priority, item in chosen if priority == first}.values())
@@ -85,3 +87,10 @@ def named_series_answer(question, summary, index, resolver=None):
         + ([f"같은 계열이 다른 표에도 있습니다: {'; '.join(label.split(' — ')[0] for label in others)}"] if others else []),
         verification=QuestionAnswerVerification(level="source_checked", checks=["cited_cells", "semantic_alias_resolved"]))
 
+
+
+def _no_series(question, word, topics):
+    shown = ", ".join(topic.split(" · ")[-1] for topic in topics[:12]) + (" 등" if len(topics) > 12 else "")
+    text = f"‘{word}’에 해당하는 계열을 원본에서 찾지 못했습니다. 원본에 있는 계열: {shown}."
+    return QuestionAnswer(question=question, answer=text, status=QuestionAnswerStatus.INSUFFICIENT_EVIDENCE,
+                          confidence=0, selected_tools=["verified_series"], evidence=[], limitations=[text])

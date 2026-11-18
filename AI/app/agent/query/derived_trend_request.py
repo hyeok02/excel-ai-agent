@@ -52,6 +52,8 @@ def derived_request(masked, labels):
         if len(bases) > 1:
             return None, "증감률의 비교 기준이 여러 개입니다. 전년 동기·전월·이전 관측값 중 하나를 지정해 주세요."
         return DerivedRequest("growth", labels, bases[0] if bases else "previous", "감소율" in masked), None
+    if not labels and not re.search(r"\S\s*(?:의\s*)?(?:중|대비|/)\s*\S|\b(?:as\s+a\s+share\s+of|of|to)\b", masked, re.I):
+        return None, None  # "소아 G&A 병상 점유율 추이" names a stored rate in other words: no ratio to compute
     if len(labels) != 2:
         return None, "비중·비율의 분자와 분모를 원본 항목명으로 각각 지정해 주세요. 전체나 합계를 임의로 만들지 않았습니다."
     orientation = _ratio_orientation(masked)
