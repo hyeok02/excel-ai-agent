@@ -94,7 +94,10 @@ async def column_words(resolver, words, table, plan):
              if result.status == "resolved" and type(result.candidate_id) is int
              and 0 <= result.candidate_id < len(labels)]
     named = [(word, label) for word, label in named if not any(word != other and other in word for other, _ in named)]
-    conflict = any(not under(label) & read for _, label in named)
+    # "계약" naming Policy, whose value is unique on every row, names what each row is: the thing counted.
+    rows = lambda label: all(all(isinstance(row.values.get(column), str) for row in table.rows)
+                             and len({row.values.get(column) for row in table.rows}) == len(table.rows) for column in under(label))
+    conflict = any(not under(label) & read and not rows(label) for _, label in named)
     # A parent over several columns is stated as the one column the plan computes under it.
     computed = lambda label: [column for column in table.columns if column.id in under(label) & set(plan.column_ids)]
     return [(word, computed(label)[0].display_header if len(computed(label)) == 1 else label)

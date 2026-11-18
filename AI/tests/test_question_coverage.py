@@ -77,3 +77,19 @@ def test_a_yes_no_column_the_question_names_is_read_as_yes_unless_negated():
     assert answer.answer.startswith("해석: ‘지진’ → Earthquake = Y") and "2건" in answer.answer
     assert ask("지진 보험 미가입 계약 수는?") is None    # negated: the plan's Y is not what was asked
     assert ask("홍수 보험 가입 계약 수는?") is None      # names another column than the plan's
+
+
+def test_a_word_naming_what_each_row_is_does_not_conflict_with_a_count():
+    from app.agent.query.tabular_query_models import TabularFilter
+    rows = [["Policy", "Construction", "InsuredValue"], ["P1", "Frame", 100], ["P2", "Masonry", 900], ["P3", "Frame", 300]]
+    summary, index = table_fixture([(1, 1, rows)])
+    table = build_query_tables(summary)[0]
+    plan = TabularQueryPlan(operation="row_count", table_id=table.id, column_ids=[], statistic="all",
+                            filters=[TabularFilter(column_id="B", operator="equals", value="Frame")])
+    ask = lambda question, names: asyncio.run(translated_filter_answer(question, summary, index, QuestionIntent(
+        False, "row_count", (), True, plan), resolver=Names(names)))
+    # "계약" names Policy, one per row: the rows counted, not another column asked about.
+    answer = ask("목조 건물 계약은 몇 건이야?", {"목조 건물": "Frame", "계약": "Policy"})
+    assert answer.answer.startswith("해석: ‘목조 건물’ → Construction = Frame") and "2건" in answer.answer
+    # A measured column the plan does not read still rejects the reading.
+    assert ask("목조 건물 보험가액은 몇 건이야?", {"목조 건물": "Frame", "보험가액": "InsuredValue"}) is None

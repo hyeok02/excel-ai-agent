@@ -12,7 +12,14 @@ from app.agent.query.tabular_translated_filters import candidate_words
 
 
 def series_words(question):
-    return [word for word in candidate_words(question, SimpleNamespace(columns=())) if re.search(r"[가-힣]", word)]
+    # A clarification's follow-up ("'Sheet'!B13:AL74 범위의 H열 X 기준으로: 질문") is read for its question part,
+    # so the scope's names take no word slot; any other wording is read whole.
+    asked = question.split("기준으로:", 1)[1] if _SCOPED.match(question) and "기준으로:" in question else question
+    asked = _SCOPED.sub(" ", asked)
+    return [word for word in candidate_words(asked, SimpleNamespace(columns=())) if re.search(r"[가-힣]", word)]
+
+
+_SCOPED = re.compile(r"^\s*'?[^!\n]*?'?![A-Z$]+\d+(?::[A-Z$]+\d+)?\s*범위(?:의|에서)?")
 
 
 def named_topic(words, topics, resolver=None):

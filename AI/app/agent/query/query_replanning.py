@@ -78,7 +78,6 @@ async def answer_with_replanning(service, question, sources, **options):
     refusal = await asyncio.to_thread(series_attempt, question, sources.summary, sources.index)
     if is_unbound(refusal):
         return settled_answer(question, sources, refusal)
-    # Last, a question shaped for a direct source reading ("2025년 총발전량", "작년보다 오른 주는 몇 개").
     return await asyncio.to_thread(final_answer, question, sources.summary, sources.index) or answer
 
 
@@ -140,8 +139,7 @@ async def _recover(service, question, sources, replan, feedback, first=None):
 
 def missing_plan_answer(question):
     return QuestionAnswer(question=question, answer="질문에 맞는 계산 계획을 다시 확인합니다.",
-        status="insufficient_evidence", confidence=0, selected_tools=["intent_resolution"],
-        evidence=[], limitations=[])
+        status="insufficient_evidence", confidence=0, selected_tools=["intent_resolution"], evidence=[], limitations=[])
 
 
 def unavailable_plan(question):
