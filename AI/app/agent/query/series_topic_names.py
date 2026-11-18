@@ -41,6 +41,12 @@ def named_topic(words, topics, resolver=None):
     # "발전량" inside "석탄 발전량" is the wider name: the phrase naming another series is the more specific.
     named = [(word, topic) for word, topic in named
              if not any(word != other and word in other and topic != other_topic for other, other_topic in named)]
+    # Korean names its head last: in "태양광 발전량" the measure 발전량 is what 태양광 specifies, so it is
+    # not a second series even when the phrase as a whole fits several (Solar, Solar Photovoltaic).
+    heads = {phrase.split()[-1] for phrase in words if " " in phrase
+             and any(part != phrase.split()[-1] and topic != head_topic for part, topic in named if part in phrase.split()[:-1]
+                     for head, head_topic in named if head == phrase.split()[-1])}
+    named = [(word, topic) for word, topic in named if word not in heads]
     named = [(word, topic) for word, topic in named if not any(word != other and other in word for other, _ in named)]
     if len({topic for _, topic in named}) != 1:
         return None

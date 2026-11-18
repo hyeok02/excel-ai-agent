@@ -53,3 +53,12 @@ def test_a_wider_word_inside_the_phrase_naming_a_series_does_not_compete_with_it
     names = {"석탄": "Coal", "석탄 발전량": "Coal", "발전량": "Total"}
     assert _ask(monkeypatch, "석탄 발전량 추이 알려줘", [total, ANNUAL], names).answer.startswith("해석: ‘석탄’ → Coal")
     assert _ask(monkeypatch, "발전량 추이 알려줘", [total, ANNUAL], names).answer.startswith("해석: ‘발전량’ → Total")
+
+
+def test_the_head_word_of_a_phrase_is_what_its_first_word_specifies(monkeypatch):
+    total = _fact("Total", "연간 합계", "연간 합계의 Total: 2016년 20에서 2025년 25로 5(25.00%) 증가했습니다.", 0)
+    solar = _fact("Solar", "연간 합계", ANNUAL[1].fact.replace("Coal", "Solar"), 0)
+    # "태양광 발전량" as a whole fits several solar series; 발전량 is still what 태양광 specifies.
+    answer = _ask(monkeypatch, "태양광 발전량 추이 알려줘", [total, solar], {"태양광": "Solar", "발전량": "Total"})
+    assert answer.answer.startswith("해석: ‘태양광’ → Solar")
+    assert _ask(monkeypatch, "발전량 추이 알려줘", [total, solar], {"발전량": "Total"}).answer.startswith("해석: ‘발전량’ → Total")

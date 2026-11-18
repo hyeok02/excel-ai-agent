@@ -7,6 +7,11 @@ from decimal import ROUND_HALF_UP, Decimal, localcontext
 from app.agent.query.excel_number_formats import display_value, parse_number_format
 
 
+def unsupported_style(spec, style):
+    """A date/fraction/clock format, not General with a literal around it ('"$"General' is $ and a number)."""
+    return spec.mode == "raw" and re.sub(r'"[^"]*"', "", str(style)).casefold().strip() != "general"
+
+
 def numeric_summary(values, formats, statistic="all"):
     entries = [(value, style) for value, style in zip(values, formats)
                if value not in (None, "")]
@@ -15,8 +20,7 @@ def numeric_summary(values, formats, statistic="all"):
         return None, []
     specs = [parse_number_format(style) for _, style in entries]
     # An unsupported date/fraction/clock format must not silently become a plain unit.
-    if any(spec.mode == "raw" and re.sub(r'"[^"]*"', "", style).casefold().strip() != "general"
-           for (_, style), spec in zip(entries, specs)):
+    if any(unsupported_style(spec, style) for (_, style), spec in zip(entries, specs)):
         return None, []
     if len({_unit_identity(spec) for spec in specs}) != 1:
         return None, []

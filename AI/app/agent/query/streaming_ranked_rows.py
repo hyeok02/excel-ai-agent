@@ -4,7 +4,7 @@ import heapq
 
 from app.agent.query.excel_number_formats import parse_number_format
 from app.agent.query.tabular_filters import finite_number
-from app.agent.query.tabular_numeric import _unit_identity
+from app.agent.query.tabular_numeric import _unit_identity, unsupported_style
 from app.agent.query.tabular_results import _display_cell
 
 MAX_RANKED_CHARACTERS = 2_000_000
@@ -28,7 +28,7 @@ class RankedRows:
                 return False
             self.styles[style] = parse_number_format(style)
         spec = self.styles[style]
-        if spec.mode == "raw" and style.casefold().strip() != "general":
+        if unsupported_style(spec, style):
             return False
         unit = _unit_identity(spec)
         if self.unit is not None and self.unit != unit:

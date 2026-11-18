@@ -4,7 +4,7 @@ import json
 from app.agent.query.excel_number_formats import parse_number_format
 from app.agent.query.streaming_tabular_numeric import NumericAccumulator
 from app.agent.query.tabular_filters import finite_number
-from app.agent.query.tabular_numeric import _unit_identity
+from app.agent.query.tabular_numeric import _unit_identity, unsupported_style
 from app.agent.query.tabular_results import _display_cell
 from app.agent.query.formula_resolution_values import EXCEL_ERRORS
 from app.agent.query.grouped_aggregate_validation import valid_aggregate_plan
@@ -22,7 +22,7 @@ def typed_key(value, style):
         return ("boolean", value), f"{value} (논리값)"
     if finite_number(value):
         spec = parse_number_format(style)
-        if spec.mode == "raw" and style.casefold().strip() != "general":
+        if unsupported_style(spec, style):
             return None
         label = _display_cell(value, style)
         # Raw value prevents rounded display formats from conflating distinct keys.

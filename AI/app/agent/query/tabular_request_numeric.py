@@ -5,6 +5,8 @@ from decimal import Decimal, InvalidOperation
 from app.agent.query.excel_number_formats import parse_number_format
 
 _NUMBER = r"-?\d[\d,]*(?:\.\d+)?"
+# "1천만", "2억 5천만": a Korean quantity with its unit groups is one number.
+_QUANTITY = r"-?\d[\d,]*(?:\.\d+)?(?:\s*[십백천만억조](?:\s*\d[\d,]*(?:\.\d+)?\s*[십백천만억조]?)?)*"
 _UNIT = r"(?:%|퍼센트|percent)?"
 _OPS = {
     "이상": "greater_than_or_equal", "초과": "greater_than",
@@ -17,7 +19,7 @@ _OPS = {
     "greater than": "greater_than", "more than": "greater_than", "above": "greater_than",
     "less than": "less_than", "below": "less_than", "equal to": "equals",
 }
-_SUFFIX = re.compile(rf"(?P<number>{_NUMBER})\s*(?P<unit>{_UNIT})\s*(?P<op>이상|초과|이하|미만|보다\s+큰|보다\s+작은)", re.I)
+_SUFFIX = re.compile(rf"(?P<number>{_QUANTITY})\s*(?P<unit>{_UNIT})\s*(?P<op>이상|초과|이하|미만|보다\s+큰|보다\s+작은)", re.I)
 _PREFIX = re.compile(rf"(?P<op>>=|<=|≥|≤|>|<|=|at least|at most|greater than|more than|less than|above|below|equal to)\s*(?P<number>{_NUMBER})\s*(?P<unit>{_UNIT})", re.I)
 _PERCENT_EQUALS = re.compile(rf"(?P<number>{_NUMBER})\s*(?P<unit>%|퍼센트|percent)\s*(?:인|와 같은|와 동일한|equal)", re.I)
 _INTERVAL = re.compile(rf"(?P<lower>{_NUMBER})\s*(?:부터|\bto\b)\s*(?P<upper>{_NUMBER})"
@@ -35,7 +37,7 @@ def numeric_constraints_match(text, plan, table, rank_filters=frozenset()):
     for pattern in (_SUFFIX, _PREFIX, _PERCENT_EQUALS):
         for match in pattern.finditer(text):
             operation = _OPS.get(" ".join((match.groupdict().get("op") or "=").casefold().split()))
-            request = (match.start(), match.end(), operation, _number(match.group("number")), bool(match.group("unit")))
+            request = (match.start(), match.end(), operation, _quantity(match.group("number")), bool(match.group("unit")))
             if request not in requests:
                 requests.append(request)
     checked = set(rank_filters)
@@ -106,6 +108,13 @@ def _preceding_column(text, position, table):
             if match.end() <= position and position - match.end() <= 80:
                 found.append((match.end(), column.id))
     return max(found, default=(0, None))[1]
+
+
+def _quantity(text):
+    if re.search(r"[십백천만억조]", text):
+        from app.agent.query.tabular_quantity import parse_quantity
+        return parse_quantity(text)
+    return _number(text)
 
 
 def _number(value):

@@ -4,7 +4,7 @@ from decimal import Decimal, localcontext
 
 from app.agent.query.excel_number_formats import parse_number_format
 from app.agent.query.tabular_filters import finite_number
-from app.agent.query.tabular_numeric import _render, _unit_identity
+from app.agent.query.tabular_numeric import _render, _unit_identity, unsupported_style
 
 
 class NumericAccumulator:
@@ -25,7 +25,7 @@ class NumericAccumulator:
                 return False
             self.styles[style] = parse_number_format(style)
         spec = self.styles[style]
-        if spec.mode == "raw" and style.casefold().strip() != "general":
+        if unsupported_style(spec, style):
             return False
         if self.spec is not None and _unit_identity(self.spec) != _unit_identity(spec):
             return False
