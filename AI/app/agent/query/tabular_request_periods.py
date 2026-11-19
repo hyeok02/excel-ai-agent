@@ -14,6 +14,8 @@ from app.agent.query.tabular_filters import _date
 _POINT = re.compile(r"((?:19|20)\d{2})\s*년(?:\s*(\d{1,2})\s*월)?(?:\s*(\d{1,2})\s*일)?"
                     r"|((?:19|20)\d{2})-(\d{2})(?:-(\d{2}))?")
 _RANGE = re.compile(rf"({_POINT.pattern})\s*(?:부터|~|∼|–|—|에서)\s*({_POINT.pattern})(?:\s*까지)?")
+# "2023년 상반기", "2024년 3분기": a half or quarter of a named year.
+_PART = re.compile(r"((?:19|20)\d{2})\s*년\s*(?:(상|하)반기|([1-4])\s*분기)")
 LOWER = {"greater_than_or_equal", "greater_than"}
 UPPER = {"less_than_or_equal", "less_than"}
 
@@ -47,10 +49,16 @@ def _month_span(value):
 
 
 def without_periods(text):
-    return _POINT.sub(" ", _RANGE.sub(" ", text))
+    return _POINT.sub(" ", _RANGE.sub(" ", _PART.sub(" ", text)))
 
 
 def _periods(text):
+    for match in _PART.finditer(text):
+        year = int(match.group(1))
+        first = 1 if match.group(2) == "상" else 7 if match.group(2) else 3 * int(match.group(3)) - 2
+        last = first + (6 if match.group(2) else 3)
+        yield date(year, first, 1), date(year + (last > 12), (last - 1) % 12 + 1, 1)
+    text = _PART.sub(" ", text)
     for match in _RANGE.finditer(text):
         first, second = _POINT.match(match.group(1)), _POINT.match(match.group(match.re.groups - 6))
         if first and second:

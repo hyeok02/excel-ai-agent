@@ -19,11 +19,14 @@ def test_a_counter_between_the_number_and_the_comparison_is_part_of_the_threshol
 
 
 def test_a_refusal_citing_cells_or_an_unknown_reading_answers_nothing():
-    answer = lambda status, evidence=(), checks=(), options=(): SimpleNamespace(
-        status=status, evidence=list(evidence), clarification_options=list(options),
+    answer = lambda status, evidence=(), checks=(), options=(), question="", text="": SimpleNamespace(
+        status=status, evidence=list(evidence), clarification_options=list(options), question=question, answer=text,
         verification=SimpleNamespace(checks=list(checks)))
     assert answers_nothing(answer(QuestionAnswerStatus.INSUFFICIENT_EVIDENCE, evidence=["cell"]))
     assert answers_nothing(answer(QuestionAnswerStatus.LIMITED, checks=["question_unanswered"]))
     assert not answers_nothing(answer(QuestionAnswerStatus.LIMITED, evidence=["cell"]))
     assert not answers_nothing(answer(QuestionAnswerStatus.INSUFFICIENT_EVIDENCE, evidence=["cell"], options=["pick"]))
     assert not answers_nothing(answer(QuestionAnswerStatus.INSUFFICIENT_EVIDENCE))  # handled as before
+    share = "Bars가 전체 판매금액에서 차지하는 비중은?"
+    assert answers_nothing(answer(QuestionAnswerStatus.LIMITED, ["cell"], question=share, text="Bars: 10,535.57"))
+    assert not answers_nothing(answer(QuestionAnswerStatus.LIMITED, ["cell"], question=share, text="Bars 31.61%"))

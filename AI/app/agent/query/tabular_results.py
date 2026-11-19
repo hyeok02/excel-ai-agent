@@ -4,6 +4,7 @@ from datetime import datetime, time
 import json
 import re
 
+from app.agent.query.cell_display import _display_cell  # noqa: F401 (re-exported to existing callers)
 from app.agent.query.ranked_group_units import share
 from app.agent.query.excel_number_formats import display_value, parse_number_format
 from app.agent.query.models import QuestionAnswerEvidence
@@ -28,8 +29,8 @@ def aggregate_text(operation, columns, rows, statistic="all"):
                 value = row.values[column.id]
                 if value is None and row.formulas.get(column.id):
                     return None, []
-                text = _display_cell(value, row.number_formats.get(column.id, "General"))
-                parts.append(f"{column.display_header}: {text}")
+                text = _display_cell(value, row.number_formats.get(column.id, "General"), column.header)
+                parts.append(f"{' '.join(column.display_header.split())}: {text}")  # "England and Wales", one line
             lines.append("; ".join(parts))
         limitations = ([f"해당하는 {len(rows)}개 행 중 앞의 50개 행만 표시했습니다."]
                        if len(rows) > 50 else [])
@@ -51,12 +52,6 @@ def aggregate_text(operation, columns, rows, statistic="all"):
     return "\n".join(lines), list(dict.fromkeys(limitations))
 
 
-def _display_cell(value, number_format):
-    if value in (None, ""):
-        return "빈칸"
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return display_value(value, parse_number_format(number_format))
-    return str(value)
 
 
 def scope_description(plan, table):

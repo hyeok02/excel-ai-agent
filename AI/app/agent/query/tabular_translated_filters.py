@@ -1,11 +1,8 @@
 """Answer a plan whose filter value is the source's name for a word in the question.
 
-"쿠키 판매수량 합계는?" is planned as Category = Cookies. Every check passes except
-one: "Cookies" is not written in the question, and an unchecked translation never
-authorizes a filter. Here the plan is not trusted either. For each such filter a
-separate, bounded call is asked which source value each remaining question word
-names, choosing only among that column's actual values. Only when exactly one
-word clearly names exactly the planned value is the question read as
+"쿠키 판매수량 합계는?" is planned as Category = Cookies, but "Cookies" is not written in the question and an
+unchecked translation never authorizes a filter. A bounded call reads which source value each question word names,
+among that column's values only; when exactly one word names the planned value, the question is read as
 "쿠키(Cookies) 판매수량 합계는?" and run through the ordinary checks again, stated as an interpreted reading.
 """
 import asyncio
@@ -21,6 +18,7 @@ from app.agent.query.tabular_explicit_scope import asked_part
 from app.agent.query.tabular_request_extras import _stated_subject
 from app.agent.query.tabular_request_predicates import normalize
 from app.agent.query.tabular_translated_rows import every_row, ranked_members, run_checked
+from app.agent.query.joined_names import joined_names
 from app.agent.query.tabular_translated_names import (
     affirmed_columns, assigned_words, column_words, contains_as_equals, names_no_member, words_naming)
 
@@ -116,7 +114,8 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
                 for condition, total in zip(conditions, totals)]
     # Words naming columns are read too: one naming a column the plan never reads rejects it,
     # and one naming the computed column is stated ("판매수량" → Qty).
-    leftover = [word for word in words if not any(word in used or used in word for used in chosen if used)]
+    leftover = joined_names([word for word in words if not any(word in used or used in word for used in chosen if used)],
+                            asked_part(question))  # "잉글랜드와 웨일스" is one name: England and Wales
     try:
         columns_named, conflict = await column_words(resolver, leftover, table, plan) if leftover else ([], False)
     except Exception as exception:
@@ -147,4 +146,3 @@ async def translated_filter_answer(question, summary, data_index, intent, resolv
             checks=list(dict.fromkeys([check for check in answer.verification.checks if check != "request_alignment"]
                                       + ["semantic_alias_resolved"]))),
     })
-

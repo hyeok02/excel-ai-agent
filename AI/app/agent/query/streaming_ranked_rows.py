@@ -59,7 +59,7 @@ class RankedRows:
                 value = row.values[column.id]
                 if value is None and row.formulas.get(column.id):
                     return None, []
-                rendered = _display_cell(value, row.number_formats.get(column.id, "General"))
+                rendered = _display_cell(value, row.number_formats.get(column.id, "General"), column.header)
                 parts.append(f"{column.display_header}: {rendered}")
             lines.append("; ".join(parts))
         limitations = []
