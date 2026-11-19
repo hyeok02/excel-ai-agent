@@ -3,6 +3,7 @@ import asyncio
 
 from app.agent.query.answer_validation import validate_answer
 from app.agent.query.context import execution_context
+from app.agent.query.gpt_calc_answers import keep_draft
 from app.agent.query.grounded_interpretation import interpreted_answer
 from app.agent.query.question_validation import unclear_draft_answer
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -13,6 +14,7 @@ from app.agent.query.workbook_summary_answers import _verified_summary_source
 
 async def generate_answer(generator, question, summary, execution, truncated, index=None):
     draft = await generator.generate(question, summary.filename, execution_context(execution))
+    keep_draft(draft, execution)  # shown, marked unverified, if nothing else answers in the end
     answer = unclear_draft_answer(question, draft) or validate_answer(question, draft, execution, truncated)
     if answer.status != "insufficient_evidence":
         # A reading the question asks for is shown with its cited figures, when its numbers hold.
