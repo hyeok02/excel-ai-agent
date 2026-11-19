@@ -14,6 +14,7 @@ from app.services.insights.narratives.narrative_values import finite, insight, n
 from app.services.insights.narratives.record_display import display_value
 
 MEAN_RECORDS = 8
+_TOTAL = re.compile(r"\b(?:grand\s+)?total\b|합계|총계|소계", re.I)
 
 
 def numeric_table_report(context):
@@ -41,9 +42,13 @@ def _sheet_report(sheet):
             label = str(schema.get("display_name") or "").strip()
             path = schema.get("header_path") or [label]
             source_range = str(schema.get("source_range") or "")
+            # Each row's name is its first text cell; a total row ("합계") is not one of the values.
+            names = {_row(row[0]): next((cell for cell in row if isinstance(cell.get("value"), str)
+                                         and cell["value"].strip()), None) for row in rows if row}
             selected = [cell for row in rows for cell in row
                         if re.sub(r"[\d$]", "", str(cell.get("cell", ""))) == schema.get("column")
-                        and cell.get("value") not in (None, "")]
+                        and cell.get("value") not in (None, "") and not _TOTAL.search(
+                            str((names.get(_row(cell)) or {}).get("value", "")).strip())]
             if not label or len(selected) < 3 or not all(finite(cell.get("value")) for cell in selected):
                 continue
             if not all(_inside(cell.get("cell", ""), source_range) for cell in selected):
@@ -63,12 +68,17 @@ def _sheet_report(sheet):
             # Many records (scores, ratings, prices) are read by their mean too: 만족도 평균 3.48.
             average = ({**selected[0], "value": round(sum(cell["value"] for cell in selected) / len(selected), 2)}
                        if len(selected) >= MEAN_RECORDS else None)
+            # A few named rows are read by name: 618(인사팀)~1,556(영업2팀).
+            named = [names.get(_row(cell)) for cell in (low, high)] if not average else [None, None]
+            shown = [display_value(cell) + (f"({tag['value'].strip()})" if tag and tag is not cell else "")
+                     for cell, tag in zip((low, high), named)]
             items.append(insight(
                 f"{label} {'평균과 범위' if average else '값 범위'}",
                 f"‘{name}’ 시트의 ‘{label}’ 열에서 숫자로 기록된 {number(len(selected))}개 값의 "
                 + (f"평균은 {display_value(average)}이고, " if average else "")
-                + f"범위는 {display_value(low)}~{display_value(high)}입니다.",
-                [*(reference(name, cell["cell"]) for cell in headers), reference(name, f"{start}:{end}")],
+                + f"범위는 {shown[0]}~{shown[1]}입니다.",
+                [*(reference(name, cell["cell"]) for cell in headers), reference(name, f"{start}:{end}"),
+                 *(reference(name, tag["cell"]) for tag in named if tag)],
                 "metric", topic=label,
             ))
             if len(items) >= 3:

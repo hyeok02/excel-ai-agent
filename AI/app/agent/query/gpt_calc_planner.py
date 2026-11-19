@@ -37,7 +37,8 @@ one item per value the question needs, e.g. a share [Sheet!E9]/[Sheet!B9]*100, o
 [2024!B5]-[2023!B5]; when two values are compared, add an item for their difference; keep says which items answer (negative for "decreased", max for "largest").
 When a listed row already holds what is asked (a "U.S. Total" or "All Persons" row for a national
 figure), point kind=cells at that cell instead of recomputing it from rows that mix levels.
-kind=none when no calculation over these tables answers (the question asks why, or the data is absent).
+kind=none when no calculation over these tables answers: the question asks why, asks for a summary, highlights
+or what stands out in the file, or the data is absent.
 method: one short Korean sentence describing the calculation, naming columns as listed."""
 
 

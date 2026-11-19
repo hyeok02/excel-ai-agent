@@ -117,7 +117,7 @@ def test_complete_numeric_table_has_literal_source_bound_summary():
     items, _ = numeric_table_report(context)
     assert len(items) == 1
     assert "3개 값" in items[0].fact
-    assert "32.25~1,200.5" in items[0].fact
+    assert "32.25(East)~1,200.5(West)" in items[0].fact  # a few named rows are read by name
     assert "'Input'!B1" in items[0].evidence
     assert "'Input'!B2:B4" in items[0].evidence
     report = validate_workbook_insights(WorkbookInsightReport(overview="", insights=[]), context)

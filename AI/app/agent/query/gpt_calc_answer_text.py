@@ -39,7 +39,7 @@ def table_answer(question, plan, table, result, style, cells):
     calc = plan.table
     name = column_name(result.columns[-1]) if calc.measure else "행"  # the measure is read last
     name += f" - {calc.subtract}" if calc.subtract else ""
-    lines = [f"계산 방식: {plan.method}"]
+    lines, listing = [f"계산 방식: {plan.method}"], False
     groups = result.groups
     if not groups:
         lines.append("조건에 맞는 항목이 없습니다.")
@@ -47,7 +47,8 @@ def table_answer(question, plan, table, result, style, cells):
         part, whole = result.parts
         lines.append(f"비율: {shown(groups[0][1], style)} ({name if calc.measure else '행 수'} {plain(part)} / 전체 {plain(whole)})")
     elif len(groups) == 1 and groups[0][0] == "전체":
-        lines.append(f"{name} {_AGGREGATES[calc.aggregate]}: {shown(groups[0][1], style)}")
+        word = "값" if result.rows == 1 and calc.aggregate in {"sum", "mean", "min", "max"} else _AGGREGATES[calc.aggregate]
+        lines.append(f"{name} {word}: {shown(groups[0][1], style)}")  # one row read is its value, not a 합계
     else:
         if result.mean is not None:
             lines.append(f"그룹 평균 {shown(result.mean, style)}보다 {'높은' if calc.pick == 'above_mean' else '낮은'} "
@@ -69,7 +70,7 @@ def table_answer(question, plan, table, result, style, cells):
                  + (f", 상위 구분 행 {len(result.skipped)}개 제외: {', '.join(result.skipped[:3])}"
                     + (" 등" if len(result.skipped) > 3 else "") if result.skipped else "") + ")")
     cited = [cells.get(normalize_reference(column.header_reference)) for column in result.columns]
-    return _answer(question, "\n".join(lines), [cell for cell in cited if cell is not None])
+    return _answer(question, "\n".join(lines), [cell for cell in cited if cell is not None], listing)
 
 
 def cells_answer(question, plan, computed):
@@ -92,12 +93,13 @@ def cells_answer(question, plan, computed):
     return _answer(question, "\n".join(lines), list(dict.fromkeys(used)))
 
 
-def _answer(question, text, cited):
+def _answer(question, text, cited, listing=False):
     return QuestionAnswer(
         question=question, answer=text, status=QuestionAnswerStatus.LIMITED, confidence=0.6,
         selected_tools=["gpt_calculation"], evidence=[_evidence(cell) for cell in cited], limitations=[_CHECKED],
         verification=QuestionAnswerVerification(level="source_checked",
-                                                checks=["source_values", "calculation", "gpt_calculation_plan"]))
+                                                checks=["source_values", *([] if listing else ["calculation"]),
+                                                        "gpt_calculation_plan"]))
 
 
 def unverified_draft(question, answer, draft, values, references=None):

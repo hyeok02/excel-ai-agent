@@ -32,3 +32,12 @@ def test_scores_are_read_by_their_mean():
     rows = [[f"R{number:03d}", number % 5 + 1, number % 11] for number in range(1, 11)]
     report = _report(["응답번호", "만족도", "추천점수"], rows)
     assert any("평균은 3이고, 범위는 1~5" in item.fact for item in report.insights)
+
+
+def test_daily_records_per_category_are_totalled_by_month_and_named_rows_by_name():
+    rows = [[f"2024-0{month}-{day:02d}", channel, 150 + month * 10 + day] for month in (7, 8)
+            for day in range(1, 7) for channel in ("검색", "SNS")]
+    report = _report(["날짜", "채널", "방문자수"], rows)
+    assert any(item.fact.startswith("월별 방문자수 합계는 2024년 7월 ") for item in report.insights)
+    named = _report(["부서", "예산"], [["영업팀", 700], ["인사팀", 1500], ["재무팀", 600], ["합계", 2800]])
+    assert "인사팀 1,500" in named.overview and "2,800" not in named.overview  # the total row is not a member

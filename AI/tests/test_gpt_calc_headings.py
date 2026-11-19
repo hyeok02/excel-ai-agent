@@ -39,10 +39,10 @@ class _Planner:
         return CalcPlan.model_validate(self.plans.pop(0) if len(self.plans) > 1 else self.plans[0])
 
 
-def _plan(filters, group_by=("Area",)):
+def _plan(filters, group_by=("Area",), measure=None):
     return {"kind": "table", "method": "m", "cells": None, "table": {
-        "table": 0, "filters": filters, "group_by": list(group_by), "period": "none", "measure": None,
-        "aggregate": "count", "denominator": None, "subtract": None, "order": "none", "pick": "all", "n": 0,
+        "table": 0, "filters": filters, "group_by": list(group_by), "period": "none", "measure": measure,
+        "aggregate": "sum" if measure else "count", "denominator": None, "subtract": None, "order": "none", "pick": "all", "n": 0,
         "share": False}}
 
 
@@ -57,10 +57,23 @@ def test_shaded_heading_rows_are_left_out_unless_named():
     assert "· Maine" in answer.answer and "· Hawaii" in answer.answer and "East" not in answer.answer.split("(")[0]
     assert "상위 구분 행 2개 제외: East, West" in answer.answer
     assert list(next(iter(planner.groups.values())).values()) == ["East", "West"]
-    named, _ = _ask("East 가격은?", _plan([{"column": "Area", "op": "eq", "value": "East"}]))
-    assert "· East" in named.answer
+    named, _ = _ask("East 가격은?", _plan([{"column": "Area", "op": "eq", "value": "East"}], measure="Price"))
+    assert "· East: 31" in named.answer
 
 
 def test_a_plan_leaving_out_a_value_the_question_names_is_sent_back_once():
-    answer, planner = _ask("Oregon 가격은?", _plan([], ()), _plan([{"column": "Area", "op": "eq", "value": "Oregon"}]))
-    assert "Oregon" in planner.notes[1] and "· Oregon" in answer.answer and "Maine" not in answer.answer
+    answer, planner = _ask("Oregon 가격은?", _plan([], ()), _plan([{"column": "Area", "op": "eq", "value": "Oregon"}], measure="Price"))
+    assert "Oregon" in planner.notes[1] and "· Oregon: 16" in answer.answer and "Maine" not in answer.answer
+
+
+def test_a_named_range_keeps_the_calculation_inside_it_and_a_name_list_keeps_a_stated_answer():
+    from app.agent.query.models import QuestionAnswer
+    summary, index = _workbook()
+    other = asyncio.run(fallback_answer("'Other'!A1:B8 범위의 Price 합계는?", summary, index, NOTHING,
+                                        _Planner(_plan([]))))
+    assert other is NOTHING  # no table of that range: nothing is calculated elsewhere
+    stated = QuestionAnswer(question="q", answer="Maine 32입니다.", status="limited", confidence=0.5,
+                            selected_tools=["search_workbook_data"], evidence=[], limitations=[])
+    kept = asyncio.run(fallback_answer("30 넘는 곳은?", summary, index, stated,
+                                       _Planner(_plan([{"column": "Price", "op": "gt", "value": "30"}]))))
+    assert kept is stated

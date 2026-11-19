@@ -9,6 +9,8 @@ Questions answered before, and questions that ask back with options, never reach
 import asyncio
 from contextvars import ContextVar
 
+from openpyxl.utils import range_boundaries
+
 from app.agent.query.gpt_calc_answer_text import cells_answer, table_answer, unverified_draft
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_draft_check import source_references, source_values
@@ -18,6 +20,7 @@ from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.references import normalize_reference
 from app.agent.query.tabular_catalog import build_query_tables
+from app.agent.query.tabular_explicit_scope import explicit_ranges
 
 _DRAFTS: ContextVar[list | None] = ContextVar("generated_drafts", default=None)
 
@@ -55,6 +58,8 @@ async def fallback_answer(question, summary, index, answer, planner=None):
         raise_for_quota_exhaustion(exception)
         computed = None
     unanswered = answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+    if computed is not None and not unanswered and "calculation" not in computed.verification.checks:
+        computed = None  # a list of names only does not replace an answer that states figures
     return computed or (unverified_draft(question, answer, *drafts[-1]) if drafts and unanswered else None) or answer
 
 
@@ -63,6 +68,9 @@ async def _computed(question, summary, index, planner):
         return None
     every = build_query_tables(summary)
     tables = [table for table in every if table.complete and table.rows]
+    if scopes := explicit_ranges(question):  # "'MYE2 - Persons'!A8:CQ412 범위의 …": only that range
+        tables = [table for table in tables if any(table.sheet_name == sheet and _overlaps(table.reference, cells)
+                                                   for sheet, cells in scopes)]
     labels = {normalize_reference(column.header_reference) for table in every for column in table.columns}
     labels |= {normalize_reference(cell.reference) for row in index.rows if _year_row(row) for cell in row.cells}
     if not tables:
@@ -85,7 +93,9 @@ async def _computed(question, summary, index, planner):
                         "nor groups by them: use them.")
                 continue
             result = await asyncio.to_thread(run_table, table, plan.table, headings.get(table.id))
-            if result is not None and (result.groups or plan.table.pick not in {"nth", "top"}):
+            echo = plan.table.aggregate == "count" and len(result.groups) == 1 and result.groups[0][1] == 1 \
+                and result.groups[0][0] != "전체" if result is not None else False  # one name back, no figure
+            if result is not None and not echo and (result.groups or plan.table.pick not in {"nth", "top"}):
                 return table_answer(question, plan, table, result, _style(table, result, plan.table), cells)
             note = "The table calculation named a column the table does not list, or left no row: name listed columns."
         elif plan.kind == "cells" and plan.cells is not None and plan.cells.items:
@@ -98,6 +108,12 @@ async def _computed(question, summary, index, planner):
         else:
             return None
     return None
+
+def _overlaps(first, second):
+    a, b, c, d = range_boundaries(first.replace("$", ""))
+    e, f, g, h = range_boundaries(second.replace("$", ""))
+    return a <= g and e <= c and b <= h and f <= d
+
 
 def _year_row(row):
     """A row of consecutive years (2021, 2022, 2023) names columns even where no table header was read."""

@@ -64,9 +64,9 @@ def _same_number(value, wanted):
 
 def run_table(table, calc, headings=None):
     """TableResult, or None when a named column is not the table's or no row is left."""
-    named = {column_name(column).casefold(): column for column in table.columns}
-    named.update({column.id.casefold(): column for column in table.columns})
-    find = lambda name: named.get(" ".join(str(name).split()).casefold())
+    named = {**{column_name(column).casefold(): column for column in table.columns},
+             **{column.id.casefold(): column for column in table.columns}}
+    find = lambda name: named.get(" ".join(str(name).split()).casefold())  # noqa: E731
     filters = [(find(item.column), item, find(item.value) if item.op.endswith("_column") else None)
                for item in calc.filters]
     groups = [find(name) for name in calc.group_by]
@@ -82,10 +82,10 @@ def run_table(table, calc, headings=None):
     within = calc.aggregate == "ratio" and (denominator is None or denominator is measure) and not groups
     if measure is None and calc.aggregate != "count" and not within:
         return None
+    asked = {item.value.strip().casefold() for item in calc.filters if item.op in {"eq", "contains"}}  # rows named
     rows = [row for row in table.rows if not any(isinstance(value, str) and _TOTAL.search(value.strip())
-                                                 for value in row.values.values())]
-    named = {item.value.strip().casefold() for item in calc.filters if item.op in {"eq", "contains"}}
-    skipped = tuple(label for number, label in (headings or {}).items() if label.strip().casefold() not in named)
+                                                 and value.strip().casefold() not in asked for value in row.values.values())]
+    skipped = tuple(label for number, label in (headings or {}).items() if label.strip().casefold() not in asked)
     rows = [row for row in rows if (headings or {}).get(row.row_number) not in skipped]
     every = rows
     rows = [row for row in rows if all(_matches(row.values.get(column.id), item, row, other)
