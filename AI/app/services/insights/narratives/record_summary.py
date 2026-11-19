@@ -13,8 +13,12 @@ from app.services.insights.narratives.record_summary_support import _words, _ran
 from app.services.insights.narratives.record_concentration import append_concentration
 
 
-_KEY = re.compile(r"\b(?:id|identifier|policy|invoice|order|transaction|reference|record)\b|번호|식별자", re.I)
-_ADDITIVE = re.compile(r"\b(?:total|amount|value|revenue|sales|quantity|qty|units|count)\b|금액|매출|수량|건수", re.I)
+# "응답자ID", "품목코드": a Korean word written against the key word is still a key.
+_KEY = re.compile(r"(?:\b|(?<=[가-힣]))(?:id|identifier|policy|invoice|order|transaction|reference|record|code)\b"
+                  r"|번호|식별자|코드", re.I)
+_NAME_KEY = re.compile(r"\bname\b|이름|명$", re.I)  # "프로젝트명": records named one by one
+_ADDITIVE = re.compile(r"\b(?:total|amount|value|revenue|sales|quantity|qty|units|count)\b|금액|매출|수량|건수"
+                       r"|예산|집행액|비용|원가|이익|수익|재고", re.I)
 _NONADDITIVE = re.compile(r"\b(?:unit|per|average|avg|rate|ratio|percent|percentage|margin|price)\b|단가|평균|비율|비중|률", re.I)
 _TOTAL = re.compile(r"\b(?:grand\s+total|sub\s*total|total)\b|합계|총계|소계", re.I)
 _BASIS = re.compile(r"(?:(?:currency|unit|units|scale|scenario|version|basis)(?:\s+(?:code|name))?|통화(?:\s*코드)?|단위|배율|시나리오|버전|기준)", re.I)
@@ -51,7 +55,8 @@ def _report(sheet_data, header, rows, context):
         return None
     headers = {column(c): c for c in header if c.get("value")}
     records = [{column(c): c for c in row} for row in rows]
-    keys = [p for p, c in headers.items() if _KEY.search(_words(c["value"]))]
+    keys = [p for p, c in headers.items() if _KEY.search(_words(c["value"]))] or [
+        p for p, c in headers.items() if _NAME_KEY.search(_words(c["value"]).strip())]
     keys = [p for p in keys if all(p in row and row[p].get("value") not in (None, "") for row in records)
             and len({str(row[p]["value"]) for row in records}) == len(records)]
     if not keys or any(_TOTAL.search(str(c.get("value", "")).strip()) for row in rows for c in row):

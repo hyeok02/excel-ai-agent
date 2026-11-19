@@ -40,7 +40,8 @@ FAST_PROFILE = AnalysisProfile(
     max_tables_per_sheet=3,
     max_charts_per_sheet=3,
     max_insights=3,
-    max_completion_tokens=900,
+    # A cap, not a target: 900 cut off three insights with their evidence lists (LengthFinishReasonError).
+    max_completion_tokens=1600,
 )
 
 STANDARD_PROFILE = AnalysisProfile(

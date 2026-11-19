@@ -23,11 +23,17 @@ measure with aggregate gives each group's value (measure null with count counts 
 counts different values of measure); order and pick choose the groups that answer (nth with n=2 for
 "second largest", top with n=3 for "top 3", above_mean for "higher than average"); share adds each
 group's share of the total. Leave grand-total or subtotal rows to code; never filter them in.
+A condition between two columns of a row (stock below safety stock, spent above budget) is op lt_column /
+gt_column with value naming the other column. A rate of two columns' totals (spent over budget, conversions
+over visitors) is aggregate ratio with that denominator; the share of some rows in all rows ('예' answers, one
+warehouse's stock) is aggregate ratio with those rows filtered, no group_by and denominator null. A change between two columns of each row (August
+2026 against August 2025) is measure minus subtract. Records meeting a condition are listed by grouping
+them by the column naming them (aggregate count, or the measure asked).
 kind=cells: arithmetic over cell references [Sheet!B5] of the small tables whose rows are listed
 (row_values: [row number, then each column's value]; a value's cell is the column letter + that row
 number; the header_row only names the columns, e.g. a year header "2022" is a label, never an operand),
 one item per value the question needs, e.g. a share [Sheet!E9]/[Sheet!B9]*100, or one item per month
-[2024!B5]-[2023!B5]; keep says which items answer (negative for "decreased", max for "largest").
+[2024!B5]-[2023!B5]; when two values are compared, add an item for their difference; keep says which items answer (negative for "decreased", max for "largest").
 When a listed row already holds what is asked (a "U.S. Total" or "All Persons" row for a national
 figure), point kind=cells at that cell instead of recomputing it from rows that mix levels.
 kind=none when no calculation over these tables answers (the question asks why, or the data is absent).

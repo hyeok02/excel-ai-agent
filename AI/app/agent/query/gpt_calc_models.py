@@ -11,8 +11,10 @@ from pydantic import BaseModel, ConfigDict, Field
 class CalcFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
     column: str = Field(description="A column name exactly as listed")
-    op: Literal["eq", "ne", "gt", "ge", "lt", "le", "contains", "year", "month"] = Field(
-        description="year: the date's year equals value (2022); month: its year-month equals value (2022-12)")
+    op: Literal["eq", "ne", "gt", "ge", "lt", "le", "contains", "year", "month",
+                "gt_column", "ge_column", "lt_column", "le_column"] = Field(
+        description="year: the date's year equals value (2022); month: its year-month equals value (2022-12); "
+                    "*_column: compares with the same row's value of the column named in value")
     value: str
 
 
@@ -24,7 +26,11 @@ class TableCalc(BaseModel):
     period: Literal["none", "year", "month"] = Field(
         description="year/month: a date column in group_by is grouped by its year or year-month")
     measure: str | None = Field(description="The column aggregated; null counts rows")
-    aggregate: Literal["sum", "mean", "count", "count_distinct", "min", "max"]
+    aggregate: Literal["sum", "mean", "count", "count_distinct", "min", "max", "ratio"] = Field(
+        description="ratio: sum of measure / sum of denominator × 100 (a rate such as spent over budget)")
+    denominator: str | None = Field(description="The column divided by, for ratio; else null")
+    subtract: str | None = Field(description="A column subtracted from measure in each row before aggregating "
+                                             "(this year's column minus last year's for a change); else null")
     order: Literal["none", "desc", "asc"]
     pick: Literal["all", "nth", "top", "above_mean", "below_mean"] = Field(
         description="nth: the n-th group in order; top: the first n; above_mean/below_mean: groups beside the groups' mean")

@@ -49,7 +49,7 @@ class _Planner:
 
 
 def _table(**changes):
-    return {"table": 0, "filters": [], "group_by": [], "period": "none", "measure": "Amount", "aggregate": "sum",
+    return {"table": 0, "filters": [], "group_by": [], "period": "none", "measure": "Amount", "aggregate": "sum", "denominator": None, "subtract": None,
             "order": "none", "pick": "all", "n": 0, "share": False, **changes}
 
 
@@ -122,3 +122,26 @@ def test_a_header_cell_is_never_an_operand_and_the_plan_is_retried_once():
                                                         "keep": "all"}}
     assert _ask(header) is NOTHING
     assert "· 1월: Months!C2(12)-Months!B2(10) = 2" in _ask(header, values).answer
+
+
+def test_two_columns_of_a_row_are_compared_and_rates_are_ratios_of_totals():
+    below = _ask({"kind": "table", "method": "Amount가 50 미만인 행 수", "cells": None,
+                  "table": _table(filters=[{"column": "Amount", "op": "lt", "value": "50"}], measure=None, aggregate="count")})
+    assert "행 건수: 3" in below.answer
+    rate = _ask({"kind": "table", "method": "East Amount 합계 / 전체", "cells": None,
+                 "table": _table(group_by=["Region"], aggregate="ratio", denominator="Amount", order="desc")})
+    assert "East: 100.00%" in rate.answer
+
+
+def test_ties_with_the_top_are_all_named():
+    answer = _ask({"kind": "table", "method": "City별 최댓값 1위", "cells": None,
+                   "table": _table(group_by=["Region"], aggregate="max", order="desc", pick="top", n=1)})
+    assert "1. East: 100" in answer.answer and "West" not in answer.answer
+
+
+def test_listed_records_are_named_without_counts():
+    answer = _ask({"kind": "table", "method": "Amount 50 이상인 City", "cells": None,
+                   "table": _table(filters=[{"column": "Amount", "op": "ge", "value": "70"}], group_by=["Date"],
+                                   measure=None, aggregate="count")})
+    assert "· 2022-01-03" in answer.answer and ": 1" not in answer.answer
+

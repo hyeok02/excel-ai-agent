@@ -8,3 +8,12 @@ def test_two_years_read_from_one_cell_are_not_kept():
     assert not _years_cited(sentence, {2020}, 2)
     assert _years_cited(sentence, {2010, 2020}, 2) and _years_cited(sentence, set(), 2)
     assert _years_cited("2020년 값은 5.8%입니다.", set(), 1)
+
+
+def test_a_ranking_of_days_does_not_answer_a_month_question():
+    from types import SimpleNamespace
+    from app.agent.query.calendar_grain import day_groups
+    table = SimpleNamespace(rows=[SimpleNamespace(values={"B": "2023-01-04T00:00:00"}),
+                                  SimpleNamespace(values={"B": "2023-02-11T00:00:00"})])
+    assert day_groups("2023년 판매금액이 가장 높은 달은?", table, "B")
+    assert not day_groups("판매금액이 가장 높은 날은?", table, "B")

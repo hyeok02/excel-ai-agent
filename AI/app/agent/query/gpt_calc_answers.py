@@ -33,9 +33,16 @@ def keep_draft(draft, execution):
         drafts.append((draft, source_values(execution), source_references(execution)))
 
 
+# Answers written by GPT from about 30 searched rows: totals, rates and lists over a whole table need
+# every row, so a calculation over the table is preferred when one runs.
+_SEARCHED = {"search_workbook_data", "inspect_semantic_structure", "recover_formula_values"}
+
+
 def needs_fallback(answer):
-    return (answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE and not answer.clarification_options
-            and "clarify_source_scope" not in answer.selected_tools)
+    if answer.clarification_options or "clarify_source_scope" in answer.selected_tools:
+        return False  # asking back is an answer the user chooses from
+    return answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE or bool(answer.selected_tools) and set(
+        answer.selected_tools) <= _SEARCHED and answer.verification.level != "request_checked"
 
 
 async def fallback_answer(question, summary, index, answer, planner=None):
@@ -45,7 +52,8 @@ async def fallback_answer(question, summary, index, answer, planner=None):
     except Exception as exception:
         raise_for_quota_exhaustion(exception)
         computed = None
-    return computed or (unverified_draft(question, answer, *drafts[-1]) if drafts else None) or answer
+    unanswered = answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE
+    return computed or (unverified_draft(question, answer, *drafts[-1]) if drafts and unanswered else None) or answer
 
 
 async def _computed(question, summary, index, planner):
@@ -92,6 +100,8 @@ def _year_row(row):
 
 
 def _style(table, result, calc):
+    if calc.aggregate == "ratio":
+        return "ratio%"
     if calc.aggregate in {"count", "count_distinct"} or not calc.measure:
         return "#,##0"
     measure = result.columns[-1]

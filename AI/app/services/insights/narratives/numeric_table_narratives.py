@@ -13,6 +13,8 @@ from app.services.insights.facts.table_inputs import narrative_regions
 from app.services.insights.narratives.narrative_values import finite, insight, number, reference
 from app.services.insights.narratives.record_display import display_value
 
+MEAN_RECORDS = 8
+
 
 def numeric_table_report(context):
     primary, comparisons = narrative_sheet_groups(context)
@@ -58,10 +60,14 @@ def _sheet_report(sheet):
             high = max(selected, key=lambda cell: cell["value"])
             start = min(selected, key=_row)["cell"]
             end = max(selected, key=_row)["cell"]
+            # Many records (scores, ratings, prices) are read by their mean too: 만족도 평균 3.48.
+            average = ({**selected[0], "value": round(sum(cell["value"] for cell in selected) / len(selected), 2)}
+                       if len(selected) >= MEAN_RECORDS else None)
             items.append(insight(
-                f"{label} 값 범위",
+                f"{label} {'평균과 범위' if average else '값 범위'}",
                 f"‘{name}’ 시트의 ‘{label}’ 열에서 숫자로 기록된 {number(len(selected))}개 값의 "
-                f"범위는 {display_value(low)}~{display_value(high)}입니다.",
+                + (f"평균은 {display_value(average)}이고, " if average else "")
+                + f"범위는 {display_value(low)}~{display_value(high)}입니다.",
                 [*(reference(name, cell["cell"]) for cell in headers), reference(name, f"{start}:{end}")],
                 "metric", topic=label,
             ))
