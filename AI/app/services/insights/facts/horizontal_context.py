@@ -12,7 +12,8 @@ _YEAR_LABEL = re.compile(r"^(?:year|years|calendar year|연도|년도|연간)$",
 _UNIT = re.compile(
     r"(?:percent(?:age)?|%|(?:[A-Z]{3}|cents?|pence|dollars?|euros?|원|달러)\s+per\s+[A-Za-z]+"
     r"|(?:thousand|million|billion)\s+(?:tonnes?|tons?|megawatthours?|kilowatthours?|persons?|people)"
-    r"(?:\s+carbon dioxide equivalent)?|(?:kg|kwh|mwh|gwh|twh|tonnes?|tons?|명|천명|백만명))",
+    r"(?:\s+carbon dioxide equivalent)?|(?:kg|kwh|mwh|gwh|twh|tonnes?|tons?|명|천명|백만명)"
+    r"|(?:천|만|백만|천만|억|십억|조)?\s*원)",
     re.I,
 )
 

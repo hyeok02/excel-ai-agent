@@ -41,3 +41,9 @@ def test_daily_records_per_category_are_totalled_by_month_and_named_rows_by_name
     assert any(item.fact.startswith("월별 방문자수 합계는 2024년 7월 ") for item in report.insights)
     named = _report(["부서", "예산"], [["영업팀", 700], ["인사팀", 1500], ["재무팀", 600], ["합계", 2800]])
     assert "인사팀 1,500" in named.overview and "2,800" not in named.overview  # the total row is not a member
+
+
+def test_score_means_are_compared_across_a_repeating_group():
+    rows = [[f"{number % 3 + 1}반", f"학생{number}", 60 + number * 2, 90 - number] for number in range(1, 13)]
+    report = _report(["반", "이름", "국어", "영어"], rows)
+    assert any("반별 평균은 " in item.fact and "가장 높습니다" in item.fact for item in report.insights)

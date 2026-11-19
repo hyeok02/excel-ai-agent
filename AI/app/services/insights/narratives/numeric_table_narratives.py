@@ -11,6 +11,7 @@ from openpyxl.utils.cell import range_boundaries
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.table_inputs import narrative_regions
 from app.services.insights.narratives.narrative_values import finite, insight, number, reference
+from app.services.insights.narratives.numeric_group_means import group_means
 from app.services.insights.narratives.record_display import display_value
 
 MEAN_RECORDS = 8
@@ -72,18 +73,35 @@ def _sheet_report(sheet):
             named = [names.get(_row(cell)) for cell in (low, high)] if not average else [None, None]
             shown = [display_value(cell) + (f"({tag['value'].strip()})" if tag and tag is not cell else "")
                      for cell, tag in zip((low, high), named)]
+            # Scores per group of a repeating category: 반별 국어 평균은 2반 81.5, 3반 74.25, 1반 59.5.
+            grouped = group_means(rows, selected, cells) if average else None
+            by_group = ""
+            if grouped:
+                category, means, labels = grouped
+                listed = ", ".join(f"{group} {display_value({**selected[0], 'value': round(mean, 2)})}"
+                                   for mean, group in means)
+                by_group = f" {category['value'].strip()}별 평균은 {listed}로, ‘{means[0][1]}’{_subject(means[0][1])} 가장 높습니다."
             items.append(insight(
                 f"{label} {'평균과 범위' if average else '값 범위'}",
                 f"‘{name}’ 시트의 ‘{label}’ 열에서 숫자로 기록된 {number(len(selected))}개 값의 "
                 + (f"평균은 {display_value(average)}이고, " if average else "")
-                + f"범위는 {shown[0]}~{shown[1]}입니다.",
+                + f"범위는 {shown[0]}~{shown[1]}입니다." + by_group,
                 [*(reference(name, cell["cell"]) for cell in headers), reference(name, f"{start}:{end}"),
-                 *(reference(name, tag["cell"]) for tag in named if tag)],
+                 *(reference(name, tag["cell"]) for tag in named if tag),
+                 *([reference(name, grouped[0]["cell"]), reference(name, f"{grouped[2][0]['cell']}:{grouped[2][-1]['cell']}")]
+                   if grouped else [])],
                 "metric", topic=label,
             ))
             if len(items) >= 3:
                 return items
     return items
+
+
+def _subject(word):
+    last = word[-1] if word else ""
+    if "가" <= last <= "힣":
+        return "이" if (ord(last) - 0xAC00) % 28 else "가"
+    return "이(가)"
 
 
 def _row(cell):
