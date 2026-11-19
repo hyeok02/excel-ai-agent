@@ -16,16 +16,22 @@ _POINT = re.compile(r"((?:19|20)\d{2})\s*년(?:\s*(\d{1,2})\s*월)?(?:\s*(\d{1,2
 _RANGE = re.compile(rf"({_POINT.pattern})\s*(?:부터|~|∼|–|—|에서)\s*({_POINT.pattern})(?:\s*까지)?")
 # "2023년 상반기", "2024년 3분기": a half or quarter of a named year.
 _PART = re.compile(r"((?:19|20)\d{2})\s*년\s*(?:(상|하)반기|([1-4])\s*분기)")
+_SINCE = re.compile(r"((?:19|20)\d{2})\s*년\s*(?:이후|부터|이래)(?!\s*\S*\s*(?:19|20)\d{2}\s*년)")
 LOWER = {"greater_than_or_equal", "greater_than"}
 UPPER = {"less_than_or_equal", "less_than"}
 
 
 def period_filters(text, plan, table):
     """Positions of plan filters that together select exactly a period stated in text."""
-    asked = set(_periods(text))
+    asked, checked = set(_periods(text)), set()
+    # "2020년 이후 입사한": one lower bound at that year's first day, on a column of dates.
+    for match in _SINCE.finditer(text):
+        start = date(int(match.group(1)), 1, 1)
+        checked.update(index for index, item in enumerate(plan.filters)
+                       if _date_column(table, item.column_id) and item.operator in LOWER and _bound(item.value)
+                       and (_bound(item.value)[0] + timedelta(days=item.operator == "greater_than")) == start)
     if not asked:
-        return set()
-    checked = set()
+        return checked
     for column in table.columns:
         kind = _date_column(table, column.id)
         positions = [index for index, item in enumerate(plan.filters)
@@ -49,7 +55,7 @@ def _month_span(value):
 
 
 def without_periods(text):
-    return _POINT.sub(" ", _RANGE.sub(" ", _PART.sub(" ", text)))
+    return _POINT.sub(" ", _RANGE.sub(" ", _PART.sub(" ", _SINCE.sub(" ", text))))
 
 
 def _periods(text):

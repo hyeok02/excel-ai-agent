@@ -126,3 +126,16 @@ def test_a_threshold_written_with_korean_units_is_the_planned_number():
     answer = execute_tabular_query(plan(500), summary, index, "보험가액이 5백 이상인 계약은 몇 건이야?")
     assert answer is not None and "1건" in answer.answer
     assert execute_tabular_query(plan(5), summary, index, "보험가액이 5백 이상인 계약은 몇 건이야?") is None
+
+
+def test_a_negated_yes_no_column_reads_its_no():
+    from app.agent.query.tabular_query_models import TabularFilter
+    rows = [["Policy", "Flood"], ["P1", "Y"], ["P2", "N"], ["P3", "N"]]
+    summary, index = table_fixture([(1, 1, rows)])
+    table = build_query_tables(summary)[0]
+    plan = lambda value: TabularQueryPlan(operation="row_count", table_id=table.id, column_ids=[], statistic="all",
+                                          filters=[TabularFilter(column_id="B", operator="equals", value=value)])
+    ask = lambda question, value: asyncio.run(translated_filter_answer(question, summary, index, QuestionIntent(
+        False, "row_count", (), True, plan(value)), resolver=Names({"홍수": "Flood"})))
+    assert "2건" in ask("홍수 보험에 가입 안 한 계약 수는?", "N").answer
+    assert ask("홍수 보험에 가입 안 한 계약 수는?", "Y") is None

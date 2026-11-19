@@ -35,3 +35,8 @@ def test_one_years_series_are_compared_when_no_single_series_is_named():
     answer = _ask("2021년 가장 많은 에너지원은?")
     assert answer is not None and "2021년 값 중 가장 높은 항목은 Gas 1,580" in answer.answer
     assert _ask("2021년 석탄이 가장 많은 달은?") is None  # one series named: not a comparison across series
+
+
+def test_the_last_n_years_are_averaged():
+    answer = _ask("최근 2년 석탄 평균은?")
+    assert answer is not None and "최근 2년(2021년 900, 2022년 830) 평균은 865.0" in answer.answer
