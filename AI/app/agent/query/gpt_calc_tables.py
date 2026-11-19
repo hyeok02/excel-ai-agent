@@ -17,10 +17,10 @@ class TableResult:
     total: float | None  # all groups' total, when shares are stated
     grouped: tuple = ()  # the names of the columns grouped by
     parts: tuple = ()  # (part, whole) of a share of the filtered rows in all rows
+    skipped: tuple = ()  # heading rows left out (regions over their states)
 
 
-def _number(value):
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+_number = lambda value: isinstance(value, (int, float)) and not isinstance(value, bool)  # noqa: E731
 
 
 def _date_part(value, period):
@@ -62,7 +62,7 @@ def _same_number(value, wanted):
         return False
 
 
-def run_table(table, calc):
+def run_table(table, calc, headings=None):
     """TableResult, or None when a named column is not the table's or no row is left."""
     named = {column_name(column).casefold(): column for column in table.columns}
     named.update({column.id.casefold(): column for column in table.columns})
@@ -84,6 +84,9 @@ def run_table(table, calc):
         return None
     rows = [row for row in table.rows if not any(isinstance(value, str) and _TOTAL.search(value.strip())
                                                  for value in row.values.values())]
+    named = {item.value.strip().casefold() for item in calc.filters if item.op in {"eq", "contains"}}
+    skipped = tuple(label for number, label in (headings or {}).items() if label.strip().casefold() not in named)
+    rows = [row for row in rows if (headings or {}).get(row.row_number) not in skipped]
     every = rows
     rows = [row for row in rows if all(_matches(row.values.get(column.id), item, row, other)
                                        for column, item, other in filters)]
@@ -95,7 +98,7 @@ def run_table(table, calc):
             return None
         used = [column for column, _, _ in filters] + ([measure] if measure else [])
         return TableResult([("전체", part / whole * 100, None)], None, len(every), list(dict.fromkeys(used)), None,
-                           parts=(part, whole))
+                           parts=(part, whole), skipped=skipped)
     buckets = {}
     for row in rows:
         key = tuple(_date_part(row.values.get(column.id), calc.period) if calc.period != "none"
@@ -144,4 +147,4 @@ def run_table(table, calc):
     used = [column for column, _, _ in filters] + [other for _, _, other in filters if other] + groups + (
         [denominator] if denominator else []) + ([subtract] if subtract else []) + ([measure] if measure else [])
     return TableResult(shown, middle, len(rows), list(dict.fromkeys(used)), total,
-                       tuple(column_name(column) for column in groups))
+                       tuple(column_name(column) for column in groups), skipped=skipped)

@@ -65,7 +65,9 @@ def table_answer(question, plan, table, result, style, cells):
             (first, a, _), (second, b, _) = groups
             change = f" ({(b - a) / abs(a) * 100:+.2f}%)" if a else ""
             lines.append(f"{first} → {second}: {'+' if b >= a else '-'}{shown(abs(b - a), style)}{change}")
-    lines.append(f"(원본 ‘{table.sheet_name}’ 표의 {result.rows:,}개 행으로 계산)")
+    lines.append(f"(원본 ‘{table.sheet_name}’ 표의 {result.rows:,}개 행으로 계산"
+                 + (f", 상위 구분 행 {len(result.skipped)}개 제외: {', '.join(result.skipped[:3])}"
+                    + (" 등" if len(result.skipped) > 3 else "") if result.skipped else "") + ")")
     cited = [cells.get(normalize_reference(column.header_reference)) for column in result.columns]
     return _answer(question, "\n".join(lines), [cell for cell in cited if cell is not None])
 

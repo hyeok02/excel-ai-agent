@@ -40,7 +40,7 @@ class _Planner:
     def __init__(self, *plans):
         self.plans, self.notes = list(plans), []
 
-    async def plan(self, question, tables, note=""):
+    async def plan(self, question, tables, note="", groups=None):
         self.notes.append(note)
         plan = dict(self.plans.pop(0) if len(self.plans) > 1 else self.plans[0])
         if plan.get("table"):

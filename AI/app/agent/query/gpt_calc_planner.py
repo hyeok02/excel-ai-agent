@@ -22,7 +22,8 @@ read a date column); group_by groups them (period year/month groups a date colum
 measure with aggregate gives each group's value (measure null with count counts rows; count_distinct
 counts different values of measure); order and pick choose the groups that answer (nth with n=2 for
 "second largest", top with n=3 for "top 3", above_mean for "higher than average"); share adds each
-group's share of the total. Leave grand-total or subtotal rows to code; never filter them in.
+group's share of the total. Leave grand-total or subtotal rows to code; never filter them in. group_rows
+are headings over the rows below them (regions over states); code leaves them out unless a filter names one.
 A condition between two columns of a row (stock below safety stock, spent above budget) is op lt_column /
 gt_column with value naming the other column. A rate of two columns' totals (spent over budget, conversions
 over visitors) is aggregate ratio with that denominator; the share of some rows in all rows ('예' answers, one
@@ -46,7 +47,7 @@ def column_name(column):
     return " / ".join(dict.fromkeys(" ".join(str(part).split()) for part in parts if str(part).strip()))
 
 
-def catalog(tables):
+def catalog(tables, groups=None):
     listed = []
     for number, table in enumerate(tables[:MAX_TABLES]):
         columns = [{"letter": column.id, "name": column_name(column),
@@ -55,6 +56,8 @@ def catalog(tables):
         header_row = re.sub(r"^.*![A-Z]+", "", table.columns[0].header_reference) if table.columns else ""
         item = {"id": number, "sheet": table.sheet_name, "range": table.reference, "rows": len(table.rows),
                 "header_row": header_row, "columns": columns}
+        if (groups or {}).get(table.id):  # headings over the rows below them, left out unless named
+            item["group_rows"] = list(groups[table.id].values())[:30]
         if len(table.rows) <= SMALL_TABLE:  # cells can be named: [sheet!letter+row]
             item["row_values"] = [[row.row_number, *(row.values.get(column.id) for column in table.columns)]
                                   for row in table.rows]
@@ -75,13 +78,13 @@ class LangChainCalcPlanner:
             return None
         return cls(key, os.getenv("OPENAI_QA_MODEL", "gpt-4.1-2025-04-14"), _timeout())
 
-    async def plan(self, question, tables, note=""):
+    async def plan(self, question, tables, note="", groups=None):
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             model = ChatOpenAI(model=self._model, api_key=self._api_key, timeout=self._timeout, max_retries=0,
                                max_completion_tokens=2500, http_async_client=client, **_sampling())
             result = await model.with_structured_output(CalcPlan, method="json_schema").ainvoke([
                 SystemMessage(content=_SYSTEM),
                 HumanMessage(content=json.dumps({"question": question}, ensure_ascii=False)
-                             + "\n<tables>\n" + catalog(tables) + "\n</tables>"
+                             + "\n<tables>\n" + catalog(tables, groups) + "\n</tables>"
                              + (f"\n<previous_attempt_failed>{note}</previous_attempt_failed>" if note else ""))])
         return CalcPlan.model_validate(result)

@@ -12,6 +12,8 @@ from app.agent.query.tabular_numeric import numeric_summary
 from app.services.provenance import EvidenceKind
 
 MAX_DISPLAY_CATEGORIES = 30
+_PERIOD = re.compile(r"(?:19|20)\d{2}(?:\s*(?:Q[1-4]|[-./]\s*\d{1,2}|년(?:\s*\d{1,2}\s*(?:월|분기))?|H[12]))?"
+                     r"|(?:Q[1-4]|H[12])\s*(?:19|20)\d{2}|[A-Za-z]{3,9}\.?\s+(?:19|20)\d{2}", re.I)
 
 
 def aggregate_text(operation, columns, rows, statistic="all"):
@@ -49,9 +51,14 @@ def aggregate_text(operation, columns, rows, statistic="all"):
             return None, []
         lines.append(f"‘{column.display_header}’: {result}.")
         limitations.extend(limited)
+    if operation == "numeric_summary" and statistic == "sum" and len(columns) > 1 and all(
+            _PERIOD.fullmatch(" ".join(str(column.header).split())) for column in columns):
+        # Period headers (2024 Q1~Q4, 2024-03, August 2026): "2024년 매출액 합계" states their total too.
+        values = [row.values[column.id] for column in columns for row in rows]
+        formats = [row.number_formats.get(column.id, "General") for column in columns for row in rows]
+        if (total := numeric_summary(values, formats, "sum")[0]) is not None:
+            lines.append(f"‘{columns[0].display_header}’~‘{columns[-1].display_header}’ 전체: {total}.")
     return "\n".join(lines), list(dict.fromkeys(limitations))
-
-
 
 
 def scope_description(plan, table):

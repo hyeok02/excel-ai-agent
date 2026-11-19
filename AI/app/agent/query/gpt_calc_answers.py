@@ -12,6 +12,8 @@ from contextvars import ContextVar
 from app.agent.query.gpt_calc_answer_text import cells_answer, table_answer, unverified_draft
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_draft_check import source_references, source_values
+from app.agent.query.gpt_calc_checks import unused_values
+from app.agent.query.group_rows import group_rows
 from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.references import normalize_reference
@@ -71,13 +73,18 @@ async def _computed(question, summary, index, planner):
     if planner is None:
         return None
     cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
+    headings = {table.id: group_rows(table, summary) for table in tables}
     note = ""
     for _ in range(2):  # one retry, told what did not run
-        plan = await (planner.plan(question, tables, note) if note else planner.plan(question, tables))
+        plan = await planner.plan(question, tables, note, headings)
         if plan.kind == "table" and plan.table is not None and 0 <= plan.table.table < len(tables):
             from app.agent.query.gpt_calc_tables import run_table
             table = tables[plan.table.table]
-            result = await asyncio.to_thread(run_table, table, plan.table)
+            if not note and (unused := unused_values(question, table, plan.table)):
+                note = (f"The question names {unused} as written in the table, but the plan neither filters on "
+                        "nor groups by them: use them.")
+                continue
+            result = await asyncio.to_thread(run_table, table, plan.table, headings.get(table.id))
             if result is not None and (result.groups or plan.table.pick not in {"nth", "top"}):
                 return table_answer(question, plan, table, result, _style(table, result, plan.table), cells)
             note = "The table calculation named a column the table does not list, or left no row: name listed columns."

@@ -17,3 +17,13 @@ def test_a_ranking_of_days_does_not_answer_a_month_question():
                                   SimpleNamespace(values={"B": "2023-02-11T00:00:00"})])
     assert day_groups("2023년 판매금액이 가장 높은 달은?", table, "B")
     assert not day_groups("판매금액이 가장 높은 날은?", table, "B")
+
+
+def test_a_sum_over_period_columns_states_their_total():
+    from types import SimpleNamespace
+    from app.agent.query.tabular_results import aggregate_text
+    columns = [SimpleNamespace(id=letter, header=f"2024 Q{number}", display_header=f"2024 Q{number}")
+               for number, letter in enumerate("BCDE", 1)]
+    row = SimpleNamespace(values={"B": 1103, "C": 1100, "D": 1369, "E": 1346}, number_formats={}, formulas={})
+    text, _ = aggregate_text("numeric_summary", columns, [row], "sum")
+    assert "‘2024 Q1’~‘2024 Q4’ 전체: 합계 4,918" in text
