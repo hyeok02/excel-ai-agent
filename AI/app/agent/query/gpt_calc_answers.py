@@ -51,7 +51,10 @@ async def fallback_answer(question, summary, index, answer, planner=None):
 async def _computed(question, summary, index, planner):
     if summary is None or index is None:
         return None
-    tables = [table for table in build_query_tables(summary) if table.complete and table.rows]
+    every = build_query_tables(summary)
+    tables = [table for table in every if table.complete and table.rows]
+    labels = {normalize_reference(column.header_reference) for table in every for column in table.columns}
+    labels |= {normalize_reference(cell.reference) for row in index.rows if _year_row(row) for cell in row.cells}
     if not tables:
         return None
     if planner is None:
@@ -59,22 +62,33 @@ async def _computed(question, summary, index, planner):
         planner = LangChainCalcPlanner.from_environment()
     if planner is None:
         return None
-    plan = await planner.plan(question, tables)
     cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
-    if plan.kind == "table" and plan.table is not None and 0 <= plan.table.table < len(tables):
-        from app.agent.query.gpt_calc_tables import run_table
-        table = tables[plan.table.table]
-        result = await asyncio.to_thread(run_table, table, plan.table)
-        if result is None or not result.groups and plan.table.pick in {"nth", "top"}:
+    note = ""
+    for _ in range(2):  # one retry, told what did not run
+        plan = await (planner.plan(question, tables, note) if note else planner.plan(question, tables))
+        if plan.kind == "table" and plan.table is not None and 0 <= plan.table.table < len(tables):
+            from app.agent.query.gpt_calc_tables import run_table
+            table = tables[plan.table.table]
+            result = await asyncio.to_thread(run_table, table, plan.table)
+            if result is not None and (result.groups or plan.table.pick not in {"nth", "top"}):
+                return table_answer(question, plan, table, result, _style(table, result, plan.table), cells)
+            note = "The table calculation named a column the table does not list, or left no row: name listed columns."
+        elif plan.kind == "cells" and plan.cells is not None and plan.cells.items:
+            computed = [(item, evaluate(item.expression, cells, labels)) for item in plan.cells.items]
+            if all(found is not None for _, found in computed):
+                return cells_answer(question, plan, computed)
+            bad = [item.expression for item, found in computed if found is None][:5]
+            note = (f"These expressions named a header cell or a cell holding no number: {bad}. "
+                    "Use the cells of the listed row_values (column letter + row number), never the header_row.")
+        else:
             return None
-        style = _style(table, result, plan.table)
-        return table_answer(question, plan, table, result, style, cells)
-    if plan.kind == "cells" and plan.cells is not None and plan.cells.items:
-        computed = [(item, evaluate(item.expression, cells)) for item in plan.cells.items]
-        if any(found is None for _, found in computed):
-            return None  # a reference that is not a number cell: nothing is guessed
-        return cells_answer(question, plan, computed)
     return None
+
+def _year_row(row):
+    """A row of consecutive years (2021, 2022, 2023) names columns even where no table header was read."""
+    years = [cell.value for cell in row.cells if isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool)]
+    return len(years) >= 3 and all(float(year).is_integer() and 1900 <= year <= 2100 for year in years) \
+        and all(later - earlier == 1 for earlier, later in zip(years, years[1:]))
 
 
 def _style(table, result, calc):

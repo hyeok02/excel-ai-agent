@@ -3,7 +3,7 @@ import re
 
 from app.agent.query.cell_display import _display_cell
 from app.agent.query.excel_number_formats import parse_number_format
-from app.agent.query.gpt_calc_cells import written
+from app.agent.query.gpt_calc_cells import result_style, written
 from app.agent.query.gpt_calc_draft_check import cites_only_seen_cells, numbers_hold
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.metric_observation_render import _evidence
@@ -73,7 +73,10 @@ def cells_answer(question, plan, computed):
     elif keep in {"positive", "negative"}:
         lines.append(f"해당 항목 {len(kept)}개 (계산한 {len(computed)}개 중):")
     for item, (value, used) in (kept or computed)[:MAX_LINES]:
-        lines.append(f"· {item.label}: {written(item.expression, used)} = {plain(value)}")
+        style = result_style(item.expression, used)  # a difference of rates is in points: 0.7%p
+        result = (_display_cell(value, style) + ("p" if "%" in style and len(used) > 1 else "")
+                  if style not in (None, "General") else plain(value))
+        lines.append(f"· {item.label}: {written(item.expression, used)} = {result}")
     used = [cell for _, (_, items) in computed for _, cell in items]
     return _answer(question, "\n".join(lines), list(dict.fromkeys(used)))
 

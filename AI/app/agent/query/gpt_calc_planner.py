@@ -1,5 +1,6 @@
 """Ask GPT which calculation answers a question, given the workbook's tables (never their totals)."""
 import json
+import re
 import os
 from pathlib import Path
 
@@ -22,7 +23,9 @@ measure with aggregate gives each group's value (measure null with count counts 
 counts different values of measure); order and pick choose the groups that answer (nth with n=2 for
 "second largest", top with n=3 for "top 3", above_mean for "higher than average"); share adds each
 group's share of the total. Leave grand-total or subtotal rows to code; never filter them in.
-kind=cells: arithmetic over cell references [Sheet!B5] of the small tables whose rows are listed,
+kind=cells: arithmetic over cell references [Sheet!B5] of the small tables whose rows are listed
+(row_values: [row number, then each column's value]; a value's cell is the column letter + that row
+number; the header_row only names the columns, e.g. a year header "2022" is a label, never an operand),
 one item per value the question needs, e.g. a share [Sheet!E9]/[Sheet!B9]*100, or one item per month
 [2024!B5]-[2023!B5]; keep says which items answer (negative for "decreased", max for "largest").
 When a listed row already holds what is asked (a "U.S. Total" or "All Persons" row for a national
@@ -43,8 +46,9 @@ def catalog(tables):
         columns = [{"letter": column.id, "name": column_name(column),
                     "samples": [str(value)[:40] for value in column.sample_values[:MAX_SAMPLES]]}
                    for column in table.columns]
+        header_row = re.sub(r"^.*![A-Z]+", "", table.columns[0].header_reference) if table.columns else ""
         item = {"id": number, "sheet": table.sheet_name, "range": table.reference, "rows": len(table.rows),
-                "columns": columns}
+                "header_row": header_row, "columns": columns}
         if len(table.rows) <= SMALL_TABLE:  # cells can be named: [sheet!letter+row]
             item["row_values"] = [[row.row_number, *(row.values.get(column.id) for column in table.columns)]
                                   for row in table.rows]
@@ -65,12 +69,13 @@ class LangChainCalcPlanner:
             return None
         return cls(key, os.getenv("OPENAI_QA_MODEL", "gpt-4.1-2025-04-14"), _timeout())
 
-    async def plan(self, question, tables):
+    async def plan(self, question, tables, note=""):
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             model = ChatOpenAI(model=self._model, api_key=self._api_key, timeout=self._timeout, max_retries=0,
                                max_completion_tokens=2500, http_async_client=client, **_sampling())
             result = await model.with_structured_output(CalcPlan, method="json_schema").ainvoke([
                 SystemMessage(content=_SYSTEM),
                 HumanMessage(content=json.dumps({"question": question}, ensure_ascii=False)
-                             + "\n<tables>\n" + catalog(tables) + "\n</tables>")])
+                             + "\n<tables>\n" + catalog(tables) + "\n</tables>"
+                             + (f"\n<previous_attempt_failed>{note}</previous_attempt_failed>" if note else ""))])
         return CalcPlan.model_validate(result)

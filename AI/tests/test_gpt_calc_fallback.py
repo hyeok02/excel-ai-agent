@@ -26,8 +26,8 @@ def _workbook():
                                       ("2023-03-03", "West", "LA", 90), ("2023-04-03", "North", "Oslo", 10)]:
         sales.append([day, region, city, amount])
     months = book.create_sheet("Months")
-    months.append(["월", "2023", "2024"])
-    for row in [["1월", 10, 12], ["2월", 20, 15], ["3월", 30, 31]]:
+    months.append(["월", 2023, 2024, 2025])
+    for row in [["1월", 10, 12, 9], ["2월", 20, 15, 9], ["3월", 30, 31, 9]]:
         months.append(row)
     stream = BytesIO()
     book.save(stream)
@@ -37,12 +37,12 @@ def _workbook():
 
 
 class _Planner:
-    def __init__(self, plan):
-        self.plan_value, self.seen = plan, None
+    def __init__(self, *plans):
+        self.plans, self.notes = list(plans), []
 
-    async def plan(self, question, tables):
-        self.seen = tables
-        plan = dict(self.plan_value)
+    async def plan(self, question, tables, note=""):
+        self.notes.append(note)
+        plan = dict(self.plans.pop(0) if len(self.plans) > 1 else self.plans[0])
         if plan.get("table"):
             plan["table"] = {**plan["table"], "table": [table.sheet_name for table in tables].index("Sales")}
         return CalcPlan.model_validate(plan)
@@ -53,9 +53,9 @@ def _table(**changes):
             "order": "none", "pick": "all", "n": 0, "share": False, **changes}
 
 
-def _ask(plan):
+def _ask(*plans):
     summary, index = _workbook()
-    return asyncio.run(fallback_answer("q", summary, index, NOTHING, _Planner(plan)))
+    return asyncio.run(fallback_answer("q", summary, index, NOTHING, _Planner(*plans)))
 
 
 def test_second_largest_group_is_computed_over_every_row():
@@ -113,3 +113,12 @@ def test_clarifications_are_left_and_a_declining_draft_is_not_shown():
     assert shown.answer.startswith("[GPT 답변 · 수치 검산]") and shown.status == "limited"
     invented = QuestionAnswerDraft(answer="3월에 849에서 783으로 70 줄었습니다.", confidence=0.8)
     assert unverified_draft("q", NOTHING, invented, [849.0, 783.0]) is None
+
+
+def test_a_header_cell_is_never_an_operand_and_the_plan_is_retried_once():
+    header = {"kind": "cells", "method": "헤더를 뺌", "table": None,
+              "cells": {"items": [{"label": "변화", "expression": "[Months!C1]-[Months!B1]"}], "keep": "all"}}
+    values = {**header, "method": "2024-2023", "cells": {"items": [{"label": "1월", "expression": "[Months!C2]-[Months!B2]"}],
+                                                        "keep": "all"}}
+    assert _ask(header) is NOTHING
+    assert "· 1월: Months!C2(12)-Months!B2(10) = 2" in _ask(header, values).answer
