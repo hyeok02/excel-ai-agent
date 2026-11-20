@@ -8,6 +8,7 @@ from app.services.insights.facts.horizontal_year_header import unlabeled_year_he
 _YEAR = re.compile(r"(?:(mid)[-\s])?((?:19|20|21)\d{2})(년)?", re.I)
 # A quarter as a header writes it: 2023 Q1, 2023Q1, Q1 2023, 2023년 1분기, 2023 1Q.
 _QUARTER = re.compile(r"((?:19|20|21)\d{2})\s*년?\s*(?:Q([1-4])|([1-4])\s*(?:분기|Q))|Q([1-4])\s*((?:19|20|21)\d{2})", re.I)
+YEARLESS = 1904  # the year a year-less axis (Q1~Q4, 1월~12월) is placed in; never written
 _YEAR_LABEL = re.compile(r"^(?:year|years|calendar year|연도|년도|연간)$", re.I)
 _UNIT = re.compile(
     r"(?:percent(?:age)?|%|(?:[A-Z]{3}|cents?|pence|dollars?|euros?|원|달러)\s+per\s+[A-Za-z]+"
@@ -52,10 +53,17 @@ def axis_reading(row, cells, rows):
             result[column] = parsed or datetime(quarter[0], quarter[1] * 3 - 2, 1)
         elif annual and (contextual_years or annual[1]):
             result[column] = datetime(annual[0], 7 if annual[2] else 1, 1)
+    if not result:  # Q1~Q4 or 1월~12월 without a year: an order within one year, written as the source does
+        months = {column: month for column, cell in cells.items() if (month := _yearless(cell.get("value")))}
+        ordered = [months[column] for column in sorted(months)]
+        if len(months) >= 3 and ordered == sorted(set(ordered)):
+            result = {column: datetime(YEARLESS, month, 1) for column, month in months.items()}
     return result, inferred
 
 
 def period_label(value):
+    if _yearless(value):
+        return " ".join(str(value).split())
     if quarter := _quarter(value):
         return f"{quarter[0]}년 {quarter[1]}분기"
     annual = _year(value)
@@ -92,6 +100,16 @@ def _quarter(value):
         return None
     year, quarter = (match[1], match[2] or match[3]) if match[1] else (match[5], match[4])
     return int(year), int(quarter)
+
+
+def _yearless(value):
+    """The month a year-less period header starts in: Q3 is 7, 5월 is 5; else None."""
+    text = str(value).strip() if isinstance(value, str) else ""
+    if match := re.fullmatch(r"Q([1-4])|([1-4])\s*분기", text, re.I):
+        return int(match[1] or match[2]) * 3 - 2
+    if match := re.fullmatch(r"(1[0-2]|[1-9])\s*월", text):
+        return int(match[1])
+    return None
 
 
 def _year(value):

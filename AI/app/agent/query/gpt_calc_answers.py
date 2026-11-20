@@ -14,7 +14,7 @@ from openpyxl.utils import range_boundaries
 from app.agent.query.gpt_calc_answer_text import cells_answer, table_answer, unverified_draft
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_draft_check import source_references, source_values
-from app.agent.query.gpt_calc_checks import unused_values
+from app.agent.query.gpt_calc_checks import fitting_table, plan_problem, with_cell_values
 from app.agent.query.group_rows import group_rows
 from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -85,14 +85,14 @@ async def _computed(question, summary, index, planner):
     note = ""
     for _ in range(2):  # one retry, told what did not run
         plan = await planner.plan(question, tables, note, headings)
-        if plan.kind == "table" and plan.table is not None and 0 <= plan.table.table < len(tables):
+        if plan.kind == "table" and plan.table is not None and (
+                table := fitting_table(tables, plan.table.table, plan.table)) is not None:
             from app.agent.query.gpt_calc_tables import run_table
-            table = tables[plan.table.table]
-            if not note and (unused := unused_values(question, table, plan.table)):
-                note = (f"The question names {unused} as written in the table, but the plan neither filters on "
-                        "nor groups by them: use them.")
+            if not note and (problem := plan_problem(question, table, plan.table)):
+                note = problem
                 continue
-            result = await asyncio.to_thread(run_table, table, plan.table, headings.get(table.id))
+            calc = with_cell_values(plan.table, cells)  # "> [Table!B66]": the U.S. Total row's value
+            result = await asyncio.to_thread(run_table, table, calc, headings.get(table.id))
             echo = plan.table.aggregate == "count" and len(result.groups) == 1 and result.groups[0][1] == 1 \
                 and result.groups[0][0] != "전체" if result is not None else False  # one name back, no figure
             if result is not None and not echo and (result.groups or plan.table.pick not in {"nth", "top"}):

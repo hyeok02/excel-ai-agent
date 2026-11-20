@@ -3,6 +3,8 @@ import ast
 import operator
 import re
 
+from openpyxl.utils import get_column_letter, range_boundaries
+
 from app.agent.query.cell_display import _display_cell
 from app.agent.query.references import normalize_reference
 
@@ -50,13 +52,39 @@ def evaluate(expression, cells, labels=frozenset()):
         return variable
 
     try:
-        text = _REFERENCE.sub(name, expression)
+        text = _REFERENCE.sub(name, _expanded(expression, cells, labels))
         if not used or re.search(r"[A-Za-z_]\w*\s*\(|\*\*|//|%", text):
             return None  # no cell, or a function call / power the arithmetic does not allow
         result = _evaluate(ast.parse(text, mode="eval"), names)
     except (KeyError, ValueError, SyntaxError, ZeroDivisionError, TypeError):
         return None
     return float(result), used
+
+
+_RANGE_CALL = re.compile(r"\b(SUM|AVERAGE)\s*\(\s*\[?((?:'[^']+'|[^\s\[\]()!]+)![A-Za-z]{1,3}\d+:[A-Za-z]{1,3}\d+)\]?\s*\)",
+                         re.I)
+MAX_RANGE = 400
+
+
+def _expanded(expression, cells, labels):
+    """SUM(2023!B4:B15) written out as ([2023!B4]+…+[2023!B15]) over its number cells; AVERAGE divided by their count."""
+    def expand(match):
+        sheet, _, area = match.group(2).rpartition("!")
+        left, top, right, bottom = range_boundaries(area)
+        if (right - left + 1) * (bottom - top + 1) > MAX_RANGE:
+            raise ValueError("range too large")
+        listed = []
+        for row in range(top, bottom + 1):
+            for column in range(left, right + 1):
+                reference = f"{sheet}!{get_column_letter(column)}{row}"
+                cell = cells.get(normalize_reference(f"'{sheet.strip(chr(39))}'!{get_column_letter(column)}{row}"))
+                if cell is not None and _number(cell.value) and normalize_reference(cell.reference) not in labels:
+                    listed.append(f"[{reference}]")
+        if not listed:
+            raise ValueError("no number in the range")
+        total = "+".join(listed)
+        return f"({total})" if match.group(1).upper() == "SUM" else f"(({total})/{len(listed)})"
+    return _RANGE_CALL.sub(expand, expression)
 
 
 def written(expression, used):

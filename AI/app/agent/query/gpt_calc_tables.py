@@ -1,9 +1,8 @@
 """Run a GPT-chosen table calculation over every row of one complete source table."""
-import re
 from dataclasses import dataclass
-from datetime import date, datetime
 from statistics import mean
 
+from app.agent.query.gpt_calc_filters import _ALTERNATIVE, _date_part, _matches, _number
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.tabular_subtotal_rows import _TOTAL
 
@@ -18,48 +17,7 @@ class TableResult:
     grouped: tuple = ()  # the names of the columns grouped by
     parts: tuple = ()  # (part, whole) of a share of the filtered rows in all rows
     skipped: tuple = ()  # heading rows left out (regions over their states)
-
-
-_number = lambda value: isinstance(value, (int, float)) and not isinstance(value, bool)  # noqa: E731
-
-
-def _date_part(value, period):
-    if isinstance(value, (datetime, date)):
-        text = value.isoformat()
-    elif isinstance(value, str) and re.match(r"\d{4}-\d{2}", value):
-        text = value
-    else:
-        return None
-    return text[:4] if period == "year" else text[:7]
-
-
-def _matches(value, item, row=None, other=None):
-    op, wanted = item.op, item.value.strip()
-    if op.endswith("_column"):  # 재고수량 < 안전재고: two values of one row
-        compared = row.values.get(other.id) if row is not None and other is not None else None
-        return _number(value) and _number(compared) and {"gt_column": value > compared, "ge_column": value >= compared,
-                                                         "lt_column": value < compared, "le_column": value <= compared}[op]
-    if op in {"year", "month"}:
-        return _date_part(value, op) == wanted
-    if op in {"gt", "ge", "lt", "le"}:
-        try:
-            limit = float(wanted.replace(",", ""))
-        except ValueError:
-            return False
-        return _number(value) and {"gt": value > limit, "ge": value >= limit,
-                                   "lt": value < limit, "le": value <= limit}[op]
-    text = " ".join(str(value if value is not None else "").split()).casefold()
-    if op == "contains":
-        return wanted.casefold() in text
-    same = text == wanted.casefold() or _number(value) and _same_number(value, wanted)
-    return same if op == "eq" else not same
-
-
-def _same_number(value, wanted):
-    try:
-        return abs(float(wanted.replace(",", "")) - value) < 1e-9
-    except ValueError:
-        return False
+    by_column: tuple = ()  # (column, value) of one group's columns added together: Q1 … Q4, Mid-2011 … Mid-2024
 
 
 def run_table(table, calc, headings=None):
@@ -68,12 +26,13 @@ def run_table(table, calc, headings=None):
              **{column.id.casefold(): column for column in table.columns}}
     find = lambda name: named.get(" ".join(str(name).split()).casefold())  # noqa: E731
     filters = [(find(item.column), item, find(item.value) if item.op.endswith("_column") else None)
-               for item in calc.filters]
+               for item in calc.filters if item.value.strip() != "*"]  # "*": no condition
     groups = [find(name) for name in calc.group_by]
     measure = find(calc.measure) if calc.measure else None
     denominator = find(calc.denominator) if calc.aggregate == "ratio" and calc.denominator else None
     subtract = find(calc.subtract) if calc.subtract else None
-    if calc.subtract and subtract is None:
+    added = [find(name) for name in calc.add if find(name) is not measure]
+    if calc.subtract and subtract is None or None in added or added and measure is None:
         return None
     if any(column is None or item.op.endswith("_column") and other is None for column, item, other in filters) \
             or None in groups or calc.measure and measure is None or calc.denominator and denominator is None:
@@ -88,8 +47,12 @@ def run_table(table, calc, headings=None):
     skipped = tuple(label for number, label in (headings or {}).items() if label.strip().casefold() not in asked)
     rows = [row for row in rows if (headings or {}).get(row.row_number) not in skipped]
     every = rows
-    rows = [row for row in rows if all(_matches(row.values.get(column.id), item, row, other)
-                                       for column, item, other in filters)]
+    # Conditions on one column alike ("month 07", "month 08", "month 09") are alternatives: 3분기.
+    alike = {}
+    for column, item, other in filters:
+        alike.setdefault((column.id, item.op) if item.op in _ALTERNATIVE else id(item), []).append((column, item, other))
+    rows = [row for row in rows if all(any(_matches(row.values.get(column.id), item, row, other)
+                                           for column, item, other in group) for group in alike.values())]
     if within:
         amount = (lambda chosen: len(chosen)) if measure is None else (
             lambda chosen: sum(row.values.get(measure.id) for row in chosen if _number(row.values.get(measure.id))))
@@ -112,6 +75,9 @@ def run_table(table, calc, headings=None):
             values[key] = len(members)
             continue
         cells = [row.values.get(measure.id) for row in members]
+        if added:  # each row's total over its columns: Q1+Q2+Q3+Q4
+            cells = [value + sum(row.values.get(column.id) for column in added) if _number(value) and all(
+                _number(row.values.get(column.id)) for column in added) else None for value, row in zip(cells, members)]
         if subtract is not None:  # each row's change: 2026 minus 2025 of the same row
             cells = [value - row.values.get(subtract.id) if _number(value) and _number(row.values.get(subtract.id))
                      else None for value, row in zip(cells, members)]
@@ -143,8 +109,11 @@ def run_table(table, calc, headings=None):
     elif middle is not None:
         items = [item for item in items if (item[1] > middle if calc.pick == "above_mean" else item[1] < middle)]
     total = sum(values.values()) if calc.share else None
+    by_column = tuple((column_name(column), sum(value for row in buckets[items[0][0]]
+                                                                     if _number(value := row.values.get(column.id))))
+                      for column in [measure, *added]) if added and len(items) == 1 and calc.aggregate == "sum" else ()
     shown = [(" · ".join(key) or "전체", value, value / total * 100 if total else None) for key, value in items]
     used = [column for column, _, _ in filters] + [other for _, _, other in filters if other] + groups + (
-        [denominator] if denominator else []) + ([subtract] if subtract else []) + ([measure] if measure else [])
+        [denominator] if denominator else []) + ([subtract] if subtract else []) + added + ([measure] if measure else [])
     return TableResult(shown, middle, len(rows), list(dict.fromkeys(used)), total,
-                       tuple(column_name(column) for column in groups), skipped=skipped)
+                       tuple(column_name(column) for column in groups), skipped=skipped, by_column=by_column)

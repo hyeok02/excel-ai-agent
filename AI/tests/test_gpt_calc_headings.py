@@ -42,7 +42,7 @@ class _Planner:
 def _plan(filters, group_by=("Area",), measure=None):
     return {"kind": "table", "method": "m", "cells": None, "table": {
         "table": 0, "filters": filters, "group_by": list(group_by), "period": "none", "measure": measure,
-        "aggregate": "sum" if measure else "count", "denominator": None, "subtract": None, "order": "none", "pick": "all", "n": 0,
+        "aggregate": "sum" if measure else "count", "denominator": None, "add": [], "subtract": None, "order": "none", "pick": "all", "n": 0,
         "share": False}}
 
 
@@ -77,3 +77,23 @@ def test_a_named_range_keeps_the_calculation_inside_it_and_a_name_list_keeps_a_s
     kept = asyncio.run(fallback_answer("30 넘는 곳은?", summary, index, stated,
                                        _Planner(_plan([{"column": "Price", "op": "gt", "value": "30"}]))))
     assert kept is stated
+
+
+def test_a_styled_last_row_heads_nothing():
+    from app.agent.query.group_rows import group_rows
+    from app.agent.query.tabular_catalog import build_query_tables
+    book = Workbook()
+    for row in [["Month", "Beds"], *[[f"M{number}", number] for number in range(1, 8)]]:
+        book.active.append(row)
+    book.active.cell(book.active.max_row, 1).fill = PatternFill("solid", fgColor="FFEBF2FA")  # the latest month
+    stream = BytesIO()
+    book.save(stream)
+    summary = parse_workbook("beds.xlsx", stream.getvalue())
+    assert group_rows(build_query_tables(summary)[0], summary) == {}
+
+
+def test_columns_added_without_a_group_are_sent_back_as_cells():
+    plan = _plan([{"column": "Area", "op": "eq", "value": "Maine"}], ())
+    plan["table"]["add"] = ["Price"]
+    _, planner = _ask("Maine 추이는?", plan, _plan([{"column": "Area", "op": "eq", "value": "Maine"}], measure="Price"))
+    assert "kind=cells" in planner.notes[1]

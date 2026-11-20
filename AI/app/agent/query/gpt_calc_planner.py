@@ -28,8 +28,12 @@ A condition between two columns of a row (stock below safety stock, spent above 
 gt_column with value naming the other column. A rate of two columns' totals (spent over budget, conversions
 over visitors) is aggregate ratio with that denominator; the share of some rows in all rows ('예' answers, one
 warehouse's stock) is aggregate ratio with those rows filtered, no group_by and denominator null. A change between two columns of each row (August
-2026 against August 2025) is measure minus subtract. Records meeting a condition are listed by grouping
-them by the column naming them (aggregate count, or the measure asked).
+2026 against August 2025) is measure minus subtract; a total over several columns of each row (yearly
+complaints from Q1..Q4 columns) is measure plus add. One row's values across columns (a trend over year
+columns) are kind=cells, one item per column, never add. Records meeting a condition are listed by grouping
+them by the column naming them (aggregate count, or the measure asked). To compare with one row's value
+(above the U.S. Total, below the average row), write the filter value as that cell, e.g. "[Table_5_06_A!B66]".
+When the things compared are column headers of one row (energy sources as columns), use kind=cells.
 kind=cells: arithmetic over cell references [Sheet!B5] of the small tables whose rows are listed
 (row_values: [row number, then each column's value]; a value's cell is the column letter + that row
 number; the header_row only names the columns, e.g. a year header "2022" is a label, never an operand),
@@ -44,8 +48,10 @@ method: one short Korean sentence describing the calculation, naming columns as 
 
 def column_name(column):
     """A column's name with its parent headers ("Residential / August 2026"), as GPT must write it."""
-    parts = [label for _, label in column.header_path if label] + [column.header]
-    return " / ".join(dict.fromkeys(" ".join(str(part).split()) for part in parts if str(part).strip()))
+    header = " ".join(str(column.header).split())
+    parents = [" ".join(str(label).split()) for _, label in column.header_path if label and str(label).strip()]
+    # A parent the header already starts with ("2024" of "2024 상반기") is not named twice.
+    return " / ".join(dict.fromkeys([*(part for part in parents if not header.startswith(part)), header]))
 
 
 def catalog(tables, groups=None):

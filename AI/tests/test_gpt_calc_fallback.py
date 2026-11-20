@@ -44,12 +44,13 @@ class _Planner:
         self.notes.append(note)
         plan = dict(self.plans.pop(0) if len(self.plans) > 1 else self.plans[0])
         if plan.get("table"):
-            plan["table"] = {**plan["table"], "table": [table.sheet_name for table in tables].index("Sales")}
+            plan["table"] = {**plan["table"], "table": [table.sheet_name for table in tables].index("Sales")} if any(
+                table.sheet_name == "Sales" for table in tables) else plan["table"]
         return CalcPlan.model_validate(plan)
 
 
 def _table(**changes):
-    return {"table": 0, "filters": [], "group_by": [], "period": "none", "measure": "Amount", "aggregate": "sum", "denominator": None, "subtract": None,
+    return {"table": 0, "filters": [], "group_by": [], "period": "none", "measure": "Amount", "aggregate": "sum", "denominator": None, "add": [], "subtract": None,
             "order": "none", "pick": "all", "n": 0, "share": False, **changes}
 
 
