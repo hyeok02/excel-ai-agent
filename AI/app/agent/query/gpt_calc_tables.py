@@ -1,5 +1,6 @@
 """Run a GPT-chosen table calculation over every row of one complete source table."""
 from dataclasses import dataclass
+from datetime import datetime, time
 from statistics import mean
 
 from app.agent.query.gpt_calc_filters import _ALTERNATIVE, _date_part, _matches, _number
@@ -66,7 +67,7 @@ def run_table(table, calc, headings=None):
     for row in rows:
         key = tuple(_date_part(row.values.get(column.id), calc.period) if calc.period != "none"
                     and _date_part(row.values.get(column.id), calc.period) else
-                    " ".join(str(row.values.get(column.id) if row.values.get(column.id) is not None else "빈칸").split())
+                    _label(row.values.get(column.id))
                     for column in groups)
         buckets.setdefault(key, []).append(row)
     values = {}
@@ -117,3 +118,11 @@ def run_table(table, calc, headings=None):
         [denominator] if denominator else []) + ([subtract] if subtract else []) + added + ([measure] if measure else [])
     return TableResult(shown, middle, len(rows), list(dict.fromkeys(used)), total,
                        tuple(column_name(column) for column in groups), skipped=skipped, by_column=by_column)
+
+
+def _label(value):
+    """A group's name as written: a day without a time is 2024-10-21, not 2024-10-21T00:00:00."""
+    if isinstance(value, datetime) and value.time() == time():
+        value = value.date()
+    text = "빈칸" if value is None else " ".join(str(value).split())
+    return text.removesuffix("T00:00:00") if len(text) == 19 and text[10:] == "T00:00:00" else text

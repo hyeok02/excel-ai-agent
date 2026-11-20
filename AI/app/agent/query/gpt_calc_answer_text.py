@@ -102,7 +102,7 @@ def cells_answer(question, plan, computed):
         lines.append(f"해당 항목 {len(kept)}개 (계산한 {len(computed)}개 중):")
     for item, (value, used) in (kept or computed)[:MAX_LINES]:
         style = result_style(item.expression, used)  # a difference of rates is in points: 0.7%p
-        result = (_display_cell(value, style) + ("p" if "%" in style and len(used) > 1 else "")
+        result = (_display_cell(value, style) + ("p" if "%" in style and re.search(r"\]\s*-", item.expression) else "")
                   if style not in (None, "General") else plain(value) + ("%" if _PERCENT.search(item.expression) else ""))
         lines.append(f"· {item.label}: {written(item.expression, used)} = {result}")
     used = [cell for _, (_, items) in computed for _, cell in items]

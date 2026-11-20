@@ -97,4 +97,7 @@ def written(expression, used):
 def result_style(expression, used):
     """A sum or difference of cells in one format is shown in it (5.0% - 4.7% = 0.3%); else plainly."""
     styles = {cell.number_format for _, cell in used}
-    return next(iter(styles)) if len(styles) == 1 and not re.search(r"[*/]", expression) else None
+    # An average written out, (B2+C2+D2)/3, stays in its cells' format: 19.7%, not 0.2.
+    inner = re.fullmatch(r"\s*\((.*)\)\s*/\s*\d+(?:\.\d+)?\s*", expression)
+    return next(iter(styles)) if len(styles) == 1 and not re.search(r"[*/]", inner.group(1) if inner else expression) \
+        else None
