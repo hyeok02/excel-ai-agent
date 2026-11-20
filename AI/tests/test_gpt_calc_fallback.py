@@ -78,7 +78,7 @@ def test_years_are_compared_and_distinct_values_counted():
 def test_groups_above_the_mean_and_shares():
     answer = _ask({"kind": "table", "method": "City별 합계, 평균 초과", "cells": None,
                    "table": _table(group_by=["City"], order="desc", pick="above_mean", share=True)})
-    assert "그룹 평균 85보다 높은 항목 2개" in answer.answer and "Boston: 170 (50.00%)" in answer.answer
+    assert "그룹 평균 85보다 높은 항목 2개" in answer.answer and "Boston: 170 (50.00%, 2건)" in answer.answer
 
 
 def test_cells_are_combined_from_their_own_values_and_filtered():

@@ -1,9 +1,7 @@
 """The last resort for a question nothing answered: GPT chooses a calculation, code runs it.
 
-Before, such a question ended in "현재 원본 근거로 확인 가능한 답변이 없습니다" although GPT had
-seen only 30 searched rows and was not allowed to calculate. Now GPT names the calculation over the
-whole table (or over cells it cites), code computes it from the source, and the answer states the
-calculation so it can be checked. If no calculation runs, GPT's own unverified draft is shown, marked.
+GPT names the calculation over the whole table (or over cells it cites), code computes it from the
+source, and the answer states the calculation so it can be checked. If none runs, GPT's draft is shown, marked.
 Questions answered before, and questions that ask back with options, never reach this.
 """
 import asyncio
@@ -14,7 +12,7 @@ from openpyxl.utils import range_boundaries
 from app.agent.query.gpt_calc_answer_text import cells_answer, table_answer, unverified_draft
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_draft_check import source_references, source_values
-from app.agent.query.gpt_calc_checks import fitting_table, plan_problem, with_cell_values
+from app.agent.query.gpt_calc_checks import fitting_table, plan_problem, unlisted_note, with_cell_values
 from app.agent.query.group_rows import group_rows
 from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -40,6 +38,7 @@ def keep_draft(draft, execution):
 
 # Answers written by GPT from about 30 searched rows: totals, rates and lists over a whole table need
 # every row, so a calculation over the table is preferred when one runs.
+_UNLISTED = "The table calculation named a column the table does not list, or left no row: name listed columns."
 _SEARCHED = {"search_workbook_data", "inspect_semantic_structure", "recover_formula_values"}
 
 
@@ -90,8 +89,8 @@ async def _computed(question, summary, index, planner):
             raise_for_quota_exhaustion(exception)
             note = "The previous plan was cut off at the length limit: write a short plan with few filters."
             continue
-        if plan.kind == "table" and plan.table is not None and (
-                table := fitting_table(tables, plan.table.table, plan.table)) is not None:
+        table = fitting_table(tables, plan.table.table, plan.table) if plan.kind == "table" and plan.table else None
+        if plan.kind == "table" and plan.table is not None and table is not None:
             from app.agent.query.gpt_calc_tables import run_table
             if not note and (problem := plan_problem(question, table, plan.table)):
                 note = problem
@@ -102,7 +101,7 @@ async def _computed(question, summary, index, planner):
                 and result.groups[0][0] != "전체" if result is not None else False  # one name back, no figure
             if result is not None and not echo and (result.groups or plan.table.pick not in {"nth", "top"}):
                 return table_answer(question, plan, table, result, _style(table, result, plan.table), cells)
-            note = "The table calculation named a column the table does not list, or left no row: name listed columns."
+            note = _UNLISTED
         elif plan.kind == "cells" and plan.cells is not None and plan.cells.items:
             computed = [(item, evaluate(item.expression, cells, labels)) for item in plan.cells.items]
             if all(found is not None for _, found in computed):
@@ -110,6 +109,8 @@ async def _computed(question, summary, index, planner):
             bad = [item.expression for item, found in computed if found is None][:5]
             note = (f"These expressions named a header cell or a cell holding no number: {bad}. "
                     "Use the cells of the listed row_values (column letter + row number), never the header_row.")
+        elif plan.kind == "table" and plan.table is not None:  # a column no table lists: told, asked once more
+            note = unlisted_note(tables, plan.table.table, plan.table) or _UNLISTED
         else:
             return None
     return None

@@ -34,11 +34,17 @@ columns) are kind=cells, one item per column, never add. Records meeting a condi
 them by the column naming them (aggregate count, or the measure asked). To compare with one row's value
 (above the U.S. Total, below the average row), write the filter value as that cell, e.g. "[Table_5_06_A!B66]".
 When the things compared are column headers of one row (energy sources as columns), use kind=cells.
+Asked for a value and the row holding it per group (each class's top student), use max or min with name_by.
+The mean or sum of the top n is pick top with then. Which category grew more between periods: group_by the
+category and the date with period, and change. A share of rows within a scope ('강남점' days at least 200만원)
+marks the scope's filter scope=true. Asked how many and how much at once, compute the amount: the rows counted
+are stated with it. Days between two date columns are measure minus subtract.
 kind=cells: arithmetic over cell references [Sheet!B5] of the small tables whose rows are listed
 (row_values: [row number, then each column's value]; a value's cell is the column letter + that row
 number; the header_row only names the columns, e.g. a year header "2022" is a label, never an operand),
 one item per value the question needs, e.g. a share [Sheet!E9]/[Sheet!B9]*100, or one item per month
-[2024!B5]-[2023!B5]; when two values are compared, add an item for their difference; keep says which items answer (negative for "decreased", max for "largest").
+[2024!B5]-[2023!B5]; when two values are compared, add an item for their difference; keep says which items answer (negative for "decreased", max for "largest", above with threshold 60 for "over 60%",
+in the items' own scale).
 When a listed row already holds what is asked (a "U.S. Total" or "All Persons" row for a national
 figure), point kind=cells at that cell instead of recomputing it from rows that mix levels.
 kind=none when no calculation over these tables answers: the question asks why, asks for a summary, highlights

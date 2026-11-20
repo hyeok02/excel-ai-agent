@@ -1,10 +1,12 @@
 """Run a GPT-chosen table calculation over every row of one complete source table."""
-from dataclasses import dataclass
-from datetime import datetime, time
-from statistics import mean
+import re
+from dataclasses import dataclass, field
+from statistics import mean, median
 
 from app.agent.query.gpt_calc_filters import _ALTERNATIVE, _date_part, _matches, _number
+from app.agent.query.gpt_calc_picks import changes, column_totals, holders, picked, then_value
 from app.agent.query.gpt_calc_planner import column_name
+from app.agent.query.gpt_calc_values import _label, _minus, _row_name
 from app.agent.query.tabular_subtotal_rows import _TOTAL
 
 
@@ -19,6 +21,9 @@ class TableResult:
     parts: tuple = ()  # (part, whole) of a share of the filtered rows in all rows
     skipped: tuple = ()  # heading rows left out (regions over their states)
     by_column: tuple = ()  # (column, value) of one group's columns added together: Q1 … Q4, Mid-2011 … Mid-2024
+    then: float | None = None  # the sum or mean of the groups picked (상위 3일의 평균)
+    changes: tuple = ()  # (category, first period, value, last period, value) per category
+    sizes: dict = field(default_factory=dict)  # each group's rows, stated with shares
 
 
 def run_table(table, calc, headings=None):
@@ -30,16 +35,21 @@ def run_table(table, calc, headings=None):
                for item in calc.filters if item.value.strip() != "*"]  # "*": no condition
     groups = [find(name) for name in calc.group_by]
     measure = find(calc.measure) if calc.measure else None
-    denominator = find(calc.denominator) if calc.aggregate == "ratio" and calc.denominator else None
+    # A ratio's denominator: one column, or several written "매우만족, 만족, 보통" (all responses).
+    denominators = ([find(calc.denominator)] if find(calc.denominator) else [find(part) for part in re.split(
+        r"\s*[,+]\s*", calc.denominator)]) if calc.aggregate == "ratio" and calc.denominator else []
+    denominator = denominators[0] if denominators and None not in denominators else None
     subtract = find(calc.subtract) if calc.subtract else None
-    added = [find(name) for name in calc.add if find(name) is not measure]
-    if calc.subtract and subtract is None or None in added or added and measure is None:
+    minus = [find(item) for item in calc.minus] if subtract else []
+    added = [find(item) for item in calc.add if find(item) is not measure]
+    name = find(calc.name_by) if calc.name_by else None
+    if calc.subtract and subtract is None or None in minus or None in added or added and measure is None or calc.name_by and name is None:
         return None
     if any(column is None or item.op.endswith("_column") and other is None for column, item, other in filters) \
-            or None in groups or calc.measure and measure is None or calc.denominator and denominator is None:
+            or None in groups or calc.measure and measure is None or denominators and denominator is None:
         return None
     # A ratio over no other column ('예' 응답 비율, 부산 창고 비중) is the filtered rows' share of all rows.
-    within = calc.aggregate == "ratio" and (denominator is None or denominator is measure) and not groups
+    within = calc.aggregate == "ratio" and (denominator is None or denominators == [measure]) and not groups
     if measure is None and calc.aggregate != "count" and not within:
         return None
     asked = {item.value.strip().casefold() for item in calc.filters if item.op in {"eq", "contains"}}  # rows named
@@ -47,7 +57,9 @@ def run_table(table, calc, headings=None):
                                                  and value.strip().casefold() not in asked for value in row.values.values())]
     skipped = tuple(label for number, label in (headings or {}).items() if label.strip().casefold() not in asked)
     rows = [row for row in rows if (headings or {}).get(row.row_number) not in skipped]
-    every = rows
+    # A ratio's base: the rows its scope filters keep (강남점 days for "강남점 매출이 200만원 이상인 날의 비율").
+    every = [row for row in rows if all(_matches(row.values.get(column.id), item, row, other)
+                                        for column, item, other in filters if item.scope)]
     # Conditions on one column alike ("month 07", "month 08", "month 09") are alternatives: 3분기.
     alike = {}
     for column, item, other in filters:
@@ -63,14 +75,16 @@ def run_table(table, calc, headings=None):
         used = [column for column, _, _ in filters] + ([measure] if measure else [])
         return TableResult([("전체", part / whole * 100, None)], None, len(every), list(dict.fromkeys(used)), None,
                            parts=(part, whole), skipped=skipped)
-    buckets = {}
+    ranked = calc.pick in {"top", "nth"} and not groups  # "상위 3일": the rows themselves ranked
+    buckets, period_position = {}, None
     for row in rows:
-        key = tuple(_date_part(row.values.get(column.id), calc.period) if calc.period != "none"
-                    and _date_part(row.values.get(column.id), calc.period) else
-                    _label(row.values.get(column.id))
-                    for column in groups)
-        buckets.setdefault(key, []).append(row)
-    values = {}
+        key = [] if groups or not ranked else [_row_name(table, row, measure), str(row.row_number)]
+        for position, column in enumerate(groups):
+            part = _date_part(row.values.get(column.id), calc.period) if calc.period != "none" else None
+            period_position = position if part else period_position
+            key.append(part or _label(row.values.get(column.id)))
+        buckets.setdefault(tuple(key), []).append(row)
+    values, derived = {}, {}
     for key, members in buckets.items():
         if measure is None:
             values[key] = len(members)
@@ -79,15 +93,20 @@ def run_table(table, calc, headings=None):
         if added:  # each row's total over its columns: Q1+Q2+Q3+Q4
             cells = [value + sum(row.values.get(column.id) for column in added) if _number(value) and all(
                 _number(row.values.get(column.id)) for column in added) else None for value, row in zip(cells, members)]
-        if subtract is not None:  # each row's change: 2026 minus 2025 of the same row
-            cells = [value - row.values.get(subtract.id) if _number(value) and _number(row.values.get(subtract.id))
-                     else None for value, row in zip(cells, members)]
+        if subtract is not None:  # each row's change (2026 minus 2025), or days between two dates
+            for column in [subtract, *minus]:
+                cells = [_minus(value, row.values.get(column.id)) for value, row in zip(cells, members)]
+        if calc.absolute:  # "차이가 가장 큰": the size of the difference, whichever way
+            cells = [abs(value) if _number(value) else value for value in cells]
+        derived[key] = list(zip(members, cells))
         if calc.aggregate == "count_distinct":
             values[key] = len({" ".join(str(value).split()) for value in cells if value not in (None, "")})
         elif calc.aggregate == "count":
             values[key] = sum(1 for value in cells if value not in (None, ""))
         elif calc.aggregate == "ratio" and denominator is not None:
-            pairs = [(row.values.get(measure.id), row.values.get(denominator.id)) for row in members]
+            pairs = [(part, sum(row.values.get(column.id) for column in denominators)
+                      if all(_number(row.values.get(column.id)) for column in denominators) else None)
+                     for part, row in zip(cells, members)]
             pairs = [(part, whole) for part, whole in pairs if _number(part) and _number(whole)]
             if pairs and sum(whole for _, whole in pairs):
                 values[key] = sum(part for part, _ in pairs) / sum(whole for _, whole in pairs) * 100
@@ -95,34 +114,22 @@ def run_table(table, calc, headings=None):
             numbers = [value for value in cells if _number(value)]
             if not numbers:
                 continue
-            values[key] = {"sum": sum, "mean": mean, "min": min, "max": max}[calc.aggregate](numbers)
+            values[key] = {"sum": sum, "mean": mean, "median": median, "min": min, "max": max}[calc.aggregate](numbers)
     if not values:
         return None
-    items = sorted(values.items()) if calc.period != "none" else list(values.items())  # months in order
-    if calc.order != "none" and not (calc.period != "none" and calc.pick == "all"):
-        items.sort(key=lambda item: item[1], reverse=calc.order == "desc")
-    middle = mean(value for _, value in items) if calc.pick in {"above_mean", "below_mean"} else None
-    if calc.pick in {"nth", "top"}:  # a group tied with the last one picked is picked too
-        n = max(calc.n, 1)
-        last = items[n - 1][1] if n <= len(items) else None
-        items = [] if last is None else [item for number, item in enumerate(items) if item[1] == last and number >= n - 1
-                                          or calc.pick == "top" and number < n]
-    elif middle is not None:
-        items = [item for item in items if (item[1] > middle if calc.pick == "above_mean" else item[1] < middle)]
+    items, middle = picked(calc, values)
     total = sum(values.values()) if calc.share else None
-    by_column = tuple((column_name(column), sum(value for row in buckets[items[0][0]]
-                                                                     if _number(value := row.values.get(column.id))))
-                      for column in [measure, *added]) if added and len(items) == 1 and calc.aggregate == "sum" else ()
-    shown = [(" · ".join(key) or "전체", value, value / total * 100 if total else None) for key, value in items]
+    shown = []
+    for key, value in items:
+        label, names = " · ".join(key[:1] if ranked else key) or "전체", holders(calc, key, value, derived, name)
+        label = names if names and label == "전체" else f"{label} ({names})" if names and names != label else label
+        shown.append((label, value, value / total * 100 if total else None))
     used = [column for column, _, _ in filters] + [other for _, _, other in filters if other] + groups + (
-        [denominator] if denominator else []) + ([subtract] if subtract else []) + added + ([measure] if measure else [])
-    return TableResult(shown, middle, len(rows), list(dict.fromkeys(used)), total,
-                       tuple(column_name(column) for column in groups), skipped=skipped, by_column=by_column)
-
-
-def _label(value):
-    """A group's name as written: a day without a time is 2024-10-21, not 2024-10-21T00:00:00."""
-    if isinstance(value, datetime) and value.time() == time():
-        value = value.date()
-    text = "빈칸" if value is None else " ".join(str(value).split())
-    return text.removesuffix("T00:00:00") if len(text) == 19 and text[10:] == "T00:00:00" else text
+        denominators if denominator else []) + ([subtract] if subtract else []) + added + ([name] if name else []) + (
+        [measure] if measure else [])
+    used = [column for column in dict.fromkeys(used) if column is not measure] + ([measure] if measure else [])
+    return TableResult(shown, middle, len(rows), used, total,
+                       tuple(column_name(column) for column in groups), skipped=skipped,
+                       by_column=column_totals(calc, items, buckets, measure, added if not subtract else [], column_name),
+                       then=then_value(calc, items), changes=changes(calc, values, period_position),
+                       sizes={" · ".join(key) or "전체": len(buckets[key]) for key, _ in items} if calc.share else {})

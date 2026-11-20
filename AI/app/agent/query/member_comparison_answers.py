@@ -6,8 +6,10 @@ to two single sales. Here each member's total is computed from all rows of the o
 them; "웨일스 인구가 스코틀랜드보다 많아?" names two columns of a table, read on its one total row.
 The model's reading of the names is stated; anything not found exactly in one table stays as it was.
 """
+import re
 from decimal import Decimal
 
+from app.agent.query.gpt_calc_filters import _date_part
 from app.agent.query.metric_observation_render import _evidence
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus, QuestionAnswerVerification
 from app.agent.query.natural_relative_ranking import natural_relative_answer
@@ -16,6 +18,7 @@ from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_translated_names import _TOTAL
 
 MAX_EVIDENCE = 40
+_PERIOD = re.compile(r"\d{4}\s*년|(?<!\d)(?:1[0-2]|[1-9])\s*월|[1-4]\s*분기|[상하]\s*반기|\bQ[1-4]\b", re.I)
 
 
 def relative_or_compared(question, summary, index, intent):
@@ -32,6 +35,9 @@ def member_comparison_answer(question, summary, index, intent):
     if len(found) != 1:
         return None  # nothing, or the names fit more than one table: the comparison is not one reading
     table, members, header, cells, values, unit, reading = found[0]
+    if _PERIOD.search(question) and any(_date_part(row.values.get(column.id), "month")
+                                        for column in table.columns for row in table.rows[:20]):
+        return None  # "12월 강남점과 홍대점": totals over every date would ignore the month asked
     ordered = sorted(members, key=lambda member: values[member], reverse=True)
     listed = ", ".join(f"{member} {shown_total(values[member], unit)}" for member in members)
     first, second = ordered[0], ordered[1]

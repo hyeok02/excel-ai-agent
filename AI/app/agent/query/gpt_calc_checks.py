@@ -20,7 +20,9 @@ def unused_values(question, table, calc):
     for column in table.columns:
         values = {value.strip() for row in table.rows if isinstance(value := row.values.get(column.id), str)
                   and value.strip()}
-        if not 2 <= len(values) <= MAX_DISTINCT or {column_name(column).casefold(), column.id.casefold()} & grouped:
+        names = {column_name(column).casefold(), column.id.casefold()}
+        narrowed = any(" ".join(item.column.split()).casefold() in names and item.op == "eq" for item in calc.filters)
+        if not 2 <= len(values) <= MAX_DISTINCT or names & grouped and not narrowed:  # grouped, all its values kept
             continue
         missing += [value for value in values if len(value) >= 2 and value.casefold() not in used
                     and value_matches(question, value)]
@@ -31,7 +33,8 @@ def plan_problem(question, table, calc):
     """Why a table plan cannot answer as written, told back to GPT once; else None."""
     if unused := unused_values(question, table, calc):
         return (f"The question names {unused} as written in the table, but the plan neither filters on "
-                "nor groups by them: use them.")
+                "nor groups by them (a filter on that column keeps only the values it names). Use them when the "
+                "question means those rows; keep the plan when the word only appears inside another phrase.")
     if calc.aggregate in {"max", "min"} and not calc.group_by:
         return ("A largest or smallest value without group_by names no winner. Group by the column naming the "
                 "rows, or, when the things compared are column headers of one row, use kind=cells with one item "
@@ -53,21 +56,38 @@ def with_cell_values(calc, cells):
             # "gt_column [Table!B66]": a cell, not a column of the row, so a plain comparison with its value
             item = item.model_copy(update={"value": repr(found[0]), "op": item.op.removesuffix("_column")})
         filters.append(item)
+    if calc.pick in {"top", "nth"} and not calc.group_by and calc.aggregate in {"sum", "mean"} and (
+            calc.then == "none" or calc.aggregate == "mean"):  # "상위 3일의 평균": the rows ranked, then their mean
+        return calc.model_copy(update={"filters": filters, "then": calc.aggregate, "aggregate": "sum"})
     if calc.aggregate == "count_distinct" and not calc.measure and len(calc.group_by) == 1:
         # "몇 개 도시": the different values of the column grouped by, counted once over all rows
         return calc.model_copy(update={"filters": filters, "measure": calc.group_by[0], "group_by": []})
     return calc.model_copy(update={"filters": filters})
 
 
+def _names(calc):
+    return {" ".join(str(name).split()).casefold() for name in [
+        *calc.group_by, calc.measure, *re.split(r"\s*[,+]\s*", calc.denominator or ""), calc.subtract, calc.name_by,
+        *calc.add, *calc.minus, *(item.column for item in calc.filters)] if name}
+
+
+def _listed(table):
+    return {column_name(column).casefold() for column in table.columns} | {column.id.casefold() for column in table.columns}
+
+
+def unlisted_note(tables, index, calc):
+    """What to tell GPT when its plan names no column of the table: which names, and that a row's value is a filter."""
+    table = tables[index] if 0 <= index < len(tables) else None
+    missing = sorted(_names(calc) - _listed(table)) if table is not None else []
+    return (f"{missing} are not columns of table {index}. Name only its listed columns; a value written in a row "
+            "(such as a row label) is a filter value, never a column." if missing else None)
+
+
 def fitting_table(tables, index, calc):
     """The table the plan's column names belong to: the one it chose, else the only one that has them all."""
-    names = {" ".join(str(name).split()).casefold() for name in [*calc.group_by, calc.measure, calc.denominator,
-                                                                 calc.subtract, *calc.add, *(item.column for item in calc.filters)]
-             if name}
+    names = _names(calc)
     def fits(table):
-        listed = {column_name(column).casefold() for column in table.columns} | {
-            column.id.casefold() for column in table.columns}
-        return names <= listed
+        return names <= _listed(table)
     if 0 <= index < len(tables) and fits(tables[index]):
         return tables[index]
     found = [table for table in tables if fits(table)]
