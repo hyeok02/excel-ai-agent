@@ -84,15 +84,20 @@ async def _computed(question, summary, index, planner):
     headings = {table.id: group_rows(table, summary) for table in tables}
     note = ""
     for _ in range(2):  # one retry, told what did not run
-        plan = await planner.plan(question, tables, note, headings)
+        try:
+            plan = await planner.plan(question, tables, note, headings)
+        except Exception as exception:  # a plan cut off at the length limit is asked for once more, shorter
+            raise_for_quota_exhaustion(exception)
+            note = "The previous plan was cut off at the length limit: write a short plan with few filters."
+            continue
         if plan.kind == "table" and plan.table is not None and (
                 table := fitting_table(tables, plan.table.table, plan.table)) is not None:
             from app.agent.query.gpt_calc_tables import run_table
             if not note and (problem := plan_problem(question, table, plan.table)):
                 note = problem
                 continue
-            calc = with_cell_values(plan.table, cells)  # "> [Table!B66]": the U.S. Total row's value
-            result = await asyncio.to_thread(run_table, table, calc, headings.get(table.id))
+            plan = plan.model_copy(update={"table": with_cell_values(plan.table, cells)})  # "> [Table!B66]"
+            result = await asyncio.to_thread(run_table, table, plan.table, headings.get(table.id))
             echo = plan.table.aggregate == "count" and len(result.groups) == 1 and result.groups[0][1] == 1 \
                 and result.groups[0][0] != "전체" if result is not None else False  # one name back, no figure
             if result is not None and not echo and (result.groups or plan.table.pick not in {"nth", "top"}):
@@ -130,7 +135,6 @@ def _style(table, result, calc):
     measure = result.columns[-1]
     formats = [row.number_formats.get(measure.id) for row in table.rows if row.number_formats.get(measure.id)]
     return formats[0] if formats else "General"
-
 
 
 async def with_calculation_fallback(question, sources, produce):

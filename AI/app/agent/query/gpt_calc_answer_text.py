@@ -41,6 +41,8 @@ def table_answer(question, plan, table, result, style, cells):
     name = " + ".join([name, *(item for item in calc.add if item != calc.measure)]) if calc.add and calc.measure else name
     name += f" - {calc.subtract}" if calc.subtract else ""
     lines, listing = [f"계산 방식: {plan.method}"], False
+    if conditions := [_condition(item) for item in calc.filters if item.value.strip() != "*"]:
+        lines.append("적용 조건: " + ", ".join(conditions))  # what "2020년 이후" was read as: 입사일 ≥ 2021-01-01
     groups = result.groups
     if not groups:
         lines.append("조건에 맞는 항목이 없습니다.")
@@ -74,6 +76,17 @@ def table_answer(question, plan, table, result, style, cells):
                     + (" 등" if len(result.skipped) > 3 else "") if result.skipped else "") + ")")
     cited = [cells.get(normalize_reference(column.header_reference)) for column in result.columns]
     return _answer(question, "\n".join(lines), [cell for cell in cited if cell is not None], listing)
+
+
+_SYMBOLS = {"eq": "=", "ne": "≠", "gt": ">", "ge": "≥", "lt": "<", "le": "≤", "contains": "포함:",
+            "year": "연도 =", "month": "월 =", "quarter": "분기 ="}
+
+
+def _condition(item):
+    symbol = _SYMBOLS.get(item.op.removesuffix("_column"), item.op)
+    value = item.value.strip()
+    value = plain(float(value)) if re.fullmatch(r"-?\d+\.\d+", value) else value  # 18.16 from [Table!B66]
+    return f"{item.column} {symbol} {value}"
 
 
 def cells_answer(question, plan, computed):

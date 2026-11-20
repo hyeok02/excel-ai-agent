@@ -42,6 +42,9 @@ def _matches(value, item, row=None, other=None):
                                                          "lt_column": value < compared, "le_column": value <= compared}[op]
     if op in {"year", "month", "quarter"}:
         return _date_part(value, op) == wanted.upper()
+    if op in {"gt", "ge", "lt", "le"} and (moment := _moment(value, wanted)) is not None:
+        found, limit = moment  # "2020년 이후 입사": a date against a year, year-month or day
+        return {"gt": found > limit, "ge": found >= limit, "lt": found < limit, "le": found <= limit}[op]
     if op in {"gt", "ge", "lt", "le"}:
         try:
             limit = float(wanted.replace(",", ""))
@@ -61,3 +64,16 @@ def _same_number(value, wanted):
         return abs(float(wanted.replace(",", "")) - value) < 1e-9
     except ValueError:
         return False
+
+
+def _moment(value, wanted):
+    """(the date's part, the limit) when a date is compared with 2020, 2020-03 or 2020-03-05; else None."""
+    if isinstance(value, datetime):
+        value = value.date()
+    if isinstance(value, str) and (text := re.match(r"(\d{4})-(\d{2})-(\d{2})", value.strip()) or
+                                   re.fullmatch(r"(\d{4})-(\d{2})", _month_text(value) or "")):
+        value = date(*(int(part) for part in text.groups()), *([] if len(text.groups()) == 3 else [1]))
+    if not isinstance(value, date) or not (found := re.fullmatch(r"(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?", wanted)):
+        return None
+    parts = tuple(int(part) for part in found.groups() if part)
+    return (value.year, value.month, value.day)[:len(parts)], parts

@@ -41,6 +41,9 @@ def test_alike_conditions_are_alternatives_and_quarters_are_read():
     quarter = {"kind": "table", "method": "2023 1분기", "cells": None,
                "table": _table(filters=[{"column": "Date", "op": "quarter", "value": "2023-q1"}])}
     assert "Amount 합계: 190" in _ask(quarter).answer
+    since = {"kind": "table", "method": "2023-02 이후", "cells": None,
+             "table": _table(filters=[{"column": "Date", "op": "ge", "value": "2023-02"}])}
+    assert "적용 조건: Date ≥ 2023-02\nAmount 합계: 130" in _ask(since).answer  # 30 + 90 + 10
 
 
 def test_a_filter_compares_with_a_named_cell_and_an_unnamed_extreme_is_sent_back():
@@ -87,6 +90,9 @@ def test_columns_added_in_each_row_give_a_row_total_across_columns():
     answer = _quarters_answer({"kind": "table", "method": "Category별 Q1~Q4 합계 최대", "cells": None, "table": _table(
         group_by=["Category"], measure="Q1", add=["Q2", "Q3", "Q4"], order="desc", pick="top", n=1)})
     assert "1. Delivery: 313" in answer  # not Web, the largest Q1 alone
+    kinds = _quarters_answer({"kind": "table", "method": "Category 수", "cells": None, "table": _table(
+        group_by=["Category"], measure=None, aggregate="count_distinct")})
+    assert "Category 서로 다른 값의 수: 3" in kinds
     assert "열별 값: Q1 70 · Q2 80 · Q3 81 · Q4 82" in answer  # one group: each column it added
     every = _quarters_answer({"kind": "table", "method": "Q1 합계", "cells": None, "table": _table(
         filters=[{"column": "Category", "op": "eq", "value": "*"}], measure="Q1")})
@@ -98,3 +104,22 @@ def test_months_written_as_text_are_read_as_periods():
     assert [_date_part(text, "month") for text in ["December 2025", "Sept 2024", "2025년 3월", "2025.07"]] == [
         "2025-12", "2024-09", "2025-03", "2025-07"]
     assert _date_part("December 2025", "quarter") == "2025-Q4" and _date_part("Spring 2025", "month") is None
+
+
+def test_a_cut_off_plan_and_a_ratio_with_no_filter_are_asked_again():
+    from tests.test_gpt_calc_fallback import _Planner, _workbook, NOTHING, fallback_answer, asyncio
+
+    class Cut(_Planner):
+        async def plan(self, question, tables, note="", groups=None):
+            if not self.notes:
+                self.notes.append(note)
+                raise ValueError("length limit reached")
+            return await super().plan(question, tables, note, groups)
+    east = {"kind": "table", "method": "East 비중", "cells": None,
+            "table": _table(filters=[{"column": "Region", "op": "eq", "value": "East"}], aggregate="ratio")}
+    planner = Cut(east)
+    assert "비율: 58.82%" in asyncio.run(fallback_answer("q", *_workbook(), NOTHING, planner)).answer
+    assert "cut off" in planner.notes[1]
+    planner = _Planner({**east, "table": _table(aggregate="ratio")}, east)
+    assert "비율: 58.82%" in asyncio.run(fallback_answer("q", *_workbook(), NOTHING, planner)).answer
+    assert "100%" in planner.notes[1]

@@ -36,6 +36,9 @@ def plan_problem(question, table, calc):
         return ("A largest or smallest value without group_by names no winner. Group by the column naming the "
                 "rows, or, when the things compared are column headers of one row, use kind=cells with one item "
                 "per column and keep max or min.")
+    if calc.aggregate == "ratio" and not calc.filters and not calc.denominator and not calc.group_by:
+        return ("A ratio over all rows with no filter is 100%. For the share of rows holding a value ('Y', '예'), "
+                "filter that value and leave measure null.")
     if calc.add and (calc.measure is None or not calc.group_by):
         return ("add totals several columns into one value per row of each group. For one row's values across "
                 "columns (a trend over year columns), use kind=cells with one item per column.")
@@ -50,6 +53,9 @@ def with_cell_values(calc, cells):
             # "gt_column [Table!B66]": a cell, not a column of the row, so a plain comparison with its value
             item = item.model_copy(update={"value": repr(found[0]), "op": item.op.removesuffix("_column")})
         filters.append(item)
+    if calc.aggregate == "count_distinct" and not calc.measure and len(calc.group_by) == 1:
+        # "몇 개 도시": the different values of the column grouped by, counted once over all rows
+        return calc.model_copy(update={"filters": filters, "measure": calc.group_by[0], "group_by": []})
     return calc.model_copy(update={"filters": filters})
 
 

@@ -14,6 +14,8 @@ class CalcFilter(BaseModel):
     op: Literal["eq", "ne", "gt", "ge", "lt", "le", "contains", "year", "month", "quarter",
                 "gt_column", "ge_column", "lt_column", "le_column"] = Field(
         description="year: the date's year equals value (2022); month: its year-month equals value (2022-12); quarter: 2022-Q3; "
+                    "gt/ge/lt/le on a date column compare with a year, year-month or date; "
+                    "이후/이전 include the named period (2020년 이후: ge 2020), 초과/미만 exclude it; "
                     "several filters on one column are alternatives; "
                     "*_column: compares with the same row's value of the column named in value")
     value: str
