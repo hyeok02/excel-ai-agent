@@ -27,6 +27,8 @@ _CHANGE = re.compile(r"대비|부터|에서|변화|차이|증감|늘었|줄었|�
 _HIGH = re.compile(r"가장\s*(?:많|높|컸|큰)|제일\s*(?:많|높|컸|큰)|최대|최고")
 _LOW = re.compile(r"가장\s*(?:적|낮|작)|제일\s*(?:적|낮|작)|최소|최저")
 _WHEN = re.compile(r"해|연도|년도|언제|시점|때")
+_RECENT = re.compile(r"최근\s*(\d+|두|세|네|다섯)\s*년")
+_COUNT_WORDS = {"두": 2, "세": 3, "네": 4, "다섯": 5}
 
 
 def series_period_answer(question, summary, index, resolver=None):
@@ -37,7 +39,11 @@ def series_period_answer(question, summary, index, resolver=None):
     if summary is None or index is None:
         return None
     if len(years) == 1 and high != low:  # "2024년 발전량이 가장 많은 에너지원": the year's series compared
-        return _cross_series(question, summary, index, years[0], high, resolver)
+        from app.agent.query.series_cross_answers import cross_series_answer
+        return cross_series_answer(question, summary, index, years[0], high, resolver)
+    recent = _RECENT.search(question)
+    if recent and "평균" in question and not years:  # "최근 3년 석탄 발전량 평균": the last N annual values
+        return _recent_average(question, summary, index, _COUNT_WORDS.get(recent[1]) or int(recent[1]), resolver)
     if not (change or extreme):
         return None
     found = _annual_points(question, summary, resolver)
@@ -110,39 +116,24 @@ def _annual_points(question, summary, resolver):
     return word, topic, sheet, section, section_cell, points, unit_note
 
 
-def _cross_series(question, summary, index, year, high, resolver):
-    found = named_topic(series_words(question), _topics(build_workbook_context(summary)), resolver)
-    if found is not None and found[1] is not None and "total" not in found[1].casefold():
-        return None  # one series is named: its own year, not a comparison across series
-    best = None
-    for sheet in build_workbook_context(summary).get("sheets", []):
-        for header, section, section_cell, records, unit_note in (_series(sheet) if isinstance(sheet, dict) else ()):
-            rows = [record for record in records if record[0].year == year]
-            if _basis_priority(section) in (1, 3) or len({record[0].year for record in records}) != len(records) or len(rows) != 1:
-                continue
-            values = [(cell, rows[0][2].get(column(cell), {})) for cell in header[1:] if "total" not in metric_name(cell).casefold()]
-            values = [(cell, value) for cell, value in values if finite(value.get("value"))]
-            if len(values) >= 2 and (best is None or len(values) > len(best[4])):
-                best = (sheet.get("name", ""), section, section_cell, rows[0][1], values, unit_note)
-    if best is None:
+def _recent_average(question, summary, index, count, resolver):
+    found = _annual_points(question, summary, resolver)
+    if found is None or not 2 <= count <= len(found[5]):
         return None
-    sheet, section, section_cell, period, values, unit_note = best
-    cell, value = (max if high else min)(values, key=lambda item: item[1]["value"])
-    if sum(1 for _, other in values if other["value"] == value["value"]) != 1:
-        return None
-    units = unit(value) or (source_unit(unit_note["value"]) if unit_note else "")
-    references = [reference(sheet, item["cell"]) for item in (section_cell, period, cell, value, *(other for _, other in values)) if item]
-    cells = {normalize_reference(item.reference): item for row in index.rows for item in row.cells}
+    word, topic, sheet, section, section_cell, points, unit_note = found
+    chosen = sorted(points)[-count:]
+    values = [points[year][2]["value"] for year in chosen]
+    units = unit(points[chosen[-1]][2]) or (source_unit(unit_note["value"]) if unit_note else "")
+    references = [reference(sheet, item["cell"]) for year in chosen for item in points[year][1:]]
+    cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
     cited = [cells.get(normalize_reference(item)) for item in references]
     if None in cited:
         return None
-    scope = " · ".join(part for part in (sheet, section) if part)
-    text = (f"{scope}의 {year}년 값 중 가장 {'높은' if high else '낮은'} 항목은 {source_label(metric_name(cell))} "
-            f"{displayed_text(value, displayed_value(value))}{_suffix(units)}입니다 (합계 열을 뺀 {len(values)}개 항목 비교).")
-    return QuestionAnswer(question=question, status=QuestionAnswerStatus.LIMITED, confidence=0.8, selected_tools=["verified_series"],
-                          answer=text, evidence=[_evidence(item) for item in dict.fromkeys(cited)], limitations=[],
-                          verification=QuestionAnswerVerification(level="source_checked", checks=["source_values", "ranking"]))
-
-
-def _topics(context):
-    return list(dict.fromkeys(str(item.topic) for _, item in all_series_facts(context) if item.topic))[:MAX_TOPICS]
+    listed = ", ".join(f"{year}년 {displayed_text(points[year][2], displayed_value(points[year][2]))}" for year in chosen)
+    return QuestionAnswer(
+        question=question, status=QuestionAnswerStatus.LIMITED, confidence=0.8, selected_tools=["verified_series"],
+        answer=(f"해석: ‘{word}’ → {topic}\n{' · '.join(part for part in (sheet, section) if part)}의 최근 {count}년"
+                f"({listed}) 평균은 {sum(values) / count:,.1f}{_suffix(units)}입니다."),
+        evidence=[_evidence(cell) for cell in dict.fromkeys(cited)],
+        limitations=[f"질문의 표현을 원본 계열로 옮긴 해석(‘{word}’ → {topic})이 의도와 맞는지 확인해 주세요."],
+        verification=QuestionAnswerVerification(level="source_checked", checks=["source_values", "calculation"]))

@@ -4,14 +4,14 @@ A model maps the wording to source fields ("쿠키" → Category = Cookies, "판
 → TotalPrice) and usually expresses the rank as a top-N limit or an exclusion
 filter. The regular plan validators cannot prove such a rank from the wording, so
 this path recomputes every group over the whole verified table, ranks them, and
-answers with the full ranking so the reader can check the position. The answer is
-marked as source-checked (values and calculation), not as request-checked: the
-field mapping comes from the model and is stated in the limitations.
+answers with the full ranking so the reader can check the position, marked source-checked
+(values and calculation), not request-checked: the model's field mapping is stated.
 """
 from collections import defaultdict
 from decimal import Decimal
 import re
 
+from app.agent.query.calendar_grain import day_groups
 from app.agent.query.cell_display import _display_cell
 from app.agent.query.metric_observation_render import _evidence
 from app.agent.query.ranked_group_units import shown_total, total_unit
@@ -58,8 +58,8 @@ def ranked_group_answer(plan, summary, index, question, targets=()):
     measure = measured[0] if bound.operation != "row_count" and len(measured) == 1 else None
     if bound.operation != "row_count" and (measure is None or bound.statistic not in {"sum", "all", "average"}):
         return None
-    if not validated_table(table, index, {group, *([measure] if measure else [])}):
-        return None
+    if not validated_table(table, index, {group, *([measure] if measure else [])}) or day_groups(question, table, group):
+        return None  # days ranked for "가장 높은 달" answer a day, not a month
     anchors = [item for item in bound.filters if item.column_id == group and item.operator == "not_equals"]
     rows = filtered_rows(table, [item for item in bound.filters if item not in anchors])
     totals = _totals(rows, group, measure)

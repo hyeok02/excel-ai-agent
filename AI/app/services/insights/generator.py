@@ -3,6 +3,8 @@ import logging
 import os
 from pathlib import Path
 
+import httpx
+
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
@@ -63,7 +65,7 @@ class LangChainInsightGenerator:
             os.getenv("OPENAI_REASONING_EFFORT", "minimal"),
         )
 
-    def _build_model(self, profile: AnalysisProfile):
+    def _build_model(self, profile: AnalysisProfile, client=None):
         fallback_model = (
             os.getenv("OPENAI_MODEL", profile.default_model)
             if profile == STANDARD_PROFILE
@@ -79,6 +81,7 @@ class LangChainInsightGenerator:
             timeout=self._timeout_seconds,
             max_retries=1,
             max_completion_tokens=profile.max_completion_tokens,
+            http_async_client=client,
             **options,
         ).with_structured_output(WorkbookInsightReport, method="json_schema")
 
@@ -93,16 +96,12 @@ class LangChainInsightGenerator:
         await asyncio.to_thread(prepare_workbook_labels, summary)  # Korean names for the labels shown
         try:
             context = build_workbook_context(summary, profile)
-            result = await self._build_model(profile).ainvoke(
-                [
+            # Its own connection per call: a pooled one opened under another (closed) event loop fails.
+            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+                result = await self._build_model(profile, client).ainvoke([
                     SystemMessage(content=SYSTEM_PROMPT),
-                    HumanMessage(
-                        content=build_user_prompt_from_context(
-                            context, profile.max_insights
-                        )
-                    ),
-                ]
-            )
+                    HumanMessage(content=build_user_prompt_from_context(context, profile.max_insights)),
+                ])
             report = WorkbookInsightReport.model_validate(result)
             return ensure_business_report(report, context)
         except Exception as exception:

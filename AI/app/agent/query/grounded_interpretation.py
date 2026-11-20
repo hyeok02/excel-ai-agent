@@ -12,7 +12,7 @@ from app.agent.execution import AgentStepStatus
 from app.agent.query.change_direction import answer_directions_supported
 from app.agent.query.comparison_evidence import available_evidence, matched_comparison_evidence, present_comparison_evidence
 from app.agent.query.grounded_basis import (CELL, MAX_BASIS, change_within_one_series, column_header, names, names_its_records,
-                                             number, period_numbers, row_label, shown, source_cells, states_value)
+                                             number, period_numbers, row_label, shown, source_cells, states_value, year)
 from app.agent.query.models import (QuestionAnswer, QuestionAnswerEvidence, QuestionAnswerStatus,
                                     QuestionAnswerVerification)
 from app.agent.query.numeric_support import supported_answer_numbers
@@ -36,7 +36,7 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
     data = [step.result.data for step in steps if isinstance(step.result.data, dict)]
     matrix = {key: value for item in data for key, value in (item.get("source_matrix_bindings") or {}).items()}
     headers = {key: value for item in data for key, value in (item.get("source_header_bindings") or {}).items()}
-    lines, evidence, values, direct, grounded = [], {}, [], [], set(numbers(question))
+    lines, evidence, values, direct, grounded, years = [], {}, [], [], set(numbers(question)), set()
     # A follow-up scoped to one range ("'Timeseries type 1 acute trusts'!B13:AL83 범위의 …") is answered
     # from that range: a fact or cell of another table answers the question the user set aside.
     scopes = explicit_ranges(question)
@@ -89,6 +89,8 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
         evidence.update({(item.sheet_name, item.reference): item for item in (cell, *labels)})
         values.append(cell)
         direct.append(cell)
+        years |= {int(item.value) for item in labels if year(item.value)} | {
+            int(found) for item in labels for found in period_numbers(item) if found > 1900}
     cited = list(evidence.values())
     # A difference or rate is grounded when the sentence states the two cited values it comes from;
     # a stated rise or fall is checked against those values, never against the years naming them.
@@ -97,7 +99,7 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
             # The rise or fall a sentence states is checked on the cells it cites; a quoted fact's whole
             # series (1990 790.8, 1991 800.6, …, 2024 373.4) rises in places and falls overall.
             and answer_directions_supported(sentence, direct or values) and change_within_one_series(sentence, direct, available)
-            and names_its_records(sentence, direct, available)]
+            and names_its_records(sentence, direct, available) and _years_cited(sentence, years, len(direct))]
     declined = [sentence for sentence in kept if _UNANSWERED.search(sentence)]
     kept = [sentence for sentence in kept if sentence not in declined]
     # A cited figure no kept sentence states is not the basis of what is shown; a quoted fact is.
@@ -116,3 +118,12 @@ def interpreted_answer(question, draft, execution, index_truncated=False, index=
         verification=QuestionAnswerVerification(
             level="source_checked", checks=["cited_cells", "source_values", "numbers", "interpretation_unverified"]
             + (["question_unanswered"] if declined else [])))  # what was asked is said to be unknown
+
+
+def _years_cited(sentence, years, cells):
+    """A sentence naming two years states a value for each: two cited cells, each year heading one.
+
+    "2010년 5.8%에서 2020년 5.8%로" citing only the 2020 column's cell gives 2010 a value it never read.
+    """
+    named = {int(found) for found in re.findall(r"(?<!\d)((?:19|20)\d{2})(?!\d)", sentence)}
+    return len(named) < 2 or cells != 1 and (not years or named <= years)  # 0: a quoted fact's own years

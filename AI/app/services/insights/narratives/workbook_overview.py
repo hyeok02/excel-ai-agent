@@ -9,6 +9,7 @@ from app.services.insights.models import (
 from app.services.insights.verification.reference_matching import resolve_references
 from app.services.insights.verification.validation_index import EvidenceIndex, extract_references
 from app.services.insights.narratives.workbook_lead_rules import structured_lead
+from app.services.insights.narratives.narrative_values import joining_particle
 
 CONTEXT_SENTENCE = re.compile(
     r"^\s*(이 파일은\s+.+?(?:자료입니다|다룹니다|보여줍니다)\.)", re.S,
@@ -68,11 +69,14 @@ def _fallback_lead(report: ValidatedWorkbookInsightReport) -> str:
         return "이 파일은 원본 표의 항목별 기록을 정리한 자료입니다."
     topics = []
     for item in report.insights[:2]:
-        topic = " ".join(item.title.split()).strip(" .")
+        # The subject a title starts with ("국어" of "국어 평균과 범위"): "국어와 영어 관련 내용".
+        title, subject = " ".join(item.title.split()), " ".join(str(getattr(item, "topic", None) or "").split())
+        topic = (subject if subject and title.startswith(subject + " ") else title).strip(" .")
         if topic == "원본에서 확인한 내용" or not topic or len(topic) > 60:
             continue
         if topic.casefold() not in {value.casefold() for value in topics}:
             topics.append(topic)
     if not topics:
         return "이 파일은 원본에서 확인된 주요 내용을 정리한 자료입니다."
-    return f"이 파일은 {'와 '.join(topics)} 관련 내용을 정리한 자료입니다."
+    joined = f"{topics[0]}{joining_particle(topics[0])} {topics[1]}" if len(topics) > 1 else topics[0]
+    return f"이 파일은 {joined} 관련 내용을 정리한 자료입니다."

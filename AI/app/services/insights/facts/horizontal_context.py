@@ -6,11 +6,14 @@ from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.facts.horizontal_year_header import unlabeled_year_header
 
 _YEAR = re.compile(r"(?:(mid)[-\s])?((?:19|20|21)\d{2})(년)?", re.I)
+# A quarter as a header writes it: 2023 Q1, 2023Q1, Q1 2023, 2023년 1분기, 2023 1Q.
+_QUARTER = re.compile(r"((?:19|20|21)\d{2})\s*년?\s*(?:Q([1-4])|([1-4])\s*(?:분기|Q))|Q([1-4])\s*((?:19|20|21)\d{2})", re.I)
 _YEAR_LABEL = re.compile(r"^(?:year|years|calendar year|연도|년도|연간)$", re.I)
 _UNIT = re.compile(
     r"(?:percent(?:age)?|%|(?:[A-Z]{3}|cents?|pence|dollars?|euros?|원|달러)\s+per\s+[A-Za-z]+"
     r"|(?:thousand|million|billion)\s+(?:tonnes?|tons?|megawatthours?|kilowatthours?|persons?|people)"
-    r"(?:\s+carbon dioxide equivalent)?|(?:kg|kwh|mwh|gwh|twh|tonnes?|tons?|명|천명|백만명))",
+    r"(?:\s+carbon dioxide equivalent)?|(?:kg|kwh|mwh|gwh|twh|tonnes?|tons?|명|천명|백만명)"
+    r"|(?:천|만|백만|천만|억|십억|조)?\s*원)",
     re.I,
 )
 
@@ -45,14 +48,16 @@ def axis_reading(row, cells, rows):
     for column, cell in cells.items():
         parsed = date_value(cell.get("value"))
         annual = years.get(column)
-        if parsed:
-            result[column] = parsed
+        if parsed or (quarter := _quarter(cell.get("value"))):
+            result[column] = parsed or datetime(quarter[0], quarter[1] * 3 - 2, 1)
         elif annual and (contextual_years or annual[1]):
             result[column] = datetime(annual[0], 7 if annual[2] else 1, 1)
     return result, inferred
 
 
 def period_label(value):
+    if quarter := _quarter(value):
+        return f"{quarter[0]}년 {quarter[1]}분기"
     annual = _year(value)
     if annual:
         return f"{annual[0]}년{' 중간' if annual[2] else ''}"
@@ -78,6 +83,15 @@ def declared_axis_unit(rows, start):
                 candidates.append({"value": fragment, "cell": cell["cell"]})
     distinct = {candidate["value"].casefold() for candidate in candidates}
     return candidates[-1] if len(distinct) == 1 else None
+
+
+def _quarter(value):
+    """(year, quarter) of a quarter header, or None."""
+    match = _QUARTER.fullmatch(str(value).strip()) if isinstance(value, str) else None
+    if not match:
+        return None
+    year, quarter = (match[1], match[2] or match[3]) if match[1] else (match[5], match[4])
+    return int(year), int(quarter)
 
 
 def _year(value):

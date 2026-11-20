@@ -67,6 +67,8 @@ def _source_matches(source, question):
     if not tokens:
         return []
     expression = r"[\s\W_]*".join(re.escape(token) for token in tokens)
+    if re.fullmatch(r"(?:19|20)\d{2}", source.strip()):
+        expression += r"(?:\s*년도?)?"  # a sheet named 2024 is "2024년" in a question
     # Korean particles may follow a complete label; English prefixes may not.
     return list(re.finditer(r"(?<![\w])" + expression + _PARTICLE + r"(?![\w])", question))
 

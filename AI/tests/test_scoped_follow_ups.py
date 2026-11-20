@@ -51,3 +51,17 @@ def test_a_name_written_as_a_and_b_is_one_label():
     from app.agent.query.joined_names import joined_names
     assert "잉글랜드와 웨일스" in joined_names(["잉글랜드", "웨일스"], "잉글랜드와 웨일스 인구는 얼마야?")
     assert joined_names(["쿠키"], "쿠키 판매수량은?") == ["쿠키"]
+
+
+def test_a_year_named_with_since_is_a_lower_bound_and_a_sheet_named_by_year_is_its_scope():
+    from datetime import date
+    from app.agent.query.ambiguity_labels import mentioned_sources
+    from app.agent.query.tabular_request_periods import period_filters
+    rows = [["Name", "Joined"], ["A", date(2019, 5, 1)], ["B", date(2021, 3, 2)]]
+    summary, _ = table_fixture([(1, 1, rows)], sheet_name="Staff")
+    table = build_query_tables(summary)[0]
+    plan = lambda value: TabularQueryPlan(operation="row_count", table_id=table.id, column_ids=[], statistic="all",
+                                          filters=[TabularFilter(column_id="B", operator="greater_than_or_equal", value=value)])
+    assert period_filters("2020년 이후 입사한 직원 수는?", plan("2020-01-01"), table) == {0}
+    assert period_filters("2020년 이후 입사한 직원 수는?", plan("2021-01-01"), table) == set()
+    assert mentioned_sources(["2023", "2024"], "2024년 3월 매출은?") == {"2024"}

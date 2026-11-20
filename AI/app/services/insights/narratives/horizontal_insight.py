@@ -43,6 +43,8 @@ def horizontal_insight(sheet, series, owner=("", ()), unit=("", ()), *, caption=
     metric_text = metric if category else (
         readable(metric) if translate(metric) and (metric.casefold() != "sales" or monetary_sales)
         else source_label(metric, f"{scope} {basis}"))
+    if re.fullmatch(r"합계|총계|계|total|grand total", metric_text.strip(), re.I):
+        metric_text = "전체 합계"  # a bare total row reads as the table's total, not a word on its own
     caption_metric, caption_unit, caption_refs = caption
     if caption_metric and caption_metric not in metric_text:
         metric_text = f"{metric_text} {caption_metric}"

@@ -6,6 +6,7 @@ from app.agent.query.conversation_answers import answer_in_conversation
 from app.agent.query.question_intent_resolution import resolve_question_intent
 from app.agent.query.conversation_models import QuestionConversation, QuestionContextResolver
 from app.agent.query.header_relation_answers import header_relation_answer
+from app.agent.query.gpt_calc_answers import with_calculation_fallback
 from app.agent.query.metric_observation_answers import metric_observation_answer
 from app.agent.query.metric_scalar_answers import metric_scalar_answer
 from app.agent.query.metric_semantic_guard import incompatible_metric_answer
@@ -59,9 +60,8 @@ class WorkbookQuestionService:
         if unavailable := unavailable_workbook_answer(question, summary):
             return unavailable
         sources = await asyncio.to_thread(prepare_formula_sources, summary, data_index)
-        answer = await answer_in_conversation(
-            question, context, sources, self._context_resolver, self._answer_prepared
-        )
+        answer = await with_calculation_fallback(question, sources, lambda: answer_in_conversation(
+            question, context, sources, self._context_resolver, self._answer_prepared))
         answer = (answer if "composite_question" in answer.selected_tools else
                   finish_interpretation_answer(finish_formula_answer(answer, sources)))
         return with_workbook_limitations(answer, summary)

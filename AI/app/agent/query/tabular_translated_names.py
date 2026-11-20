@@ -131,16 +131,14 @@ _NEGATED = re.compile(r"미가입|미보유|없는|없음|아닌|않은|안\s*�
 
 
 async def affirmed_columns(resolver, words, table, conditions, question):
-    """{condition index: word} for yes/no columns the question names without negating them.
-
-    "지진 보험 가입 계약 수" names Earthquake, a column holding only Y and N, and the plan keeps
-    Y: naming the column affirms it. Any negation ("미가입", "없는") leaves it unread.
-    """
+    """{condition index: word} for yes/no columns the question names: "지진 보험 가입" reads Earthquake = Y,
+    and a negation ("가입 안 한", "미가입") reads N; the other value is never what was asked."""
     columns = {column.id: column for column in table.columns}
+    wanted = _NO if _NEGATED.search(question) else _YES
     binary = {index: condition for index, condition in enumerate(conditions)
-              if normalize(condition.value) in _YES and {normalize(row.values.get(condition.column_id))
-                                                         for row in table.rows} - {"", "none"} <= _YES | _NO}
-    if not binary or _NEGATED.search(question):
+              if normalize(condition.value) in wanted and {normalize(row.values.get(condition.column_id))
+                                                           for row in table.rows} - {"", "none"} <= _YES | _NO}
+    if not binary:
         return {}
     headers = [columns[condition.column_id].header for condition in binary.values()]
     results = await asyncio.gather(*(resolver.resolve(word, "column name", headers) for word in words))

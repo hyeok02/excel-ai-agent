@@ -11,9 +11,12 @@ from app.services.insights.narratives.record_context import describe_records
 from app.services.insights.narratives.record_units import linked_record_currency, record_value
 from app.services.insights.narratives.record_summary_support import _words, _range
 from app.services.insights.narratives.record_concentration import append_concentration
+from app.services.insights.narratives.record_shape import additive_quantity, data_keys, monthly_totals
 
 
-_KEY = re.compile(r"\b(?:id|identifier|policy|invoice|order|transaction|reference|record)\b|번호|식별자", re.I)
+# "응답자ID", "품목코드": a Korean word written against the key word is still a key.
+_KEY = re.compile(r"(?:\b|(?<=[가-힣]))(?:id|identifier|policy|invoice|order|transaction|reference|record|code)\b"
+                  r"|번호|식별자|코드", re.I)
 _ADDITIVE = re.compile(r"\b(?:total|amount|value|revenue|sales|quantity|qty|units|count)\b|금액|매출|수량|건수", re.I)
 _NONADDITIVE = re.compile(r"\b(?:unit|per|average|avg|rate|ratio|percent|percentage|margin|price)\b|단가|평균|비율|비중|률", re.I)
 _TOTAL = re.compile(r"\b(?:grand\s+total|sub\s*total|total)\b|합계|총계|소계", re.I)
@@ -53,7 +56,7 @@ def _report(sheet_data, header, rows, context):
     records = [{column(c): c for c in row} for row in rows]
     keys = [p for p, c in headers.items() if _KEY.search(_words(c["value"]))]
     keys = [p for p in keys if all(p in row and row[p].get("value") not in (None, "") for row in records)
-            and len({str(row[p]["value"]) for row in records}) == len(records)]
+            and len({str(row[p]["value"]) for row in records}) == len(records)] or data_keys(headers, records)
     if not keys or any(_TOTAL.search(str(c.get("value", "")).strip()) for row in rows for c in row):
         return None
     basis_refs = []
@@ -79,11 +82,12 @@ def _report(sheet_data, header, rows, context):
         words = _words(name)
         # TotalPrice is an extended amount; UnitPrice and plain Price are not additive.
         additive_price = bool(re.search(r"\btotal\s+price\b", words, re.I))
-        if p in keys or not _ADDITIVE.search(words) or (_NONADDITIVE.search(words) and not additive_price):
-            continue
         cells = [row.get(p, {}) for row in records]
-        if not all(finite(c.get("value")) for c in cells):
+        if p in keys or (_NONADDITIVE.search(words) and not additive_price) or not all(
+                finite(c.get("value")) for c in cells):
             continue
+        if not _ADDITIVE.search(words) and not additive_quantity([c["value"] for c in cells]):
+            continue  # named as a quantity, or shaped as one: non-negative, past a score scale
         units = {unit(c) for c in cells}
         if len(units) != 1 or "%" in units:
             continue
@@ -124,5 +128,8 @@ def _report(sheet_data, header, rows, context):
         title = f"{description.subject} {label} 합계".strip()
         items.append(insight(title, fact, evidence, "metric", topic=name))
     overview = f"{description.lead(len(records))} {', '.join(totals)}입니다."
+    if monthly := monthly_totals(sheet, headers, records, key, measures[0], display_names[measures[0][2]],
+                                 measures[0][5], record_value, reference, insight):
+        items.append(monthly)  # daily records: the months they add up to
     return append_concentration(sheet, rows, headers, records, keys, measures, key_ref, description,
                                 display_names, basis_refs, items, overview)

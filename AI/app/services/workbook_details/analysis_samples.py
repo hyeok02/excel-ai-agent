@@ -4,7 +4,7 @@ import os
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from app.services.workbook_details.cell_values import formula_text, json_value, string_or_none
+from app.services.workbook_details.cell_values import cell_fill_color, formula_text, json_value, string_or_none
 from app.services.workbook_details.models import CellValue
 
 
@@ -126,6 +126,11 @@ def _analysis_cell(cell: object, value_cell: object | None) -> dict[str, CellVal
         "number_format": string_or_none(getattr(cell, "number_format", None)),
         "bold": bool(getattr(getattr(cell, "font", None), "bold", False)),
     }
+    # Fill and indent set heading rows ("New England" over its states) apart: kept only when present.
+    if fill := cell_fill_color(cell):
+        result["fill"] = fill
+    if indent := int(getattr(getattr(cell, "alignment", None), "indent", 0) or 0):
+        result["indent"] = indent
     hyperlink = getattr(cell, "hyperlink", None)
     if hyperlink is not None:
         result["hyperlink"] = getattr(hyperlink, "target", None)
