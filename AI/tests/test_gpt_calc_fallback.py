@@ -44,12 +44,13 @@ class _Planner:
         self.notes.append(note)
         plan = dict(self.plans.pop(0) if len(self.plans) > 1 else self.plans[0])
         if plan.get("table"):
-            plan["table"] = {**plan["table"], "table": [table.sheet_name for table in tables].index("Sales")}
+            plan["table"] = {**plan["table"], "table": [table.sheet_name for table in tables].index("Sales")} if any(
+                table.sheet_name == "Sales" for table in tables) else plan["table"]
         return CalcPlan.model_validate(plan)
 
 
 def _table(**changes):
-    return {"table": 0, "filters": [], "group_by": [], "period": "none", "measure": "Amount", "aggregate": "sum", "denominator": None, "subtract": None,
+    return {"table": 0, "filters": [], "group_by": [], "period": "none", "measure": "Amount", "aggregate": "sum", "denominator": None, "add": [], "subtract": None,
             "order": "none", "pick": "all", "n": 0, "share": False, **changes}
 
 
@@ -77,7 +78,7 @@ def test_years_are_compared_and_distinct_values_counted():
 def test_groups_above_the_mean_and_shares():
     answer = _ask({"kind": "table", "method": "City별 합계, 평균 초과", "cells": None,
                    "table": _table(group_by=["City"], order="desc", pick="above_mean", share=True)})
-    assert "그룹 평균 85보다 높은 항목 2개" in answer.answer and "Boston: 170 (50.00%)" in answer.answer
+    assert "그룹 평균 85보다 높은 항목 2개" in answer.answer and "Boston: 170 (50.00%, 2건)" in answer.answer
 
 
 def test_cells_are_combined_from_their_own_values_and_filtered():
@@ -100,7 +101,9 @@ def test_only_arithmetic_is_evaluated():
     from app.agent.query.references import normalize_reference
     cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
     assert evaluate("[Months!C2]/[Months!B2]*100", cells)[0] == 120
-    assert evaluate("__import__('os')", cells) is None and evaluate("[Months!B2]**2", cells) is None
+    assert evaluate("__import__('os')", cells) is None and evaluate("[Months!B2]**[Months!C2]", cells) is None
+    assert evaluate("([Months!B4]/[Months!B2])**(1/2)", cells)[0] == 3 ** 0.5  # a growth rate's root, constant only
+    assert evaluate("[Months!B2]**99", cells) is None
 
 
 def test_clarifications_are_left_and_a_declining_draft_is_not_shown():

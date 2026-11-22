@@ -3,6 +3,7 @@ from collections import defaultdict
 from functools import lru_cache
 import re
 from app.agent.query.ambiguity_labels import (
+    distinct_sheet_mentioned,
     label_base,
     mentioned_sources,
     normalize_label,
@@ -68,7 +69,8 @@ def candidates_for(question, matches, index):
 def scoped_tables(question, tables):
     """Apply only scopes the user named: sheet, A1 range or table caption."""
     tables = [table for table in tables if len(table.hidden_columns) < len(table.columns)]
-    named = mentioned_sources((table.sheet_name for table in tables), question)
+    named = mentioned_sources((table.sheet_name for table in tables), question) or distinct_sheet_mentioned(
+        (table.sheet_name for table in tables), question)
     if named:
         tables = [table for table in tables if table.sheet_name in named]
     ranges = explicit_ranges(question, include_unqualified=True)

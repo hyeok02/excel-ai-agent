@@ -5,6 +5,7 @@ from app.agent.query.models import (
 from app.agent.query.tabular_binding import bind_tabular_plan
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.tabular_labelled_rows import label_column, labelled_text
+from app.agent.query.tabular_misread import misread
 from app.agent.query.tabular_subtotal_rows import typed_total, without_subtotals
 from app.agent.query.tabular_named_scope import named_column_scope
 from app.agent.query.tabular_results import aggregate_text, query_evidence, scope_description
@@ -46,15 +47,19 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         return execute_streaming_tabular(plan, table, tables, data_index, question, intent)
     if not fully_indexed or not request_matches_plan(question, plan, table, tables, intent):
         return None
+    if bounded_query and plan.order_by and plan.limit and not plan.group_by and (
+            found := filtered_rows(table, filters, plan.filter_expression)) is not None and (
+            shown := ordered_rows(found, plan)) is not None and misread(question, plan, table, found, shown, selected):
+        return None  # the top rows of a table whose shown values repeat: left to the calculation
     if bounded_query:
         from app.agent.query.indexed_accumulation_execution import execute_indexed_accumulation
         return execute_indexed_accumulation(plan, table, selected, needed, question, data_index)
     rows = filtered_rows(table, filters, plan.filter_expression)
     if rows is None:
         return None
-    rows = ordered_rows(rows, plan)
-    if rows is None:
-        return None
+    matched, rows = rows, ordered_rows(rows, plan)
+    if rows is None or misread(question, plan, table, matched, rows, selected):
+        return None  # left to the calculation over the whole table
     if not rows_match_explicit_ranges(question, table, selected, rows):
         return None
     subtotal_notes = []

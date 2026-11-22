@@ -11,7 +11,7 @@ from app.services.insights.narratives.record_context import describe_records
 from app.services.insights.narratives.record_units import linked_record_currency, record_value
 from app.services.insights.narratives.record_summary_support import _words, _range
 from app.services.insights.narratives.record_concentration import append_concentration
-from app.services.insights.narratives.record_shape import additive_quantity, data_keys, monthly_totals
+from app.services.insights.narratives.record_shape import additive_quantity, data_keys, dated, monthly_totals
 
 
 # "응답자ID", "품목코드": a Korean word written against the key word is still a key.
@@ -86,7 +86,7 @@ def _report(sheet_data, header, rows, context):
         if p in keys or (_NONADDITIVE.search(words) and not additive_price) or not all(
                 finite(c.get("value")) for c in cells):
             continue
-        if not _ADDITIVE.search(words) and not additive_quantity([c["value"] for c in cells]):
+        if not _ADDITIVE.search(words) and not additive_quantity([c["value"] for c in cells], dated(records, keys[0])):
             continue  # named as a quantity, or shaped as one: non-negative, past a score scale
         units = {unit(c) for c in cells}
         if len(units) != 1 or "%" in units:

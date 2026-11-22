@@ -34,10 +34,18 @@ def data_keys(headers, records):
     return []
 
 
-def additive_quantity(values):
-    """Non-negative numbers beyond a score or rating scale, not years and not a running number."""
+def dated(records, key):
+    """Records keyed by a date: daily or monthly flows (입고, 출고, 방문자수) rather than scores."""
+    return all(_DATE.match(str(row.get(key, {}).get("value", ""))) for row in records)
+
+
+def additive_quantity(values, flows=False):
+    """Non-negative numbers beyond a score or rating scale, not years and not a running number.
+
+    Dated records hold flows: any size adds up, and a signed net change (순증감) too.
+    """
     numbers = [float(value) for value in values]
-    if not numbers or min(numbers) < 0 or max(numbers) <= SCALE:
+    if not numbers or not flows and (min(numbers) < 0 or max(numbers) <= SCALE):
         return False
     if all(value.is_integer() and 1900 <= value <= 2100 for value in numbers):
         return False  # years

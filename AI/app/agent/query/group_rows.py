@@ -33,8 +33,11 @@ def group_rows(table, summary):
         return {}
     numbers = sorted(styles)
     after = dict(zip(numbers, numbers[1:]))
-    # Every heading but the last row is followed by a member row.
-    if any(number in after and styles[after[number]] != plain for number in marked if number != numbers[-1]):
+    # Every heading is followed by a member row; a styled last row heads nothing (a latest month in bold).
+    if any(number in after and styles[after[number]] != plain for number in marked):
+        return {}
+    marked = [number for number in marked if number in after]
+    if not marked:
         return {}
     values = {row.row_number: row.values.get(label.id) for row in table.rows}
     return {number: str(values[number]) for number in marked}

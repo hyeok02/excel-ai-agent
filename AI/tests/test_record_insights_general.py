@@ -47,3 +47,12 @@ def test_score_means_are_compared_across_a_repeating_group():
     rows = [[f"{number % 3 + 1}반", f"학생{number}", 60 + number * 2, 90 - number] for number in range(1, 13)]
     report = _report(["반", "이름", "국어", "영어"], rows)
     assert any("반별 평균은 " in item.fact and "가장 높습니다" in item.fact for item in report.insights)
+
+
+def test_year_less_quarters_and_dated_flows_are_read():
+    quarters = _report(["Category", "Q1", "Q2", "Q3", "Q4"], [["Billing", 95, 68, 58, 7], ["Delivery", 70, 85, 98, 60],
+                                                             ["Website", 105, 9, 80, 52]])
+    assert any("Q1 95에서 Q4 7로" in item.fact for item in quarters.insights)
+    flows = _report(["일자", "품목", "출고"], [[f"2024-10-{day:02d}", item, day + len(item)] for day in range(1, 7)
+                                               for item in ("A부품", "B부품")])
+    assert "출고 합계는" in flows.overview

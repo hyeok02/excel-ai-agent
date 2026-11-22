@@ -4,12 +4,17 @@ from openpyxl.utils import coordinate_to_tuple, get_column_letter, range_boundar
 from app.agent.query.tabular_catalog_models import QueryColumn, QueryRow, QueryTable
 from app.agent.query.tabular_catalog_sources import cell_value
 from app.agent.query.tabular_metadata_headers import series_identifiers, series_metadata_rows
+from app.agent.query.tabular_two_row_headers import two_row_header
 
 
 def build_table(sheet, reference, cells, complete, merged, hidden):
     left, top, right, bottom = range_boundaries(reference)
     if bottom <= top or right <= left:
         return None
+    if two_level := two_row_header(cells, merged, left, top, right, bottom):
+        named, anchors, data_rows = two_level  # "2024 상반기": a merged parent over its child
+        return _table(sheet, reference, cells, complete, merged, hidden, named,
+                      {column: f"{sheet}!{anchor}" for column, anchor in anchors.items()}, data_rows)
     headers, header_references = [], {}
     observed_rows = sorted({coordinate_to_tuple(address)[0] for address in cells
                             if top < coordinate_to_tuple(address)[0] <= bottom})
@@ -43,6 +48,10 @@ def build_table(sheet, reference, cells, complete, merged, hidden):
         return None
     if any(_data_merge(span, top + 1, bottom, headers) for span in merged):
         return None
+    return _table(sheet, reference, cells, complete, merged, hidden, headers, header_references, observed_rows)
+
+
+def _table(sheet, reference, cells, complete, merged, hidden, headers, header_references, observed_rows):
     metadata = series_metadata_rows(reference, cells)
     rows = []
     for number in observed_rows:
