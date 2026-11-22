@@ -38,7 +38,14 @@ Asked for a value and the row holding it per group (each class's top student), u
 The mean or sum of the top n is pick top with then. Which category grew more between periods: group_by the
 category and the date with period, and change. A share of rows within a scope ('강남점' days at least 200만원)
 marks the scope's filter scope=true. Asked how many and how much at once, compute the amount: the rows counted
-are stated with it. Days between two date columns are measure minus subtract.
+are stated with it. Days between two date columns are measure minus subtract. Rows above their own average
+(students above the class mean): group_by the column naming each row and pick above_mean. A value computed from
+several columns of each row (quantity × price) is row_formula. Two parts of one column compared (수입 minus 지출):
+group_by that column; the two totals and their difference are shown. Things laid out as columns (products,
+years) compared or listed (the smallest product's total, one region's trend over year columns): across those
+columns. Groups of values (weekdays against weekends): group_by the column with bins. A count and an amount asked
+together: the count as the calculation and the amount in also. Students above their class mean: filter the class,
+measure the score, pick above_mean, no group_by. A growth rate per year may use ** in kind=cells.
 kind=cells: arithmetic over cell references [Sheet!B5] of the small tables whose rows are listed
 (row_values: [row number, then each column's value]; a value's cell is the column letter + that row
 number; the header_row only names the columns, e.g. a year header "2022" is a label, never an operand),

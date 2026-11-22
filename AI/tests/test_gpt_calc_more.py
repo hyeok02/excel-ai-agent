@@ -78,3 +78,57 @@ def test_a_plan_naming_no_column_is_told_which_names_are_missing():
     calc = TableCalc.model_validate(_table(measure="All Persons", filters=[{"column": "Region", "op": "eq", "value": "x"}]))
     assert "['all persons'] are not columns of table 0" in unlisted_note(tables, 0, calc)
     assert unlisted_note(tables, 0, TableCalc.model_validate(_table())) is None
+
+
+def test_row_formulas_latest_dates_monthly_means_and_a_column_subtracted_from_itself():
+    formula = _ask({"measure": None, "row_formula": "[C]*[D]", "aggregate": "sum"})
+    assert "국어*수학 합계: 27,025" in formula  # 5400 + 6650 + 6560 + 8415
+    latest = _ask({"measure": "끝", "aggregate": "max"})
+    assert "1위 2반 · 다 · 2024-03-01 · 2024-11 · B: 2024-05-30\n" in latest
+    monthly = _ask({"group_by": ["월"], "period": "month", "measure": "매출", "then": "mean"})
+    assert "위 2개의 평균: 41" in monthly  # (10 + 20) and (30 + 22)
+    assert "현재 원본 근거" in _ask({"measure": "매출", "subtract": "매출"})  # 0 for every row is sent back, then refused
+    assert "위 1개" not in _ask({"measure": "매출", "then": "sum"})  # one total is not taken together again
+    assert "|국어-수학| 값" not in _ask({"measure": "국어", "row_formula": "abs([C]-[D])", "aggregate": "max",
+                                       "name_by": "이름"}) and "1위" in _ask({"measure": "국어", "row_formula": "ABS([C]-[D])",
+                                                                              "aggregate": "max", "name_by": "이름"})
+
+
+def test_rows_above_their_own_mean_and_a_formula_dividing_keeps_its_decimals():
+    above = _ask({"filters": [{"column": "반", "op": "eq", "value": "1반"}], "measure": "국어", "pick": "above_mean"})
+    assert "그룹 평균 80보다 높은 항목 1개" in above and "가" in above
+    assert "국어/수학 값: 1.5\n" in _ask({"filters": [{"column": "이름", "op": "eq", "value": "가"}], "measure": None,
+                                       "row_formula": "[C]/[D]"})
+
+
+def test_columns_compared_value_sets_and_figures_beside_a_count():
+    across = _ask({"measure": None, "across": ["국어", "수학"], "order": "asc", "pick": "nth", "n": 1})
+    assert "1위 국어: 325" in across  # 325 against 336
+    sets = _ask({"group_by": ["반"], "bins": [{"name": "앞반", "values": ["1반"]}, {"name": "뒷반", "values": ["2반"]}],
+                 "measure": "수학", "aggregate": "mean"})
+    assert "· 앞반: 77.5" in sets and "차이(앞반 - 뒷반): -13" in sets
+    also = _ask({"filters": [{"column": "수학", "op": "gt", "value": "90"}], "measure": None, "aggregate": "count",
+                 "also": [{"label": "초과 점수 합계", "row_formula": "[D]-90"}]})
+    assert "행 건수: 2" in also and "초과 점수 합계: 14" in also  # 95 and 99
+    days = _ask({"group_by": ["이름"], "measure": None, "row_formula": "DATEDIF([E],[F],\"D\")", "aggregate": "max",
+                 "order": "desc", "pick": "nth", "n": 1})
+    assert "1위 다: 90" in days
+
+
+def test_rows_counted_above_their_mean_are_ranked_by_the_score_and_named_once():
+    above = _ask({"filters": [{"column": "반", "op": "eq", "value": "2반"}], "measure": "국어", "aggregate": "count",
+                  "pick": "above_mean"})
+    assert "그룹 평균 82.5보다 높은 항목 1개" in above  # 라 85 against 다 80
+    named = _ask({"measure": "수학", "aggregate": "max", "name_by": "이름"})
+    assert "1위 라: 99" in named
+
+
+def test_cells_of_a_table_too_long_to_be_shown_are_not_cited():
+    from app.agent.query.gpt_calc_checks import listed_cells
+    from app.agent.query.tabular_catalog import build_query_tables
+    from tests.test_gpt_calc_fallback import _workbook
+    summary, index = _workbook()
+    tables = [table for table in build_query_tables(summary) if table.complete and table.rows]
+    cells = {cell.reference.casefold(): cell for row in index.rows for cell in row.cells}
+    long = [table.__class__(**{**table.__dict__, "rows": table.rows * 30}) for table in tables]
+    assert len(listed_cells(tables, cells)) == len(cells) and len(listed_cells(long, cells)) < len(cells)

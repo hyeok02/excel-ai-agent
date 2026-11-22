@@ -87,3 +87,13 @@ def resolve_unique_column(value, table):
         matches = {column.id for column in table.columns
                    if normalized and normalize_label(label_base(column.header)) == normalized}
     return next(iter(matches)) if len(matches) == 1 else None
+
+
+def distinct_sheet_mentioned(sheets, question):
+    """The one sheet whose own word the question names: "2025년 TV 판매량" picks '2025년 판매' over '2024년 판매'."""
+    words = {sheet: set(re.findall(r"[^\W_]+", unicodedata.normalize("NFKC", sheet).casefold())) for sheet in set(sheets)}
+    if len(words) < 2:
+        return set()
+    shared = set.intersection(*words.values())
+    named = {sheet for sheet, tokens in words.items() if any(_source_matches(token, question) for token in tokens - shared)}
+    return named if len(named) == 1 else set()

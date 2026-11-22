@@ -1,10 +1,12 @@
 """The answers of a GPT-chosen calculation: the calculation stated, its results, the cells read."""
 import re
+from datetime import date
 
 from app.agent.query.cell_display import _display_cell
 from app.agent.query.excel_number_formats import parse_number_format
 from app.agent.query.gpt_calc_cells import result_style, written
 from app.agent.query.gpt_calc_draft_check import cites_only_seen_cells, numbers_hold
+from app.agent.query.gpt_calc_labels import _condition, _formula_name, plain
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.metric_observation_render import _evidence
 from app.agent.query.models import QuestionAnswer, QuestionAnswerStatus, QuestionAnswerVerification
@@ -21,6 +23,8 @@ _REFUSAL = re.compile(r"확인할 수 없|알 수 없|확인이 어렵|확인되
 
 
 def shown(value, style):
+    if style == "date":  # a day kept as its ordinal: 2025-12-31
+        return date.fromordinal(int(value)).isoformat()
     if style == "ratio%":
         return f"{value:,.2f}%"
     if style == "#,##0" or style == "General" and float(value).is_integer():
@@ -31,13 +35,11 @@ def shown(value, style):
     return _display_cell(round(value, 4), style)
 
 
-def plain(value):
-    return f"{value:,.2f}".rstrip("0").rstrip(".") if not float(value).is_integer() else f"{value:,.0f}"
-
-
 def table_answer(question, plan, table, result, style, cells):
     calc = plan.table
     name = column_name(result.columns[-1]) if calc.measure else "행"  # the measure is read last
+    name, style = (_formula_name(calc.row_formula, table), "General" if "/" in calc.row_formula else style) \
+        if calc.row_formula else (name, "date" if result.dated else style)  # a weighted mean is not in a count's format
     name = " + ".join([name, *(item for item in calc.add if item != calc.measure)]) if calc.add and calc.measure else name
     name += f" - {calc.subtract}" if calc.subtract else ""
     name = f"|{name}|" if calc.absolute else name
@@ -78,6 +80,7 @@ def table_answer(question, plan, table, result, style, cells):
         elif len(groups) == 2 and calc.pick == "all" and calc.aggregate in {"sum", "mean", "median"}:  # 강남점 vs 홍대점
             (first, a, _), (second, b, _) = groups
             lines.append(f"차이({first} - {second}): {'-' if a < b else ''}{shown(abs(a - b), style)}")
+    lines += [f"{label}: {plain(value)}" for label, value in result.extras]  # 초과 금액 합계 beside the count
     if result.then is not None:  # "상위 3일의 평균": the groups picked, then their mean
         lines.append(f"위 {len(groups)}개의 {_AGGREGATES[calc.then]}: {shown(result.then, style)}")
     if result.by_column:  # the columns added, each shown: a trend over year columns reads from them
@@ -87,17 +90,6 @@ def table_answer(question, plan, table, result, style, cells):
                     + (" 등" if len(result.skipped) > 3 else "") if result.skipped else "") + ")")
     cited = [cells.get(normalize_reference(column.header_reference)) for column in result.columns]
     return _answer(question, "\n".join(lines), [cell for cell in cited if cell is not None], listing)
-
-
-_SYMBOLS = {"eq": "=", "ne": "≠", "gt": ">", "ge": "≥", "lt": "<", "le": "≤", "contains": "포함:",
-            "year": "연도 =", "month": "월 =", "quarter": "분기 ="}
-
-
-def _condition(item):
-    symbol = _SYMBOLS.get(item.op.removesuffix("_column"), item.op)
-    value = item.value.strip()
-    value = plain(float(value)) if re.fullmatch(r"-?\d+\.\d+", value) else value  # 18.16 from [Table!B66]
-    return f"{item.column} {symbol} {value or '빈칸'}"
 
 
 def cells_answer(question, plan, computed):

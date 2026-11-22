@@ -19,6 +19,12 @@ def _number(value):
 def _evaluate(node, values):
     if isinstance(node, ast.Expression):
         return _evaluate(node.body, values)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow) and not any(
+            isinstance(part, ast.Name) for part in ast.walk(node.right)):  # (B/A)**(1/3): a growth rate's root
+        exponent = _evaluate(node.right, {})
+        if abs(exponent) > 10:
+            raise ValueError("exponent too large")
+        return _evaluate(node.left, values) ** exponent
     if isinstance(node, ast.BinOp) and type(node.op) in _OPERATORS:
         return _OPERATORS[type(node.op)](_evaluate(node.left, values), _evaluate(node.right, values))
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
@@ -28,6 +34,9 @@ def _evaluate(node, values):
         return node.value
     if isinstance(node, ast.Name) and node.id in values:
         return values[node.id]
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "abs" and len(node.args) == 1 \
+            and not node.keywords:  # "|국어 - 수학|"
+        return abs(_evaluate(node.args[0], values))
     raise ValueError("unsupported expression")
 
 
@@ -53,7 +62,7 @@ def evaluate(expression, cells, labels=frozenset()):
 
     try:
         text = _REFERENCE.sub(name, _expanded(expression, cells, labels))
-        if not used or re.search(r"[A-Za-z_]\w*\s*\(|\*\*|//|%", text):
+        if not used or re.search(r"[A-Za-z_]\w*\s*\(|//|%", text):
             return None  # no cell, or a function call / power the arithmetic does not allow
         result = _evaluate(ast.parse(text, mode="eval"), names)
     except (KeyError, ValueError, SyntaxError, ZeroDivisionError, TypeError):

@@ -101,7 +101,9 @@ def test_only_arithmetic_is_evaluated():
     from app.agent.query.references import normalize_reference
     cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
     assert evaluate("[Months!C2]/[Months!B2]*100", cells)[0] == 120
-    assert evaluate("__import__('os')", cells) is None and evaluate("[Months!B2]**2", cells) is None
+    assert evaluate("__import__('os')", cells) is None and evaluate("[Months!B2]**[Months!C2]", cells) is None
+    assert evaluate("([Months!B4]/[Months!B2])**(1/2)", cells)[0] == 3 ** 0.5  # a growth rate's root, constant only
+    assert evaluate("[Months!B2]**99", cells) is None
 
 
 def test_clarifications_are_left_and_a_declining_draft_is_not_shown():

@@ -12,7 +12,7 @@ from openpyxl.utils import range_boundaries
 from app.agent.query.gpt_calc_answer_text import cells_answer, table_answer, unverified_draft
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_draft_check import source_references, source_values
-from app.agent.query.gpt_calc_checks import fitting_table, plan_problem, unlisted_note, with_cell_values
+from app.agent.query.gpt_calc_checks import fitting_table, listed_cells, plan_problem, unlisted_note, with_cell_values
 from app.agent.query.group_rows import group_rows
 from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -74,12 +74,11 @@ async def _computed(question, summary, index, planner):
     labels |= {normalize_reference(cell.reference) for row in index.rows if _year_row(row) for cell in row.cells}
     if not tables:
         return None
-    if planner is None:
-        from app.agent.query.gpt_calc_planner import LangChainCalcPlanner
-        planner = LangChainCalcPlanner.from_environment()
-    if planner is None:
+    from app.agent.query.gpt_calc_planner import LangChainCalcPlanner
+    if (planner := planner or LangChainCalcPlanner.from_environment()) is None:
         return None
     cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
+    listed = listed_cells(tables, cells)  # kind=cells may cite only the rows GPT was shown
     headings = {table.id: group_rows(table, summary) for table in tables}
     note = ""
     for _ in range(2):  # one retry, told what did not run
@@ -103,12 +102,13 @@ async def _computed(question, summary, index, planner):
                 return table_answer(question, plan, table, result, _style(table, result, plan.table), cells)
             note = _UNLISTED
         elif plan.kind == "cells" and plan.cells is not None and plan.cells.items:
-            computed = [(item, evaluate(item.expression, cells, labels)) for item in plan.cells.items]
+            computed = [(item, evaluate(item.expression, listed, labels)) for item in plan.cells.items]
             if all(found is not None for _, found in computed):
                 return cells_answer(question, plan, computed)
             bad = [item.expression for item, found in computed if found is None][:5]
             note = (f"These expressions named a header cell or a cell holding no number: {bad}. "
-                    "Use the cells of the listed row_values (column letter + row number), never the header_row.")
+                    "Use the cells of the listed row_values (column letter + row number), never the header_row; a table "
+                    "listed without row_values is read with kind=table and filters (a total row by its own label).")
         elif plan.kind == "table" and plan.table is not None:  # a column no table lists: told, asked once more
             note = unlisted_note(tables, plan.table.table, plan.table) or _UNLISTED
         else:

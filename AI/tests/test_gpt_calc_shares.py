@@ -46,7 +46,7 @@ def test_alike_conditions_are_alternatives_and_quarters_are_read():
     assert "적용 조건: Date ≥ 2023-02\nAmount 합계: 130" in _ask(since).answer  # 30 + 90 + 10
 
 
-def test_a_filter_compares_with_a_named_cell_and_an_unnamed_extreme_is_sent_back():
+def test_a_filter_compares_with_a_named_cell_and_an_ungrouped_extreme_names_its_row():
     above = {"kind": "table", "method": "Amount > B2(100)", "cells": None,
              "table": _table(filters=[{"column": "Amount", "op": "ge", "value": "[Sales!D3]"}], measure=None,
                              aggregate="count")}
@@ -54,9 +54,7 @@ def test_a_filter_compares_with_a_named_cell_and_an_unnamed_extreme_is_sent_back
     above["table"]["filters"][0]["op"] = "ge_column"  # a cell written as if it were a column
     assert "행 건수: 4" in _ask(above).answer
     extreme = {"kind": "table", "method": "최댓값", "cells": None, "table": _table(aggregate="max")}
-    named = {"kind": "table", "method": "Region별 최댓값", "cells": None,
-             "table": _table(group_by=["Region"], aggregate="max", order="desc", pick="top", n=1)}
-    assert "1. East: 100" in _ask(extreme, named).answer
+    assert "1위 2022-01-03 · East · Boston: 100" in _ask(extreme).answer  # "가장 큰 주문 한 건": the row holding it
 
 
 def test_sum_and_average_over_a_range_are_written_out_cell_by_cell():
