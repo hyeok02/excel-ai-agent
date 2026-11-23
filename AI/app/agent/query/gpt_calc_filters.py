@@ -40,7 +40,8 @@ def _matches(value, item, row=None, other=None):
         compared = row.values.get(other.id) if row is not None and other is not None else None
         return _number(value) and _number(compared) and {"gt_column": value > compared, "ge_column": value >= compared,
                                                          "lt_column": value < compared, "le_column": value <= compared}[op]
-    if op in {"year", "month", "quarter"}:
+    if op in {"year", "month", "quarter"}:  # "2022-12T00:00:00Z" names the month 2022-12
+        wanted = wanted[:{"year": 4, "month": 7}[op]] if op != "quarter" and re.match(r"\d{4}-\d{2}", wanted) else wanted
         return _date_part(value, op) == wanted.upper()
     if op in {"gt", "ge", "lt", "le"} and (moment := _moment(value, wanted)) is not None:
         found, limit = moment  # "2020년 이후 입사": a date against a year, year-month or day

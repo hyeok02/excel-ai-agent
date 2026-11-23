@@ -22,7 +22,8 @@ def picked(calc, values):
 
 def then_value(calc, items):
     """The sum or mean of the groups shown: 상위 3일의 평균, 월별 합계의 평균(월평균)."""
-    if calc.then == "none" or len(items) < 2 and calc.pick not in {"top", "nth"} or calc.pick == "all" and calc.period == "none":
+    if calc.then == "none" or len(items) < 2 and calc.pick not in {"top", "nth"} or calc.pick not in {"top", "nth"} \
+            and calc.period == "none":
         return None  # only the picked groups (상위 3일) or periods (월별 합계의 월평균) are taken together
         return None
     numbers = [value for _, value in items]

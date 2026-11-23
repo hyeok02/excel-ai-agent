@@ -29,20 +29,27 @@ def unused_values(question, table, calc):
     return sorted(set(missing))
 
 
-def plan_problem(question, table, calc):
+def plan_problem(question, table, calc, headings=None):
     """Every reason a table plan cannot answer as written, told back to GPT once; else None."""
     problems = []
+    from app.agent.query.ambiguity_labels import distinct_sheet_mentioned
+    named = distinct_sheet_mentioned((headings or {}).values(), question)  # "2026년" names the 'Year 2026' section
+    if named and not any(item.op == "under" for item in calc.filters):
+        problems.append(f"The question names the section {sorted(named)} of group_rows, and rows of other sections "
+                        "look alike (the same months each year): keep only its rows with a filter op under.")
     if unused := unused_values(question, table, calc):
         problems.append(f"The question names {unused} as written in the table, but the plan neither filters on "
                         "nor groups by them (a filter on that column keeps only the values it names). Use them when "
-                        "the question means those rows; keep the plan when the word only appears inside another phrase.")
-    if calc.subtract and calc.subtract == calc.measure:
+                        "the question means those rows; keep the plan when the word only appears inside another phrase. "
+                        "Two values of one column compared or one taken from the other (수입 minus 지출) are that "
+                        "column in group_by: both totals and their difference are shown.")
+    if calc.subtract and calc.subtract == calc.measure and not calc.row_formula:
         problems.append("subtract names the measure itself, which leaves 0. To compare two parts of one column "
                         "(수입 and 지출), group_by the column holding the parts and leave subtract null.")
     if calc.aggregate == "ratio" and not calc.filters and not calc.denominator and not calc.group_by:
         problems.append("A ratio over all rows with no filter is 100%. For the share of rows holding a value "
                         "('Y', '예'), filter that value and leave measure null.")
-    if calc.add and (calc.measure is None or not calc.group_by):
+    if calc.add and not calc.row_formula and (calc.measure is None or not calc.group_by):  # a formula replaces add
         problems.append("add totals several columns into one value per row of each group. For one row's values "
                         "across columns (a trend over year columns), use kind=cells with one item per column.")
     if calc.pick in {"above_mean", "below_mean"} and not calc.measure and not calc.row_formula and not calc.group_by:
@@ -51,10 +58,28 @@ def plan_problem(question, table, calc):
     return " ".join(problems) or None
 
 
-def with_cell_values(calc, cells):
-    """The plan with each "[Sheet!B66]" filter value replaced by that number cell's value."""
+# "2020년 이후", "2024년 3월까지": a Korean bound includes the period it names.
+_BOUND = re.compile(r"((?:19|20)\d{2})\s*년\s*(?:(\d{1,2})\s*월\s*)?(?:도\s*)?(이후|부터|이전|까지)")
+
+
+def inclusive(question, item):
+    """A date or year bound as the question states it: 2020년 이후 is ge 2020, not gt 2020 or ge 2021-01-01."""
+    if item.op not in {"gt", "ge", "lt", "le"} or not re.fullmatch(r"\d{4}(?:-\d{1,2}){0,2}(?:\.0)?", item.value.strip()):
+        return item
+    for year, month, word in _BOUND.findall(question):
+        later = word in {"이후", "부터"}
+        if later != (item.op in {"gt", "ge"}):
+            continue
+        named = f"{year}-{int(month):02d}" if month else year
+        if abs(int(item.value.strip()[:4]) - int(year)) <= 1:  # the bound GPT moved by a day or a year
+            return item.model_copy(update={"op": "ge" if later else "le", "value": named})
+    return item
+
+
+def with_cell_values(calc, cells, question=""):
+    """The plan with each "[Sheet!B66]" filter value replaced by that number cell's value, and bounds inclusive."""
     filters = []
-    for item in calc.filters:
+    for item in map(lambda item: inclusive(question, item), calc.filters):
         if re.fullmatch(r"\s*\[[^\[\]]+![A-Za-z]{1,3}\d+\]\s*", item.value) and (found := evaluate(item.value, cells)):
             # "gt_column [Table!B66]": a cell, not a column of the row, so a plain comparison with its value
             item = item.model_copy(update={"value": repr(found[0]), "op": item.op.removesuffix("_column")})

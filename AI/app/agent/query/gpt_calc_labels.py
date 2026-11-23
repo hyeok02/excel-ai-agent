@@ -9,7 +9,7 @@ def plain(value):
 
 
 _SYMBOLS = {"eq": "=", "ne": "≠", "gt": ">", "ge": "≥", "lt": "<", "le": "≤", "contains": "포함:",
-            "year": "연도 =", "month": "월 =", "quarter": "분기 ="}
+            "year": "연도 =", "month": "월 =", "quarter": "분기 =", "under": "구간:"}
 
 
 def _formula_name(formula, table):

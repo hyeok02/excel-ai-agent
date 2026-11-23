@@ -17,7 +17,8 @@ def run_table(table, calc, headings=None):
              **{column.id.casefold(): column for column in table.columns}}
     find = lambda name: named.get(" ".join(str(name).split()).casefold())  # noqa: E731
     filters = [(find(item.column), item, find(item.value) if item.op.endswith("_column") else None)
-               for item in calc.filters if item.value.strip() != "*"]  # "*": no condition
+               for item in calc.filters if item.value.strip() != "*" and item.op != "under"]  # "*": no condition
+    under = {" ".join(item.value.split()).casefold() for item in calc.filters if item.op == "under"}
     groups = [find(name) for name in calc.group_by]
     formula = row_formula(table, calc.row_formula) if calc.row_formula else None  # Qty × UnitPrice × (1 - Discount)
     if calc.row_formula and formula is None:
@@ -26,6 +27,9 @@ def run_table(table, calc, headings=None):
     # A ratio's denominator: one column, or several written "매우만족, 만족, 보통" (all responses).
     denominators = ([find(calc.denominator)] if find(calc.denominator) else [find(part) for part in re.split(
         r"\s*[,+]\s*", calc.denominator)]) if calc.aggregate == "ratio" and calc.denominator else []
+    whole = [find(item) for item in calc.add] if formula and calc.aggregate == "ratio" else []
+    if whole and None not in whole and set(formula[0]) <= set(whole) and not set(formula[0]) <= set(denominators):
+        denominators = whole  # the plan listed the whole in add (불만+매우불만 over all five answers), not in denominator
     denominator = denominators[0] if denominators and None not in denominators else None
     subtract = find(calc.subtract) if calc.subtract and not formula else None  # a row formula says it all
     minus = [find(item) for item in calc.minus] if subtract else []
@@ -56,6 +60,10 @@ def run_table(table, calc, headings=None):
         alike.setdefault((column.id, item.op) if item.op in _ALTERNATIVE else id(item), []).append((column, item, other))
     rows = [row for row in rows if all(any(_matches(row.values.get(column.id), item, row, other)
                                            for column, item, other in group) for group in alike.values())]
+    if under:  # the rows of one section: "Year 2026" over its months
+        marks = sorted((number, " ".join(label.split()).casefold()) for number, label in (headings or {}).items())
+        section = lambda number: next((label for mark, label in reversed(marks) if mark < number), None)  # noqa: E731
+        rows = [row for row in rows if section(row.row_number) in under]
     if calc.across:  # columns compared with each other (제품별 열), or one row across its year columns
         return across_result(calc, [find(item) for item in calc.across], rows, [column for column, _, _ in filters], skipped)
     if within:

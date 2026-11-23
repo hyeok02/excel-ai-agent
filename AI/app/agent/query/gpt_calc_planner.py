@@ -24,6 +24,7 @@ counts different values of measure); order and pick choose the groups that answe
 "second largest", top with n=3 for "top 3", above_mean for "higher than average"); share adds each
 group's share of the total. Leave grand-total or subtotal rows to code; never filter them in. group_rows
 are headings over the rows below them (regions over states); code leaves them out unless a filter names one.
+Only one heading's rows (the months under 'Year 2026'): filter op under with that heading.
 A condition between two columns of a row (stock below safety stock, spent above budget) is op lt_column /
 gt_column with value naming the other column. A rate of two columns' totals (spent over budget, conversions
 over visitors) is aggregate ratio with that denominator; the share of some rows in all rows ('예' answers, one
