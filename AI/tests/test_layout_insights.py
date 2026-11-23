@@ -30,7 +30,7 @@ def test_amounts_of_a_two_way_column_are_kept_apart():
             for kind, value in (("식비", 10 * month), ("교통", 25), ("문화", 5)):
                 book.active.append([f"2024.0{month}.0{month}", "지출", kind, value])
     overview, facts = _report(fill)
-    assert overview.startswith("이 파일은 ‘구분’ 기록 12건을 정리한 목록입니다. ")  # the first sentence as before
+    assert overview.startswith("이 파일은 ‘장부’ 시트에 2024년 1월~3월 수입·지출 기록 12건을 정리한 자료입니다. ")
     assert facts[0] == "구분별 금액 합계는 수입 3,000, 지출 150입니다. 지출은 수입의 5.0%입니다."
     assert "분류 3개로 나눠 보면 교통이 75(50.0%)로 가장 크고, 문화가 15(10.0%)로 가장 작습니다" in facts[1]
     assert "2024년 3월(60)이 가장 많고, 2024년 1월(40)이 가장 적습니다" in facts[2]

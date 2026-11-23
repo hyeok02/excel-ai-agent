@@ -29,7 +29,14 @@ def subject_particle(text):
         return "이" if last in "LMNRSX" else "가"
     if last.isdigit():
         return "이" if last in "013678" else "가"  # 영·일·삼·육·칠·팔 end in a consonant; 10 is 십
-    return "가" if last in "aeiouyAEIOUY%" else "이"  # % is read 퍼센트
+    if last == "%":
+        return "가"  # 퍼센트
+    word = spoken.lower()
+    if re.search(r"[a-z]$", word):
+        # An English word as Korean says it: Show 쇼, sales 세일즈, Statement 스테이트먼트 end in a vowel;
+        # total 토털, item 아이템, Billing 빌링, Budget 버짓, group 그룹 end in a consonant.
+        return "이" if re.search(r"(?:[lmn]|ng|[aeiou][tkp])$", word) else "가"
+    return "가" if last in "aeiouyAEIOUY" else "이"
 
 
 def topic_particle(text):

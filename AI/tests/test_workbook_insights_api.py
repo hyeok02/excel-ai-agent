@@ -27,7 +27,7 @@ def test_returns_structured_workbook_insights() -> None:
     assert response.status_code == 200
     assert generator.requested_depth == AnalysisDepth.PRECISE
     assert response.json()["report"] == {
-        "overview": "이 파일은 수식 검토 필요 관련 내용을 정리한 자료입니다."
+        "overview": "이 파일은 ‘매출현황’ 시트에 상품 2개의 1월~2월 값을 정리한 자료입니다."
                     " 매출현황 시트에 합계 수식이 있습니다.",
         "insights": [
             {

@@ -10,12 +10,15 @@ from openpyxl.utils.cell import range_boundaries
 
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.table_inputs import narrative_regions
-from app.services.insights.narratives.narrative_values import finite, insight, number, reference, subject_particle
+from app.services.insights.narratives.narrative_values import (
+    direction_particle, finite, insight, number, reference, subject_particle,
+)
 from app.services.insights.narratives.numeric_group_means import group_means
 from app.services.insights.narratives.record_display import display_value
 
 MEAN_RECORDS = 8
 _TOTAL = re.compile(r"\b(?:grand\s+)?total\b|합계|총계|소계", re.I)
+_TYPE = re.compile(r"구분|유형|종류|\b(?:type|kind)\b", re.I)
 _CODE = re.compile(r"\b(?:zip|postal|post\s*code|id|code|no\.?|number|phone)\b|우편번호|번호|코드|사번|학번|전화", re.I)
 
 
@@ -85,21 +88,45 @@ def _sheet_report(sheet):
                 category, means, labels = grouped
                 listed = ", ".join(f"{group} {display_value({**selected[0], 'value': round(mean, 2)})}"
                                    for mean, group in means)
-                by_group = f" {category['value'].strip()}별 평균은 {listed}로, ‘{means[0][1]}’{subject_particle(means[0][1])} 가장 높습니다."
+                by_group = (f" {category['value'].strip()}별 평균은 {listed}{direction_particle(listed)}, "
+                            f"‘{means[0][1]}’{subject_particle(means[0][1])} 가장 높습니다.")
             items.append(insight(
                 f"{label} {'평균과 범위' if average else '값 범위'}",
-                f"‘{name}’ 시트의 ‘{label}’ 열에서 숫자로 기록된 {number(len(selected))}개 값의 "
-                + (f"평균은 {display_value(average)}이고, " if average else "")
-                + f"범위는 {shown[0]}~{shown[1]}입니다." + by_group,
+                (f"‘{label}’ 평균은 {display_value(average)}이고, 범위는 {shown[0]}~{shown[1]}입니다." if average
+                 else f"‘{label}’ 값은 {shown[0]}~{shown[1]} 범위입니다.")
+                + (f" 값이 있는 {number(len(selected))}건 기준입니다." if len(selected) < _records(rows, selected) else "")
+                + by_group,
                 [*(reference(name, cell["cell"]) for cell in headers), reference(name, f"{start}:{end}"),
                  *(reference(name, tag["cell"]) for tag in named if tag),
                  *([reference(name, grouped[0]["cell"]), reference(name, f"{grouped[2][0]['cell']}:{grouped[2][-1]['cell']}")]
                    if grouped else [])],
                 "metric", topic=label,
             ))
+            if grouped and len(items) == 1 and _TYPE.search(grouped[0]["value"]):
+                items.insert(0, _counted(name, grouped[0], cells, selected))  # type별 건수: Movie 1,000건 …
             if len(items) >= 3:
                 return items
     return items
+
+
+def _counted(name, category, cells, selected):
+    """How many records each value of a type column holds, over every record of the table."""
+    first = min(_row(cell) for cell in selected)
+    column = re.sub(r"[\d$]", "", category["cell"])
+    labels = [" ".join(cell["value"].split()) for cell in cells if re.sub(r"[\d$]", "", str(cell.get("cell", ""))) == column
+              and _row(cell) >= first and isinstance(cell.get("value"), str) and cell["value"].strip()]
+    counts = sorted(((labels.count(value), value) for value in set(labels)), reverse=True)
+    listed = ", ".join(f"{value} {number(count)}건({count / len(labels) * 100:.1f}%)" for count, value in counts)
+    kind = " ".join(category["value"].split())
+    cited = [reference(name, category["cell"]), reference(name, f"{column}{first}:{column}{max(_row(c) for c in cells)}")]
+    return insight(f"{kind}별 건수", f"{kind}별 건수는 {listed}입니다.", cited, "summary", topic=kind)
+
+
+def _records(rows, selected):
+    """How many records the table holds below its header: 1,450 films, of which 422 have a running time."""
+    first = min(_row(cell) for cell in selected)
+    names = {_row(row[0]) for row in rows if row and _row(row[0]) >= first}
+    return max(len(names), len(selected))
 
 
 def _row(cell):
