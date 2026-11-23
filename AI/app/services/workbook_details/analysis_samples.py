@@ -22,6 +22,7 @@ def _cap(name: str, default: int) -> int:
 # 올려도 파싱 시간과 API 응답 크기는 그대로고 요청당 메모리만 5MB 늘었다.
 MAX_ANALYSIS_REGION_CELLS = _cap("ANALYSIS_MAX_REGION_CELLS", 16_384)
 MAX_ANALYSIS_SHEET_CELLS = _cap("ANALYSIS_MAX_SHEET_CELLS", 16_384)
+INSIGHT_SHEET_CELLS = _cap("INSIGHT_MAX_SHEET_CELLS", 200_000)  # see sample_caps
 MAX_ANALYSIS_SCAN_CELLS = _cap("ANALYSIS_MAX_SCAN_CELLS", 200_000)
 
 
@@ -59,7 +60,8 @@ def collect_analysis_sample(
 ) -> tuple[list[list[dict[str, CellValue]]], bool]:
     """Collect a complete dense or sparse sample within fixed scan/storage caps."""
     min_column, min_row, max_column, max_row = bounds
-    limit = min(MAX_ANALYSIS_REGION_CELLS, remaining_cells)
+    from app.services.workbook_details.sample_caps import region_cells
+    limit = min(region_cells(), remaining_cells)
     hidden_rows = hidden_rows or set()
     hidden_columns = {str(column).upper() for column in (hidden_columns or set())}
     if max_column < min_column or max_row < min_row or limit <= 0:

@@ -18,11 +18,14 @@ def group_means(rows, selected, cells):
             value = cell.get("value")
             if _row(cell) in scored and isinstance(value, str) and value.strip():
                 by_column.setdefault(_column(cell), {})[_row(cell)] = (value.strip(), cell)
+    numbered = {_row(cell) for cell in cells if isinstance(cell.get("value"), (int, float))
+                and not isinstance(cell.get("value"), bool)}
     for column, labelled in sorted(by_column.items()):
         distinct = {label for label, _ in labelled.values()}
         if len(labelled) != len(scored) or not 2 <= len(distinct) <= MAX_GROUPS or len(distinct) * 2 > len(scored):
             continue
         header = max((cell for cell in cells if _column(cell) == column and _row(cell) < first
+                      and _row(cell) not in numbered  # a record above the first scored one is no header
                       and isinstance(cell.get("value"), str) and cell["value"].strip()), key=_row, default=None)
         if header is None:
             continue

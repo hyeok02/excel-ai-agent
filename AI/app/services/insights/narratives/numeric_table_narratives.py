@@ -10,12 +10,13 @@ from openpyxl.utils.cell import range_boundaries
 
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.table_inputs import narrative_regions
-from app.services.insights.narratives.narrative_values import finite, insight, number, reference
+from app.services.insights.narratives.narrative_values import finite, insight, number, reference, subject_particle
 from app.services.insights.narratives.numeric_group_means import group_means
 from app.services.insights.narratives.record_display import display_value
 
 MEAN_RECORDS = 8
 _TOTAL = re.compile(r"\b(?:grand\s+)?total\b|합계|총계|소계", re.I)
+_CODE = re.compile(r"\b(?:zip|postal|post\s*code|id|code|no\.?|number|phone)\b|우편번호|번호|코드|사번|학번|전화", re.I)
 
 
 def numeric_table_report(context):
@@ -30,7 +31,7 @@ def numeric_table_report(context):
 def _sheet_report(sheet):
     name = str(sheet.get("name", ""))
     regions = list(narrative_regions(sheet.get("business_facts", {})))
-    schemas = sheet.get("column_schema_samples", [])
+    schemas = sheet.get("business_facts", {}).get("all_column_schemas") or sheet.get("column_schema_samples", [])
     cells = [cell for region in regions for row in region.get("rows", []) for cell in row]
     items = []
     for region in regions:
@@ -41,6 +42,8 @@ def _sheet_report(sheet):
             if schema.get("data_type") != "number" or schema.get("standard_field") in {"identifier", "date", "year"}:
                 continue
             label = str(schema.get("display_name") or "").strip()
+            if _CODE.search(label):
+                continue  # 우편번호 70112, 사번 1023: numbers that name, not measure
             path = schema.get("header_path") or [label]
             source_range = str(schema.get("source_range") or "")
             # Each row's name is its first text cell; a total row ("합계") is not one of the values.
@@ -52,6 +55,8 @@ def _sheet_report(sheet):
                             str((names.get(_row(cell)) or {}).get("value", "")).strip())]
             if not label or len(selected) < 3 or not all(finite(cell.get("value")) for cell in selected):
                 continue
+            if all(float(cell["value"]).is_integer() and 1900 <= cell["value"] <= 2100 for cell in selected):
+                continue  # 개봉 연도 2020: years are when, not how much
             if not all(_inside(cell.get("cell", ""), source_range) for cell in selected):
                 continue
             headers = [cell for cell in cells
@@ -80,7 +85,7 @@ def _sheet_report(sheet):
                 category, means, labels = grouped
                 listed = ", ".join(f"{group} {display_value({**selected[0], 'value': round(mean, 2)})}"
                                    for mean, group in means)
-                by_group = f" {category['value'].strip()}별 평균은 {listed}로, ‘{means[0][1]}’{_subject(means[0][1])} 가장 높습니다."
+                by_group = f" {category['value'].strip()}별 평균은 {listed}로, ‘{means[0][1]}’{subject_particle(means[0][1])} 가장 높습니다."
             items.append(insight(
                 f"{label} {'평균과 범위' if average else '값 범위'}",
                 f"‘{name}’ 시트의 ‘{label}’ 열에서 숫자로 기록된 {number(len(selected))}개 값의 "
@@ -95,13 +100,6 @@ def _sheet_report(sheet):
             if len(items) >= 3:
                 return items
     return items
-
-
-def _subject(word):
-    last = word[-1] if word else ""
-    if "가" <= last <= "힣":
-        return "이" if (ord(last) - 0xAC00) % 28 else "가"
-    return "이(가)"
 
 
 def _row(cell):

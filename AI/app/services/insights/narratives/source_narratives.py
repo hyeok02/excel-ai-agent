@@ -5,6 +5,9 @@ from app.services.insights.narratives.categorical_narratives import categorical_
 from app.services.insights.narratives.comparable_narratives import comparable_transaction_report
 from app.services.insights.narratives.flag_narratives import flag_matrix_report
 from app.services.insights.narratives.horizontal_trends import horizontal_trend_report
+from app.services.insights.narratives.item_tables import item_table_report
+from app.services.insights.narratives.sheet_outline import outline_report
+from app.services.insights.narratives.layout_narratives import layout_report
 from app.services.insights.models import WorkbookInsightReport
 from app.services.insights.narratives.ranked_narratives import ranked_report
 from app.services.insights.facts.sheet_scope import comparison_sheet
@@ -21,13 +24,15 @@ from app.services.insights.narratives.source_qualifications import source_qualif
 from app.services.insights.narratives.source_annotations import source_annotations
 
 
-def source_narrative_report(context):
+def source_narrative_report(context, layout=True):
+    """layout=False: the report as written before the layout narratives, whose first sentence is kept."""
     options = []
     reporters = (
         comparable_transaction_report, record_summary_report, vertical_latest_report,
         trend_report, ranked_report, horizontal_trend_report,
-        table_report, flag_matrix_report,
-        categorical_report, snapshot_report, numeric_table_report,
+        table_report, flag_matrix_report, *([layout_report] if layout else []),
+        categorical_report, snapshot_report, *([item_table_report] if layout else []), numeric_table_report,
+        *([outline_report] if layout else []),
     )
     for mode_order, reporter in enumerate(reporters):
         items, overview = reporter(context)
@@ -38,10 +43,15 @@ def source_narrative_report(context):
         return WorkbookInsightReport(overview="", insights=[], limitations=[])
     preferred = [option for option in options if option[2] == 0]
     primary = [option for option in options if not option[0]]
-    _, _, mode, items, overview = min(preferred or primary or options,
-                                   key=lambda option: (option[2], option[1]))
-    has_context = reporters[mode] is record_summary_report
-    if has_context:
+    chosen = min(preferred or primary or options, key=lambda option: (option[2], option[1]))
+    series = (vertical_latest_report, trend_report, horizontal_trend_report)
+    earlier = [option for option in options if reporters[option[2]] in series and option[1] < chosen[1]]
+    if reporters[chosen[2]] is record_summary_report and earlier:
+        chosen = min(earlier, key=lambda option: (option[1], option[2]))  # a series sheet ahead of a later list
+    _, _, mode, items, overview = chosen
+    has_context = reporters[mode] in (record_summary_report, layout_report) or (
+        reporters[mode] is item_table_report and overview.startswith("이 파일에는 "))  # its table's own title
+    if reporters[mode] is record_summary_report:
         _intro_on_its_own_line(items, overview)
     if not has_context:
         captions = []
@@ -83,6 +93,7 @@ def source_narrative_report(context):
             has_context = True
     report = WorkbookInsightReport(overview=overview, insights=items, limitations=[])
     report._overview_has_context = has_context
+    report._layout = reporters[mode] is layout_report  # its overview follows the file's usual first sentence
     return report
 
 

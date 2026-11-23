@@ -18,6 +18,7 @@ from app.services.workbook_details.analysis_samples import (
 from app.services.workbook_details.cell_values import intersecting_merged_ranges
 from app.services.workbook_details.headers import header_paths, region_title
 from app.services.workbook_details.models import RegionSummary
+from app.services.workbook_details.sample_caps import sheet_cells
 from app.services.workbook_details.snapshots import snapshot_range
 from app.services.workbook_details.visibility import hidden_columns, hidden_rows
 
@@ -31,8 +32,8 @@ def summarize_regions(
     value_worksheet: Worksheet | None = None,
 ) -> list[RegionSummary]:
     summaries: list[RegionSummary] = []
-    remaining_analysis_cells = analysis_samples.MAX_ANALYSIS_SHEET_CELLS
-    remaining_query_cells = analysis_samples.MAX_ANALYSIS_SHEET_CELLS
+    remaining_analysis_cells = sheet_cells()
+    remaining_query_cells = sheet_cells()
     cell_index = analysis_cell_index(worksheet)
     cached_cells = (
         getattr(value_worksheet, "_cells", {})

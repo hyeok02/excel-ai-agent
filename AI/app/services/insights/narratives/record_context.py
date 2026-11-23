@@ -10,6 +10,7 @@ from app.services.insights.display.record_labels import header_words, record_kin
 from app.services.insights.narratives.narrative_values import reference
 from app.services.insights.narratives.record_context_definitions import _descriptions, _definition_body, _declared_subject, _subject
 from app.services.insights.narratives.record_context_details import _examples, _period
+_GENERIC_SHEET = re.compile(r"(?:sheet|시트|data|데이터|table|표)\s*\d*|\d+", re.I)  # Excel's default names say nothing
 
 
 @dataclass
@@ -19,6 +20,7 @@ class RecordContext:
     examples: str = ""
     period: str = ""
     sample: bool = False
+    sheet: str = ""  # a plain record list is named by its sheet: ‘직원현황’ 시트의 기록
     evidence: list[str] = field(default_factory=list)
 
     @property
@@ -29,7 +31,8 @@ class RecordContext:
         when = f"{self.period}의 " if self.period else ""
         example = "예시 " if self.sample else ""
         details = f" {self.examples}" if self.examples else ""
-        return f"이 파일은 {when}{self.name} {count:,}건을 정리한 {example}자료입니다.{details}"
+        name = f"‘{self.sheet}’ 시트의 {self.name}" if self.sheet else self.name
+        return f"이 파일은 {when}{name} {count:,}건을 정리한 {example}자료입니다.{details}"
 
 
 def describe_records(context, sheet, headers, records):
@@ -88,5 +91,10 @@ def describe_records(context, sheet, headers, records):
     if result.kind in {"판매 내역", "구매 내역"}:
         result.period, period_refs = _period(name, headers, records, result.kind)
         result.evidence += period_refs
+    if result.name == "기록" and not _GENERIC_SHEET.fullmatch(str(name).strip()):
+        result.sheet = str(name).strip()
+        if not result.period:
+            result.period, period_refs = _period(name, headers, records, result.kind)
+            result.evidence += period_refs
     result.evidence = list(dict.fromkeys(result.evidence))
     return result

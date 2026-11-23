@@ -48,7 +48,9 @@ def validate_workbook_insights(
             fallback = _validate(build_source_report(context), index)
             validated = add_source_fallback(result, fallback)
     # Only a fully validated source overview may omit the generic introduction.
-    return validated if overview_has_context else add_workbook_context(report, validated, context, index)
+    from app.services.insights.verification.layout_lead import keep_lead
+    return keep_lead(validated if overview_has_context else add_workbook_context(report, validated, context, index),
+                     canonical, report, context, index)
 
 
 def validate_agent_insights(

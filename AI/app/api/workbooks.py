@@ -17,6 +17,7 @@ from app.services.insight_generator import (
     LangChainInsightGenerator,
 )
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
+from app.services.workbook_details.sample_caps import wider_samples
 from app.services.insights.models import (
     ValidatedWorkbookInsightReport,
     WorkbookInsightReport,
@@ -81,7 +82,7 @@ async def generate_workbook_insights(
     ] = AnalysisDepth.AUTO,
     include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
 ) -> WorkbookInsightsResponse:
-    summary = await parse_or_bad_request(file.filename or "", await read_upload(file), include_hidden_sheets)
+    summary = await parse_or_bad_request(file.filename or "", await read_upload(file), include_hidden_sheets, wide=True)
     require_accessible_worksheet_data(summary)
     # Source-side validation inputs do not depend on the model's report: build them meanwhile.
     prepared = asyncio.ensure_future(run_in_threadpool(prepare_validation, summary, depth))
@@ -123,23 +124,21 @@ def require_accessible_worksheet_data(summary: WorkbookSummary) -> None:
 
 
 def _parse_workbook_or_bad_request(
-    filename: str, content: bytes, include_hidden: bool
+    filename: str, content: bytes, include_hidden: bool, wide: bool = False
 ) -> WorkbookSummary:
     try:
-        return parse_workbook(filename, content, include_hidden)
+        with wider_samples(wide):  # insights read whole tables
+            return parse_workbook(filename, content, include_hidden)
     except InvalidWorkbookError as exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exception),
-        ) from exception
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exception)) from exception
 
 
 async def parse_or_bad_request(
-    filename: str, content: bytes, include_hidden: bool = False
+    filename: str, content: bytes, include_hidden: bool = False, wide: bool = False
 ) -> WorkbookSummary:
     """워크북 파싱은 CPU 작업이라, 이벤트 루프를 막지 않도록 워커 스레드에서 실행한다."""
     return await run_in_threadpool(
-        _parse_workbook_or_bad_request, filename, content, include_hidden
+        _parse_workbook_or_bad_request, filename, content, include_hidden, wide
     )
 
 
