@@ -51,3 +51,30 @@ def test_a_record_list_is_named_by_its_sheet():
     rows = [["주문번호", "날짜", "수량"]] + [[f"O-{n}", f"2025-01-{n:02d}", 10 + n * 37 % 50] for n in range(1, 13)]
     overview, _ = _report(rows, "주문")
     assert overview.startswith("이 파일은 2025년 1월 1일부터 2025년 1월 12일까지의 ‘주문’ 시트의 기록 12건을")
+
+
+def test_an_answer_scale_is_read_as_good_and_bad_shares():
+    _, facts = _report([["문항", "매우만족", "만족", "보통", "불만", "매우불만"], ["속도", 10, 10, 5, 10, 5],
+                        ["가격", 30, 10, 0, 5, 5], ["품질", 5, 5, 10, 20, 10]])
+    assert facts[0] == "긍정 응답(매우만족·만족) 비율은 가격이 80.0%로 가장 높고, 품질이 20.0%로 가장 낮습니다."
+    assert "부정 응답(불만·매우불만) 비율은 품질이 60.0%로 가장 높습니다." in facts[1]
+
+
+def test_record_sheets_named_by_month_are_compared_and_english_words_take_their_particles():
+    from io import BytesIO
+    from app.services.insights.facts.context import build_workbook_context as context_of
+    from app.services.insights.narratives.narrative_values import subject_particle
+    book = Workbook()
+    for index, (month, base) in enumerate((("January", 10), ("February", 20), ("March", 30))):
+        sheet = book.active if index == 0 else book.create_sheet()
+        sheet.title = month
+        sheet.append(["Invoice", "Total", "Rating"])
+        for number in range(5):
+            sheet.append([f"{month[:3]}-{number}", base + number, 7])
+    stream = BytesIO()
+    book.save(stream)
+    from app.services.insights.narratives.sheet_periods import sheet_period_report
+    items, overview = sheet_period_report(context_of(parse_workbook("m.xlsx", stream.getvalue())))
+    assert items[0].fact.startswith("Total 합계는 ‘January’ 60, ‘February’ 110, ‘March’ 160입니다.")
+    assert overview == "‘January’ 대비 ‘March’ Total 합계는 166.7% 증가했습니다."  # Rating is never added up
+    assert [subject_particle(word) for word in ("TV Show", "Billing", "Budget", "Revenue")] == ["가", "이", "이", "가"]

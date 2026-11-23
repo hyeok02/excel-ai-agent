@@ -8,6 +8,7 @@ import re
 
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.table_inputs import narrative_regions
+from app.services.insights.narratives.item_likert import likert_items
 from app.services.insights.narratives.item_pairs import pair_items
 from app.services.insights.narratives.item_periods import period_items
 from app.services.insights.narratives.layout_tables import (
@@ -17,6 +18,8 @@ from app.services.insights.narratives.narrative_values import finite, insight, s
 
 _UNIT_LINE = re.compile(r"단위\s*[:：]\s*([^\s/,;)]+)|\(([A-Za-z$€£]+\s+(?:thousands|millions|billions))\)", re.I)
 _SOURCE = re.compile(r"^\s*(?:출처|자료\s*출처|source)\s*[:：]\s*([^/]+)", re.I)
+_TITLED = re.compile(r"\S별(?:\s|$)|현황|추이|통계|내역|분석|자료|보고서|실적|명부|목록|일지|대장|\b(?:report|summary|by)\b",
+                    re.I)  # a table's title names what it is: 월별 매출, 점검 현황, Monthly Yield Report
 FEW = 8  # more rows are records, read by their mean elsewhere
 
 
@@ -30,7 +33,7 @@ def item_table_report(context):
             measures = [p for p in sorted(set().union(*table["header"])) if p != key and numbers(rows, p)]
             if len(rows) < 3 or not measures:  # two items are read off the table itself
                 continue
-            for reader in (period_items, pair_items, _ranked):
+            for reader in (period_items, pair_items, likert_items, _ranked):
                 items = reader(table, key, rows, measures)
                 if items:
                     return items, _overview(sheet, table, items, reader is period_items)
@@ -84,7 +87,7 @@ def _title(regions, table):
              and _place(region["start_cell"])[0] == left and _place(region["end_cell"])[1] < top]
     texts = [" ".join(UNIT.sub("", str(cell.get("value") or "")).split()) for cell in above]  # '(단위: 만원)' aside
     texts = [text for text in texts if text and not _UNIT_LINE.search(text) and not _SOURCE.match(text)]
-    return texts[-1] if texts else ""
+    return texts[-1] if texts and _TITLED.search(texts[-1]) else ""  # 'Income (net, after tax)' is a label
 
 
 def _unit(regions, table):
