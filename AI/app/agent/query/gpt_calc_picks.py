@@ -48,16 +48,16 @@ def _place(calc, items):
     if not found:
         return None
     ahead = sum(1 for _, value in items if (value > found[0] if calc.order != "asc" else value < found[0]))
-    return ahead + 1, len(items), found[0]
+    tied = sum(1 for _, value in items if value == found[0]) > 1  # 라면 and 선풍기 both 6,000: 공동 10위
+    return ahead + 1, len(items), found[0], tied
 
 
 def then_value(calc, items):
     """The sum or mean of the groups shown: 상위 3일의 평균, 월별 합계의 평균(월평균)."""
-    if calc.then == "none" or len(items) < 2 and calc.pick not in {"top", "nth"} or calc.pick not in {"top", "nth"} \
-            and calc.period == "none":
+    if calc.then == "none" or len(items) < 2 or calc.pick not in {"top", "nth"} and calc.period == "none":
         return None  # only the picked groups (상위 3일) or periods (월별 합계의 월평균) are taken together
     numbers = [value for _, value in items]
-    return sum(numbers) if calc.then == "sum" else mean(numbers)
+    return calc.then, sum(numbers) if calc.then == "sum" else mean(numbers)
 
 
 def holders(calc, key, value, derived, name):

@@ -54,8 +54,9 @@ def _matches(value, item, row=None, other=None):
         return _number(value) and _number(compared) and {"gt_column": value > compared, "ge_column": value >= compared,
                                                          "lt_column": value < compared, "le_column": value <= compared}[op]
     if op in {"in", "not_in"}:  # 거래가 없는 고객: the customer's ID among another table's IDs
+        parts = item.value.split(LISTED) if LISTED in item.value else re.split(r"\s*[,，]\s*", item.value)  # 강남점,홍대점
         found = " ".join(str(value if value is not None else "").split()).casefold() in {
-            " ".join(part.split()).casefold() for part in item.value.split(LISTED)}
+            " ".join(part.split()).casefold() for part in parts}
         return found if op == "in" else not found
     if op in {"year", "month", "quarter"}:  # "2022-12T00:00:00Z" names the month 2022-12
         wanted = wanted[:{"year": 4, "month": 7}[op]] if op != "quarter" and re.match(r"\d{4}-\d{2}", wanted) else wanted
@@ -91,6 +92,8 @@ def _moment(value, wanted):
     if isinstance(value, str) and (text := re.match(r"(\d{4})-(\d{2})-(\d{2})", value.strip()) or
                                    re.fullmatch(r"(\d{4})-(\d{2})", _month_text(value) or "")):
         value = date(*(int(part) for part in text.groups()), *([] if len(text.groups()) == 3 else [1]))
+    if isinstance(value, date) and (day := re.fullmatch(r"(\d{1,2})-(\d{1,2})", wanted)):  # "03-31": a day of any year
+        return (value.month, value.day), tuple(int(part) for part in day.groups())
     if not isinstance(value, date) or not (found := re.fullmatch(r"(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?", wanted)):
         return None
     parts = tuple(int(part) for part in found.groups() if part)

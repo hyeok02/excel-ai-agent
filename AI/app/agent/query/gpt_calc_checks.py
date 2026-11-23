@@ -5,7 +5,7 @@ A plan can vary between runs; one that leaves out a value the question names as 
 """
 import re
 
-from app.agent.query.gpt_calc_bounds import _column_values, inclusive
+from app.agent.query.gpt_calc_bounds import _column_values, inclusive, year_to_date
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.tabular_request_categories import value_matches
@@ -42,11 +42,14 @@ def plan_problem(question, table, calc, headings=None):
         problems.append(f"The question names {unused} as written in the table, but the plan neither filters on "
                         "nor groups by them (a filter on that column keeps only the values it names). Use them when "
                         "the question means those rows; keep the plan when the word only appears inside another phrase. "
-                        "Two values of one column compared or one taken from the other (수입 minus 지출) are that "
+                        "Two values of one column compared or one taken from the other (one value's total minus another's) are that "
                         "column in group_by: both totals and their difference are shown.")
+    if any(item.op.endswith("_column") and item.value.strip() == item.column.strip() for item in calc.filters):
+        problems.append("A column compared with itself in its own row is never true. A value against the previous "
+                        "period's is versus_previous over the date grouped by period; count those above 0 with having.")
     if calc.subtract and calc.subtract == calc.measure and not calc.row_formula:
         problems.append("subtract names the measure itself, which leaves 0. To compare two parts of one column "
-                        "(수입 and 지출), group_by the column holding the parts and leave subtract null.")
+                        "(one value's rows and another's), group_by the column holding the parts and leave subtract null.")
     if calc.aggregate == "ratio" and not calc.filters and not calc.denominator and not calc.group_by:
         problems.append("A ratio over all rows with no filter is 100%. For the share of rows holding a value "
                         "('Y', '예'), filter that value and leave measure null.")
@@ -67,7 +70,7 @@ def with_cell_values(calc, cells, question=""):
             # "gt_column [Table!B66]": a cell, not a column of the row, so a plain comparison with its value
             item = item.model_copy(update={"value": repr(found[0]), "op": item.op.removesuffix("_column")})
         filters.append(item)
-    calc = _settled(calc, filters)
+    calc = _settled(calc, year_to_date(question, filters))
     filters = calc.filters
     if calc.aggregate in {"max", "min"} and not calc.group_by and calc.pick == "all":  # "가장 큰 지출 한 건": the row
         return calc.model_copy(update={"filters": filters, "pick": "nth", "n": 1,

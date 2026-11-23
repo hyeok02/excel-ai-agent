@@ -99,6 +99,8 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         selected_tools=["tabular_query"], evidence=evidence, limitations=limitations,
         verification=QuestionAnswerVerification(
             level=QuestionVerificationLevel.REQUEST_CHECKED,
-            checks=["source_values", "table_scope", "request_alignment", "calculation"],
+            checks=["source_values", "table_scope", "request_alignment", "calculation",
+                    *(["column_summaries"] if plan.operation == "numeric_summary" and plan.statistic == "all"
+                      and len(selected) > 1 and not plan.group_by else [])],
         ),
     )

@@ -77,7 +77,9 @@ def run_table(table, calc, headings=None):
         used = [column for column, _, _ in filters] + ([measure] if measure else [])
         return TableResult([("전체", part / whole * 100, None)], None, len(every), list(dict.fromkeys(used)), None,
                            parts=(part, whole), skipped=skipped)
-    ranked = calc.pick in {"top", "nth", "above_mean", "below_mean"} and not groups  # "상위 3일": the rows ranked
+    if calc.rank_of and len(groups) == 1 and len({_label(row.values.get(groups[0].id)) for row in rows}) >= 0.9 * len(rows):
+        groups = []  # "선풍기는 몇 위" among names nearly all distinct: each row is ranked, a repeated name not summed
+    ranked = (calc.pick in {"top", "nth", "above_mean", "below_mean"} or calc.rank_of) and not groups  # rows ranked
     buckets, period_position = {}, None
     for row in rows:
         key = [] if groups or not ranked else [_row_name(table, row, measure), str(row.row_number)]
@@ -88,6 +90,8 @@ def run_table(table, calc, headings=None):
             key.append(binned(calc, label) if position == 0 else label)  # 월~금 → 평일
         if None not in key:
             buckets.setdefault(tuple(key), []).append(row)
+    if calc.aggregate == "mean" and calc.then == "sum" and all(len(rows) == 1 for rows in buckets.values()):
+        calc = calc.model_copy(update={"then": "mean"})  # one row a group: the mean asked is of the groups picked
     values, derived, dated = {}, {}, False
     for key, members in buckets.items():
         if measure is None:

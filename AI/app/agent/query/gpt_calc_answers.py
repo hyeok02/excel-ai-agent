@@ -1,5 +1,4 @@
 """The last resort for a question nothing answered: GPT chooses a calculation, code runs it.
-
 GPT names the calculation over the whole table (or over cells it cites), code computes it from the
 source, and the answer states the calculation so it can be checked. If none runs, GPT's draft is shown, marked.
 Questions answered before, and questions that ask back with options, never reach this.
@@ -46,7 +45,8 @@ def needs_fallback(answer):
     if answer.clarification_options or "clarify_source_scope" in answer.selected_tools:
         return False  # asking back is an answer the user chooses from
     return answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE or bool(answer.selected_tools) and set(
-        answer.selected_tools) <= _SEARCHED and answer.verification.level != "request_checked"
+        answer.selected_tools) <= _SEARCHED and answer.verification.level != "request_checked" or (
+        "column_summaries" in answer.verification.checks)  # each column summarized apart: GPT may combine them
 
 
 async def fallback_answer(question, summary, index, answer, planner=None):

@@ -16,14 +16,15 @@ class CalcFilter(BaseModel):
         description="year: the date's year equals value (2022); month: its year-month equals value (2022-12); quarter: 2022-Q3; "
                     "gt/ge/lt/le on a date column compare with a year, year-month or date; "
                     "이후/이전 include the named period (2020년 이후: ge 2020), 초과/미만 exclude it; "
-                    "under: the rows below the group_rows heading named in value (a 'Year 2026' section's months); "
-                    "in/not_in: the value is among another table's column written as a range [Sheet!C2:C152]; "
+                    "under: the rows below the group_rows heading named in value (one section's rows); "
+                    "in/not_in: the value is among a comma-separated list, or another table's column written as a range "
+                    "[Sheet!C2:C152]; "
                     "gt/ge/lt/le with value mean compare with the column's mean; "
                     "several filters on one column are alternatives; "
                     "*_column: compares with the same row's value of the column named in value")
     value: str
     scope: bool = Field(default=False, description="For a ratio without group_by: true when this filter limits the rows "
-                        "the share is taken of (강남점 in '강남점 매출이 200만원 이상인 날의 비율'), false when it picks the part")
+                        "the share is taken of (one member's rows), false when it picks the part (rows above a level)")
 
 
 class Having(BaseModel):
@@ -34,13 +35,13 @@ class Having(BaseModel):
 
 class Bin(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: str = Field(description="The set's name as asked: 평일")
-    values: list[str] = Field(max_length=60, description="The first group_by column's values gathered in it: 월, 화, 수, 목, 금")
+    name: str = Field(description="The set's name as asked")
+    values: list[str] = Field(max_length=60, description="The first group_by column's values gathered in it")
 
 
 class Extra(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    label: str = Field(description="What the figure is, in Korean: 초과 금액 합계")
+    label: str = Field(description="What the figure is, in Korean")
     measure: str | None = Field(default=None, description="The column aggregated; null with count")
     row_formula: str | None = Field(default=None, description="Or arithmetic over each row's columns by letter")
     aggregate: Literal["sum", "mean", "median", "count", "min", "max"] = "sum"
@@ -49,7 +50,7 @@ class Extra(BaseModel):
 class TableCalc(BaseModel):
     model_config = ConfigDict(extra="forbid")
     table: int = Field(description="The listed table id")
-    filters: list[CalcFilter] = Field(max_length=6)
+    filters: list[CalcFilter] = Field(max_length=12)
     group_by: list[str] = Field(max_length=2, description="Column names; empty for one value over the filtered rows")
     period: Literal["none", "year", "half", "quarter", "month", "weekday"] = Field(
         description="year/half/quarter/month/weekday: a date column in group_by is grouped by its year, half "
@@ -66,7 +67,7 @@ class TableCalc(BaseModel):
     subtract: str | None = Field(description="A column subtracted from measure in each row before aggregating "
                                              "(this year's column minus last year's for a change); else null")
     minus: list[str] = Field(default_factory=list, max_length=12, description="More columns subtracted with "
-                             "subtract ((매우만족+만족) minus 불만 and 매우불만)")
+                             "subtract (two columns minus two others)")
     absolute: bool = Field(default=False, description="Use the size of measure minus subtract whatever its sign "
                            "(the largest gap between two scores)")
     name_by: str | None = Field(default=None, description="With max or min per group: the column naming the row "
@@ -80,14 +81,14 @@ class TableCalc(BaseModel):
                               "(products or years laid out as columns): each column's aggregate over the rows kept is "
                               "one group, ordered and picked like groups; group_by empty")
     bins: list[Bin] = Field(default_factory=list, max_length=12, description="Named sets of the first group_by "
-                            "column's values, each one group (평일 = 월~금, 주말 = 토·일); rows in no set are left out")
+                            "column's values, each one group (some values against the others); rows in no set are left out")
     also: list[Extra] = Field(default_factory=list, max_length=4, description="More figures asked of the same filtered "
                               "rows, without group_by (the excess amount beside the count of projects over budget)")
     versus_previous: Literal["none", "difference", "rate"] = Field(default="none", description="Each period group "
                                                                    "against the one before it: 전월 대비 증가율 is rate, 전월보다 늘어난 양 difference")
-    having: Having | None = Field(default=None, description="Keep only the groups whose value meets this (customers "
-                                  "with 5 or more transactions: count per customer, ge 5); their number is stated")
-    rank_of: str | None = Field(default=None, description="The group whose place in the order is asked (선풍기는 몇 위)")
+    having: Having | None = Field(default=None, description="Keep only the groups whose value meets this (members "
+                                  "appearing N times or more: count per member, ge N); their number is stated")
+    rank_of: str | None = Field(default=None, description="The group whose place in the order is asked")
     order: Literal["none", "desc", "asc"]
     pick: Literal["all", "nth", "top", "above_mean", "below_mean"] = Field(
         description="nth: the n-th group in order; top: the first n; above_mean/below_mean: groups beside the groups' mean")

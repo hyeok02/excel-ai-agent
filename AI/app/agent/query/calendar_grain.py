@@ -1,4 +1,4 @@
-"""Whether a ranking groups days where the question asks for months, quarters or years.
+"""Whether a ranking groups days where the question asks for months, quarters, years or weekdays.
 
 "2023년 판매금액이 가장 높은 달은?" grouped by the Date column ranks single days; its answer
 is a day, not a month. Such a ranking is not given; a calculation by month answers instead.
@@ -6,7 +6,8 @@ is a day, not a month. Such a ranking is not given; a calculation by month answe
 import re
 from datetime import date, datetime
 
-_GRAIN = re.compile(r"달|월별|분기|연도|년도|어느\s*해|몇\s*년|\b(?:month|quarter|year)", re.I)
+_GRAIN = re.compile(r"달|월별|분기|반기|요일|주말|평일|연도|년도|어느\s*해|몇\s*년|"
+                    r"\b(?:month|quarter|year|weekday|weekend|day of the week)", re.I)
 _DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 

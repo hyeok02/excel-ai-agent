@@ -78,16 +78,18 @@ def table_answer(question, plan, table, result, style, cells):
             (first, a, _), (second, b, _) = groups
             change = f" ({(b - a) / abs(a) * 100:+.2f}%)" if a else ""
             lines.append(f"{first} → {second}: {'+' if b >= a else '-'}{shown(abs(b - a), style)}{change}")
-        elif len(groups) == 2 and calc.pick == "all" and calc.aggregate in {"sum", "mean", "median"}:  # 강남점 vs 홍대점
+        elif len(groups) == 2 and calc.pick == "all" and calc.aggregate in {"sum", "mean", "median"} \
+                and calc.versus_previous == "none":  # two stores' totals compared
             (first, a, _), (second, b, _) = groups
             lines.append(f"차이({first} - {second}): {'-' if a < b else ''}{shown(abs(a - b), style)}")
     lines += [f"{label}: {plain(value)}" for label, value in result.extras]  # 초과 금액 합계 beside the count
     if result.then is not None:  # "상위 3일의 평균": the groups picked, then their mean (and their share of all)
-        lines.append(f"위 {len(groups)}개의 {_AGGREGATES[calc.then]}: {shown(result.then, style)}" + (
-            f" (전체의 {result.then / result.total * 100:.2f}%)" if calc.then == "sum" and result.total else ""))
+        kind, value = result.then
+        lines.append(f"위 {len(groups)}개의 {_AGGREGATES[kind]}: {shown(value, style)}" + (
+            f" (전체의 {value / result.total * 100:.2f}%)" if kind == "sum" and result.total else ""))
     if result.place:  # "선풍기는 몇 위": its place among all
-        place, among, value = result.place
-        lines.append(f"{calc.rank_of}: {among}개 중 {place}위 ({shown(value, style)})")
+        place, among, value, tied = result.place
+        lines.append(f"{calc.rank_of}: {among}개 중 {'공동 ' if tied else ''}{place}위 ({shown(value, style)})")
     if result.by_column:  # the columns added, each shown: a trend over year columns reads from them
         lines.append("열별 값: " + " · ".join(f"{label} {shown(value, style)}" for label, value in result.by_column))
     lines.append(f"(원본 ‘{table.sheet_name}’ 표의 {result.rows:,}개 행으로 계산"
