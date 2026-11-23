@@ -1,5 +1,4 @@
 """The last resort for a question nothing answered: GPT chooses a calculation, code runs it.
-
 GPT names the calculation over the whole table (or over cells it cites), code computes it from the
 source, and the answer states the calculation so it can be checked. If none runs, GPT's draft is shown, marked.
 Questions answered before, and questions that ask back with options, never reach this.
@@ -13,7 +12,7 @@ from app.agent.query.gpt_calc_answer_text import cells_answer, table_answer, unv
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_draft_check import source_references, source_values
 from app.agent.query.gpt_calc_checks import fitting_table, listed_cells, plan_problem, unlisted_note, with_cell_values
-from app.agent.query.group_rows import group_rows
+from app.agent.query.group_rows import group_rows, section_rows
 from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.references import normalize_reference
@@ -46,7 +45,8 @@ def needs_fallback(answer):
     if answer.clarification_options or "clarify_source_scope" in answer.selected_tools:
         return False  # asking back is an answer the user chooses from
     return answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE or bool(answer.selected_tools) and set(
-        answer.selected_tools) <= _SEARCHED and answer.verification.level != "request_checked"
+        answer.selected_tools) <= _SEARCHED and answer.verification.level != "request_checked" or (
+        "column_summaries" in answer.verification.checks)  # each column summarized apart: GPT may combine them
 
 
 async def fallback_answer(question, summary, index, answer, planner=None):
@@ -79,7 +79,7 @@ async def _computed(question, summary, index, planner):
         return None
     cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
     listed = listed_cells(tables, cells)  # kind=cells may cite only the rows GPT was shown
-    headings = {table.id: group_rows(table, summary) for table in tables}
+    headings = {table.id: {**section_rows(table), **group_rows(table, summary)} for table in tables}
     note = ""
     for _ in range(2):  # one retry, told what did not run
         try:
@@ -91,10 +91,10 @@ async def _computed(question, summary, index, planner):
         table = fitting_table(tables, plan.table.table, plan.table) if plan.kind == "table" and plan.table else None
         if plan.kind == "table" and plan.table is not None and table is not None:
             from app.agent.query.gpt_calc_tables import run_table
-            if not note and (problem := plan_problem(question, table, plan.table)):
+            if not note and (problem := plan_problem(question, table, plan.table, headings.get(table.id))):
                 note = problem
                 continue
-            plan = plan.model_copy(update={"table": with_cell_values(plan.table, cells)})  # "> [Table!B66]"
+            plan = plan.model_copy(update={"table": with_cell_values(plan.table, cells, question)})  # "> [Table!B66]"
             result = await asyncio.to_thread(run_table, table, plan.table, headings.get(table.id))
             echo = plan.table.aggregate == "count" and len(result.groups) == 1 and result.groups[0][1] == 1 \
                 and result.groups[0][0] != "전체" if result is not None else False  # one name back, no figure

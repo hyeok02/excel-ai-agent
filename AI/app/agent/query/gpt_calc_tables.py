@@ -4,10 +4,11 @@ from statistics import mean, median
 
 from app.agent.query.gpt_calc_filters import _ALTERNATIVE, _date_part, _matches, _number
 from app.agent.query.gpt_calc_picks import changes, column_totals, holders, picked, then_value
-from app.agent.query.gpt_calc_across import across_result, binned, extras
+from app.agent.query.gpt_calc_bounds import _with_mean
+from app.agent.query.gpt_calc_across import _AGGREGATE, across_result, binned, extras
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.gpt_calc_result import TableResult
-from app.agent.query.gpt_calc_values import _label, _minus, _row_name, as_day, row_formula
+from app.agent.query.gpt_calc_values import _label, _minus, _row_name, as_day, row_formula, with_date_group
 from app.agent.query.tabular_subtotal_rows import _TOTAL
 
 
@@ -17,8 +18,10 @@ def run_table(table, calc, headings=None):
              **{column.id.casefold(): column for column in table.columns}}
     find = lambda name: named.get(" ".join(str(name).split()).casefold())  # noqa: E731
     filters = [(find(item.column), item, find(item.value) if item.op.endswith("_column") else None)
-               for item in calc.filters if item.value.strip() != "*"]  # "*": no condition
-    groups = [find(name) for name in calc.group_by]
+               for item in calc.filters if item.value.strip() != "*" and item.op != "under"]  # "*": no condition
+    under = {" ".join(item.value.split()).casefold() for item in calc.filters if item.op == "under"}
+    filters = [(column, _with_mean(table, column, item), other) for column, item, other in filters]  # 평균 이상
+    groups = with_date_group(table, [find(name) for name in calc.group_by], calc.period)  # 매장 + 날짜 for 월별
     formula = row_formula(table, calc.row_formula) if calc.row_formula else None  # Qty × UnitPrice × (1 - Discount)
     if calc.row_formula and formula is None:
         return None
@@ -26,6 +29,9 @@ def run_table(table, calc, headings=None):
     # A ratio's denominator: one column, or several written "매우만족, 만족, 보통" (all responses).
     denominators = ([find(calc.denominator)] if find(calc.denominator) else [find(part) for part in re.split(
         r"\s*[,+]\s*", calc.denominator)]) if calc.aggregate == "ratio" and calc.denominator else []
+    whole = [find(item) for item in calc.add] if formula and calc.aggregate == "ratio" else []
+    if whole and None not in whole and set(formula[0]) <= set(whole) and not set(formula[0]) <= set(denominators):
+        denominators = whole  # the plan listed the whole in add (불만+매우불만 over all five answers), not in denominator
     denominator = denominators[0] if denominators and None not in denominators else None
     subtract = find(calc.subtract) if calc.subtract and not formula else None  # a row formula says it all
     minus = [find(item) for item in calc.minus] if subtract else []
@@ -56,6 +62,10 @@ def run_table(table, calc, headings=None):
         alike.setdefault((column.id, item.op) if item.op in _ALTERNATIVE else id(item), []).append((column, item, other))
     rows = [row for row in rows if all(any(_matches(row.values.get(column.id), item, row, other)
                                            for column, item, other in group) for group in alike.values())]
+    if under:  # the rows of one section: "Year 2026" over its months
+        marks = sorted((number, " ".join(label.split()).casefold()) for number, label in (headings or {}).items())
+        section = lambda number: next((label for mark, label in reversed(marks) if mark < number), None)  # noqa: E731
+        rows = [row for row in rows if section(row.row_number) in under]
     if calc.across:  # columns compared with each other (제품별 열), or one row across its year columns
         return across_result(calc, [find(item) for item in calc.across], rows, [column for column, _, _ in filters], skipped)
     if within:
@@ -67,7 +77,9 @@ def run_table(table, calc, headings=None):
         used = [column for column, _, _ in filters] + ([measure] if measure else [])
         return TableResult([("전체", part / whole * 100, None)], None, len(every), list(dict.fromkeys(used)), None,
                            parts=(part, whole), skipped=skipped)
-    ranked = calc.pick in {"top", "nth", "above_mean", "below_mean"} and not groups  # "상위 3일": the rows ranked
+    if calc.rank_of and len(groups) == 1 and len({_label(row.values.get(groups[0].id)) for row in rows}) >= 0.9 * len(rows):
+        groups = []  # "선풍기는 몇 위" among names nearly all distinct: each row is ranked, a repeated name not summed
+    ranked = (calc.pick in {"top", "nth", "above_mean", "below_mean"} or calc.rank_of) and not groups  # rows ranked
     buckets, period_position = {}, None
     for row in rows:
         key = [] if groups or not ranked else [_row_name(table, row, measure), str(row.row_number)]
@@ -78,6 +90,8 @@ def run_table(table, calc, headings=None):
             key.append(binned(calc, label) if position == 0 else label)  # 월~금 → 평일
         if None not in key:
             buckets.setdefault(tuple(key), []).append(row)
+    if calc.aggregate == "mean" and calc.then == "sum" and all(len(rows) == 1 for rows in buckets.values()):
+        calc = calc.model_copy(update={"then": "mean"})  # one row a group: the mean asked is of the groups picked
     values, derived, dated = {}, {}, False
     for key, members in buckets.items():
         if measure is None:
@@ -110,11 +124,15 @@ def run_table(table, calc, headings=None):
             dated, numbers = (True, days) if days and not numbers else (dated, numbers)  # 가장 최근 주문 날짜
             if not numbers:
                 continue
-            values[key] = {"sum": sum, "mean": mean, "median": median, "min": min, "max": max}[calc.aggregate](numbers)
+            values[key] = {**_AGGREGATE, "count": len}[calc.aggregate](numbers)
+    values = values or ({(): 0} if not groups and calc.aggregate in {"count", "count_distinct"} else {})  # none left: 0
     if not values:
         return None
+    if calc.versus_previous != "none" and period_position is None:  # 전월 대비 with no date grouped compares nothing
+        return None
     # Months named without a year (January, Sept) are no periods code can order: they stay in the source's order.
-    items, middle = picked(calc if period_position is not None else calc.model_copy(update={"period": "none"}), values)
+    items, middle, place = picked(calc if period_position is not None else calc.model_copy(update={"period": "none"}),
+                                  values, period_position)
     total = sum(values.values()) if calc.share else None
     shown = []
     for key, value in items:
@@ -129,4 +147,4 @@ def run_table(table, calc, headings=None):
                        tuple(column_name(column) for column in groups), skipped=skipped,
                        by_column=column_totals(calc, items, buckets, measure, added if not subtract else [], column_name),
                        then=then_value(calc, items), changes=changes(calc, values, period_position),
-                       dated=dated, extras=extras(calc, rows, find, lambda text: row_formula(table, text)), sizes={" · ".join(key) or "전체": len(buckets[key]) for key, _ in items} if calc.share else {})
+                       dated=dated, place=place, extras=extras(calc, rows, find, lambda text: row_formula(table, text)), sizes={" · ".join(key) or "전체": len(buckets[key]) for key, _ in items} if calc.share else {})

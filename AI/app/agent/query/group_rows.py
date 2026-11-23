@@ -41,3 +41,18 @@ def group_rows(table, summary):
         return {}
     values = {row.row_number: row.values.get(label.id) for row in table.rows}
     return {number: str(values[number]) for number in marked}
+
+
+def section_rows(table):
+    """{row number: label} of rows naming a section and holding nothing else ("Year 2026" over its months).
+
+    Read from the values: the row's only value is a text in its first column, in a table of three or more
+    columns, and a fuller row follows it. Such rows head the rows below them like styled headings do.
+    """
+    if len(table.columns) < 3 or not table.rows:
+        return {}
+    first = table.columns[0].id
+    filled = [[value for value in row.values.values() if value not in (None, "")] for row in table.rows]
+    return {row.row_number: " ".join(row.values[first].split()) for number, row in enumerate(table.rows)
+            if len(filled[number]) == 1 and isinstance(row.values.get(first), str) and row.values[first].strip()
+            and number + 1 < len(table.rows) and len(filled[number + 1]) > 1}

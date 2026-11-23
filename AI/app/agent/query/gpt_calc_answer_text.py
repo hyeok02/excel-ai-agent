@@ -14,7 +14,7 @@ from app.agent.query.references import normalize_reference
 
 MAX_LINES = 20
 _PERCENT = re.compile(r"\*\s*100\s*\)?\s*$")  # "… / [B4] * 100" is a percentage
-_AGGREGATES = {"sum": "합계", "mean": "평균", "median": "중앙값", "count": "건수", "count_distinct": "서로 다른 값의 수",
+_AGGREGATES = {"sum": "합계", "mean": "평균", "median": "중앙값", "range": "최댓값과 최솟값의 차이", "count": "건수", "count_distinct": "서로 다른 값의 수",
                "min": "최솟값", "max": "최댓값", "ratio": "비율"}
 _CHECKED = ("GPT가 정한 계산 방식(맨 위)을 코드가 원본 값으로 계산한 결과입니다. "
             "계산 방식이 질문 의도와 맞는지 확인해 주세요.")
@@ -67,22 +67,29 @@ def table_answer(question, plan, table, result, style, cells):
             lines.append(f"{' · '.join(result.grouped)} {len(groups)}개:")
         listing = calc.aggregate == "count" and all(value == 1 for _, value, _ in groups)  # records named, not counted
         for number, (label, value, share) in enumerate(groups[:MAX_LINES], 1):
-            prefix = f"{calc.n}위 " if calc.pick == "nth" else f"{number}. " if calc.order != "none" else "· "
+            prefix = f"{max(calc.n, 1)}위 " if calc.pick == "nth" else f"{number}. " if calc.order != "none" else "· "
             lines.append(f"{prefix}{label}" + ("" if listing else f": {shown(value, style)}")
                          + (f" ({share:.2f}%" + (f", {result.sizes[label]:,}건" if label in result.sizes else "")
                             + ")" if share is not None else ""))
         if len(groups) > MAX_LINES:
             lines.append(f"외 {len(groups) - MAX_LINES}개")
-        if len(groups) == 2 and calc.period != "none" and calc.pick == "all":  # 2022 → 2023
+        if len(groups) == 2 and calc.period != "none" and calc.pick == "all" and calc.versus_previous == "none" \
+                and len(result.grouped) == 1:  # 2022 → 2023
             (first, a, _), (second, b, _) = groups
             change = f" ({(b - a) / abs(a) * 100:+.2f}%)" if a else ""
             lines.append(f"{first} → {second}: {'+' if b >= a else '-'}{shown(abs(b - a), style)}{change}")
-        elif len(groups) == 2 and calc.pick == "all" and calc.aggregate in {"sum", "mean", "median"}:  # 강남점 vs 홍대점
+        elif len(groups) == 2 and calc.pick == "all" and calc.aggregate in {"sum", "mean", "median"} \
+                and calc.versus_previous == "none":  # two stores' totals compared
             (first, a, _), (second, b, _) = groups
             lines.append(f"차이({first} - {second}): {'-' if a < b else ''}{shown(abs(a - b), style)}")
     lines += [f"{label}: {plain(value)}" for label, value in result.extras]  # 초과 금액 합계 beside the count
-    if result.then is not None:  # "상위 3일의 평균": the groups picked, then their mean
-        lines.append(f"위 {len(groups)}개의 {_AGGREGATES[calc.then]}: {shown(result.then, style)}")
+    if result.then is not None:  # "상위 3일의 평균": the groups picked, then their mean (and their share of all)
+        kind, value = result.then
+        lines.append(f"위 {len(groups)}개의 {_AGGREGATES[kind]}: {shown(value, style)}" + (
+            f" (전체의 {value / result.total * 100:.2f}%)" if kind == "sum" and result.total else ""))
+    if result.place:  # "선풍기는 몇 위": its place among all
+        place, among, value, tied = result.place
+        lines.append(f"{calc.rank_of}: {among}개 중 {'공동 ' if tied else ''}{place}위 ({shown(value, style)})")
     if result.by_column:  # the columns added, each shown: a trend over year columns reads from them
         lines.append("열별 값: " + " · ".join(f"{label} {shown(value, style)}" for label, value in result.by_column))
     lines.append(f"(원본 ‘{table.sheet_name}’ 표의 {result.rows:,}개 행으로 계산"

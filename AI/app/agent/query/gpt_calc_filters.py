@@ -31,16 +31,35 @@ def _date_part(value, period):
         return None
     if period == "quarter":
         return f"{text[:4]}-Q{(int(text[5:7]) - 1) // 3 + 1}"
+    if period == "half":  # 상반기 / 하반기
+        return f"{text[:4]}-H{1 if int(text[5:7]) <= 6 else 2}"
+    if period == "weekday":  # 요일: a day is needed
+        try:
+            return WEEKDAYS[date.fromisoformat(text[:10]).weekday()]
+        except ValueError:
+            return None
     return text[:4] if period == "year" else text[:7]
+
+
+WEEKDAYS = ("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
+LISTED = "\x1f"  # the values of another table's column, for in / not_in
 
 
 def _matches(value, item, row=None, other=None):
     op, wanted = item.op, item.value.strip()
+    # "2025-03-15T23:59:59" or "2025-03-15 00:00:00Z" bounds the day 2025-03-15
+    wanted = re.sub(r"^(\d{4}-\d{2}-\d{2})[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?Z?$", r"\1", wanted)
     if op.endswith("_column"):  # 재고수량 < 안전재고: two values of one row
         compared = row.values.get(other.id) if row is not None and other is not None else None
         return _number(value) and _number(compared) and {"gt_column": value > compared, "ge_column": value >= compared,
                                                          "lt_column": value < compared, "le_column": value <= compared}[op]
-    if op in {"year", "month", "quarter"}:
+    if op in {"in", "not_in"}:  # 거래가 없는 고객: the customer's ID among another table's IDs
+        parts = item.value.split(LISTED) if LISTED in item.value else re.split(r"\s*[,，]\s*", item.value)  # 강남점,홍대점
+        found = " ".join(str(value if value is not None else "").split()).casefold() in {
+            " ".join(part.split()).casefold() for part in parts}
+        return found if op == "in" else not found
+    if op in {"year", "month", "quarter"}:  # "2022-12T00:00:00Z" names the month 2022-12
+        wanted = wanted[:{"year": 4, "month": 7}[op]] if op != "quarter" and re.match(r"\d{4}-\d{2}", wanted) else wanted
         return _date_part(value, op) == wanted.upper()
     if op in {"gt", "ge", "lt", "le"} and (moment := _moment(value, wanted)) is not None:
         found, limit = moment  # "2020년 이후 입사": a date against a year, year-month or day
@@ -73,6 +92,8 @@ def _moment(value, wanted):
     if isinstance(value, str) and (text := re.match(r"(\d{4})-(\d{2})-(\d{2})", value.strip()) or
                                    re.fullmatch(r"(\d{4})-(\d{2})", _month_text(value) or "")):
         value = date(*(int(part) for part in text.groups()), *([] if len(text.groups()) == 3 else [1]))
+    if isinstance(value, date) and (day := re.fullmatch(r"(\d{1,2})-(\d{1,2})", wanted)):  # "03-31": a day of any year
+        return (value.month, value.day), tuple(int(part) for part in day.groups())
     if not isinstance(value, date) or not (found := re.fullmatch(r"(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?", wanted)):
         return None
     parts = tuple(int(part) for part in found.groups() if part)

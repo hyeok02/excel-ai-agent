@@ -5,6 +5,7 @@ A plan can vary between runs; one that leaves out a value the question names as 
 """
 import re
 
+from app.agent.query.gpt_calc_bounds import _column_values, inclusive, year_to_date
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.tabular_request_categories import value_matches
@@ -29,20 +30,30 @@ def unused_values(question, table, calc):
     return sorted(set(missing))
 
 
-def plan_problem(question, table, calc):
+def plan_problem(question, table, calc, headings=None):
     """Every reason a table plan cannot answer as written, told back to GPT once; else None."""
     problems = []
+    from app.agent.query.ambiguity_labels import distinct_sheet_mentioned
+    named = distinct_sheet_mentioned((headings or {}).values(), question)  # "2026년" names the 'Year 2026' section
+    if named and not any(item.op == "under" for item in calc.filters):
+        problems.append(f"The question names the section {sorted(named)} of group_rows, and rows of other sections "
+                        "look alike (the same months each year): keep only its rows with a filter op under.")
     if unused := unused_values(question, table, calc):
         problems.append(f"The question names {unused} as written in the table, but the plan neither filters on "
                         "nor groups by them (a filter on that column keeps only the values it names). Use them when "
-                        "the question means those rows; keep the plan when the word only appears inside another phrase.")
-    if calc.subtract and calc.subtract == calc.measure:
+                        "the question means those rows; keep the plan when the word only appears inside another phrase. "
+                        "Two values of one column compared or one taken from the other (one value's total minus another's) are that "
+                        "column in group_by: both totals and their difference are shown.")
+    if any(item.op.endswith("_column") and item.value.strip() == item.column.strip() for item in calc.filters):
+        problems.append("A column compared with itself in its own row is never true. A value against the previous "
+                        "period's is versus_previous over the date grouped by period; count those above 0 with having.")
+    if calc.subtract and calc.subtract == calc.measure and not calc.row_formula:
         problems.append("subtract names the measure itself, which leaves 0. To compare two parts of one column "
-                        "(수입 and 지출), group_by the column holding the parts and leave subtract null.")
+                        "(one value's rows and another's), group_by the column holding the parts and leave subtract null.")
     if calc.aggregate == "ratio" and not calc.filters and not calc.denominator and not calc.group_by:
         problems.append("A ratio over all rows with no filter is 100%. For the share of rows holding a value "
                         "('Y', '예'), filter that value and leave measure null.")
-    if calc.add and (calc.measure is None or not calc.group_by):
+    if calc.add and not calc.row_formula and (calc.measure is None or not calc.group_by):  # a formula replaces add
         problems.append("add totals several columns into one value per row of each group. For one row's values "
                         "across columns (a trend over year columns), use kind=cells with one item per column.")
     if calc.pick in {"above_mean", "below_mean"} and not calc.measure and not calc.row_formula and not calc.group_by:
@@ -51,14 +62,16 @@ def plan_problem(question, table, calc):
     return " ".join(problems) or None
 
 
-def with_cell_values(calc, cells):
-    """The plan with each "[Sheet!B66]" filter value replaced by that number cell's value."""
+def with_cell_values(calc, cells, question=""):
+    """The plan with each "[Sheet!B66]" filter value replaced by that number cell's value, and bounds inclusive."""
     filters = []
-    for item in calc.filters:
+    for item in map(lambda item: _column_values(inclusive(question, item), cells), calc.filters):
         if re.fullmatch(r"\s*\[[^\[\]]+![A-Za-z]{1,3}\d+\]\s*", item.value) and (found := evaluate(item.value, cells)):
             # "gt_column [Table!B66]": a cell, not a column of the row, so a plain comparison with its value
             item = item.model_copy(update={"value": repr(found[0]), "op": item.op.removesuffix("_column")})
         filters.append(item)
+    calc = _settled(calc, year_to_date(question, filters))
+    filters = calc.filters
     if calc.aggregate in {"max", "min"} and not calc.group_by and calc.pick == "all":  # "가장 큰 지출 한 건": the row
         return calc.model_copy(update={"filters": filters, "pick": "nth", "n": 1,
                                        "order": "desc" if calc.aggregate == "max" else "asc"})
@@ -72,6 +85,20 @@ def with_cell_values(calc, cells):
         # "몇 개 도시": the different values of the column grouped by, counted once over all rows
         return calc.model_copy(update={"filters": filters, "measure": calc.group_by[0], "group_by": []})
     return calc.model_copy(update={"filters": filters})
+
+
+def _settled(calc, filters):
+    """A plan made consistent with itself: what rank_of asks is ranked among all, a scope needs a part beside it,
+    and 전월 대비 needs no column subtracted from itself."""
+    if calc.rank_of:  # "선풍기는 몇 위": not ranked among 선풍기 alone
+        filters = [item for item in filters if not (item.op == "eq" and " ".join(item.value.split()).casefold()
+                                                    == " ".join(calc.rank_of.split()).casefold())]
+    if filters and all(item.scope for item in filters):  # every filter a scope leaves no part: they pick the part
+        filters = [item.model_copy(update={"scope": False}) for item in filters]
+    update = {"filters": filters}
+    if calc.versus_previous != "none" and calc.subtract == calc.measure:
+        update["subtract"] = None
+    return calc.model_copy(update=update)
 
 
 def _names(calc):
