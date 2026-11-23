@@ -54,6 +54,8 @@ def _region_report(sheet, rows, title, title_cell=None):
     measured = [figure for figure in figures if not figure[2]]
     if len(measured) < MIN_FIGURES:
         return None
+    if len(figures) * 2 < len(rows) or all(_year(figure[1]["value"]) for figure in measured):
+        return None  # a long record list with a few one-number rows, or years (개봉 연도 2020), is no status table
     measured.sort(key=lambda figure: magnitude_weight(figure[1]["value"]), reverse=True)
     cited_title = (title_cell if isinstance(title_cell, dict) and title_cell.get("cell")
                    and " ".join(str(title_cell.get("value", "")).split())
@@ -99,6 +101,10 @@ def _figure(row):
     if len(name) > MAX_LABEL_LENGTH:
         return None
     return label, value, derived_metric(name, [value])
+
+
+def _year(value):
+    return float(value).is_integer() and 1900 <= value <= 2100
 
 
 def _listing(figures):

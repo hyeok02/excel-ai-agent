@@ -40,6 +40,7 @@ class WorkbookInsightReport(BaseModel):
     _generation_notice: str | None = PrivateAttr(default=None)
     # Set only by a source narrator that includes record scope in its overview.
     _overview_has_context: bool = PrivateAttr(default=False)
+    _layout: bool = PrivateAttr(default=False)
 
     overview: str = Field(
         description="검증 가능한 원본 사실의 요약. 없는 대상·시점·비교를 만들지 않음"

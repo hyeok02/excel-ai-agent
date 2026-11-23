@@ -75,6 +75,8 @@ def _sheet_context(sheet: object, profile: AnalysisProfile) -> dict[str, object]
     sheet_data["business_facts"] = build_business_facts(
         str(sheet_data["name"]), regions, column_schemas, record_limit
     )
+    # Every column's schema, for narratives over all columns; the prompt keeps only the samples below.
+    sheet_data["business_facts"]["all_column_schemas"] = column_schemas
     selected_formulas = select_formula_samples(formulas, profile.max_formulas_per_sheet)
     sheet_data["formula_samples"] = [
         {

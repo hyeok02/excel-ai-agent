@@ -68,7 +68,7 @@ def build_user_prompt_from_context(
                 **sheet,
                 "business_facts": {
                     key: value for key, value in sheet.get("business_facts", {}).items()
-                    if key not in {"table_rows", "table_regions", "time_series"}
+                    if key not in {"table_rows", "table_regions", "time_series", "all_column_schemas"}
                 },
             }
             for sheet in context.get("sheets", [])

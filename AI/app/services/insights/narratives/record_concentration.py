@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 
 from app.services.insights.display.record_labels import record_group_label, record_header
-from app.services.insights.narratives.narrative_values import insight, number, reference
+from app.services.insights.narratives.narrative_values import direction_particle, insight, number, reference
 from app.services.insights.narratives.record_summary_support import _words, _range
 from app.services.insights.narratives.record_units import record_value
 
@@ -39,7 +39,7 @@ def append_concentration(sheet, rows, headers, records, keys, measures, key_ref,
         category_label, measure_label = record_group_label(category["value"], headers), display_names[name]
         tied = len(winners) > 1
         fact = (f"{category_label}별로 보면 {label_text}의 {measure_label} 합계가 "
-                f"{'각각 ' if tied else ''}{record_value(top, units)}로 {'공동으로 ' if tied else ''}가장 큽니다. "
+                f"{'각각 ' if tied else ''}{record_value(top, units)}{direction_particle(record_value(top, units))} {'공동으로 ' if tied else ''}가장 큽니다. "
                 f"{'각 항목은 ' if tied else '이 항목은 '}전체 {measure_label}의 "
                 f"{number(top / total * 100)}%를 차지합니다.")
         evidence = [reference(sheet, category["cell"]), reference(sheet, headers[p]["cell"]),

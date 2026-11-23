@@ -11,6 +11,7 @@ from app.services.insights.narratives.record_context import describe_records
 from app.services.insights.narratives.record_units import linked_record_currency, record_value
 from app.services.insights.narratives.record_summary_support import _words, _range
 from app.services.insights.narratives.record_concentration import append_concentration
+from app.services.insights.narratives.record_levels import not_summable
 from app.services.insights.narratives.record_shape import additive_quantity, data_keys, dated, monthly_totals
 
 
@@ -57,7 +58,8 @@ def _report(sheet_data, header, rows, context):
     keys = [p for p, c in headers.items() if _KEY.search(_words(c["value"]))]
     keys = [p for p in keys if all(p in row and row[p].get("value") not in (None, "") for row in records)
             and len({str(row[p]["value"]) for row in records}) == len(records)] or data_keys(headers, records)
-    if not keys or any(_TOTAL.search(str(c.get("value", "")).strip()) for row in rows for c in row):
+    if not keys or any(_TOTAL.search(str(c.get("value", "")).strip()) for row in rows for c in row) \
+            or not_summable(sheet_data, header, records):
         return None
     basis_refs = []
     source_unit, source_currency = "", ""
