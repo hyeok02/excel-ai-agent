@@ -9,7 +9,8 @@ def plain(value):
 
 
 _SYMBOLS = {"eq": "=", "ne": "≠", "gt": ">", "ge": "≥", "lt": "<", "le": "≤", "contains": "포함:",
-            "year": "연도 =", "month": "월 =", "quarter": "분기 =", "under": "구간:"}
+            "year": "연도 =", "month": "월 =", "quarter": "분기 =", "under": "구간:",
+            "in": "목록에 포함:", "not_in": "목록에 없음:"}
 
 
 def _formula_name(formula, table):
@@ -21,4 +22,5 @@ def _condition(item):
     symbol = _SYMBOLS.get(item.op.removesuffix("_column"), item.op)
     value = item.value.strip()
     value = plain(float(value)) if re.fullmatch(r"-?\d+\.\d+", value) else value  # 18.16 from [Table!B66]
+    value = f"{value.count(chr(31)) + 1}개 값" if chr(31) in value else value  # another table's column
     return f"{item.column} {symbol} {value or '빈칸'}"

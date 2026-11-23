@@ -1,14 +1,32 @@
 """The groups a table calculation shows: ordered, picked, named, totalled or compared between periods."""
 from statistics import mean
 
-from app.agent.query.gpt_calc_filters import _number
+from app.agent.query.gpt_calc_filters import WEEKDAYS, _number
 
 
-def picked(calc, values):
-    """(items in the order shown, the groups' mean when the pick compares with it)."""
-    items = sorted(values.items()) if calc.period != "none" else list(values.items())  # months in order
-    if calc.order != "none" and not (calc.period != "none" and calc.pick == "all"):
+_OPS = {"gt": lambda a, b: a > b, "ge": lambda a, b: a >= b, "lt": lambda a, b: a < b, "le": lambda a, b: a <= b,
+        "eq": lambda a, b: abs(a - b) < 1e-9, "ne": lambda a, b: abs(a - b) >= 1e-9}
+
+
+def picked(calc, values, period_position=None):
+    """(items in the order shown, the groups' mean when the pick compares with it, the place asked by rank_of)."""
+    days = {name: number for number, name in enumerate(WEEKDAYS)}
+    items = sorted(values.items(), key=lambda item: tuple(days.get(part, part) for part in item[0])) \
+        if calc.period != "none" else list(values.items())  # months, or 월요일 … 일요일, in order
+    if calc.versus_previous != "none":  # 전월 대비: each period against the one before it, within each store
+        other = (lambda key: key[1 - period_position]) if period_position is not None and len(items[0][0]) == 2 \
+            else (lambda key: key[:-1] if len(key) > 1 and period_position is None else ())
+        series = {}
+        for key, value in items:
+            series.setdefault(other(key), []).append((key, value))
+        items = [(key, value - before if calc.versus_previous == "difference" else (value - before) / abs(before) * 100)
+                 for points in series.values() for (_, before), (key, value) in zip(points, points[1:])
+                 if calc.versus_previous == "difference" or before]
+    if calc.having is not None:  # 5번 이상 거래한 고객: groups whose value meets the condition
+        items = [item for item in items if _OPS[calc.having.op](item[1], calc.having.value)]
+    if calc.order != "none" and not (calc.period != "none" and calc.pick == "all" and calc.versus_previous == "none"):
         items.sort(key=lambda item: item[1], reverse=calc.order == "desc")
+    place = _place(calc, items)
     middle = mean(value for _, value in items) if calc.pick in {"above_mean", "below_mean"} else None
     if calc.pick in {"nth", "top"}:  # a group tied with the last one picked is picked too
         n = max(calc.n, 1)
@@ -17,7 +35,20 @@ def picked(calc, values):
                                           or calc.pick == "top" and number < n]
     elif middle is not None:
         items = [item for item in items if (item[1] > middle if calc.pick == "above_mean" else item[1] < middle)]
-    return items, middle
+    return items, middle, place
+
+
+def _place(calc, items):
+    """(place, of how many, value) of the group rank_of names, ties sharing the higher place; else None."""
+    if not calc.rank_of:
+        return None
+    wanted = " ".join(calc.rank_of.split()).casefold()
+    parts = lambda key: {" ".join(part.split()).casefold() for item in key for part in str(item).split(" · ")}  # noqa: E731
+    found = [value for key, value in items if wanted in parts(key)]
+    if not found:
+        return None
+    ahead = sum(1 for _, value in items if (value > found[0] if calc.order != "asc" else value < found[0]))
+    return ahead + 1, len(items), found[0]
 
 
 def then_value(calc, items):
@@ -25,7 +56,6 @@ def then_value(calc, items):
     if calc.then == "none" or len(items) < 2 and calc.pick not in {"top", "nth"} or calc.pick not in {"top", "nth"} \
             and calc.period == "none":
         return None  # only the picked groups (상위 3일) or periods (월별 합계의 월평균) are taken together
-        return None
     numbers = [value for _, value in items]
     return sum(numbers) if calc.then == "sum" else mean(numbers)
 

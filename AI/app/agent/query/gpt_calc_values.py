@@ -40,9 +40,10 @@ def row_formula(table, text):
     text = re.sub(r"DATEDIF\s*\(\s*(\[[A-Za-z]{1,3}\])\s*,\s*(\[[A-Za-z]{1,3}\])\s*,\s*\"?[Dd]\"?\s*\)", r"(\2-\1)",
                   text or "", flags=re.I)  # Excel's days between two dates
     letters = list(dict.fromkeys(letter.upper() for letter in _LETTER.findall(text or "")))
-    expression = re.sub(r"\babs\s*\(", "abs(", _LETTER.sub(lambda match: f"c_{match.group(1).upper()}", text or ""), flags=re.I)
+    expression = re.sub(r"\babs\s*\(", "abs(", _LETTER.sub(lambda match: f"c_{match.group(1).upper()}", text or ""),
+                        flags=re.I).replace("^", "**")
     if not letters or any(letter not in by_id for letter in letters) or re.search(
-            r"(?!abs\()\b[A-Za-z_]\w*\s*\(|\*\*|//|%", expression):  # arithmetic and abs() only
+            r"(?!abs\()\b[A-Za-z_]\w*\s*\(|//|%", expression):  # arithmetic, powers and abs() only
         return None
     try:
         tree = ast.parse(expression, mode="eval")
@@ -66,3 +67,13 @@ def _label(value):
         value = value.date()
     text = "빈칸" if value is None else " ".join(str(value).split())
     return text.removesuffix("T00:00:00") if len(text) == 19 and text[10:] == "T00:00:00" else text
+
+
+def with_date_group(table, groups, period):
+    """A period asked of groups that hold no date (월별 by 매장 alone) gets the table's one date column added."""
+    from app.agent.query.gpt_calc_filters import _date_part
+    dated = lambda column: any(_date_part(row.values.get(column.id), "month") for row in table.rows[:20])  # noqa: E731
+    if period == "none" or None in groups or any(dated(column) for column in groups):
+        return groups
+    found = [column for column in table.columns if dated(column)]
+    return [*groups, found[0]] if len(found) == 1 else groups

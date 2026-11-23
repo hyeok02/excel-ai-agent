@@ -5,6 +5,7 @@ A plan can vary between runs; one that leaves out a value the question names as 
 """
 import re
 
+from app.agent.query.gpt_calc_bounds import _column_values, inclusive
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.tabular_request_categories import value_matches
@@ -58,32 +59,16 @@ def plan_problem(question, table, calc, headings=None):
     return " ".join(problems) or None
 
 
-# "2020년 이후", "2024년 3월까지": a Korean bound includes the period it names.
-_BOUND = re.compile(r"((?:19|20)\d{2})\s*년\s*(?:(\d{1,2})\s*월\s*)?(?:도\s*)?(이후|부터|이전|까지)")
-
-
-def inclusive(question, item):
-    """A date or year bound as the question states it: 2020년 이후 is ge 2020, not gt 2020 or ge 2021-01-01."""
-    if item.op not in {"gt", "ge", "lt", "le"} or not re.fullmatch(r"\d{4}(?:-\d{1,2}){0,2}(?:\.0)?", item.value.strip()):
-        return item
-    for year, month, word in _BOUND.findall(question):
-        later = word in {"이후", "부터"}
-        if later != (item.op in {"gt", "ge"}):
-            continue
-        named = f"{year}-{int(month):02d}" if month else year
-        if abs(int(item.value.strip()[:4]) - int(year)) <= 1:  # the bound GPT moved by a day or a year
-            return item.model_copy(update={"op": "ge" if later else "le", "value": named})
-    return item
-
-
 def with_cell_values(calc, cells, question=""):
     """The plan with each "[Sheet!B66]" filter value replaced by that number cell's value, and bounds inclusive."""
     filters = []
-    for item in map(lambda item: inclusive(question, item), calc.filters):
+    for item in map(lambda item: _column_values(inclusive(question, item), cells), calc.filters):
         if re.fullmatch(r"\s*\[[^\[\]]+![A-Za-z]{1,3}\d+\]\s*", item.value) and (found := evaluate(item.value, cells)):
             # "gt_column [Table!B66]": a cell, not a column of the row, so a plain comparison with its value
             item = item.model_copy(update={"value": repr(found[0]), "op": item.op.removesuffix("_column")})
         filters.append(item)
+    calc = _settled(calc, filters)
+    filters = calc.filters
     if calc.aggregate in {"max", "min"} and not calc.group_by and calc.pick == "all":  # "가장 큰 지출 한 건": the row
         return calc.model_copy(update={"filters": filters, "pick": "nth", "n": 1,
                                        "order": "desc" if calc.aggregate == "max" else "asc"})
@@ -97,6 +82,20 @@ def with_cell_values(calc, cells, question=""):
         # "몇 개 도시": the different values of the column grouped by, counted once over all rows
         return calc.model_copy(update={"filters": filters, "measure": calc.group_by[0], "group_by": []})
     return calc.model_copy(update={"filters": filters})
+
+
+def _settled(calc, filters):
+    """A plan made consistent with itself: what rank_of asks is ranked among all, a scope needs a part beside it,
+    and 전월 대비 needs no column subtracted from itself."""
+    if calc.rank_of:  # "선풍기는 몇 위": not ranked among 선풍기 alone
+        filters = [item for item in filters if not (item.op == "eq" and " ".join(item.value.split()).casefold()
+                                                    == " ".join(calc.rank_of.split()).casefold())]
+    if filters and all(item.scope for item in filters):  # every filter a scope leaves no part: they pick the part
+        filters = [item.model_copy(update={"scope": False}) for item in filters]
+    update = {"filters": filters}
+    if calc.versus_previous != "none" and calc.subtract == calc.measure:
+        update["subtract"] = None
+    return calc.model_copy(update=update)
 
 
 def _names(calc):

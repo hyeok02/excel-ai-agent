@@ -61,7 +61,7 @@ def evaluate(expression, cells, labels=frozenset()):
         return variable
 
     try:
-        text = _REFERENCE.sub(name, _expanded(expression, cells, labels))
+        text = _REFERENCE.sub(name, _expanded(expression, cells, labels)).replace("^", "**")  # Excel's power sign
         if not used or re.search(r"[A-Za-z_]\w*\s*\(|//|%", text):
             return None  # no cell, or a function call / power the arithmetic does not allow
         result = _evaluate(ast.parse(text, mode="eval"), names)

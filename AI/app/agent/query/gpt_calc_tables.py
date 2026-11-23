@@ -4,10 +4,11 @@ from statistics import mean, median
 
 from app.agent.query.gpt_calc_filters import _ALTERNATIVE, _date_part, _matches, _number
 from app.agent.query.gpt_calc_picks import changes, column_totals, holders, picked, then_value
-from app.agent.query.gpt_calc_across import across_result, binned, extras
+from app.agent.query.gpt_calc_bounds import _with_mean
+from app.agent.query.gpt_calc_across import _AGGREGATE, across_result, binned, extras
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.gpt_calc_result import TableResult
-from app.agent.query.gpt_calc_values import _label, _minus, _row_name, as_day, row_formula
+from app.agent.query.gpt_calc_values import _label, _minus, _row_name, as_day, row_formula, with_date_group
 from app.agent.query.tabular_subtotal_rows import _TOTAL
 
 
@@ -19,7 +20,8 @@ def run_table(table, calc, headings=None):
     filters = [(find(item.column), item, find(item.value) if item.op.endswith("_column") else None)
                for item in calc.filters if item.value.strip() != "*" and item.op != "under"]  # "*": no condition
     under = {" ".join(item.value.split()).casefold() for item in calc.filters if item.op == "under"}
-    groups = [find(name) for name in calc.group_by]
+    filters = [(column, _with_mean(table, column, item), other) for column, item, other in filters]  # 평균 이상
+    groups = with_date_group(table, [find(name) for name in calc.group_by], calc.period)  # 매장 + 날짜 for 월별
     formula = row_formula(table, calc.row_formula) if calc.row_formula else None  # Qty × UnitPrice × (1 - Discount)
     if calc.row_formula and formula is None:
         return None
@@ -118,11 +120,15 @@ def run_table(table, calc, headings=None):
             dated, numbers = (True, days) if days and not numbers else (dated, numbers)  # 가장 최근 주문 날짜
             if not numbers:
                 continue
-            values[key] = {"sum": sum, "mean": mean, "median": median, "min": min, "max": max}[calc.aggregate](numbers)
+            values[key] = {**_AGGREGATE, "count": len}[calc.aggregate](numbers)
+    values = values or ({(): 0} if not groups and calc.aggregate in {"count", "count_distinct"} else {})  # none left: 0
     if not values:
         return None
+    if calc.versus_previous != "none" and period_position is None:  # 전월 대비 with no date grouped compares nothing
+        return None
     # Months named without a year (January, Sept) are no periods code can order: they stay in the source's order.
-    items, middle = picked(calc if period_position is not None else calc.model_copy(update={"period": "none"}), values)
+    items, middle, place = picked(calc if period_position is not None else calc.model_copy(update={"period": "none"}),
+                                  values, period_position)
     total = sum(values.values()) if calc.share else None
     shown = []
     for key, value in items:
@@ -137,4 +143,4 @@ def run_table(table, calc, headings=None):
                        tuple(column_name(column) for column in groups), skipped=skipped,
                        by_column=column_totals(calc, items, buckets, measure, added if not subtract else [], column_name),
                        then=then_value(calc, items), changes=changes(calc, values, period_position),
-                       dated=dated, extras=extras(calc, rows, find, lambda text: row_formula(table, text)), sizes={" · ".join(key) or "전체": len(buckets[key]) for key, _ in items} if calc.share else {})
+                       dated=dated, place=place, extras=extras(calc, rows, find, lambda text: row_formula(table, text)), sizes={" · ".join(key) or "전체": len(buckets[key]) for key, _ in items} if calc.share else {})

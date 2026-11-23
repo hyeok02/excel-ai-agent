@@ -17,4 +17,5 @@ class TableResult:
     changes: tuple = ()  # (category, first period, value, last period, value) per category
     sizes: dict = field(default_factory=dict)  # each group's rows, stated with shares
     dated: bool = False  # values are days (date ordinals): the latest order date
+    place: tuple | None = None  # (place, of how many, value) of the group rank_of names
     extras: tuple = ()  # (label, value) of more figures asked of the same rows: 초과 금액 합계

@@ -47,6 +47,10 @@ years) compared or listed (the smallest product's total, one region's trend over
 columns. Groups of values (weekdays against weekends): group_by the column with bins. A count and an amount asked
 together: the count as the calculation and the amount in also. Students above their class mean: filter the class,
 measure the score, pick above_mean, no group_by. A growth rate per year may use ** in kind=cells.
+Change against the previous month: group by the month with versus_previous. Groups meeting a count or sum
+(customers with 5+ purchases): having. One item's place: rank_of with order. Rows not in another table (customers
+with no purchase): not_in with that table's column as a range. 누적 up to a month of a year starts at that year.
+Another column of the latest or earliest row (가장 최근 거래의 결제수단): measure the date with max, name_by that column.
 kind=cells: arithmetic over cell references [Sheet!B5] of the small tables whose rows are listed
 (row_values: [row number, then each column's value]; a value's cell is the column letter + that row
 number; the header_row only names the columns, e.g. a year header "2022" is a label, never an operand),

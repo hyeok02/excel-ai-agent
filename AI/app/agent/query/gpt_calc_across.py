@@ -12,7 +12,8 @@ from app.agent.query.gpt_calc_picks import picked, then_value
 from app.agent.query.gpt_calc_planner import column_name
 from app.agent.query.gpt_calc_result import TableResult
 
-_AGGREGATE = {"sum": sum, "mean": mean, "median": median, "min": min, "max": max, "count": len}
+_AGGREGATE = {"sum": sum, "mean": mean, "median": median, "min": min, "max": max, "count": len,
+              "range": lambda numbers: max(numbers) - min(numbers)}
 
 
 def across_result(calc, columns, rows, used, skipped):
@@ -26,7 +27,7 @@ def across_result(calc, columns, rows, used, skipped):
             values[(column_name(column),)] = _AGGREGATE.get(calc.aggregate, sum)(numbers)
     if not values:
         return None
-    items, middle = picked(calc.model_copy(update={"period": "none"}), values)  # columns in their listed order
+    items, middle, _ = picked(calc.model_copy(update={"period": "none"}), values)  # columns in their listed order
     total = sum(values.values()) if calc.share else None
     shown = [(key[0], value, value / total * 100 if total else None) for key, value in items]
     return TableResult(shown, middle, len(rows), list(dict.fromkeys([*used, *columns])), total, ("항목",),
