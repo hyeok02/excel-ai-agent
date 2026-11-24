@@ -18,12 +18,11 @@ from app.services.insight_generator import (
 )
 from app.services.workbook_parser import InvalidWorkbookError, parse_workbook
 from app.services.workbook_details.sample_caps import wider_samples
-from app.services.insights.models import (
-    ValidatedWorkbookInsightReport,
-    WorkbookInsightReport,
-)
+from app.services.insights.models import ValidatedWorkbookInsightReport, WorkbookInsightReport
 from app.services.insights.verification.prepared_validation import PreparedValidation, prepare_validation
 from app.services.insights.verification.validator import validate_workbook_insights
+from app.services.insights.narratives.large_tables import reading, whole_sheet_note
+from app.services.insights.verification.formula_values import unsaved_formula_notice
 from app.services.workbook_parsing.models import WorkbookSummary
 from app.services.workbook_data_model import DATA_MODEL_ONLY_MESSAGE
 
@@ -82,10 +81,12 @@ async def generate_workbook_insights(
     ] = AnalysisDepth.AUTO,
     include_hidden_sheets: Annotated[bool, Form(description=HIDDEN_SHEETS)] = False,
 ) -> WorkbookInsightsResponse:
-    summary = await parse_or_bad_request(file.filename or "", await read_upload(file), include_hidden_sheets, wide=True)
+    content = await read_upload(file)
+    summary = await parse_or_bad_request(file.filename or "", content, include_hidden_sheets, wide=True)
     require_accessible_worksheet_data(summary)
     # Source-side validation inputs do not depend on the model's report: build them meanwhile.
-    prepared = asyncio.ensure_future(run_in_threadpool(prepare_validation, summary, depth))
+    with reading(content):  # a table larger than the sample is read once more from the file
+        prepared = asyncio.ensure_future(run_in_threadpool(prepare_validation, summary, depth))
     try:
         report = await insight_generator.generate(summary, depth)
     except BaseException as exception:
@@ -111,11 +112,9 @@ def _verify_insights(
         validated.validation.notices = list(dict.fromkeys([
             *validated.validation.notices, report._generation_notice,
         ]))
-    if summary.limitations:
-        validated = validated.model_copy(update={
-            "limitations": list(dict.fromkeys([*validated.limitations, *summary.limitations])),
-        })
-    return validated
+    notes = [*summary.limitations, *filter(None, [unsaved_formula_notice(summary)])]  # results never saved
+    limitations = whole_sheet_note(list(dict.fromkeys([*validated.limitations, *notes])), validated.insights)
+    return validated.model_copy(update={"limitations": limitations})
 
 
 def require_accessible_worksheet_data(summary: WorkbookSummary) -> None:

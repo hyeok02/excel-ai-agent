@@ -54,12 +54,15 @@ def _source_scope(context, item):
     maps = {name: _cells(sheets[name]) for name in bounds}
     numeric = {}
     for name, boxes in bounds.items():
+        spans = {}  # each cited row's column spans: a trend over 4,626 rows cites one box a row
+        for left, top, right, bottom in boxes:
+            for row in range(top, bottom + 1):
+                spans.setdefault(row, []).append((left, right))
         for address, cell in maps[name].items():
             if not finite(cell.get("value")):
                 continue
             row, col = coordinate_to_tuple(address)
-            if any(left <= col <= right and top <= row <= bottom
-                   for left, top, right, bottom in boxes):
+            if any(left <= col <= right for left, right in spans.get(row, ())):
                 numeric.setdefault(name, {})[address] = (row, col)
     # Even one numeric cell from a second sheet can change a comparison's
     # meaning. A dominant cell count is not evidence of a single subject.

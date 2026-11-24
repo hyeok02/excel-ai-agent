@@ -47,6 +47,9 @@ def source_narrative_report(context, layout=True):
     primary = [option for option in options if not option[0]]
     chosen = min(preferred or primary or options, key=lambda option: (option[2], option[1]))
     series = (vertical_latest_report, trend_report, horizontal_trend_report)
+    money = [option for option in options if reporters[option[2]] in series and not option[0] and _money(option[3])]
+    if reporters[chosen[2]] in series and money and not _money(chosen[3]):  # monthly costs before instance counts
+        chosen = min(money, key=lambda option: (option[2], option[1]))
     earlier = [option for option in options if reporters[option[2]] in series and option[1] < chosen[1]]
     if reporters[chosen[2]] is record_summary_report and earlier:
         chosen = min(earlier, key=lambda option: (option[1], option[2]))  # a series sheet ahead of a later list
@@ -115,6 +118,14 @@ def _source_scope(context, items):
                     sources.append(sheets[name])
     return (all(source[1] for source in sources),
             min((source[0] for source in sources), default=len(sheets)))
+
+
+_MONEY = re.compile(r"\b(?:USD|EUR|KRW|GBP|JPY)\b|[$€₩£¥]|\d\s*(?:천|만|백만|억)?원|\b(?:cost|revenue|sales|amount|price|spend)|비용|매출|금액",
+                    re.I)
+
+
+def _money(items):
+    return bool(items) and all(_MONEY.search(f"{item.title} {item.fact}") for item in items[:1])
 
 
 def _intro_on_its_own_line(items, overview):

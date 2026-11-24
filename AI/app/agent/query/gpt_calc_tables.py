@@ -3,7 +3,7 @@ import re
 from statistics import mean, median
 
 from app.agent.query.gpt_calc_filters import _ALTERNATIVE, _date_part, _matches, _number
-from app.agent.query.gpt_calc_picks import changes, column_totals, holders, picked, then_value
+from app.agent.query.gpt_calc_picks import changes, column_totals, holders, named_periods, picked, then_value
 from app.agent.query.gpt_calc_bounds import _with_mean
 from app.agent.query.gpt_calc_across import _AGGREGATE, across_result, binned, extras
 from app.agent.query.gpt_calc_planner import column_name
@@ -126,10 +126,10 @@ def run_table(table, calc, headings=None):
                 continue
             values[key] = {**_AGGREGATE, "count": len}[calc.aggregate](numbers)
     values = values or ({(): 0} if not groups and calc.aggregate in {"count", "count_distinct"} else {})  # none left: 0
-    if not values:
-        return None
-    if calc.versus_previous != "none" and period_position is None:  # 전월 대비 with no date grouped compares nothing
-        return None
+    if not values or (period := named_periods(calc, len(groups), values, period_position))[1] is None \
+            and calc.versus_previous != "none":
+        return None  # 전월 대비 with no date grouped, nor a column naming periods ('FY20' · 'FY21'), compares nothing
+    values, period_position = period
     # Months named without a year (January, Sept) are no periods code can order: they stay in the source's order.
     items, middle, place = picked(calc if period_position is not None else calc.model_copy(update={"period": "none"}),
                                   values, period_position)

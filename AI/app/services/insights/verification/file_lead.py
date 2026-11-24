@@ -9,12 +9,15 @@ from app.services.insights.narratives.narrative_values import subject_particle
 from app.services.insights.verification.validation_index import extract_references
 
 FIRST = re.compile(r"^\s*(이 파일(?:은|에는)\s.+?다\.(?:\s*\([^)]*\))?)", re.S)
-_WEAK = re.compile(r"^이 파일은 (?:.+ 관련 내용을 정리한 자료입니다|.+ 등 주요 수치의 (?:기간별 )?변동을 다룹니다"
+_WEAK = re.compile(r"^이 파일은 (?:.+ 관련 내용을 정리한 자료입니다|.+ (?:등 주요 수치의 (?:기간별 )?)?변동을 다룹니다"
                    r"|(?:.+의 )?‘[^’]+’ 기록 [\d,]+건을 정리한 목록입니다)\.$")
 _DATE = re.compile(r"^(\d{4})[.\-/](\d{1,2})(?:[.\-/]\d{1,2})?(?:$|[T\s])")
 _PLACES = re.compile(r"지점|지역|매장|점포|도시|국가|시도|\b(?:region|store|branch|city|country|state)\b", re.I)
 _PEOPLE = re.compile(r"이름|성명|직원|사원|학생|\b(?:name|employee|student)\b", re.I)
 _TYPE = re.compile(r"구분|유형|종류|\b(?:type|kind)\b", re.I)
+_MONTH = re.compile(r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?"
+                    r"|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?", re.I)
+_LARGE = re.compile(r"^‘(.+)’ 시트에는 [\d,]+행 ([\d,]+)열 규모의 표가 있습니다\.")
 RECORDS = 20  # more rows than this are a record list, told by how many and over when
 
 
@@ -22,9 +25,10 @@ def described(report, context, force=False):
     """force: the summary compares sheets ('January' · 'March'), so a lead naming one of them is replaced."""
     found = FIRST.match(report.overview or "")
     if not found or not (force or _WEAK.match(" ".join(found[1].split()))) or any(
-            item.title.endswith(("서식 구성", "시트 구성")) for item in report.insights[:1]):
-        return report  # a form or an unread large sheet is already told by its outline
-    lead = _lead(report, context)
+            item.title.endswith("서식 구성") for item in report.insights[:1]):
+        return report  # a form is already told by its outline
+    large = _LARGE.match(report.insights[0].fact) if report.insights else None  # read by its size alone
+    lead = f"이 파일은 ‘{large[1]}’ 시트에 {large[2]}개 열의 기록을 담은 큰 표 자료입니다." if large else _lead(report, context)
     if lead:
         report.overview = f"{lead} {report.overview[found.end():].strip()}".strip()
     return report
@@ -51,6 +55,8 @@ def _lead(report, context):
     first = min(columns)
     rows = kept_rows(table, first) or table["rows"]
     key = next((p for p in columns if (names := texts(rows, p)) and len(set(names)) == len(names)), first)
+    if not texts(rows, key):  # the names under no header, left of the first column: Mortgage/Rent, Gas, …
+        key = max((p for p in set().union(*rows) if p < first and texts(rows, p)), default=key)
     from app.services.insights.narratives.item_periods import _period
     measures = [_period(table, p) for p in columns if p != key and numbers(rows, p)]
     beside = False
@@ -72,7 +78,7 @@ def _lead(report, context):
     if len(group) > 1 and len(rows) > RECORDS:  # records kept one sheet per month: all of them are told
         rows = [row for sheet in group for other in item_tables(sheets[sheet])[:1] for row in other["rows"]]
     dated = all(_DATE.match(" ".join(str(row.get(key, {}).get("value") or "").split())) for row in rows)
-    if len(rows) > RECORDS or dated:  # many rows, or one row per day: a record list
+    if (len(rows) > RECORDS or dated) and len(_periods(measures)) < 3:  # many rows, or one a day; not items by month
         kinds = next((sorted(set(values), key=values.index) for p in sorted(rows[0]) if p != key
                       and _TYPE.search(label(table, p)) and (values := texts(rows, p)) and len(set(values)) == 2),
                      [])  # 구분: 수입 · 지출
@@ -83,6 +89,11 @@ def _lead(report, context):
         return ""
     kind = label(table, key)
     kind = "" if not re.search(r"[A-Za-z가-힣]", kind) or kind.startswith("(") or kind.endswith(":") else kind
+    start = min((p for p in columns if numbers(table["rows"], p)), default=key)  # the first column of values
+    named = [row for row in table["rows"] if any(isinstance(cell.get("value"), str) and cell["value"].strip()
+                                                 for p, cell in row.items() if p < start)]
+    if len(rows) < 0.6 * len(named):  # 매출 · 비용 · 이익 heading the lines indented under them: every line counts
+        rows, kind = named, ""
     if _PEOPLE.search(kind):
         items = f"{len(rows)}명의 "
     else:
@@ -111,10 +122,9 @@ def _span(table, rows):
 
 
 def _listed(measures):
-    from app.services.insights.narratives.item_periods import PERIOD
     measures = list(dict.fromkeys(measure for measure in measures if re.search(r"[A-Za-z가-힣0-9]", measure or "")
                                   and not measure.endswith(":")))  # '$' and 'Income Statement:' are not columns
-    periods = [measure for measure in measures if PERIOD.match(measure)]
+    periods = _periods(measures)
     if len(periods) >= 2:
         return f"{periods[0]}~{periods[-1]} 값"
     if len(measures) > 3:
@@ -125,6 +135,12 @@ def _listed(measures):
         from app.services.insights.narratives.narrative_values import joining_particle
         return f"{measures[0]}{joining_particle(measures[0])} {measures[1]}"
     return measures[0] if measures else ""
+
+
+def _periods(measures):
+    """The measures that are periods: FY2023, 3월, Q1, or a month's name (January … December, Jan … Dec)."""
+    from app.services.insights.narratives.item_periods import PERIOD
+    return [measure for measure in measures if PERIOD.match(measure or "") or _MONTH.fullmatch((measure or "").strip())]
 
 
 def _object(word):

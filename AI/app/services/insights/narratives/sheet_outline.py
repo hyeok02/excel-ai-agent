@@ -16,9 +16,9 @@ _SHOWN = 6
 def outline_report(context):
     primary, comparisons = narrative_sheet_groups(context)
     for _, sheet in primary or comparisons:
-        found = _form(sheet) or _large_table(sheet)
-        if found:
-            return [found], found.fact
+        items = [form] if (form := _form(sheet)) else _large_table(sheet)  # a large one: its totals too
+        if items:
+            return items, " ".join(item.fact for item in items[:2])
     return [], ""
 
 
@@ -26,14 +26,14 @@ def _large_table(sheet):
     """A sheet of many rows that no narrative read: its size and its columns."""
     facts = sheet.get("business_facts", {})
     if (sheet.get("rows") or 0) < 30:
-        return None  # a small sheet is read cell by cell elsewhere
+        return []  # a small sheet is read cell by cell elsewhere
     schemas = [schema for schema in facts.get("all_column_schemas") or sheet.get("column_schema_samples", [])
                if schema.get("display_name") and schema.get("data_type") != "empty"]
     if not schemas:
-        return None
+        return []
     top = re.search(r"\d+", str(schemas[0].get("source_range", "")))
     if not top:
-        return None
+        return []
     name = str(sheet.get("name", ""))
     present = {cell.get("cell"): cell for region in narrative_regions(facts) for row in region.get("rows", [])
                for cell in row}
@@ -41,12 +41,15 @@ def _large_table(sheet):
                and " ".join(str(present[f"{schema['column']}{top[0]}"].get("value") or "").split())
                == " ".join(str(schema["display_name"]).split())]
     if len(schemas) < 2:
-        return None
+        return []
     shown = [str(schema["display_name"]).strip() for schema in schemas[:_SHOWN]]
     fact = (f"‘{name}’ 시트에는 {number(sheet.get('rows') or 0)}행 {number(sheet.get('columns') or 0)}열 규모의 표가 있습니다. "
             f"열은 {', '.join(shown)} 등입니다.")
     cited = [reference(name, f"{schema['column']}{top[0]}") for schema in schemas[:_SHOWN]]
-    return insight(f"{name} 시트 구성", fact, cited, "summary", topic=name)
+    from app.services.insights.narratives.large_tables import large_table_insights
+    return [insight(f"{name} 시트 구성", fact, cited, "summary", topic=name),
+            *large_table_insights(sheet, [(schema["column"], str(schema["display_name"]).strip()) for schema in schemas],
+                                  int(top[0]))]
 
 
 def _form(sheet):

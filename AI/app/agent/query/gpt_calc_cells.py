@@ -40,19 +40,20 @@ def _evaluate(node, values):
     raise ValueError("unsupported expression")
 
 
-def evaluate(expression, cells, labels=frozenset()):
+def evaluate(expression, cells, labels=frozenset(), ranges=None):
     """(result, [(reference, cell)]) for an expression over [Sheet!A1] references, or None.
 
     ``cells`` maps normalized references to indexed cells; every reference must be a number cell
     and none a header (``labels``): the header "2022" above a column is its name, not a value.
+    ``ranges``: every indexed cell, read only where SUM(…) names a whole range (its rows need not be shown).
     """
-    used, names = [], {}
+    used, names, spanned = [], {}, {}
 
     def name(match):
         reference = match.group(1).strip()
         sheet, _, address = reference.rpartition("!")
         key = normalize_reference(f"'{sheet.strip(chr(39))}'!{address}")
-        cell = cells.get(key) or cells.get(normalize_reference(reference))
+        cell = cells.get(key) or cells.get(normalize_reference(reference)) or spanned.get(key)
         if cell is None or not _number(cell.value) or key in labels or normalize_reference(reference) in labels:
             raise KeyError(reference)
         variable = f"v{len(names)}"
@@ -61,7 +62,7 @@ def evaluate(expression, cells, labels=frozenset()):
         return variable
 
     try:
-        text = _REFERENCE.sub(name, _expanded(expression, cells, labels)).replace("^", "**")  # Excel's power sign
+        text = _REFERENCE.sub(name, _expanded(expression, ranges or cells, labels, spanned)).replace("^", "**")
         if not used or re.search(r"[A-Za-z_]\w*\s*\(|//|%", text):
             return None  # no cell, or a function call / power the arithmetic does not allow
         result = _evaluate(ast.parse(text, mode="eval"), names)
@@ -70,15 +71,15 @@ def evaluate(expression, cells, labels=frozenset()):
     return float(result), used
 
 
-_RANGE_CALL = re.compile(r"\b(SUM|AVERAGE)\s*\(\s*\[?((?:'[^']+'|[^\s\[\]()!]+)![A-Za-z]{1,3}\d+:[A-Za-z]{1,3}\d+)\]?\s*\)",
-                         re.I)
+_RANGE_CALL = re.compile(r"\b(SUM|AVERAGE)\s*\(\s*(?:\[([^\[\]]+![A-Za-z]{1,3}\d+:[A-Za-z]{1,3}\d+)\]|((?:'[^']+'|[^\s\[\]()!]+)"
+                         r"![A-Za-z]{1,3}\d+:[A-Za-z]{1,3}\d+))\s*\)", re.I)  # [Cost variations!B4:B318] keeps its space
 MAX_RANGE = 400
 
 
-def _expanded(expression, cells, labels):
+def _expanded(expression, cells, labels, spanned=None):
     """SUM(2023!B4:B15) written out as ([2023!B4]+…+[2023!B15]) over its number cells; AVERAGE divided by their count."""
     def expand(match):
-        sheet, _, area = match.group(2).rpartition("!")
+        sheet, _, area = (match.group(2) or match.group(3)).rpartition("!")
         left, top, right, bottom = range_boundaries(area)
         if (right - left + 1) * (bottom - top + 1) > MAX_RANGE:
             raise ValueError("range too large")
@@ -89,6 +90,8 @@ def _expanded(expression, cells, labels):
                 cell = cells.get(normalize_reference(f"'{sheet.strip(chr(39))}'!{get_column_letter(column)}{row}"))
                 if cell is not None and _number(cell.value) and normalize_reference(cell.reference) not in labels:
                     listed.append(f"[{reference}]")
+                    if spanned is not None:
+                        spanned[normalize_reference(f"'{sheet.strip(chr(39))}'!{get_column_letter(column)}{row}")] = cell
         if not listed:
             raise ValueError("no number in the range")
         total = "+".join(listed)

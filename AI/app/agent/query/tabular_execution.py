@@ -39,17 +39,20 @@ def execute_tabular_query(plan, summary, data_index, question: str, intent=None)
         return None
     bounded_query = has_bounded_features(plan)
     fully_indexed = validated_table(table, data_index, needed)
+    top_misread = lambda: bounded_query and plan.order_by and plan.limit and not plan.group_by and (  # noqa: E731
+        found := filtered_rows(table, filters, plan.filter_expression)) is not None and (
+        shown := ordered_rows(found, plan)) is not None and misread(question, plan, table, found, shown, selected)
     if getattr(data_index, "source_provider", None) is not None and (
         not table.complete or (data_index.truncated_for({table.sheet_name}) and not fully_indexed)
         or bounded_query and not fully_indexed
     ):
+        if top_misread():  # the sampled rows already repeat the label shown: the whole table is no different
+            return None
         from app.agent.query.streaming_tabular import execute_streaming_tabular
         return execute_streaming_tabular(plan, table, tables, data_index, question, intent)
     if not fully_indexed or not request_matches_plan(question, plan, table, tables, intent):
         return None
-    if bounded_query and plan.order_by and plan.limit and not plan.group_by and (
-            found := filtered_rows(table, filters, plan.filter_expression)) is not None and (
-            shown := ordered_rows(found, plan)) is not None and misread(question, plan, table, found, shown, selected):
+    if top_misread():
         return None  # the top rows of a table whose shown values repeat: left to the calculation
     if bounded_query:
         from app.agent.query.indexed_accumulation_execution import execute_indexed_accumulation

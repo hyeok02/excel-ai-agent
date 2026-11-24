@@ -1,4 +1,5 @@
 """Build and rank source-backed record values for business facts."""
+import re
 from typing import Any
 
 from app.services.insights.facts.fact_labels import (
@@ -50,4 +51,6 @@ def identity_score(values: list[dict[str, object]]) -> int:
 def record_location(sheet_name: str, values: list[dict[str, Any]]) -> str:
     first, last = values[0]["cell"], values[-1]["cell"]
     reference = first if first == last else f"{first}:{last}"
+    if not re.fullmatch(r"[^\s!,:;=\"'\[\]{}]+", sheet_name):  # 'Instance count history'!A3: one name, quoted
+        sheet_name = "'" + sheet_name.replace("'", "''") + "'"
     return f"{sheet_name}!{reference}"

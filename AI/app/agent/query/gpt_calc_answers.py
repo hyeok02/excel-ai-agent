@@ -1,7 +1,6 @@
 """The last resort for a question nothing answered: GPT chooses a calculation, code runs it.
-GPT names the calculation over the whole table (or over cells it cites), code computes it from the
-source, and the answer states the calculation so it can be checked. If none runs, GPT's draft is shown, marked.
-Questions answered before, and questions that ask back with options, never reach this.
+GPT names the calculation over a whole table (or cells it cites), code computes it from the source and states
+it; else GPT's draft is shown, marked. Answered questions and needed ask-backs never reach this (gpt_calc_choices).
 """
 import asyncio
 from contextvars import ContextVar
@@ -17,6 +16,9 @@ from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.references import normalize_reference
 from app.agent.query.tabular_catalog import build_query_tables
+from app.agent.query.gpt_calc_choices import unneeded_choice
+from app.agent.query.gpt_calc_full_rows import completed_tables
+from app.agent.query.gpt_calc_stacked import statement_and_period_tables
 from app.agent.query.tabular_explicit_scope import explicit_ranges
 
 _DRAFTS: ContextVar[list | None] = ContextVar("generated_drafts", default=None)
@@ -35,15 +37,14 @@ def keep_draft(draft, execution):
         drafts.append((draft, source_values(execution), source_references(execution)))
 
 
-# Answers written by GPT from about 30 searched rows: totals, rates and lists over a whole table need
-# every row, so a calculation over the table is preferred when one runs.
+# Answers GPT wrote from ~30 searched rows: totals over a whole table need every row, so a calculation is preferred.
 _UNLISTED = "The table calculation named a column the table does not list, or left no row: name listed columns."
 _SEARCHED = {"search_workbook_data", "inspect_semantic_structure", "recover_formula_values"}
 
 
-def needs_fallback(answer):
+def needs_fallback(answer, summary=None):
     if answer.clarification_options or "clarify_source_scope" in answer.selected_tools:
-        return False  # asking back is an answer the user chooses from
+        return unneeded_choice(answer, summary)  # asking back is an answer, unless the question settles it
     return answer.status == QuestionAnswerStatus.INSUFFICIENT_EVIDENCE or bool(answer.selected_tools) and set(
         answer.selected_tools) <= _SEARCHED and answer.verification.level != "request_checked" or (
         "column_summaries" in answer.verification.checks)  # each column summarized apart: GPT may combine them
@@ -66,13 +67,13 @@ async def _computed(question, summary, index, planner):
     if summary is None or index is None:
         return None
     every = build_query_tables(summary)
-    tables = [table for table in every if table.complete and table.rows]
+    tables = completed_tables(every, index)  # a list larger than the summary's sample is read whole
     if scopes := explicit_ranges(question):  # "'MYE2 - Persons'!A8:CQ412 범위의 …": only that range
         tables = [table for table in tables if any(table.sheet_name == sheet and _overlaps(table.reference, cells)
                                                    for sheet, cells in scopes)]
     labels = {normalize_reference(column.header_reference) for table in every for column in table.columns}
     labels |= {normalize_reference(cell.reference) for row in index.rows if _year_row(row) for cell in row.cells}
-    if not tables:
+    if not (tables := statement_and_period_tables(tables, index)):  # row names; month sheets as one table
         return None
     from app.agent.query.gpt_calc_planner import LangChainCalcPlanner
     if (planner := planner or LangChainCalcPlanner.from_environment()) is None:
@@ -102,7 +103,7 @@ async def _computed(question, summary, index, planner):
                 return table_answer(question, plan, table, result, _style(table, result, plan.table), cells)
             note = _UNLISTED
         elif plan.kind == "cells" and plan.cells is not None and plan.cells.items:
-            computed = [(item, evaluate(item.expression, listed, labels)) for item in plan.cells.items]
+            computed = [(item, evaluate(item.expression, listed, labels, cells)) for item in plan.cells.items]
             if all(found is not None for _, found in computed):
                 return cells_answer(question, plan, computed)
             bad = [item.expression for item, found in computed if found is None][:5]
@@ -116,8 +117,7 @@ async def _computed(question, summary, index, planner):
     return None
 
 def _overlaps(first, second):
-    a, b, c, d = range_boundaries(first.replace("$", ""))
-    e, f, g, h = range_boundaries(second.replace("$", ""))
+    (a, b, c, d), (e, f, g, h) = (range_boundaries(item.replace("$", "")) for item in (first, second))
     return a <= g and e <= c and b <= h and f <= d
 
 
@@ -129,7 +129,7 @@ def _year_row(row):
 
 
 def _style(table, result, calc):
-    if calc.aggregate == "ratio":
+    if calc.aggregate == "ratio" or calc.versus_previous == "rate":  # 전월 대비 증가율: 59.70%
         return "ratio%"
     if calc.aggregate in {"count", "count_distinct"} or not calc.measure:
         return "#,##0"
@@ -143,7 +143,7 @@ async def with_calculation_fallback(question, sources, produce):
     token = start_collecting_drafts()
     try:
         answer = await produce()
-        if needs_fallback(answer):
+        if needs_fallback(answer, sources.summary):
             answer = await fallback_answer(answer.resolved_question or question, sources.summary, sources.index, answer)
     finally:
         stop_collecting_drafts(token)

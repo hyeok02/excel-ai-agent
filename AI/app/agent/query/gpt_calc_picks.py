@@ -1,4 +1,5 @@
 """The groups a table calculation shows: ordered, picked, named, totalled or compared between periods."""
+import re
 from statistics import mean
 
 from app.agent.query.gpt_calc_filters import WEEKDAYS, _number
@@ -28,6 +29,8 @@ def picked(calc, values, period_position=None):
         items.sort(key=lambda item: item[1], reverse=calc.order == "desc")
     place = _place(calc, items)
     middle = mean(value for _, value in items) if calc.pick in {"above_mean", "below_mean"} else None
+    if calc.pick in {"nth", "top"} and max(calc.n, 1) == 1 and len(items) == 2 and calc.order != "none":
+        return items, middle, place  # "평일과 주말 중 높은 쪽": both shown, the higher first
     if calc.pick in {"nth", "top"}:  # a group tied with the last one picked is picked too
         n = max(calc.n, 1)
         last = items[n - 1][1] if n <= len(items) else None
@@ -94,3 +97,12 @@ def column_totals(calc, items, buckets, measure, added, name_of):
         return ()
     return tuple((name_of(column), sum(value for row in buckets[items[0][0]] if _number(value := row.values.get(column.id))))
                  for column in [measure, *added])
+
+
+def named_periods(calc, groups, values, position):
+    """전년 대비 over a column naming its periods ('FY20' · 'FY21', '2023년'): the groups in their order."""
+    if calc.versus_previous == "none" or position is not None or groups != 1 or not all(
+            re.search(r"\d", key[0]) for key in values):
+        return values, position
+    natural = lambda label: [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", label)]  # noqa: E731
+    return dict(sorted(values.items(), key=lambda item: natural(item[0][0]))), 0
