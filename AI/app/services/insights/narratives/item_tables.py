@@ -9,6 +9,7 @@ import re
 from app.services.insights.facts.sheet_scope import narrative_sheet_groups
 from app.services.insights.facts.table_inputs import narrative_regions
 from app.services.insights.narratives.item_likert import likert_items
+from app.services.insights.narratives.item_metrics import UNITS, metric_rows
 from app.services.insights.narratives.item_pairs import pair_items
 from app.services.insights.narratives.item_periods import period_items
 from app.services.insights.narratives.layout_tables import (
@@ -18,7 +19,7 @@ from app.services.insights.narratives.narrative_values import finite, insight, s
 
 _UNIT_LINE = re.compile(r"단위\s*[:：]\s*([^\s/,;)]+)|\(([A-Za-z$€£]+\s+(?:thousands|millions|billions))\)", re.I)
 _SOURCE = re.compile(r"^\s*(?:출처|자료\s*출처|source)\s*[:：]\s*([^/]+)", re.I)
-_TITLED = re.compile(r"\S별(?:\s|$)|현황|추이|통계|내역|분석|자료|보고서|실적|명부|목록|일지|대장|\b(?:report|summary|by)\b",
+_TITLED = re.compile(r"\S별(?:\s|$)|현황|추이|통계|내역|분석|자료|보고서|실적|계획|명부|목록|일지|대장|\b(?:report|summary|by)\b",
                     re.I)  # a table's title names what it is: 월별 매출, 점검 현황, Monthly Yield Report
 FEW = 8  # more rows are records, read by their mean elsewhere
 
@@ -28,12 +29,16 @@ def item_table_report(context):
     for _, sheet in primary or comparisons:
         for table in item_tables(sheet):
             key = min(table["header"][-1] | table["header"][0])
+            named = [p for p in set().union(*table["rows"]) if p < key and sum(bool(_name(row, p)) for row in table["rows"])
+                     >= 0.6 * len(table["rows"]) and not all(UNITS.fullmatch(str(row.get(p, {}).get("value") or "").strip())
+                                                         for row in table["rows"])]  # 매출 left of 계획A; '원' is its unit
+            key = max(named) if named and not any(_name(row, key) for row in table["rows"]) else key
             rows = [row for row in table["rows"] if _name(row, key)  # 'Net sales:' over its lines holds no value
                     and any(finite(cell.get("value")) for p, cell in row.items() if p != key)]
             measures = [p for p in sorted(set().union(*table["header"])) if p != key and numbers(rows, p)]
             if len(rows) < 3 or not measures:  # two items are read off the table itself
                 continue
-            for reader in (period_items, pair_items, likert_items, _ranked):
+            for reader in (period_items, pair_items, likert_items, metric_rows, _ranked):
                 items = reader(table, key, rows, measures)
                 if items:
                     return items, _overview(sheet, table, items, reader is period_items)

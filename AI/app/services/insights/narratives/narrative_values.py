@@ -25,10 +25,10 @@ def subject_particle(text):
         return "가"
     if "가" <= last <= "힣":
         return "이" if (ord(last) - 0xAC00) % 28 else "가"
+    if last.isdigit():  # FY21 is 에프와이이십일: the number is read in Korean
+        return "이" if last in "013678" else "가"  # 영·일·삼·육·칠·팔 end in a consonant; 10 is 십
     if re.fullmatch(r"[A-Z][A-Z0-9._-]*", spoken):
         return "이" if last in "LMNRSX" else "가"
-    if last.isdigit():
-        return "이" if last in "013678" else "가"  # 영·일·삼·육·칠·팔 end in a consonant; 10 is 십
     if last == "%":
         return "가"  # 퍼센트
     word = spoken.lower()

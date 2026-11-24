@@ -8,6 +8,7 @@ from app.services.insights.facts.fact_labels import (
     header_addresses,
     is_technical_row,
 )
+from app.services.insights.facts.region_rows import normalized_region_rows
 from app.services.insights.facts.fact_records import (
     fact_value, identity_score, record_location, record_score,
 )
@@ -87,8 +88,8 @@ def build_business_facts(
         "time_series": trend_rows,
         "table_rows": legacy_table_rows(tables),
         "table_regions": tables,
-        "table_analysis_complete": (
-            len(tables) == len(regions)
+        "table_analysis_complete": (  # a block of formulas whose results were never saved holds no table to read
+            len(tables) == sum(bool(normalized_region_rows(region)[0]) for region in regions)
             and all(table.get("rows_complete") for table in tables)
         ),
         "selection_note": "원본 전체가 아닌 핵심 값 행만 선별한 결과",

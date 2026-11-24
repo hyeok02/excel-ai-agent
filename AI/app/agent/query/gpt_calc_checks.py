@@ -53,12 +53,16 @@ def plan_problem(question, table, calc, headings=None):
     if calc.aggregate == "ratio" and not calc.filters and not calc.denominator and not calc.group_by:
         problems.append("A ratio over all rows with no filter is 100%. For the share of rows holding a value "
                         "('Y', '예'), filter that value and leave measure null.")
-    if calc.add and not calc.row_formula and (calc.measure is None or not calc.group_by):  # a formula replaces add
+    if calc.add and not calc.row_formula and (calc.measure is None or not calc.group_by) \
+            and not set(calc.add) <= set(calc.across):  # a formula replaces add; across already totals each column
         problems.append("add totals several columns into one value per row of each group. For one row's values "
                         "across columns (a trend over year columns), use kind=cells with one item per column.")
     if calc.pick in {"above_mean", "below_mean"} and not calc.measure and not calc.row_formula and not calc.group_by:
         problems.append("above_mean compares each row's value with their mean: name the measure (the score) whose "
                         "rows above or below it are listed and counted.")
+    if any(item.measure == calc.measure and item.aggregate == calc.aggregate and not item.row_formula for item in calc.also):
+        problems.append("also repeats the main calculation over the same rows, so every line gives one number. For "
+                        "several sheets together use the table whose sheet joins them with ' + ' (its 시트 column).")
     return " ".join(problems) or None
 
 
@@ -93,6 +97,10 @@ def _settled(calc, filters):
     if calc.rank_of:  # "선풍기는 몇 위": not ranked among 선풍기 alone
         filters = [item for item in filters if not (item.op == "eq" and " ".join(item.value.split()).casefold()
                                                     == " ".join(calc.rank_of.split()).casefold())]
+    if calc.add and set(calc.add) <= set(calc.across) and not calc.group_by:  # each column totalled once, by across
+        calc = calc.model_copy(update={"add": []})
+    if calc.pick in {"above_mean", "below_mean"} and calc.group_by:  # the groups' mean is compared once, by the pick
+        filters = [item for item in filters if item.value.strip().casefold() not in {"mean", "평균", "average"}]
     if filters and all(item.scope for item in filters):  # every filter a scope leaves no part: they pick the part
         filters = [item.model_copy(update={"scope": False}) for item in filters]
     update = {"filters": filters}

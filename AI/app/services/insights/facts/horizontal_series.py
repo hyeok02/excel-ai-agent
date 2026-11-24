@@ -6,6 +6,7 @@ from app.services.insights.facts.fact_trends import date_value
 from app.services.insights.narratives.narrative_values import finite
 from app.services.insights.facts.series_scalars import unit
 from app.services.insights.facts.horizontal_context import axis_reading, declared_axis_unit, period_label
+from app.services.insights.facts.horizontal_measures import amount_columns, total_series
 from app.services.insights.facts.horizontal_rows import (
     coordinates as _coordinates, raw as _raw, worksheet_rows as _worksheet_rows,
 )
@@ -22,6 +23,7 @@ def extract_horizontal_series(regions):
     for axis_row, axis, inferred in axes:
         next_row = min((row for row, _, _ in axes if row > axis_row), default=10**9)
         series = _axis_series(rows, axis_row, min(next_row, axis_row + MAX_AXIS_DISTANCE), axis)
+        series += [total] if (total := total_series(rows, axis_row, next_row, axis, series)) else []
         # Years only the header's shape supports: the narrative states this reading.
         results.extend({**item, "axis_inferred": True} if inferred else item for item in series)
     results.sort(
@@ -35,14 +37,14 @@ def extract_horizontal_series(regions):
 def _axes(row, cells, rows):
     headings = rows.get(row - 1, {})
     dates, inferred = axis_reading(row, cells, rows)
-    dated = [(column, cell, dates[column])
-             for column, cell in sorted(cells.items()) if column in dates]
+    dated, step = amount_columns([(column, cell, dates[column]) for column, cell in sorted(cells.items())
+                                  if column in dates], rows.get(row + 1, {}))  # '2017-11' over 'Variation | Cost'
     runs = []
     current, basis = [], None
     for column, cell, date in dated:
         heading = headings.get(column, {}).get("value")
         heading = heading if isinstance(heading, str) and not date_value(heading) else None
-        if current and (column != current[-1][0] + 1 or heading and heading != basis):
+        if current and (column - current[-1][0] not in range(1, step + 1) or heading and heading != basis):
             runs.append(current)
             current = []
         if not current or heading:
