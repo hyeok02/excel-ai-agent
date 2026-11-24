@@ -46,6 +46,9 @@ def _append_change(
 ) -> None:
     cell_key = key(draft.sheet_name, reference)
     cell = available.get(cell_key)
+    if cell is None and isinstance(authorization, RuledTargets) and draft.new_value is not None:
+        from app.agent.query.index import IndexedCell  # a blank cell a checked rule fills: 공급사 '미정'
+        cell = IndexedCell(draft.sheet_name, reference, None, None, "blank", "General")
     if cell is None:
         risks.append(f"{draft.sheet_name}!{reference}: 원본에서 확인할 수 없는 셀입니다.")
         return

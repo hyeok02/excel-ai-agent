@@ -66,18 +66,21 @@ def rule_drafts(rule, summary, index, instruction=""):
     drafts = []
     for row in rows:
         for target in targets:
-            cell = cells.get(key(table.sheet_name, f"{letters[target]}{row.row_number}"))
-            if cell is None:
-                raise RuleRejected(f"{table.sheet_name}!{letters[target]}{row.row_number}: "
-                                   "빈 셀이 있어 같은 계산을 적용할 수 없습니다.")
-            drafts.append(WritebackChangeDraft(
-                sheet_name=table.sheet_name, reference=cell.address, new_value=_new_value(rule, cell, instruction),
+            address = f"{letters[target]}{row.row_number}"
+            cell = cells.get(key(table.sheet_name, address))
+            if cell is None and rule.operation == "clear":
+                continue  # already blank
+            if cell is None and rule.operation != "set":
+                raise RuleRejected(f"{table.sheet_name}!{address}: 빈 셀이 있어 같은 계산을 적용할 수 없습니다.")
+            drafts.append(WritebackChangeDraft(  # a blank cell is filled as written ('미정' where 공급사 is empty)
+                sheet_name=table.sheet_name, reference=address,
+                new_value=_new_value(rule, cell, instruction) if cell is not None else rule.amount,
                 reason=f"조건에 맞는 {len(rows)}개 행 모두에 같은 변경을 적용합니다. {rule.reading}"[:500]))
     conditions = ", ".join(f"‘{columns[item.column_id].display_header}’ {OPERATORS[item.operator]} {condition_value(item.value)}"
                            .rstrip() for item in filters)
     # A value to set reads as the cells will show it: 0.013 in a 0.0% column is 1.3%.
-    shown_values = {exact(draft.new_value, cells[key(table.sheet_name, draft.reference)].number_format)
-                    for draft in drafts} if rule.operation == "set" else set()
+    shown_values = {exact(draft.new_value, getattr(cells.get(key(table.sheet_name, draft.reference)), "number_format",
+                                                   "General")) for draft in drafts} if rule.operation == "set" else set()
     amount = shown_values.pop() if len(shown_values) == 1 and None not in shown_values else rule.amount
     action = OPERATIONS[rule.operation].format(amount=amount)
     scope = f"‘{table.sheet_name}’ 표에서 {conditions}인" if conditions else f"‘{table.sheet_name}’ 표 전체"

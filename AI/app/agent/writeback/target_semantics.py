@@ -88,9 +88,18 @@ def semantic_target_risk(cell, instruction, index, headers) -> str | None:
         values = [item for item in source_row.cells if isinstance(item.value, (int, float)) or item.formula]
         if cell in values and len(values) > 1:
             return "요청한 행에 여러 값이 있어 변경할 열 또는 셀을 지정해야 합니다."
-        if cell not in values and not _label_matches(cell.value, prefix):
+        if cell not in values and not _label_matches(cell.value, prefix) and not _pair_value(cell, source_row, local):
             return "요청한 원본 항목과 변경할 텍스트 셀이 일치하지 않습니다."
     return None
+
+
+def _pair_value(cell, row, local):
+    """'Created by | Jane' alone on its row: the one named label's value is the cell right of it."""
+    if len(local) != 1 or local[0][0] is not row or len(local[0][1]) != 1:
+        return False
+    label = local[0][1][0]
+    others = [item for item in row.cells if item.value not in (None, "") and item is not cell]
+    return others == [label] and column_number(label.address) < column_number(cell.address)
 
 
 def _data_row(row, headers):

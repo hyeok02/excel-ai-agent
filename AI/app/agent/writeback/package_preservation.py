@@ -10,11 +10,19 @@ def unchanged_content(original, modified, changes):
     grouped = defaultdict(set)
     for change in changes:
         grouped[paths[change.sheet_name]].add(change.reference.upper())
-    return all(_without_values(original.read(path), refs) == _without_values(modified.read(path), refs)
-               for path, refs in grouped.items()) and (
+    return all(_same(original.read(path), modified.read(path), refs) for path, refs in grouped.items()) and (
         _without_calculation(original.read(WORKBOOK_PATH))
         == _without_calculation(modified.read(WORKBOOK_PATH))
     )
+
+
+def _same(before, after, references):
+    """Cells a change filled where the original had none are taken out again; the rest must match byte for byte."""
+    present = {span.attributes.get("r", "").upper() for span in _xml_elements(before, references) if span.name == "c"}
+    added = references - present
+    if added:
+        after = _replace(after, [(span.start, span.end, b"") for span in _xml_elements(after, added) if span.name == "c"])
+    return _without_values(before, present) == _without_values(after, present)
 
 
 def _without_values(xml, references):

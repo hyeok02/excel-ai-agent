@@ -5,6 +5,7 @@ from xml.sax.saxutils import escape
 from openpyxl.utils.datetime import to_excel
 
 from app.agent.writeback.models import WritebackChange
+from app.agent.writeback.package_new_cells import new_cell_edit
 from app.agent.writeback.package_xml import (
     _ElementSpan, _prefix, _update_attributes, _xml_elements,
 )
@@ -27,6 +28,12 @@ def _replace_cells(xml: bytes, changes: list[WritebackChange], epoch: datetime) 
     edits = []
     for change in changes:
         element = cells.get(change.reference.upper())
+        if element is None and change.old_value is None and change.new_value is not None:  # a blank cell filled
+            serialized = lambda prefix, change=change: _serialized_value(  # noqa: E731
+                change.new_value, change.value_type, epoch, prefix)
+            if (inserted := new_cell_edit(xml, change.reference, serialized)) is not None:
+                edits.append(inserted)
+                continue
         if element is None:
             raise ValueError("원본 셀 XML을 찾을 수 없습니다.")
         prefix = _prefix(element.qname)
@@ -43,10 +50,10 @@ def _replace_cells(xml: bytes, changes: list[WritebackChange], epoch: datetime) 
             b"<" + element.qname + attrs + b">"
             + updated_body + b"</" + element.qname + b">"
         )
-        edits.append((element.start, element.end, replacement))
+        edits.append((element.start, element.end, 0, replacement))
     parts = []
     offset = 0
-    for start, end, replacement in sorted(edits):
+    for start, end, _, replacement in sorted(edits):  # cells inserted at one place go in column order
         parts.extend((xml[offset:start], replacement))
         offset = end
     parts.append(xml[offset:])

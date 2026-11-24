@@ -45,9 +45,13 @@ def validated_table(table, index, needed: set[str]) -> bool:
         cutoff = max((coordinate_to_tuple(address) for address in cells), default=(0, 0))
         if cutoff < (bottom, right):
             return False
+    named = {column.id for column in table.columns if column.header in DERIVED and cells.get(
+        column.header_reference.rpartition("!")[2]) is None}  # 항목 · 구분 · 단위 read from the index itself
     for column in table.columns:
         address = column.header_reference.rpartition("!")[2]
         cell = cells.get(address)
+        if column.id in named:
+            continue
         if cell is None or _header_text(cell.value) != column.header:
             return False
         for reference, label in column.header_path:
@@ -63,7 +67,7 @@ def validated_table(table, index, needed: set[str]) -> bool:
                 return False
     source_rows = {row.row_number: row for row in table.rows}
     for row in table.rows:
-        for column in columns:
+        for column in columns.keys() - named:
             cell = cells.get(f"{column}{row.row_number}")
             actual = cell.value if cell else None
             expected = row.values[column]
@@ -80,10 +84,13 @@ def validated_table(table, index, needed: set[str]) -> bool:
     for address, cell in cells.items():
         row, column_number = coordinate_to_tuple(address)
         if (top < row <= bottom and row not in table.excluded_rows | table.metadata_rows
-                and get_column_letter(column_number) in columns):
+                and get_column_letter(column_number) in columns.keys() - named):  # a name over no values
             if (cell.formula or cell.value not in (None, "")) and row not in source_rows:
                 return False
     return True
+
+
+DERIVED = {"항목", "구분", "단위"}  # the row names a table writes under no header (gpt_calc_statements)
 
 
 def _header_text(value):
