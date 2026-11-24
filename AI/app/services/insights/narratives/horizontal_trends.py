@@ -29,6 +29,9 @@ def horizontal_trend_report(context):
         measure, count_unit, refs = qualified_series_caption(sheet, series, caption, refs)
         qualified = _insight(str(sheet.get("name", "")), series, owner, source_unit,
                              caption=(measure, count_unit, refs)) if measure else insight
+        if series.get("summed") and not selected:  # 315 lines totalled: the total and what moved it, not each line
+            from app.services.insights.narratives.horizontal_movers import summed_report
+            return summed_report(str(sheet.get("name", "")), series, qualified or insight)
         selected.append(qualified or insight)
         if len(selected) == 5:
             break

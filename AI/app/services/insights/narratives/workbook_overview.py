@@ -9,7 +9,7 @@ from app.services.insights.models import (
 from app.services.insights.verification.reference_matching import resolve_references
 from app.services.insights.verification.validation_index import EvidenceIndex, extract_references
 from app.services.insights.narratives.workbook_lead_rules import structured_lead
-from app.services.insights.narratives.narrative_values import joining_particle
+from app.services.insights.narratives.narrative_values import after_lead, joining_particle
 
 CONTEXT_SENTENCE = re.compile(
     r"^\s*(이 파일은\s+.+?(?:자료입니다|다룹니다|보여줍니다)\.)", re.S,
@@ -36,7 +36,7 @@ def add_workbook_context(
     details = report.overview.strip()
     if existing:
         details = details[len(existing):].strip()
-    return report.model_copy(update={"overview": f"{lead} {details}".strip()})
+    return report.model_copy(update={"overview": after_lead(lead, details)})
 
 
 def _lead_from(overview: str) -> str:

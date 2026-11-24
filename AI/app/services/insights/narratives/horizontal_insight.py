@@ -112,4 +112,12 @@ def _period(point):
 
 
 def _display(point, value):
-    return displayed_text(point, value)
+    """The cell's own decimals, at most cents for an amount in a currency (821.255 USD reads 821.26 USD)."""
+    text = displayed_text(point, value)
+    decimals = re.search(r"\.(\d+)$", text)
+    currency = re.search(r"\b(?:USD|EUR|GBP|JPY|KRW|CNY)\b|[$€£¥₩]", str(point.get("number_format") or ""))
+    if not (currency and decimals and len(decimals[1]) > 2):
+        return text
+    from decimal import ROUND_HALF_UP, Decimal
+    cents = Decimal(f"{value:.12g}").quantize(Decimal("0.01"), ROUND_HALF_UP)  # a sum's 821.2549999… is 821.26
+    return "0" if not cents else f"{cents:,.2f}"
