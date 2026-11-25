@@ -5,7 +5,7 @@ the table's own title when it has one, else its sheet(s), what its rows are, how
 """
 import re
 
-from app.services.insights.narratives.narrative_values import subject_particle
+from app.services.insights.narratives.narrative_values import after_lead, subject_particle
 from app.services.insights.verification.validation_index import extract_references
 
 FIRST = re.compile(r"^\s*(이 파일(?:은|에는)\s.+?다\.(?:\s*\([^)]*\))?)", re.S)
@@ -30,7 +30,7 @@ def described(report, context, force=False):
     large = _LARGE.match(report.insights[0].fact) if report.insights else None  # read by its size alone
     lead = f"이 파일은 ‘{large[1]}’ 시트에 {large[2]}개 열의 기록을 담은 큰 표 자료입니다." if large else _lead(report, context)
     if lead:
-        report.overview = f"{lead} {report.overview[found.end():].strip()}".strip()
+        report.overview = after_lead(lead, report.overview[found.end():])
     return report
 
 

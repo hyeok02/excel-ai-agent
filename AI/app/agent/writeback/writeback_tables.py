@@ -22,7 +22,10 @@ MAX_CHARACTERS = 30_000
 def writeback_tables(summary, index=None):
     """index: the edit's full index, so a sampled large table is rebuilt from every row."""
     tables = build_query_tables(summary, text_regions=True)
-    return [_completed(table, index) for table in tables] if index is not None else tables
+    if index is None:
+        return tables
+    from app.agent.query.gpt_calc_statements import labeled_tables  # 직원수 · Groceries named under no header
+    return labeled_tables([_completed(table, index) for table in tables], index)
 
 
 def _completed(table, index):

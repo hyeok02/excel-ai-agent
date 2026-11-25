@@ -41,8 +41,10 @@ def test_months_over_cost_and_change_columns_are_read_from_the_cost_and_added_up
         sheet.merge_cells("C2:D2")
         sheet.merge_cells("E2:F2")
     overview, facts, _ = _report(fill)
-    assert "전체 합계: 2017년 10월 516에서 2017년 12월 468로 48(9.30%) 감소했습니다." in facts[0]
-    assert overview.startswith("이 파일은 ‘Cost variations’ 시트에 Usage type 24개의 2017-10~2017-12 값을")
+    assert facts[0].startswith("전체 Monthly cost: 2017년 10월 516에서 2017년 12월 468로 48(9.30%) 감소했습니다.")
+    assert facts[1] == ("2017년 10월 대비 2017년 12월에 가장 많이 줄어든 항목은 Usage-0(10 → 8)입니다. "
+                        "2017년 12월 기준 가장 큰 항목은 Usage-23(31)입니다.")  # found among all 24, not the first few
+    assert overview.startswith("이 파일은 ‘Cost variations’ 시트에 Usage type 24개의 2017-10~2017-12 값을 정리한 자료입니다.\n· ")
 
 
 def test_measures_in_units_are_compared_across_plans_never_with_each_other():

@@ -135,3 +135,9 @@ def metric_unit(metric, records):
     if re.search(r"\bemployees?\b|\bheadcount\b|인원|직원\s*수", metric, re.I):
         return "명"
     return ""
+
+
+def after_lead(lead, body):
+    """The file's first sentence, then its summary: a list of '· …' lines starts on a line of its own."""
+    body = body.strip()
+    return f"{lead}\n{body}".strip() if body.startswith("·") else f"{lead} {body}".strip()

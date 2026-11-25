@@ -28,6 +28,8 @@ changes는 사용자가 B2, C3:C9처럼 셀 주소를 직접 적었을 때만 �
 - 표 전체에 적용하는 요청이면 filters를 비우세요.
 - operation은 set(값으로 변경), clear(비우기), percent_increase, percent_decrease, add, subtract, multiply 중 하나이고
   amount에는 사용자가 말한 값이나 비율·양·배수를 그대로 쓰세요(10% 인상이면 10).
+- 같은 행의 다른 열과 비교하는 조건(예: 재고가 안전재고보다 적은)은 column_filters에 column_id, operator, other_column_id로 쓰세요.
+- 같은 행의 다른 열 값으로 바꾸는 요청(예: 재고를 안전재고 수량으로)은 operation을 set으로, value_column_id에 그 열을 쓰고 amount는 비우세요.
 - reading에는 사용자 표현을 원본 이름으로 어떻게 옮겼는지 짧게 쓰세요(예: ‘쿠키’ → Category = Cookies, ‘단가’ → UnitPrice).
 - 합계·피벗처럼 다른 값에서 계산된 요약 표가 아니라, 원본 기록이 있는 표를 고르세요.
 안전하게 특정할 수 없다면 changes와 rules를 비우고 한계를 설명하세요."""

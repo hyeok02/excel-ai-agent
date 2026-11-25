@@ -9,6 +9,7 @@ from app.agent.writeback.models import (
 from app.agent.writeback.references import key
 from app.agent.writeback.row_scope import every_row_drafts
 from app.agent.writeback.rule_proposals import ruled_proposal
+from app.agent.writeback.target_syntax import REFERENCE, mask_formulas
 from app.agent.writeback.writeback_tables import writeback_catalog
 from app.agent.writeback.validation import validate_changes
 
@@ -55,6 +56,9 @@ class WorkbookWritebackProposalService:
         checked, note = interpreted_instruction(instruction, draft.changes, data_index)
         changes, risks = validate_changes(draft.changes, available, data_index, checked)
         changes, risks, scope = _every_row(checked, changes, risks, data_index)
+        if not changes and draft.changes and not draft.rules and context["tables"] and not REFERENCE.search(
+                mask_formulas(instruction)) and (ruled := await self._as_rules(instruction, data_index, summary, context)):
+            return ruled
         # The model's notes describe its own partial draft, not the replaced row set.
         limitations = [*([note] if note and changes else []), *([scope] if scope else []),
                        *(draft.limitations if scope is None else [])]
@@ -80,6 +84,13 @@ class WorkbookWritebackProposalService:
             risks=list(dict.fromkeys(risks)),
             limitations=list(dict.fromkeys(limitations)),
         )
+
+    async def _as_rules(self, instruction, data_index, summary, context):
+        """A request with no cell address answered with cells the checks could not place: asked once more as rules."""
+        note = "이 요청에는 셀 주소가 없습니다. changes는 비우고 tables의 table_id와 column_id로 rules를 쓰세요."
+        draft = await self._generator.generate(instruction, data_index.filename, {**context, "note": note})
+        ruled = ruled_proposal(instruction, draft.rules, summary, data_index) if draft.rules else None
+        return ruled if ruled is not None and ruled.status == WritebackStatus.READY else None
 
 
 def _every_row(instruction, changes, risks, data_index):

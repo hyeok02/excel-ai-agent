@@ -75,7 +75,33 @@ def test_unsafe_or_unstated_readings_block_every_row() -> None:
         assert body["risks"]
 
 
+def test_a_row_takes_another_columns_value_where_the_two_columns_compare() -> None:
+    from app.agent.writeback.models import ColumnComparison
+    rule = {"operation": "set", "amount": None, "value_column_id": "Qty",
+            "column_filters": [ColumnComparison(column_id="Qty", operator="greater_than", other_column_id="UnitPrice")]}
+    body = _propose("쿠키 중 Qty가 UnitPrice보다 큰 상품은 UnitPrice를 Qty 값으로 맞춰줘", **rule)
+    assert _changes(body) == {"C2": 3, "C4": 5, "C5": 6} and "‘Qty’ > ‘UnitPrice’" in body["limitations"][0]
+    assert _propose("쿠키 단가를 맞춰줘", **rule)["status"] == "blocked"  # the copied column is not in the request
 
+
+def test_cells_the_checks_cannot_place_are_asked_for_once_more_as_rules() -> None:
+    from app.agent.writeback.models import WritebackChangeDraft
+    rule = WritebackRuleDraft(table_id="Sales!A1:E5", target_column_id="UnitPrice", operation="set", amount=4, reading="r",
+                              filters=[TabularFilter(column_id="Product", operator="equals", value="Carrot")])
+
+    class Stub:
+        async def generate(self, instruction, filename, context):
+            if "note" in context:  # the second reading, told the request has no cell address
+                return WritebackProposalDraft(summary="s", rules=[rule])
+            return WritebackProposalDraft(summary="s", changes=[WritebackChangeDraft(
+                sheet_name="Sales", reference="C3", new_value=4, reason="r")])
+    app.dependency_overrides[get_writeback_generator] = Stub
+    try:
+        body = TestClient(app).post("/api/v1/workbooks/writeback-proposals", data={
+            "instruction": "견과 메뉴 중 Carrot의 UnitPrice를 4로 바꿔줘"}, files=upload("sales.xlsx", _content())).json()
+    finally:
+        app.dependency_overrides.clear()
+    assert _changes(body) == {"C3": 4}, body
 
 
 def test_a_reading_naming_nothing_in_the_source_falls_back_to_the_checked_cell_path() -> None:

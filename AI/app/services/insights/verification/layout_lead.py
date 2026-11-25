@@ -2,6 +2,8 @@
 when a layout narrative writes the rest of the overview."""
 import re
 
+from app.services.insights.narratives.narrative_values import after_lead
+
 LEAD = re.compile(r"^\s*(이 파일(?:은|에는)\s.+?다\.(?:\s*\([^)]*\))?)", re.S)
 
 
@@ -20,7 +22,7 @@ def keep_lead(final, canonical, report, context, index):
         from app.services.insights.verification.file_lead import _lead
         lead = _lead(final, context)
     if lead:
-        final.overview = f"{lead} {final.overview}".strip()
+        final.overview = after_lead(lead, final.overview)
     return described(final, context, force=getattr(canonical, "_sheets", False))
 
 

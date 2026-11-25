@@ -2,7 +2,7 @@
 from app.agent.writeback.period_columns import unread_years
 from app.agent.writeback.models import WritebackProposal, WritebackStatus
 from app.agent.writeback.references import key
-from app.agent.writeback.rule_execution import RuleNotFound, RuleRejected, rule_drafts
+from app.agent.writeback.rule_execution import RuleNotFound, RuleRejected, RuledTargets, rule_drafts
 from app.agent.writeback.validation import validate_changes
 
 PARTIAL = "일부 행만 바뀌지 않도록 이 요청의 변경안을 만들지 않았습니다."
@@ -10,10 +10,11 @@ PARTIAL = "일부 행만 바뀌지 않도록 이 요청의 변경안을 만들�
 
 def ruled_proposal(instruction, rules, summary, index):
     """None when a rule names nothing in the source, so the cell drafts are used instead."""
-    drafts, readings, headers, offered = [], [], [], []
+    drafts, readings, headers, offered, copied = [], [], [], [], {}
     try:
         for rule in rules:
-            found, reading, changed = rule_drafts(rule, summary, index, instruction)
+            found, reading, changed, taken = rule_drafts(rule, summary, index, instruction)
+            copied.update(taken)
             drafts.extend(found)
             readings.append(reading)
             headers.extend(changed[0])
@@ -25,7 +26,7 @@ def ruled_proposal(instruction, rules, summary, index):
     if (missing := unread_years(instruction, headers, offered)):
         return _blocked(instruction, [f"요청한 기간 중 {', '.join(missing)}년 열이 해석에서 빠졌습니다.", PARTIAL], readings)
     every = {key(cell.sheet_name, cell.address): cell for row in index.rows for cell in row.cells}
-    changes, risks = validate_changes(drafts, every, index, instruction, ruled=True)
+    changes, risks = validate_changes(drafts, every, index, instruction, ruled=RuledTargets(instruction, copied))
     if risks or len(changes) != len(drafts):
         return _blocked(instruction, [*dict.fromkeys(risks[:8]), PARTIAL], readings)
     return WritebackProposal(

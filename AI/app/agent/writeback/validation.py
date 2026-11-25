@@ -22,7 +22,7 @@ FORBIDDEN_FORMULA = re.compile(
 def validate_changes(drafts, available, data_index, instruction: str, ruled: bool = False):
     changes, risks, seen = [], [], set()
     # Ruled cells were chosen by a source-checked rule; only their values need the request.
-    authorization = RuledTargets(instruction) if ruled else TargetAuthorization(instruction, data_index)
+    authorization = ruled if isinstance(ruled, RuledTargets) else RuledTargets(instruction) if ruled else TargetAuthorization(instruction, data_index)
     lookup = CellLookup(data_index)
     sheets = sheet_columns(data_index)
     for draft in drafts:
@@ -46,6 +46,9 @@ def _append_change(
 ) -> None:
     cell_key = key(draft.sheet_name, reference)
     cell = available.get(cell_key)
+    if cell is None and isinstance(authorization, RuledTargets) and draft.new_value is not None:
+        from app.agent.query.index import IndexedCell  # a blank cell a checked rule fills: 공급사 '미정'
+        cell = IndexedCell(draft.sheet_name, reference, None, None, "blank", "General")
     if cell is None:
         risks.append(f"{draft.sheet_name}!{reference}: 원본에서 확인할 수 없는 셀입니다.")
         return
@@ -67,7 +70,8 @@ def _append_change(
     if formula_risk:
         risks.append(f"{draft.sheet_name}!{reference}: {formula_risk}")
         return
-    derivation, rejection = authorize_value(cell.value, draft.new_value, instruction, formula)
+    copied = getattr(authorization, "copied", {}).get(cell_key)  # 안전재고 D5 → 재고 C5, read from the source row
+    derivation, rejection = (copied, None) if copied else authorize_value(cell.value, draft.new_value, instruction, formula)
     if rejection:
         risks.append(f"{draft.sheet_name}!{reference}: {rejection} 제외했습니다.")
         return

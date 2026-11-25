@@ -73,4 +73,21 @@ def total_series(rows, start, end, axis, found):
                      "number_format": next(iter(formats)) if len(formats) == 1 else None})
     return {**found[0], "metric": "Total", "scope": None, "scope_cell": None, "row": lines[0] - 1,
             "label_cell": f"{label_column}{lines[0]}:{label_column}{lines[-1]}", "label_cells": [],
-            "points": [sums[0], sums[-1]], "observations": sums}
+            "points": [sums[0], sums[-1]], "observations": sums, "summed": True,
+            "movers": _movers(rows, lines, names, label_column, axis)}
+
+
+def _movers(rows, lines, names, label_column, axis):
+    """Of every line, not the first few: the one down most, the one up most, and the largest in the last period."""
+    first, last = axis[0][0], axis[-1][0]
+    moved = []
+    for number in lines:
+        cells = rows[number]
+        if first in cells and last in cells:
+            label = next(cell for cell in cells.values() if re.match(r"[A-Z]+", cell["cell"]).group(0) == label_column)
+            moved.append({"name": " ".join(names[number].split()), "label_cell": label["cell"],
+                          "first": cells[first], "last": cells[last]})
+    change = lambda item: item["last"]["value"] - item["first"]["value"]  # noqa: E731
+    down, up = min(moved, key=change, default=None), max(moved, key=change, default=None)
+    top = max(moved, key=lambda item: item["last"]["value"], default=None)
+    return {"down": down if down and change(down) < 0 else None, "up": up if up and change(up) > 0 else None, "top": top}
