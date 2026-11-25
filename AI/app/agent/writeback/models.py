@@ -25,6 +25,13 @@ class WritebackContextCell(BaseModel):
     display: str | None = None
 
 
+class ColumnComparison(BaseModel):
+    """같은 행의 두 열 비교(재고 < 안전재고)."""
+    column_id: str = Field(min_length=1, max_length=200)
+    operator: Literal["equals", "not_equals", "greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal"]
+    other_column_id: str = Field(min_length=1, max_length=200)
+
+
 class WritebackRuleDraft(BaseModel):
     """조건으로 고른 행의 한 열을 같은 방식으로 바꾸는 해석. 행과 값은 코드가 정한다."""
     table_id: str = Field(min_length=1, max_length=200)
@@ -32,9 +39,12 @@ class WritebackRuleDraft(BaseModel):
     # 같은 행에서 같은 변경을 받는 다른 열(머리글이 연도인 표의 2020~2024년 열 등).
     also_target_column_ids: list[str] = Field(default_factory=list, max_length=60)
     filters: list[TabularFilter] = Field(default_factory=list, max_length=6)
+    column_filters: list[ColumnComparison] = Field(default_factory=list, max_length=3)
     operation: Literal["set", "clear", "percent_increase", "percent_decrease",
                        "add", "subtract", "multiply"]
     amount: str | int | float | bool | None = None
+    # set일 때 amount 대신 같은 행의 이 열 값으로 바꾼다(재고를 안전재고 수량으로).
+    value_column_id: str | None = None
     reading: str = Field(min_length=1, max_length=300)
 
 
