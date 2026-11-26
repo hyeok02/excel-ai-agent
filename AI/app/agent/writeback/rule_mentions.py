@@ -105,3 +105,29 @@ def unread_comparisons(instruction, readings, resolve):
                     if words and re.search(r"\d", tail[:words.end() + 8]) and not re.search(r"[을를]\s", tail[:words.start()]):
                         found.append(f"‘{column.display_header} {tail[:words.end()].strip()}’")
     return list(dict.fromkeys(found))
+
+
+THRESHOLD = re.compile(r"(?<![\d\-./:])(\d[\d,]*(?:\.\d+)?)\s*(만|천|억|백만)?\s*([가-힣%]{0,3}?)\s*"
+                       r"(?=이상|이하|초과(?!근무)|미만|넘|이전|이후|보다\s*[크많작적높낮늦빠])"
+                       r"|\b(?:over|under|above|below|more than|less than|at least|at most|greater than|before|after)"
+                       r"\s*\$?(\d[\d,]*(?:\.\d+)?)\s*(%)?", re.I)
+SCALE = {"만": 10 ** 4, "천": 10 ** 3, "억": 10 ** 8, "백만": 10 ** 6}
+
+
+def unmatched_thresholds(instruction, readings):
+    """'수량이 5 이상' read as 수량 ≥ 3, or as no condition at all: a stated bound no comparison of the reading holds."""
+    from app.agent.writeback.korean_numbers import plain_numbers
+    bounds = [str(item.value) for _, rule in readings for item in rule.filters
+              if item.operator in ("greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal")]
+    missing = []
+    for match in THRESHOLD.finditer(plain_numbers(instruction)):
+        number = as_number(match.group(1) or match.group(4))
+        if number is None:
+            continue
+        number *= SCALE.get(match.group(2) or "", 1)
+        wanted = {number, number / 100, *(number / size for size in (10 ** 3, 10 ** 4, 10 ** 6, 10 ** 8))}
+        named = any(isinstance(item.value, str) and match.group(0).strip() in item.value  # '50대 이상' is a 연령대
+                    for _, rule in readings for item in rule.filters)
+        if not named and not any(as_number(bound) in wanted or str(int(number)) == bound[:4] for bound in bounds):
+            missing.append(match.group(0).strip())
+    return [f"기준값 ‘{text}’" for text in dict.fromkeys(missing)]

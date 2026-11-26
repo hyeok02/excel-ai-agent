@@ -18,6 +18,7 @@ from app.agent.query.references import normalize_reference
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.gpt_calc_choices import unneeded_choice
 from app.agent.query.gpt_calc_full_rows import completed_tables, scoped_tables
+from app.agent.query.gpt_calc_scope_checks import in_scope, year_problem
 from app.agent.query.gpt_calc_stacked import statement_and_period_tables
 from app.agent.query.tabular_explicit_scope import explicit_ranges
 
@@ -78,6 +79,7 @@ async def _computed(question, summary, index, planner):
     if (planner := planner or LangChainCalcPlanner.from_environment()) is None:
         return None
     cells = {normalize_reference(cell.reference): cell for row in index.rows for cell in row.cells}
+    cells = in_scope(cells, scopes) if scopes else cells  # a formula plan reads only the range named, as a table plan
     listed = listed_cells(tables, cells)  # kind=cells may cite only the rows GPT was shown
     headings = {table.id: {**section_rows(table), **group_rows(table, summary)} for table in tables}
     note = ""
@@ -94,7 +96,7 @@ async def _computed(question, summary, index, planner):
             if not attempt and (problem := plan_problem(question, table, plan.table, headings.get(table.id))):
                 note = problem
                 continue
-            if attempt and unused_values(question, table, plan.table):  # 'Boston' left out twice: 340 is not Boston's
+            if attempt and (unused_values(question, table, plan.table) or year_problem(question, table, plan.table)):
                 return None
             plan = plan.model_copy(update={"table": with_cell_values(plan.table, cells, question)})  # "> [Table!B66]"
             result = await asyncio.to_thread(run_table, table, plan.table, headings.get(table.id))

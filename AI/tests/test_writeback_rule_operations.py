@@ -84,3 +84,13 @@ def test_a_number_condition_the_reading_left_out_is_not_applied() -> None:
     assert dropped["status"] == "blocked" and "Qty" in dropped["risks"][0]  # 수량 3인 Chip을 함께 바꾸지 않는다
     kept = cookies + [TabularFilter(column_id="Qty", operator="greater_than_or_equal", value=5)]
     assert _changes(_propose("쿠키 중 Qty가 5 이상인 상품만 단가를 4로 변경해줘", operation="set", amount=4, filters=kept)) == {"C4": 4, "C5": 4}
+
+
+def test_a_bound_read_differently_or_named_in_other_words_is_held_to_the_request() -> None:
+    three = [*COOKIES, TabularFilter(column_id="Qty", operator="greater_than_or_equal", value=3)]
+    misread = _propose("쿠키 중 Qty가 5 이상인 상품만 단가를 4로 변경해줘", operation="set", amount=4, filters=three)
+    assert misread["status"] == "blocked" and "5" in misread["risks"][0]  # 5 read as 3 takes in the Qty 3 row
+    korean = _propose("쿠키 중 수량이 5 이상인 상품만 단가를 4로 변경해줘", operation="set", amount=4, filters=[*COOKIES])
+    assert korean["status"] == "blocked"  # 수량 is Qty: the bound is still the request's
+    five = [*COOKIES, TabularFilter(column_id="Qty", operator="greater_than_or_equal", value=5)]
+    assert _changes(_propose("쿠키 중 수량이 5 이상인 상품만 단가를 4로 변경해줘", operation="set", amount=4, filters=five)) == {"C4": 4, "C5": 4}

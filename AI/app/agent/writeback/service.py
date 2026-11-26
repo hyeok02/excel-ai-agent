@@ -60,6 +60,7 @@ class WorkbookWritebackProposalService:
                 note = f"이전 해석에서 {missing} 조건이 빠졌습니다. " + (
                     "rank 또는 average_filters로 쓰고, 순위에 해당하는 행을 filters로 직접 고르지 마세요." if "순위" in missing
                     else "value_column_id와 함께 계산(multiply·add 등)과 amount를 쓰세요." if "계산" in missing
+                    else "요청에 적힌 비교 기준값 그대로 filters의 비교 조건을 쓰세요." if "기준값" in missing
                     else "filters에 넣으세요.")
                 retry = await self._generator.generate(instruction, data_index.filename, {**context, "note": note})
                 ruled = (ruled_proposal(instruction, retry.rules, summary, data_index) if retry.rules else None) or ruled
