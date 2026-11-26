@@ -9,8 +9,7 @@ from contextvars import ContextVar
 from app.agent.query.gpt_calc_answer_text import cells_answer, table_answer, unverified_draft
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_draft_check import source_references, source_values
-from app.agent.query.gpt_calc_checks import (
-    fitting_table, listed_cells, plan_problem, unlisted_note, unused_values, with_cell_values)
+from app.agent.query.gpt_calc_checks import fitting_table, listed_cells, plan_problem, unlisted_note, with_cell_values
 from app.agent.query.group_rows import group_rows, section_rows
 from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
@@ -18,7 +17,7 @@ from app.agent.query.references import normalize_reference
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.gpt_calc_choices import unneeded_choice
 from app.agent.query.gpt_calc_full_rows import completed_tables, scoped_tables
-from app.agent.query.gpt_calc_scope_checks import in_scope, year_problem
+from app.agent.query.gpt_calc_scope_checks import in_scope, outside_scope, still_missing
 from app.agent.query.gpt_calc_stacked import statement_and_period_tables
 from app.agent.query.tabular_explicit_scope import explicit_ranges
 
@@ -96,7 +95,7 @@ async def _computed(question, summary, index, planner):
             if not attempt and (problem := plan_problem(question, table, plan.table, headings.get(table.id))):
                 note = problem
                 continue
-            if attempt and (unused_values(question, table, plan.table) or year_problem(question, table, plan.table)):
+            if attempt and still_missing(question, table, plan.table, headings.get(table.id)):  # Boston, 2023년 twice
                 return None
             plan = plan.model_copy(update={"table": with_cell_values(plan.table, cells, question)})  # "> [Table!B66]"
             result = await asyncio.to_thread(run_table, table, plan.table, headings.get(table.id))
@@ -106,6 +105,9 @@ async def _computed(question, summary, index, planner):
                 return table_answer(question, plan, table, result, _style(table, result, plan.table), cells)
             note = _UNLISTED
         elif plan.kind == "cells" and plan.cells is not None and plan.cells.items:
+            if scopes and (past := [area for item in plan.cells.items for area in outside_scope(item.expression, scopes)]):
+                note = f"These cells lie outside the range the question names: {past[:5]}. Use only cells inside it."
+                continue  # D4:D7 are not summed as blanks under a formula that shows them
             computed = [(item, evaluate(item.expression, listed, labels, cells)) for item in plan.cells.items]
             if all(found is not None for _, found in computed):
                 return cells_answer(question, plan, computed)

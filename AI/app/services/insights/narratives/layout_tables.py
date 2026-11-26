@@ -16,7 +16,8 @@ NONADDITIVE = re.compile(r"\b(?:unit|per|average|avg|mean|rate|ratio|percent(?:a
 # A level at a point in time (stock on hand, a balance, staff): periods are compared at their end, never added.
 STOCK = re.compile(r"재고|잔액|잔고|기말|월말|연말|인원|직원\s*수|재직|보유|\b(?:inventory|stock|balance|headcount|"
                    r"closing|ending|outstanding)\b", re.I)
-WON = {"원": 1, "천원": 10 ** 3, "만원": 10 ** 4, "백만원": 10 ** 6, "억원": 10 ** 8, "조원": 10 ** 12}
+WON = {"원": 1, "십원": 10, "백원": 10 ** 2, "천원": 10 ** 3, "만원": 10 ** 4, "십만원": 10 ** 5, "백만원": 10 ** 6,
+       "천만원": 10 ** 7, "억원": 10 ** 8, "조원": 10 ** 12}
 UNIT = re.compile(r"[(（]\s*(?:단위\s*[:：]\s*)?([^)）:：]{1,8})\s*[)）]")
 
 

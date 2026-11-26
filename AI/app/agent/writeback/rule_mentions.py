@@ -108,26 +108,33 @@ def unread_comparisons(instruction, readings, resolve):
 
 
 THRESHOLD = re.compile(r"(?<![\d\-./:])(\d[\d,]*(?:\.\d+)?)\s*(만|천|억|백만)?\s*([가-힣%]{0,3}?)\s*"
-                       r"(?=이상|이하|초과(?!근무)|미만|넘|이전|이후|보다\s*[크많작적높낮늦빠])"
-                       r"|\b(?:over|under|above|below|more than|less than|at least|at most|greater than|before|after)"
+                       r"(이상|이하|초과(?!근무)|미만|넘|이전|이후|보다\s*[크많작적높낮늦빠])"
+                       r"|\b(over|under|above|below|more than|less than|at least|at most|greater than|before|after)"
                        r"\s*\$?(\d[\d,]*(?:\.\d+)?)\s*(%)?", re.I)
 SCALE = {"만": 10 ** 4, "천": 10 ** 3, "억": 10 ** 8, "백만": 10 ** 6}
+GE, GT, LE, LT = "greater_than_or_equal", "greater_than", "less_than_or_equal", "less_than"
+# The comparison each wording asks for: 5 이상 keeps 5, 5 초과 does not.
+OPERATORS = [(r"이상|at least", {GE}), (r"이하|at most", {LE}), (r"이후|after", {GT, GE}), (r"이전|before", {LT, LE}),
+             (r"초과|넘|보다\s*[크많높늦]|over|above|more|greater", {GT}), (r"미만|보다\s*[작적낮빠]|under|below|less", {LT})]
 
 
 def unmatched_thresholds(instruction, readings):
-    """'수량이 5 이상' read as 수량 ≥ 3, or as no condition at all: a stated bound no comparison of the reading holds."""
+    """'수량이 5 이상' read as 수량 ≥ 3 or 수량 > 5, or as no condition at all: a stated bound the reading does not hold."""
     from app.agent.writeback.korean_numbers import plain_numbers
-    bounds = [str(item.value) for _, rule in readings for item in rule.filters
-              if item.operator in ("greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal")]
+    bounds = [(str(item.value), item.operator) for _, rule in readings for item in rule.filters
+              if item.operator in (GE, GT, LE, LT)]
     missing = []
     for match in THRESHOLD.finditer(plain_numbers(instruction)):
-        number = as_number(match.group(1) or match.group(4))
+        number = as_number(match.group(1) or match.group(6))
         if number is None:
             continue
         number *= SCALE.get(match.group(2) or "", 1)
         wanted = {number, number / 100, *(number / size for size in (10 ** 3, 10 ** 4, 10 ** 6, 10 ** 8))}
-        named = any(isinstance(item.value, str) and match.group(0).strip() in item.value  # '50대 이상' is a 연령대
-                    for _, rule in readings for item in rule.filters)
-        if not named and not any(as_number(bound) in wanted or str(int(number)) == bound[:4] for bound in bounds):
+        word = match.group(4) or match.group(5)
+        allowed = next(ops for pattern, ops in OPERATORS if re.match(pattern, word, re.I))
+        named = any(isinstance(item.value, str) and match.group(1) and f"{match.group(1)}{match.group(3)}" in item.value
+                    for _, rule in readings for item in rule.filters)  # '50대 이상' is a 연령대, not a bound
+        if not named and not any(operator in allowed and (as_number(bound) in wanted or str(int(number)) == bound[:4])
+                                 for bound, operator in bounds):
             missing.append(match.group(0).strip())
     return [f"기준값 ‘{text}’" for text in dict.fromkeys(missing)]

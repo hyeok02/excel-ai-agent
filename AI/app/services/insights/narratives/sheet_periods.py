@@ -84,12 +84,14 @@ def sheet_period_report(context):
 
 
 def _units(tables):
-    """(scale per table, unit said): each table's 원-based unit, the smallest of them where they differ."""
+    """(scale per table, unit said): tables counted in 원 and 만원, or 개 and 만개, put in the smaller unit."""
     units = [table["unit"].replace(" ", "") for table in tables]
-    if len(set(units)) == 1 or not all(unit in WON for unit in units):
+    read = [re.fullmatch(r"(십만|백만|천만|십|백|천|만|억|조)?(\D{1,4})", unit) for unit in units]
+    if len(set(units)) == 1 or not all(read) or len({found[2] for found in read}) != 1:
         return {id(table): 1 for table in tables}, tables[0]["unit"]
-    base = min(units, key=WON.get)
-    return {id(table): WON[unit] / WON[base] for table, unit in zip(tables, units)}, base
+    scale = [WON.get(f"{found[1] or ''}원", 1) for found in read]  # the same steps as 원: 만개 is 10,000개
+    base = min(range(len(tables)), key=lambda at: scale[at])
+    return {id(table): scale[at] / scale[base] for at, table in enumerate(tables)}, units[base]
 
 
 def _items(sides, rows, key, shared, measure, cited):

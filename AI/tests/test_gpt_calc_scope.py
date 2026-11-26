@@ -37,3 +37,36 @@ def test_a_named_year_is_held_on_retry_and_a_formula_plan_keeps_to_the_range() -
     formula = {"kind": "cells", "method": "합", "table": None, "cells": {"items": [{"label": "합계", "expression": total}], "keep": "all"}}
     answer, _ = _asked("Sales!A1:D3 범위의 Amount 합계는?", formula)
     assert "340" not in answer.answer, answer.answer
+
+
+def _years():
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import PatternFill
+    from app.agent.query.question_index import build_question_data_index
+    from app.services.workbook_parser import parse_workbook
+    book = Workbook()
+    sheet = book.active
+    sheet.title = "Monthly"
+    sheet.append(["Month", "Amount"])
+    for month, amount, heading in [("2022년", None, True), ("1월", 30, False), ("2월", 70, False),
+                                   ("2023년", None, True), ("1월", 40, False), ("2월", 30, False)]:
+        sheet.append([month, amount])
+        if heading:
+            sheet.cell(sheet.max_row, 1).fill = PatternFill("solid", fgColor="FFEBF2FA")
+    stream = BytesIO()
+    book.save(stream)
+    summary = parse_workbook("years.xlsx", stream.getvalue())
+    return summary, build_question_data_index("years.xlsx", stream.getvalue(), summary)
+
+
+def test_a_year_named_as_a_section_heading_is_held_on_retry() -> None:
+    from tests.test_gpt_calc_headings import _Planner as Headed
+    plan = lambda filters: {"kind": "table", "method": "합계", "cells": None, "table": {  # noqa: E731
+        **_table(filters=filters), "measure": "Amount"}}
+    summary, index = _years()
+    every = asyncio.run(fallback_answer("2023년 Amount 합계는?", summary, index, NOTHING, Headed(plan([]), plan([]))))
+    assert "170" not in every.answer and "100" not in every.answer, every.answer
+    kept = asyncio.run(fallback_answer("2023년 Amount 합계는?", summary, index, NOTHING,
+                                       Headed(plan([]), plan([{"column": "Month", "op": "under", "value": "2023년"}]))))
+    assert "70" in kept.answer, kept.answer
