@@ -2,12 +2,11 @@
 from app.agent.writeback.period_columns import unread_years
 from app.agent.writeback.models import WritebackProposal, WritebackStatus
 from app.agent.writeback.references import key
-from app.agent.writeback.rule_mentions import unread_names
+from app.agent.writeback.rule_mentions import UNREAD, unread_names
 from app.agent.writeback.rule_ranks import RANK_WORDS
 from app.agent.writeback.rule_execution import RuleNotFound, RuleRejected, RuledTargets, rule_drafts
 from app.agent.writeback.validation import validate_changes
 
-UNREAD = "요청에 있는"  # a reading that left out a named condition: asked once more with the name
 PARTIAL = "일부 행만 바뀌지 않도록 이 요청의 변경안을 만들지 않았습니다."
 
 
@@ -35,6 +34,12 @@ def ruled_proposal(instruction, rules, summary, index):
         return _blocked(instruction, [f"{UNREAD} {', '.join(unread[:3])} 조건이 해석에 빠졌습니다. 조건을 다시 확인해 주세요."], readings)
     if (missing := unread_years(instruction, headers, offered)):
         return _blocked(instruction, [f"요청한 기간 중 {', '.join(missing)}년 열이 해석에서 빠졌습니다.", PARTIAL], readings)
+    cells = {}  # two readings reaching one cell ('교통' and '교통 지출' rows) count once when they agree
+    for draft in drafts:
+        cells.setdefault((draft.sheet_name, draft.reference.upper()), []).append(draft)
+    if any(len({repr(item.new_value) for item in group}) > 1 for group in cells.values()):
+        return _blocked(instruction, ["같은 셀에 서로 다른 값을 넣는 해석이 함께 있습니다.", PARTIAL], readings)
+    drafts = [group[0] for group in cells.values()]
     every = {key(cell.sheet_name, cell.address): cell for row in index.rows for cell in row.cells}
     changes, risks = validate_changes(drafts, every, index, instruction, ruled=RuledTargets(instruction, copied))
     if risks or len(changes) != len(drafts):

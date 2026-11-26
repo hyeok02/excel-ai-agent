@@ -22,8 +22,10 @@ def rounding_places(instruction: str) -> set[int]:
     places |= {int(count) for count in re.findall(r"소수\s*점?\s*(?:이하\s*)?(\d+)\s*자리(?!\s*에서)", instruction)}
     for unit, where in re.findall(r"(일|십|백|천|만)의\s*자리\s*(에서|까지|로)?", instruction):
         places.add(-(DIGIT[unit] + 1) if where == "에서" else -DIGIT[unit])
-    places |= {-DIGIT[unit] for unit in re.findall(r"(십|백|천|만)\s*원?\s*단위", instruction)}
-    if re.search(r"정수|소수\s*점?\s*(?:이하\s*)?(?:없이|버림|제거)", instruction):
+    for small, large in re.findall(r"(십|백|천)?\s*(만|억)?\s*원?\s*단위", instruction):
+        if small or large:  # 백원 단위 -2, 천만원 단위 -7
+            places.add(-(DIGIT.get(small, 0) + {"만": 4, "억": 8}.get(large, 0)))
+    if re.search(r"정수|소수\s*점?\s*(?:이하\s*)?(?:없이|버림|제거)|whole\s+numbers?|\bintegers?\b", instruction, re.I):
         places.add(0)
     places |= {int(count) for count in re.findall(r"(\d+)\s*decimal", instruction, re.I)}
     places |= {NEAREST[word] for word in re.findall(r"nearest\s+(integer|whole|ten|hundred|thousand)", instruction, re.I)}

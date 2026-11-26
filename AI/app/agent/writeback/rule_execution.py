@@ -19,6 +19,7 @@ from app.agent.writeback.ruled_targets import RuledTargets  # noqa: F401  (impor
 from app.agent.writeback.rule_units import unit_note, unit_texts
 from app.agent.writeback.rule_columns import compared_rows, copied_value, other_columns
 from app.agent.writeback.references import key
+from app.agent.writeback.rule_mentions import UNREAD, guessed_rows
 from app.agent.writeback.rule_ranks import ranked_rows
 from app.agent.writeback.rule_readings import rule_reading
 from app.agent.writeback.rule_rows import matching_rows
@@ -56,6 +57,8 @@ def rule_drafts(rule, summary, index, instruction=""):
     ranked = {resolve_unique_column(item.column_id, table) for item in (*rule.average_filters, *filter(None, [rule.rank]))}
     if not validated_table(table, index, {*(item.column_id for item in filters), *compared, *{source, *ranked} - {None}}):
         raise RuleRejected("표 전체를 원본에서 확인하지 못해 조건에 맞는 모든 행을 바꾼다고 보장할 수 없습니다.")
+    if guessed := guessed_rows(rule, filters, table, instruction):  # a rank's row picked by the reading itself
+        raise RuleRejected(f"{UNREAD} ‘가장·상위·평균’ 같은 순위 조건이 해석에 빠졌습니다. 요청에 없는 ‘{', '.join(guessed)}’ 행을 골랐습니다.")
     rows = matching_rows(table, filters)
     if rows and comparisons:  # 재고 < 안전재고, row by row
         rows = compared_rows(rows, comparisons)

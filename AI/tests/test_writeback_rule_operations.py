@@ -34,5 +34,12 @@ def test_text_rounding_and_another_rows_value() -> None:
 def test_places_and_periods_are_read_from_the_request() -> None:
     assert rounding_places("소수 첫째 자리에서 반올림") == {0} and rounding_places("소수 둘째 자리까지 반올림") == {2}
     assert rounding_places("백원 단위로 반올림") == {-2} and rounding_places("십의 자리에서 반올림") == {-2}
+    assert rounding_places("천만원 단위로 반올림") == {-7} and rounding_places("Round it to whole numbers") == {0}
     assert moved_by("PRJ-A 마감일을 2주 미뤄줘", 14, "days", 1) and moved_by("한 달씩 연장해줘", 1, "months", 1)
     assert not moved_by("2주 미뤄줘", 2, "months", 1) and not moved_by("마감일을 2주 바꿔줘", 2, "weeks", 1)
+
+
+def test_a_date_or_number_is_named_as_the_request_writes_it() -> None:
+    from app.agent.writeback.rule_mentions import named_value
+    assert named_value("2024-11-03T00:00:00", "11월 3일 강남점 매출") and not named_value("2024-11-04T00:00:00", "11월 3일")
+    assert named_value(873, "가입자 873명") and not named_value(873, "가입자가 가장 많은 달")

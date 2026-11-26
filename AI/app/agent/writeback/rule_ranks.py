@@ -5,6 +5,7 @@ other conditions kept. A tie at the cut ('상위 3명' when the 3rd and 4th shar
 column stops the rule instead of guessing which rows the request meant.
 """
 import re
+from datetime import datetime
 from decimal import Decimal
 
 from app.agent.writeback.rule_columns import ORDER
@@ -24,7 +25,7 @@ def ranked_rows(rows, rule, resolve, table):
         rows = [row for row, value in zip(rows, values) if ORDER[item.operator](value, mean)]
     if rule.rank is not None:
         column = resolve(rule.rank.column_id, table)
-        values = _numbers(rows, column)
+        values = _numbers(rows, column, dates=True)
         if values is None:
             return None, "순위를 매길 열에 숫자가 아닌 값이 있습니다."
         ordered = sorted(zip(rows, values), key=lambda pair: pair[1], reverse=rule.rank.order == "highest")
@@ -39,13 +40,17 @@ def rank_text(rule, columns, resolve, table):
     parts = [f"‘{columns[resolve(item.column_id, table)].display_header}’ {'>' if 'greater' in item.operator else '<'} 평균"
              for item in rule.average_filters]
     if rule.rank is not None:
-        word = "가장 큰" if rule.rank.order == "highest" else "가장 작은"
+        word = "가장 큰(늦은)" if rule.rank.order == "highest" else "가장 작은(이른)"
         parts.append(f"‘{columns[resolve(rule.rank.column_id, table)].display_header}’ {word} {rule.rank.count}개")
     return ", ".join(parts)
 
 
-def _numbers(rows, column):
+def _numbers(rows, column, dates=False):
+    """Every value as a number, or as a date where a rank may read dates ('입사일이 가장 빠른'), else None."""
     values = [row.values.get(column) if column else None for row in rows]
-    if not values or any(not isinstance(value, (int, float)) or isinstance(value, bool) for value in values):
+    if values and all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in values):
+        return [Decimal(str(value)) for value in values]
+    try:
+        return [value if isinstance(value, datetime) else datetime.fromisoformat(value) for value in values] if dates else None
+    except (TypeError, ValueError):
         return None
-    return [Decimal(str(value)) for value in values]

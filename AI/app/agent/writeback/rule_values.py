@@ -12,7 +12,7 @@ from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, Decimal
 
 from app.agent.writeback.rule_rows import matching_rows
 from app.agent.writeback.rounding_words import ROUNDING, rounding_places
-from app.agent.writeback.target_semantics import _label_matches
+from app.agent.writeback.rule_mentions import named_value
 from app.agent.writeback.time_periods import moved_by
 
 TEXT = {"prepend_text", "append_text", "replace_text"}
@@ -30,13 +30,17 @@ def other_row_value(rule, table, resolve, cells, letter, instruction, target):
     if not rows or len(rows) != 1:
         raise ValueError("값을 가져올 행을 원본에서 하나로 찾지 못했습니다.")
     names = [str(item.value) for item in filters]
-    if not all(_label_matches(name, instruction) for name in names):
+    if not all(named_value(item.value, instruction) or "같은 날" in instruction and _date_like(item.value) for item in filters):
         raise ValueError(f"값을 가져올 행 ‘{', '.join(names)}’이 요청에 적혀 있지 않습니다.")
     column = resolve(rule.value_column_id, table) if rule.value_column_id else target
     cell = cells(f"{letter(column)}{rows[0].row_number}")
     if cell is None or cell.value in (None, ""):
         raise ValueError(f"‘{', '.join(names)}’ 행에 가져올 값이 없습니다.")
     return cell.value, f"‘{', '.join(names)}’ 행({cell.address})의 값 {cell.value}"
+
+
+def _date_like(value):
+    return isinstance(value, datetime) or isinstance(value, str) and re.match(r"\d{4}-\d{2}-\d{2}", value) is not None
 
 
 def special_value(rule, cell, instruction):
