@@ -104,6 +104,13 @@ def test_cells_the_checks_cannot_place_are_asked_for_once_more_as_rules() -> Non
     assert _changes(body) == {"C3": 4}, body
 
 
+def test_rows_already_at_the_value_are_left_and_a_named_condition_cannot_be_dropped() -> None:
+    assert _changes(_propose("쿠키 단가를 모두 3으로 바꿔줘", operation="set", amount=3)) == {"C2": 3, "C4": 3}
+    dropped = _propose("쿠키 중 Oat 단가를 10% 올려줘")  # read as Category = Cookies alone
+    assert dropped["status"] == "blocked" and "‘Oat’(Product)" in dropped["risks"][0]
+    assert "지원하지 않습니다" in _propose("Chip 행을 삭제해줘")["risks"][0]
+
+
 def test_a_reading_naming_nothing_in_the_source_falls_back_to_the_checked_cell_path() -> None:
     body = _propose("쿠키 단가를 10% 올려줘", target_column_id="Price")
     assert body["status"] == "blocked" and not body["changes"]

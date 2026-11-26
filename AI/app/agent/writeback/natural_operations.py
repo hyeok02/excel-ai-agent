@@ -7,7 +7,7 @@ SEPARATOR = re.compile(
     r"(?:으로|로)\s*(?:수정(?:해줘)?|변경(?:해줘)?|바꿔(?:줘)?)?\s*[,;\n]"
     r"|(?:수정해줘|변경해줘|바꿔줘|비워줘|지워줘)\s*[,;\n]", re.I,
 )
-ASSIGNMENT = re.compile(r"(?:을|를|은|는)\s+|\b(?:to|as)\s+", re.I)
+ASSIGNMENT = re.compile(r"(?:을|를|은|는)\s+|\b(?:to|as|(?:should|must)\s+be)\s+", re.I)
 
 
 def natural_operations(instruction, sheets):

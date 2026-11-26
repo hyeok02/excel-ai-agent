@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 import re
 
@@ -122,6 +123,11 @@ def _comparable(value: object, value_type: str | None = None) -> object:
         return ("boolean", value)
     if value_type == "date" and hasattr(value, "date"):
         return value.date().isoformat()
+    if value_type == "datetime" and isinstance(value, str):  # '2023-07-01' written into a datetime cell
+        try:
+            return datetime.fromisoformat(value).isoformat()
+        except ValueError:
+            return value
     if hasattr(value, "isoformat"):
         return value.isoformat()
     return value

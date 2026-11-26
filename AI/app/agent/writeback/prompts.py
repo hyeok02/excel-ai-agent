@@ -28,8 +28,19 @@ changes는 사용자가 B2, C3:C9처럼 셀 주소를 직접 적었을 때만 �
 - 표 전체에 적용하는 요청이면 filters를 비우세요.
 - operation은 set(값으로 변경), clear(비우기), percent_increase, percent_decrease, add, subtract, multiply 중 하나이고
   amount에는 사용자가 말한 값이나 비율·양·배수를 그대로 쓰세요(10% 인상이면 10).
-- 같은 행의 다른 열과 비교하는 조건(예: 재고가 안전재고보다 적은)은 column_filters에 column_id, operator, other_column_id로 쓰세요.
+- 같은 행의 다른 열과 비교하는 조건(예: 재고가 안전재고보다 적은)만 column_filters에 column_id, operator, other_column_id로 쓰세요.
+  숫자·날짜·글자와 비교하는 조건(예: 재고가 200개 넘는)은 filters에 쓰세요.
 - 같은 행의 다른 열 값으로 바꾸는 요청(예: 재고를 안전재고 수량으로)은 operation을 set으로, value_column_id에 그 열을 쓰고 amount는 비우세요.
+- 가장 큰·작은 행, 상위·하위 N개는 rank(column_id, order=highest|lowest, count)로(날짜는 늦을수록 highest), 평균보다 큰·작은 행은
+  average_filters로 쓰세요. 순위나 평균에 해당하는 값을 직접 추정해 filters에 넣지 마세요.
+- 글자를 앞·뒤에 붙이면 prepend_text·append_text(amount=붙일 글자), 일부만 바꾸면 replace_text(find_text=찾을 글자,
+  amount=바꿀 글자)입니다. 반올림·올림·내림은 round·round_up·round_down이고 amount는 남길 소수 자리 수입니다
+  (정수로 0, 소수 둘째 자리까지 2, 백원 단위 -2).
+- 날짜를 미루거나 앞당기면 add·subtract에 amount(숫자)와 amount_unit(days·weeks·months·years)을 쓰세요.
+- 다른 행의 값으로 맞추는 요청(우유 단가를 생수 단가와 같게)은 set에 value_row_filters(상품명 equals 생수)를 쓰고,
+  가져올 열이 바꿀 열과 다를 때만 value_column_id를 쓰세요. 두 행의 값을 서로 바꾸면 rule 두 개로 쓰세요.
+- 열마다 다른 값을 말하면(세탁기와 TV를 각각 200, 220으로) 열마다 rule을 따로 쓰세요.
+- %p(퍼센트포인트)는 비율 값에 더하고 빼는 양이므로 add·subtract에 1%p → 0.01처럼 쓰세요.
 - reading에는 사용자 표현을 원본 이름으로 어떻게 옮겼는지 짧게 쓰세요(예: ‘쿠키’ → Category = Cookies, ‘단가’ → UnitPrice).
 - 합계·피벗처럼 다른 값에서 계산된 요약 표가 아니라, 원본 기록이 있는 표를 고르세요.
 안전하게 특정할 수 없다면 changes와 rules를 비우고 한계를 설명하세요."""

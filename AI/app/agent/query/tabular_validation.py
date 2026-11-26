@@ -52,7 +52,7 @@ def validated_table(table, index, needed: set[str]) -> bool:
         cell = cells.get(address)
         if column.id in named:
             continue
-        if cell is None or _header_text(cell.value) != column.header:
+        if cell is None or _header_text(cell.value) not in (column.header, _leaf(column)):
             return False
         for reference, label in column.header_path:
             parent = cells.get(reference.rpartition("!")[2])
@@ -81,9 +81,10 @@ def validated_table(table, index, needed: set[str]) -> bool:
                 return False
             if column in needed and row.formulas.get(column) and expected is None:
                 return False
+    header_rows = {coordinate_to_tuple(column.header_reference.rpartition("!")[2])[0] for column in table.columns}
     for address, cell in cells.items():
         row, column_number = coordinate_to_tuple(address)
-        if (top < row <= bottom and row not in table.excluded_rows | table.metadata_rows
+        if (top < row <= bottom and row not in table.excluded_rows | table.metadata_rows | header_rows
                 and get_column_letter(column_number) in columns.keys() - named):  # a name over no values
             if (cell.formula or cell.value not in (None, "")) and row not in source_rows:
                 return False
@@ -91,6 +92,12 @@ def validated_table(table, index, needed: set[str]) -> bool:
 
 
 DERIVED = {"항목", "구분", "단위"}  # the row names a table writes under no header (gpt_calc_statements)
+
+
+def _leaf(column):
+    """'2023 상반기' read from 상반기 under 2023: the header cell holds the last part."""
+    path = " ".join(label for _, label in column.header_path)
+    return column.header[len(path):].strip() if path and column.header.startswith(path + " ") else None
 
 
 def _header_text(value):

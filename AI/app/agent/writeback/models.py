@@ -32,6 +32,19 @@ class ColumnComparison(BaseModel):
     other_column_id: str = Field(min_length=1, max_length=200)
 
 
+class RowRank(BaseModel):
+    """값 순서로 고르는 행(가장 비싼 상품, 수학 상위 3명). 순위는 코드가 원본 값으로 정한다."""
+    column_id: str = Field(min_length=1, max_length=200)
+    order: Literal["highest", "lowest"]
+    count: int = Field(default=1, ge=1, le=100)
+
+
+class AverageFilter(BaseModel):
+    """열 평균과 비교하는 조건(연봉이 평균보다 낮은). 평균은 코드가 계산한다."""
+    column_id: str = Field(min_length=1, max_length=200)
+    operator: Literal["greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal"]
+
+
 class WritebackRuleDraft(BaseModel):
     """조건으로 고른 행의 한 열을 같은 방식으로 바꾸는 해석. 행과 값은 코드가 정한다."""
     table_id: str = Field(min_length=1, max_length=200)
@@ -40,9 +53,16 @@ class WritebackRuleDraft(BaseModel):
     also_target_column_ids: list[str] = Field(default_factory=list, max_length=60)
     filters: list[TabularFilter] = Field(default_factory=list, max_length=6)
     column_filters: list[ColumnComparison] = Field(default_factory=list, max_length=3)
-    operation: Literal["set", "clear", "percent_increase", "percent_decrease",
-                       "add", "subtract", "multiply"]
+    average_filters: list[AverageFilter] = Field(default_factory=list, max_length=2)
+    rank: RowRank | None = None
+    operation: Literal["set", "clear", "percent_increase", "percent_decrease", "add", "subtract", "multiply",
+                       "prepend_text", "append_text", "replace_text", "round", "round_up", "round_down"]
     amount: str | int | float | bool | None = None
+    # replace_text에서 찾을 글자, 날짜에 더하고 뺄 때의 단위.
+    find_text: str | None = None
+    amount_unit: Literal["days", "weeks", "months", "years"] | None = None
+    # set일 때 같은 표의 이 조건에 맞는 한 행의 값을 가져온다(우유 단가를 생수 단가와 같게).
+    value_row_filters: list[TabularFilter] = Field(default_factory=list, max_length=4)
     # set일 때 amount 대신 같은 행의 이 열 값으로 바꾼다(재고를 안전재고 수량으로).
     value_column_id: str | None = None
     reading: str = Field(min_length=1, max_length=300)

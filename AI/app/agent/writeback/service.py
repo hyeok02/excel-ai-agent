@@ -8,8 +8,9 @@ from app.agent.writeback.models import (
 )
 from app.agent.writeback.references import key
 from app.agent.writeback.row_scope import every_row_drafts
-from app.agent.writeback.rule_proposals import ruled_proposal
-from app.agent.writeback.target_syntax import REFERENCE, mask_formulas
+from app.agent.writeback.rule_proposals import UNREAD, ruled_proposal
+from app.agent.writeback.target_syntax import REFERENCE, address_labels, mask_formulas, mask_labels
+from app.agent.writeback.unsupported_requests import unsupported_request
 from app.agent.writeback.writeback_tables import writeback_catalog
 from app.agent.writeback.validation import validate_changes
 
@@ -21,6 +22,9 @@ class WorkbookWritebackProposalService:
     async def propose(
         self, instruction: str, data_index: WorkbookDataIndex, summary=None
     ) -> WritebackProposal:
+        if (unsupported := unsupported_request(instruction)) is not None:
+            return WritebackProposal(instruction=instruction, status=WritebackStatus.BLOCKED, changes=[],
+                                     summary="이 요청은 셀 값 변경으로 처리할 수 없습니다.", risks=[unsupported], limitations=[])
         candidates = select_writeback_candidates(instruction, data_index)
         available = {
             key(cell.sheet_name, cell.address): cell
@@ -51,13 +55,21 @@ class WorkbookWritebackProposalService:
         draft = await self._generator.generate(instruction, data_index.filename, context)
         if draft.rules and summary is not None:
             ruled = ruled_proposal(instruction, draft.rules, summary, data_index)
+            if ruled is not None and ruled.status == WritebackStatus.BLOCKED and ruled.risks[0].startswith(UNREAD):
+                missing = ruled.risks[0].removeprefix(UNREAD).split(" 조건이")[0]
+                note = f"이전 해석에서 {missing} 조건이 빠졌습니다. " + (
+                    "rank 또는 average_filters로 쓰고, 순위에 해당하는 행을 filters로 직접 고르지 마세요." if "순위" in missing
+                    else "value_column_id와 함께 계산(multiply·add 등)과 amount를 쓰세요." if "계산" in missing
+                    else "filters에 넣으세요.")
+                retry = await self._generator.generate(instruction, data_index.filename, {**context, "note": note})
+                ruled = (ruled_proposal(instruction, retry.rules, summary, data_index) if retry.rules else None) or ruled
             if ruled is not None:
                 return ruled
         checked, note = interpreted_instruction(instruction, draft.changes, data_index)
         changes, risks = validate_changes(draft.changes, available, data_index, checked)
         changes, risks, scope = _every_row(checked, changes, risks, data_index)
         if not changes and draft.changes and not draft.rules and context["tables"] and not REFERENCE.search(
-                mask_formulas(instruction)) and (ruled := await self._as_rules(instruction, data_index, summary, context)):
+                mask_labels(mask_formulas(instruction), address_labels(data_index))) and (ruled := await self._as_rules(instruction, data_index, summary, context)):
             return ruled
         # The model's notes describe its own partial draft, not the replaced row set.
         limitations = [*([note] if note and changes else []), *([scope] if scope else []),
