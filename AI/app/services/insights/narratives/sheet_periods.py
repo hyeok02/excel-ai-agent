@@ -1,12 +1,13 @@
 """Sheets of one layout named by their periods ('2022년', '2023년'): the first and last compared.
 
 Each sheet holds one table with the same header and the same items, so its totals and each item's
-values are read across the sheets in the order of the years their names carry.
+values are read across the sheets in the order of the years their names carry. A sheet written in 원 and
+the next in 만원 are put in one unit first: 60,000원 and 6만원 are the same amount, not a 100% fall.
 """
 import re
 
 from app.services.insights.narratives.layout_tables import (
-    NONADDITIVE, amount, change, heading, kept_rows, noted, label, numbers, sheet_tables, span, texts,
+    NONADDITIVE, WON, amount, change, heading, kept_rows, noted, label, numbers, sheet_tables, span, texts,
 )
 from app.services.insights.narratives.narrative_values import insight, subject_particle, topic_particle
 from app.services.insights.narratives.sheet_records import record_totals
@@ -59,6 +60,8 @@ def sheet_period_report(context):
                 and all(numbers(rows[id(table)], p) for _, table in found)]
     if not measures:
         return [], ""
+    scale, unit = _units([table for _, table in found])
+    value = lambda table, p: [v * scale[id(table)] for v in numbers(rows[id(table)], p)]  # noqa: E731
     before, after = first["sheet"], last["sheet"]
     cited = lambda p: [heading(first, p), span(first, rows[id(first)], p), heading(last, p),  # noqa: E731
                        span(last, rows[id(last)], p), span(first, rows[id(first)], key),
@@ -66,32 +69,45 @@ def sheet_period_report(context):
     items, rates = [], []
     for p in measures[:2]:
         what = label(first, p)
-        old, new = sum(numbers(rows[id(first)], p)), sum(numbers(rows[id(last)], p))
+        old, new = sum(value(first, p)), sum(value(last, p))
         total = change(old, new)
-        fact = noted(f"{what} 합계는 ‘{before}’ {total.replace('에서 ', f'에서 ‘{after}’ ', 1)}.", first["unit"])
+        fact = noted(f"{what} 합계는 ‘{before}’ {total.replace('에서 ', f'에서 ‘{after}’ ', 1)}.", unit)
         items.append(insight(f"{what} 합계 비교 ({before}→{after})", fact, cited(p), "change", topic=what))
         if old and new != old:
             rates.append(f"{what} 합계는 {abs(new - old) / abs(old) * 100:.1f}% {'증가' if new > old else '감소'}")
     chosen = next((p for p in measures if _MONEY.search(label(first, p))), measures[0])
-    items.append(_items(first, last, rows, key, shared, chosen, cited(chosen)))
+    items.append(_items((first, last, unit), rows, key, shared, (chosen, value), cited(chosen)))
     if not rates:
         return items, items[-1].fact
     said = ", ".join(rates)
     return items, f"‘{before}’ 대비 ‘{after}’ {said}했습니다."
 
 
-def _items(first, last, rows, key, shared, p, cited):
-    value = lambda table: dict(zip(texts(rows[id(table)], key), numbers(rows[id(table)], p)))  # noqa: E731
+def _units(tables):
+    """(scale per table, unit said): each table's 원-based unit, the smallest of them where they differ."""
+    units = [table["unit"].replace(" ", "") for table in tables]
+    if len(set(units)) == 1 or not all(unit in WON for unit in units):
+        return {id(table): 1 for table in tables}, tables[0]["unit"]
+    base = min(units, key=WON.get)
+    return {id(table): WON[unit] / WON[base] for table, unit in zip(tables, units)}, base
+
+
+def _items(sides, rows, key, shared, measure, cited):
+    (first, last, unit), (p, read) = sides, measure
+    value = lambda table: dict(zip(texts(rows[id(table)], key), read(table, p)))  # noqa: E731
     old, new = value(first), value(last)
     moves = {name: new[name] - old[name] for name in shared}
     up, down = sum(move > 0 for move in moves.values()), sum(move < 0 for move in moves.values())
     what, kind = label(first, p), label(first, key)
+    if not up and not down:  # the same amounts in both (60,000원 and 6만원)
+        fact = noted(f"{kind}별 {what}{topic_particle(what)} {len(moves)}개 모두 변동이 없습니다.", unit)
+        return insight(f"{kind}별 {what} 변화", fact, cited, "change", topic=what)
     if down == len(moves) or up == len(moves):
         trend = f"{kind}별 {what}{topic_particle(what)} {len(moves)}개 모두 {'감소' if down else '증가'}했고"
     else:
         trend = f"{kind}별 {what}{topic_particle(what)} {up}개 증가, {down}개 감소했고"
     name = max(moves, key=lambda item: abs(moves[item]))
     said = change(old[name], new[name], ending="해")
-    fact = noted(f"{trend}, {name}{subject_particle(name)} {said} 변화 폭이 가장 큽니다.", first["unit"])
+    fact = noted(f"{trend}, {name}{subject_particle(name)} {said} 변화 폭이 가장 큽니다.", unit)
     return insight(f"{kind}별 {what} 변화", fact, cited, "change", topic=what)
 

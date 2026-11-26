@@ -3,7 +3,8 @@ from app.agent.writeback.period_columns import unread_years
 from app.agent.writeback.models import WritebackProposal, WritebackStatus
 from app.agent.writeback.references import key
 from app.agent.query.ambiguity_labels import resolve_unique_column
-from app.agent.writeback.rule_mentions import UNREAD, unnamed_text_targets, unread_names
+from app.agent.writeback.rule_mentions import (
+    UNREAD, unmatched_thresholds, unnamed_text_targets, unread_comparisons, unread_names)
 from app.agent.writeback.rule_ranks import RANK_WORDS
 from app.agent.writeback.rule_execution import RuleNotFound, RuleRejected, RuledTargets, rule_drafts
 from app.agent.writeback.validation import validate_changes
@@ -30,7 +31,8 @@ def ruled_proposal(instruction, rules, summary, index):
     if RANK_WORDS.search(instruction) and not any(rule.rank or rule.average_filters for rule in rules):
         unread = ["‘가장·상위·평균’ 같은 순위"]  # read as a fixed value instead ('단가 = 24,000' for 가장 비싼)
     else:
-        unread = unread_names(instruction, tables) or unnamed_text_targets(instruction, tables, resolve_unique_column)
+        unread = (unread_names(instruction, tables) or unread_comparisons(instruction, tables, resolve_unique_column)
+                  or unmatched_thresholds(instruction, tables) or unnamed_text_targets(instruction, tables, resolve_unique_column))
     if unread:
         return _blocked(instruction, [f"{UNREAD} {', '.join(unread[:3])} 조건이 해석에 빠졌습니다. 조건을 다시 확인해 주세요."], readings)
     if (missing := unread_years(instruction, headers, offered)):

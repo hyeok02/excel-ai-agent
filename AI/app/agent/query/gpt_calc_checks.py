@@ -8,6 +8,7 @@ import re
 from app.agent.query.gpt_calc_bounds import _column_values, inclusive, year_to_date
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_planner import column_name
+from app.agent.query.gpt_calc_scope_checks import year_problem
 from app.agent.query.tabular_request_categories import value_matches
 
 MAX_DISTINCT = 60
@@ -63,6 +64,7 @@ def plan_problem(question, table, calc, headings=None):
     if any(item.measure == calc.measure and item.aggregate == calc.aggregate and not item.row_formula for item in calc.also):
         problems.append("also repeats the main calculation over the same rows, so every line gives one number. For "
                         "several sheets together use the table whose sheet joins them with ' + ' (its 시트 column).")
+    problems += filter(None, [year_problem(question, table, calc)])  # "2023년" over 2022 and 2023 rows
     return " ".join(problems) or None
 
 

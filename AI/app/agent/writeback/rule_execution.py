@@ -133,7 +133,9 @@ def _new_value(rule, cell, instruction):
     if rule.operation == "clear":
         return None
     amount, value = as_number(rule.amount), as_number(current)
-    if amount is None or value is None or isinstance(current, bool):
+    if amount is None:  # '가격 좀 올려줘': how much is not said
+        raise RuleRejected("얼마나 바꿀지(값, %, 금액)가 요청에 없습니다. 예: ‘10% 올려줘’, ‘500원씩 올려줘’")
+    if value is None or isinstance(current, bool):
         raise RuleRejected("숫자가 아닌 값에는 계산을 적용할 수 없습니다.")
     base = _clean(value)
     result = {"percent_increase": base * (1 + amount / 100), "percent_decrease": base * (1 - amount / 100),
