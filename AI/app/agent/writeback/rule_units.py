@@ -10,9 +10,11 @@ from openpyxl.utils import range_boundaries
 from openpyxl.utils.cell import get_column_letter
 
 from app.agent.writeback.references import key
-from app.agent.writeback.value_authorization import as_number
+from app.agent.writeback.korean_numbers import plain_numbers
+from app.agent.writeback.value_authorization import _stated_numbers, as_number
 
 SCALES = ("백만", "조", "억", "만", "천")
+MAGNITUDE = {"백만": 10 ** 6, "조": 10 ** 12, "억": 10 ** 8, "만": 10 ** 4, "천": 10 ** 3}
 
 
 def unit_texts(table, column, cells):
@@ -34,7 +36,6 @@ def unit_note(texts, value, instruction):
     for scale in SCALES:
         if re.search(rf"[(\[（]\s*(?:단위\s*[:：]?\s*)?{scale}", header) is None:
             continue
-        for match in re.finditer(rf"(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*{scale}(?!\d)", instruction):
-            if as_number(match.group(1)) == number:
-                return f"요청의 {match.group(0).strip()}을 ‘{texts[0]}’ 열 단위({scale})로 적은 값 {match.group(1)}"
+        if number * MAGNITUDE[scale] in _stated_numbers(plain_numbers(instruction)):  # 1억 2천만원 = 12000 만원
+            return f"요청한 금액을 ‘{texts[0]}’ 열 단위({scale}원)로 적은 값 {value}"
     return None

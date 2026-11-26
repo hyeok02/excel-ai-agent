@@ -62,3 +62,23 @@ def _date(value):
         return datetime.fromisoformat(value) if isinstance(value, str) and re.match(r"\d{4}-\d{2}-\d{2}", value) else None
     except ValueError:
         return None
+
+
+def unnamed_text_targets(instruction, readings, resolve):
+    """'내용에 있는 지출을 사용으로' edited in 구분 as well: a text edit must stay in the columns the request names."""
+    found = []
+    for table, rule in readings:
+        if rule.operation not in ("prepend_text", "append_text", "replace_text"):
+            continue
+        named = {column.id: column.display_header for column in table.columns if _header_named(column.header, instruction)}
+        target = resolve(rule.target_column_id, table)
+        header = next((column.header for column in table.columns if column.id == target), "")
+        short = re.search(rf"(?<![\w가-힣]){re.escape(str(header))}(?=\s|[에을를의은는이가와과도]|$)", instruction)
+        if named and target not in named and not (header and short):  # '반 뒤에 -A': a one-letter header named
+            found.append(f"‘{', '.join(named.values())}’ 열")
+    return found
+
+
+def _header_named(header, instruction):
+    base = re.sub(r"\s*[(\[（].*?[)\]）]", "", str(header)).strip()
+    return any(len(name) >= 2 and _label_matches(name, instruction) for name in {str(header), base})

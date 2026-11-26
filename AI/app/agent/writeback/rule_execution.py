@@ -37,7 +37,9 @@ class RuleNotFound(RuleRejected):
 
 def rule_drafts(rule, summary, index, instruction=""):
     """(drafts, reading shown to the reviewer, (changed headers, all headers), copied cells) or RuleRejected."""
-    tables = [table for table in writeback_tables(summary, index) if table.id == rule.table_id]
+    every = writeback_tables(summary, index)
+    tables = [table for table in every if table.id == rule.table_id] or [  # 'Sheet1' for its one table
+        table for table in every if table.sheet_name == rule.table_id.rpartition("!")[0] or table.sheet_name == rule.table_id]
     if len(tables) != 1:
         raise RuleNotFound("해석한 표를 원본에서 찾지 못했습니다.")
     table = tables[0]

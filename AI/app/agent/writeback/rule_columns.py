@@ -17,6 +17,7 @@ def other_columns(rule, table, resolve):
     """(column comparisons, column to copy) with source column ids; a name not found is None."""
     comparisons = [item.model_copy(update={name: resolve(getattr(item, name), table)
                                            for name in ("column_id", "other_column_id")}) for item in rule.column_filters]
+    comparisons = [item for item in comparisons if item.column_id is None or item.column_id != item.other_column_id]  # B < B
     return comparisons, resolve(rule.value_column_id, table) if rule.value_column_id else None
 
 

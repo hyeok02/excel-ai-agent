@@ -43,3 +43,21 @@ def test_a_date_or_number_is_named_as_the_request_writes_it() -> None:
     from app.agent.writeback.rule_mentions import named_value
     assert named_value("2024-11-03T00:00:00", "11월 3일 강남점 매출") and not named_value("2024-11-04T00:00:00", "11월 3일")
     assert named_value(873, "가입자 873명") and not named_value(873, "가입자가 가장 많은 달")
+
+
+def test_code_ranges_column_units_and_a_text_edit_kept_in_its_named_column() -> None:
+    from app.agent.writeback.rule_rows import matching_rows
+    from app.agent.writeback.rule_units import unit_note
+
+    class Row:
+        def __init__(self, code):
+            self.values = {"A": code}
+    class Table:
+        rows, columns = [Row(f"P0{n:02d}") for n in range(8, 14)], ()
+    picked = [TabularFilter(column_id="A", operator="greater_than_or_equal", value="P010"),
+              TabularFilter(column_id="A", operator="less_than_or_equal", value="P012")]
+    assert [row.values["A"] for row in matching_rows(Table, picked)] == ["P010", "P011", "P012"]
+    assert unit_note(["예산(만원)"], 12000, "예산을 1억 2천만원으로") and not unit_note(["예산(만원)"], 1200, "예산을 1억 2천만원으로")
+    wrong = _propose("Product에 있는 'Chip'을 'Crisp'으로 바꿔줘", target_column_id="Category", operation="replace_text",
+                     find_text="Chip", amount="Crisp", filters=[])
+    assert wrong["status"] == "blocked"  # the request names Product; Category is not where the text is

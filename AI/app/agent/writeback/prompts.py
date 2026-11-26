@@ -39,6 +39,7 @@ changes는 사용자가 B2, C3:C9처럼 셀 주소를 직접 적었을 때만 �
 - 날짜를 미루거나 앞당기면 add·subtract에 amount(숫자)와 amount_unit(days·weeks·months·years)을 쓰세요.
 - 다른 행의 값으로 맞추는 요청(우유 단가를 생수 단가와 같게)은 set에 value_row_filters(상품명 equals 생수)를 쓰고,
   가져올 열이 바꿀 열과 다를 때만 value_column_id를 쓰세요. 두 행의 값을 서로 바꾸면 rule 두 개로 쓰세요.
+- 열마다 다른 값을 말하면(세탁기와 TV를 각각 200, 220으로) 열마다 rule을 따로 쓰세요.
 - %p(퍼센트포인트)는 비율 값에 더하고 빼는 양이므로 add·subtract에 1%p → 0.01처럼 쓰세요.
 - reading에는 사용자 표현을 원본 이름으로 어떻게 옮겼는지 짧게 쓰세요(예: ‘쿠키’ → Category = Cookies, ‘단가’ → UnitPrice).
 - 합계·피벗처럼 다른 값에서 계산된 요약 표가 아니라, 원본 기록이 있는 표를 고르세요.
