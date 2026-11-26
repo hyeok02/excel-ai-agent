@@ -1,12 +1,13 @@
 """Columns under a two-row header of years over their parts: '2023 > 상반기, 하반기 | 2024 > ...'.
 
 The parts (반기, 분기, 월) add up to their year, so each year's total is the sum of its columns, and
-each item is compared between the first and the last year.
+each item is compared between the first and the last year. A level at a point in time (기말 재고, 잔액)
+does not add up over a year: the year is its last part, 75 at 하반기, never 상반기 65 + 하반기 75.
 """
 import re
 
 from app.services.insights.narratives.layout_tables import (
-    NONADDITIVE, change, heading, kept_rows, noted, label, numbers, span, texts,
+    NONADDITIVE, STOCK, change, heading, kept_rows, noted, label, numbers, span, texts,
 )
 from app.services.insights.narratives.narrative_values import insight, subject_particle
 
@@ -37,13 +38,16 @@ def period_column_report(table):
     if not names or len(rows) < 2 or any(numbers(rows, p) is None for ps in years.values() for p in ps):
         return None
     first, last = min(years), max(years)
+    if level := STOCK.search(f"{table['title']} {table['unit']}"):
+        years = {year: parts[-1:] for year, parts in years.items()}  # the year's closing value
     total = lambda y, row=None: sum(  # noqa: E731
         float(r[p]["value"]) for r in ([row] if row else rows) for p in years[y])
+    basis = f"{label(table, years[first][0])} 기준 합계" if level else "연도별 합계"
     unit, kind = table["unit"], label(table, key)
     cited = [heading(table, p, 0) for p in (years[first][0], years[last][0])]
     cited += [span(table, rows, p) for p in (*years[first], *years[last])] + [span(table, rows, key)]
-    fact = f"연도별 합계는 {first}년 {change(total(first), total(last)).replace('에서 ', f'에서 {last}년 ', 1)}."
-    items = [insight(f"연도별 합계 ({first}→{last})", noted(fact, unit), cited, "change")]
+    fact = f"{basis}는 {first}년 {change(total(first), total(last)).replace('에서 ', f'에서 {last}년 ', 1)}."
+    items = [insight(f"{basis} ({first}→{last})", noted(fact, unit), cited, "change")]
     moves = {name: (total(first, row), total(last, row)) for name, row in zip(names, rows)}
     grew = max(moves, key=lambda name: moves[name][1] - moves[name][0])
     fell = min(moves, key=lambda name: moves[name][1] - moves[name][0])
@@ -55,9 +59,9 @@ def period_column_report(table):
     if parts_said:
         said = ", ".join(parts_said)
         said = said if said.endswith("다") else said[:-1] + "습니다"
-        items.append(insight(f"{kind}별 연도 합계 변화", noted(f"{kind}별로는 {said}.", unit), cited, "change"))
+        items.append(insight(f"{kind}별 {basis.replace('연도별 ', '연도 ')} 변화", noted(f"{kind}별로는 {said}.", unit), cited, "change"))
     before, after = total(first), total(last)
-    body = f"{first}년 대비 {last}년 합계는 {abs(after - before) / abs(before) * 100:.1f}% " \
+    body = f"{first}년 대비 {last}년 {basis.replace('연도별 ', '')}는 {abs(after - before) / abs(before) * 100:.1f}% " \
            f"{'증가' if after > before else '감소'}했" if before and after != before else f"{first}년과 {last}년 합계는 같았"
     if moves[grew][1] > moves[grew][0]:
         return items, f"{body}고, {grew}{subject_particle(grew)} 가장 많이 늘었습니다."

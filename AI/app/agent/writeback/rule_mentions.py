@@ -82,3 +82,26 @@ def unnamed_text_targets(instruction, readings, resolve):
 def _header_named(header, instruction):
     base = re.sub(r"\s*[(\[（].*?[)\]）]", "", str(header)).strip()
     return any(len(name) >= 2 and _label_matches(name, instruction) for name in {str(header), base})
+
+
+COMPARE_WORD = re.compile(r"이상|이하|초과|미만|넘는|넘은|넘으면|이전|이후|보다\s*(?:크|큰|많|작|적|높|낮)|"
+                          r"\b(?:over|under|above|below|at least|at most|more than|less than|greater than|before|after)\b", re.I)
+
+
+def unread_comparisons(instruction, readings, resolve):
+    """'수량이 5 이상인' read without any condition on 수량: the named number condition left out of the reading."""
+    found = []
+    for table, rule in readings:
+        read = {resolve(item.column_id, table) for item in (*rule.filters, *rule.average_filters)}
+        read |= {resolve(name, table) for item in rule.column_filters for name in (item.column_id, item.other_column_id)}
+        read |= {resolve(rule.rank.column_id, table)} if rule.rank else set()
+        for column in table.columns:
+            if column.id in read or not _header_named(column.header, instruction):
+                continue
+            for name in {str(column.header), re.sub(r"\s*[(\[（].*?[)\]）]", "", str(column.header)).strip()}:
+                for match in re.finditer(rf"(?<![\w가-힣]){re.escape(name)}", instruction, re.I) if len(name) >= 2 else ():
+                    tail = instruction[match.end():match.end() + 24]
+                    words = COMPARE_WORD.search(tail)
+                    if words and re.search(r"\d", tail[:words.end() + 8]) and not re.search(r"[을를]\s", tail[:words.start()]):
+                        found.append(f"‘{column.display_header} {tail[:words.end()].strip()}’")
+    return list(dict.fromkeys(found))

@@ -5,7 +5,7 @@ every row, so the table's own range is read again from the original file, row by
 """
 from dataclasses import replace
 
-from openpyxl.utils import range_boundaries
+from openpyxl.utils import column_index_from_string, range_boundaries
 
 MAX_ROWS = 200_000
 
@@ -44,3 +44,29 @@ def _read(table, index):
     except (SourceReadError, OSError, ValueError):
         return None
     return replace(table, rows=tuple(rows), complete=True) if rows else None
+
+
+def scoped_tables(tables, scopes):
+    """The tables a question's range overlaps, cut to its rows and columns: 'Sales!A1:D3' is rows 2-3, not the table."""
+    found = []
+    for table in tables:
+        for sheet, cells in scopes:
+            if sheet == table.sheet_name and _overlaps(table.reference, cells):
+                found.append(_cut(table, cells))
+                break
+    return [table for table in found if table.rows]
+
+
+def _cut(table, cells):
+    left, top, right, bottom = range_boundaries(cells.replace("$", ""))
+    rows = tuple(row for row in table.rows if top <= row.row_number <= bottom)
+    columns = tuple(column for column in table.columns if left <= column_index_from_string(
+        "".join(ch for ch in column.header_reference.rpartition("!")[2] if ch.isalpha()).upper()) <= right)
+    if len(rows) == len(table.rows) and len(columns) == len(table.columns):
+        return table
+    return replace(table, rows=rows, columns=columns or table.columns)
+
+
+def _overlaps(first, second):
+    (a, b, c, d), (e, f, g, h) = (range_boundaries(item.replace("$", "")) for item in (first, second))
+    return a <= g and e <= c and b <= h and f <= d

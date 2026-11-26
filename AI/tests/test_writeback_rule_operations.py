@@ -76,3 +76,11 @@ def test_another_columns_value_with_a_calculation_dotted_dates_and_named_weeks()
     assert dropped["status"] == "blocked"  # the 2배 left out of the reading
     assert _date("2024.03.02").day == 2 and moved_by("마감일을 일주일 연장해줘", 1, "weeks", 1)
     assert scaled_note(["집행액(만원)"], 11024, 12024, "집행액을 1,000만원씩 늘려줘")
+
+
+def test_a_number_condition_the_reading_left_out_is_not_applied() -> None:
+    cookies = [*COOKIES]
+    dropped = _propose("쿠키 중 Qty가 5 이상인 상품만 단가를 4로 변경해줘", operation="set", amount=4, filters=cookies)
+    assert dropped["status"] == "blocked" and "Qty" in dropped["risks"][0]  # 수량 3인 Chip을 함께 바꾸지 않는다
+    kept = cookies + [TabularFilter(column_id="Qty", operator="greater_than_or_equal", value=5)]
+    assert _changes(_propose("쿠키 중 Qty가 5 이상인 상품만 단가를 4로 변경해줘", operation="set", amount=4, filters=kept)) == {"C4": 4, "C5": 4}

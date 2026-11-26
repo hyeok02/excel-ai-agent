@@ -5,19 +5,19 @@ it; else GPT's draft is shown, marked. Answered questions and needed ask-backs n
 import asyncio
 from contextvars import ContextVar
 
-from openpyxl.utils import range_boundaries
 
 from app.agent.query.gpt_calc_answer_text import cells_answer, table_answer, unverified_draft
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_draft_check import source_references, source_values
-from app.agent.query.gpt_calc_checks import fitting_table, listed_cells, plan_problem, unlisted_note, with_cell_values
+from app.agent.query.gpt_calc_checks import (
+    fitting_table, listed_cells, plan_problem, unlisted_note, unused_values, with_cell_values)
 from app.agent.query.group_rows import group_rows, section_rows
 from app.agent.query.models import QuestionAnswerStatus
 from app.agent.query.quota_errors import raise_for_quota_exhaustion
 from app.agent.query.references import normalize_reference
 from app.agent.query.tabular_catalog import build_query_tables
 from app.agent.query.gpt_calc_choices import unneeded_choice
-from app.agent.query.gpt_calc_full_rows import completed_tables
+from app.agent.query.gpt_calc_full_rows import completed_tables, scoped_tables
 from app.agent.query.gpt_calc_stacked import statement_and_period_tables
 from app.agent.query.tabular_explicit_scope import explicit_ranges
 
@@ -68,9 +68,8 @@ async def _computed(question, summary, index, planner):
         return None
     every = build_query_tables(summary)
     tables = completed_tables(every, index)  # a list larger than the summary's sample is read whole
-    if scopes := explicit_ranges(question):  # "'MYE2 - Persons'!A8:CQ412 범위의 …": only that range
-        tables = [table for table in tables if any(table.sheet_name == sheet and _overlaps(table.reference, cells)
-                                                   for sheet, cells in scopes)]
+    if scopes := explicit_ranges(question):  # "Sales!A1:D3 범위의 …": only the rows and columns of that range
+        tables = scoped_tables(tables, scopes)
     labels = {normalize_reference(column.header_reference) for table in every for column in table.columns}
     labels |= {normalize_reference(cell.reference) for row in index.rows if _year_row(row) for cell in row.cells}
     if not (tables := statement_and_period_tables(tables, index)):  # row names; month sheets as one table
@@ -82,7 +81,7 @@ async def _computed(question, summary, index, planner):
     listed = listed_cells(tables, cells)  # kind=cells may cite only the rows GPT was shown
     headings = {table.id: {**section_rows(table), **group_rows(table, summary)} for table in tables}
     note = ""
-    for _ in range(2):  # one retry, told what did not run
+    for attempt in range(2):  # one retry, told what did not run; the retried plan is checked the same way
         try:
             plan = await planner.plan(question, tables, note, headings)
         except Exception as exception:  # a plan cut off at the length limit is asked for once more, shorter
@@ -92,9 +91,11 @@ async def _computed(question, summary, index, planner):
         table = fitting_table(tables, plan.table.table, plan.table) if plan.kind == "table" and plan.table else None
         if plan.kind == "table" and plan.table is not None and table is not None:
             from app.agent.query.gpt_calc_tables import run_table
-            if not note and (problem := plan_problem(question, table, plan.table, headings.get(table.id))):
+            if not attempt and (problem := plan_problem(question, table, plan.table, headings.get(table.id))):
                 note = problem
                 continue
+            if attempt and unused_values(question, table, plan.table):  # 'Boston' left out twice: 340 is not Boston's
+                return None
             plan = plan.model_copy(update={"table": with_cell_values(plan.table, cells, question)})  # "> [Table!B66]"
             result = await asyncio.to_thread(run_table, table, plan.table, headings.get(table.id))
             echo = plan.table.aggregate == "count" and len(result.groups) == 1 and result.groups[0][1] == 1 \
@@ -115,11 +116,6 @@ async def _computed(question, summary, index, planner):
         else:
             return None
     return None
-
-def _overlaps(first, second):
-    (a, b, c, d), (e, f, g, h) = (range_boundaries(item.replace("$", "")) for item in (first, second))
-    return a <= g and e <= c and b <= h and f <= d
-
 
 def _year_row(row):
     """A row of consecutive years (2021, 2022, 2023) names columns even where no table header was read."""
