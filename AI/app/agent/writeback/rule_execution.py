@@ -16,6 +16,8 @@ from app.agent.writeback.derived_values import _clean
 from app.agent.writeback.display_values import exact
 from app.agent.writeback.models import WritebackChangeDraft
 from app.agent.writeback.percent_amounts import stored_amount
+from app.agent.writeback.ruled_targets import RuledTargets  # noqa: F401  (imported from here by callers)
+from app.agent.writeback.rule_units import unit_note
 from app.agent.writeback.rule_columns import comparison_text, compared_rows, copied_value, other_columns
 from app.agent.writeback.references import key
 from app.agent.writeback.rule_rows import matching_rows, shown as condition_value
@@ -83,6 +85,8 @@ def rule_drafts(rule, summary, index, instruction=""):
                 if problem:
                     raise RuleRejected(problem)
                 copied[key(table.sheet_name, address)] = f"같은 행 ‘{columns[source].display_header}’({origin}) 값 {value}"
+            if rule.operation == "set" and source is None and (note := unit_note(columns[target].display_header, value, instruction)):
+                copied[key(table.sheet_name, address)] = note  # 90 in 영업이익(억원) for '90억원'
             if value == (current := getattr(cell, "value", None)) and isinstance(value, bool) == isinstance(current, bool):
                 continue  # already so: a blank to clear, a Discount already 10%
             drafts.append(WritebackChangeDraft(  # a blank cell is filled as written ('미정' where 공급사 is empty)
@@ -132,19 +136,3 @@ def _new_value(rule, cell, instruction):
 def _number(value: Decimal):
     value = value.normalize()
     return int(value) if value == value.to_integral_value() else float(value)
-
-
-class RuledTargets:
-    """Rows and column come from a rule checked against the source; values still need the request."""
-
-    def __init__(self, instruction, copied=None):
-        # Several rules share one request ("10% 올리고 ... 5% 내려줘"), so each value is
-        # checked against every stated value and calculation, not only the last clause.
-        self.value_part = instruction
-        self.copied = copied or {}  # cells set to another column's value, with where it came from
-
-    def instruction_for(self, cell):
-        return self.value_part, None
-
-    def missing_risks(self, changes):
-        return []

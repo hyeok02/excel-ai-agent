@@ -8,7 +8,7 @@
 import re
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, localcontext
 
-from app.agent.writeback.change_direction import direction_after
+from app.agent.writeback.change_direction import amount_direction
 from app.agent.writeback.value_authorization import as_number, value_is_authorized
 
 PERCENT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s*(?:%|퍼센트|프로|퍼)")
@@ -25,8 +25,9 @@ MULTIPLE = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?|두|세|네|다섯|열)\s*배(?
 KOREAN_MULTIPLE = {"두": 2, "세": 3, "네": 4, "다섯": 5, "열": 10}
 HALF = ("절반", "반으로", "1/2")
 # "1081명에서 1000명으로"처럼 바꾸기 전후 값을 직접 밝힌 요청.
+# "2020년부터 2024년까지"는 바꾸기 전후 값이 아니라 행을 고르는 범위다.
 TRANSITION = re.compile(
-    r"\d[\d,]*(?:\.\d+)?\s*[가-힣]{0,3}\s*(?:에서|부터|->|→|~)\s*-?\d"
+    r"\d[\d,]*(?:\.\d+)?\s*[가-힣]{0,3}\s*(?:에서|부터|->|→|~)\s*-?\d[\d,]*(?:\.\d+)?(?![\d,.])(?!\s*[가-힣]{0,3}\s*까지)"
 )
 
 
@@ -50,7 +51,7 @@ def _plain(value: Decimal) -> str:
 
 def _percent(instruction: str, current: Decimal, target: Decimal) -> str | None:
     for match in PERCENT.finditer(instruction):
-        sign = direction_after(instruction, match.end())
+        sign = amount_direction(instruction, match.start(), match.end())
         if sign == 0:
             continue
         rate = Decimal(match.group(1)) / 100
@@ -67,7 +68,7 @@ def _percent(instruction: str, current: Decimal, target: Decimal) -> str | None:
 
 def _amount(instruction: str, current: Decimal, target: Decimal) -> str | None:
     for match in AMOUNT.finditer(instruction):
-        sign = direction_after(instruction, match.end())
+        sign = amount_direction(instruction, match.start(), match.end())
         amount = as_number(match.group(1))
         if amount is not None:
             amount *= MAGNITUDE.get(match.group(2) or "", 1)

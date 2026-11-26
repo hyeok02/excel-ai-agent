@@ -2,7 +2,7 @@ import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from app.agent.writeback.change_direction import direction_after
+from app.agent.writeback.change_direction import amount_direction
 from app.agent.writeback.clear_authorization import clear_is_authorized
 from app.services.insights.verification.numeric_validation import numbers
 
@@ -56,7 +56,7 @@ def _stated_numbers(instruction: str) -> set:
     result = set()
     for match in AMOUNT_TOKEN.finditer(instruction):
         target = any(low <= match.start() < high for low, high in stated)
-        if not target and direction_after(instruction, match.end()):
+        if not target and amount_direction(instruction, match.start(), match.end()):
             continue
         number = as_number(match.group("amount"))
         if number is None:

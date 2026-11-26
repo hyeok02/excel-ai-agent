@@ -127,7 +127,7 @@ def unknown_subject_tokens(prefix, labels, named=()):
     for label in sorted(labels, key=len, reverse=True):
         prefix = re.sub(re.escape(label), " ", prefix, flags=re.I)
     prefix = re.sub(r"\b(?:set|change|update|the|values?|of|in|sheet|row|column|please|all|every|and|or)\b", " ", prefix, flags=re.I)
-    prefix = re.sub(r"원본|현재|기존|항목|시트|모든|모두|전부|일괄|전체|각각|수정|변경|바꿔|그리고|또는|에서|으로|값|열|행|의|은|는|을|를|에|만|와|과|및", " ", prefix)
+    prefix = re.sub(r"원본|현재|기존|항목|시트|수식|모든|모두|전부|일괄|전체|각각|수정|변경|바꿔|그리고|또는|에서|으로|값|열|행|의|은|는|을|를|에|만|와|과|및", " ", prefix)
     return [token for token in re.findall(r"[A-Za-z0-9가-힣]+", prefix)
             if not any(token.casefold() in name.casefold() for name in named)]
 
