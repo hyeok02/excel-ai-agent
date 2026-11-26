@@ -9,7 +9,7 @@ from app.agent.writeback.models import (
 from app.agent.writeback.references import key
 from app.agent.writeback.row_scope import every_row_drafts
 from app.agent.writeback.rule_proposals import UNREAD, ruled_proposal
-from app.agent.writeback.target_syntax import REFERENCE, mask_formulas
+from app.agent.writeback.target_syntax import REFERENCE, address_labels, mask_formulas, mask_labels
 from app.agent.writeback.unsupported_requests import unsupported_request
 from app.agent.writeback.writeback_tables import writeback_catalog
 from app.agent.writeback.validation import validate_changes
@@ -65,7 +65,7 @@ class WorkbookWritebackProposalService:
         changes, risks = validate_changes(draft.changes, available, data_index, checked)
         changes, risks, scope = _every_row(checked, changes, risks, data_index)
         if not changes and draft.changes and not draft.rules and context["tables"] and not REFERENCE.search(
-                mask_formulas(instruction)) and (ruled := await self._as_rules(instruction, data_index, summary, context)):
+                mask_labels(mask_formulas(instruction), address_labels(data_index))) and (ruled := await self._as_rules(instruction, data_index, summary, context)):
             return ruled
         # The model's notes describe its own partial draft, not the replaced row set.
         limitations = [*([note] if note and changes else []), *([scope] if scope else []),

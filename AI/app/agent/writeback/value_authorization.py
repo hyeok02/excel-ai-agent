@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 
 from app.agent.writeback.change_direction import amount_direction
 from app.agent.writeback.clear_authorization import clear_is_authorized
+from app.agent.writeback.korean_numbers import plain_numbers
 from app.services.insights.verification.numeric_validation import numbers
 
 # "1081에서 981로", "1,081 → 981", "from 1081 to 981"처럼
@@ -17,6 +18,7 @@ VALUE_TRANSITION = re.compile(
 
 
 def value_is_authorized(value: object, instruction: str) -> bool:
+    instruction = plain_numbers(instruction)  # 4천5백만원 → 45000000원
     normalized = instruction.casefold()
     if value is None:
         return clear_is_authorized(instruction)

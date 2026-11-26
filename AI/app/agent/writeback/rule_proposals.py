@@ -3,6 +3,7 @@ from app.agent.writeback.period_columns import unread_years
 from app.agent.writeback.models import WritebackProposal, WritebackStatus
 from app.agent.writeback.references import key
 from app.agent.writeback.rule_mentions import unread_names
+from app.agent.writeback.rule_ranks import RANK_WORDS
 from app.agent.writeback.rule_execution import RuleNotFound, RuleRejected, RuledTargets, rule_drafts
 from app.agent.writeback.validation import validate_changes
 
@@ -26,7 +27,11 @@ def ruled_proposal(instruction, rules, summary, index):
         return None
     except RuleRejected as error:
         return _blocked(instruction, [str(error)], readings)
-    if (unread := unread_names(instruction, tables)):
+    if RANK_WORDS.search(instruction) and not any(rule.rank or rule.average_filters for rule in rules):
+        unread = ["‘가장·상위·평균’ 같은 순위"]  # read as a fixed value instead ('단가 = 24,000' for 가장 비싼)
+    else:
+        unread = unread_names(instruction, tables)
+    if unread:
         return _blocked(instruction, [f"{UNREAD} {', '.join(unread[:3])} 조건이 해석에 빠졌습니다. 조건을 다시 확인해 주세요."], readings)
     if (missing := unread_years(instruction, headers, offered)):
         return _blocked(instruction, [f"요청한 기간 중 {', '.join(missing)}년 열이 해석에서 빠졌습니다.", PARTIAL], readings)

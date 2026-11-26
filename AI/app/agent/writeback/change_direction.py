@@ -21,7 +21,7 @@ def direction_after(instruction: str, end: int) -> int:
     return 1 if any(word in tail for word in UP) else 0
 
 
-TARGET = re.compile(r"\s*(?:명|개|원|건|점|시간)?\s*(?:으로|로)(?=\s|$|[.,!?])")
+TARGET = re.compile(r"\s*(?:명|개|원|건|점|시간|%|퍼센트)?\s*(?:으로|로)(?=\s|$|[.,!?])")
 BY = re.compile(r"\bby\s*$", re.I)
 ENGLISH_UP, ENGLISH_DOWN = ("increase", "raise", "add"), ("decrease", "reduce", "cut", "lower")
 

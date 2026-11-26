@@ -73,4 +73,5 @@ def test_target_values_english_amounts_year_ranges_and_column_units() -> None:
     assert _allows(150, 158, "Increase HoursWorked by 8 for E001") and not value_is_authorized(8, "Increase HoursWorked by 8")
     assert _allows(493, 503, "2020년부터 2024년까지 직원수를 모두 10명씩 늘려줘")
     assert _allows(15000, 7500, "진료비를 50% 감면해줘")
-    assert unit_note("영업이익(억원)", 90, "영업이익을 90억원으로") and not unit_note("영업이익", 90, "영업이익을 90억원으로")
+    assert unit_note(["영업이익(억원)"], 90, "영업이익을 90억원으로") and not unit_note(["영업이익"], 90, "영업이익을 90억원으로")
+    assert unit_note(["매출", "분기별 손익 (단위: 억원)"], 90, "매출을 90억원으로")

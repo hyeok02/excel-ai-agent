@@ -13,9 +13,10 @@ from app.agent.writeback.target_semantics import _label_matches
 def unread_names(instruction, readings):
     """'‘사원’(직급)' for each source value named in the request's subject that no (table, rule) uses."""
     subject = ASSIGNMENT.split(instruction, maxsplit=1)[0]
-    used = {str(item.value) for _, rule in readings for item in rule.filters if isinstance(item.value, str)}
+    used = {str(item.value) for _, rule in readings for item in (*rule.filters, *rule.value_row_filters)
+            if isinstance(item.value, str)}
     named = {*used, *(str(getattr(rule, name) or "") for _, rule in readings
-                      for name in ("target_column_id", "value_column_id"))}
+                      for name in ("target_column_id", "value_column_id", "find_text"))}
     for _, rule in readings:
         named |= {str(item.column_id) for item in rule.filters}
     for name in sorted(named, key=len, reverse=True):

@@ -13,24 +13,18 @@ from decimal import Decimal
 from app.agent.query.ambiguity_labels import resolve_unique_column
 from app.agent.query.tabular_validation import validated_table
 from app.agent.writeback.derived_values import _clean
-from app.agent.writeback.display_values import exact
 from app.agent.writeback.models import WritebackChangeDraft
 from app.agent.writeback.percent_amounts import stored_amount
 from app.agent.writeback.ruled_targets import RuledTargets  # noqa: F401  (imported from here by callers)
-from app.agent.writeback.rule_units import unit_note
-from app.agent.writeback.rule_columns import comparison_text, compared_rows, copied_value, other_columns
+from app.agent.writeback.rule_units import unit_note, unit_texts
+from app.agent.writeback.rule_columns import compared_rows, copied_value, other_columns
 from app.agent.writeback.references import key
-from app.agent.writeback.rule_rows import matching_rows, shown as condition_value
+from app.agent.writeback.rule_ranks import ranked_rows
+from app.agent.writeback.rule_readings import rule_reading
+from app.agent.writeback.rule_rows import matching_rows
+from app.agent.writeback.rule_values import other_row_value, special, special_value
 from app.agent.writeback.value_authorization import as_number
 from app.agent.writeback.writeback_tables import writeback_tables
-
-OPERATIONS = {"set": "{amount}(으)로 바꾸는", "clear": "비우는",
-              "percent_increase": "{amount}% 올리는", "percent_decrease": "{amount}% 내리는",
-              "add": "{amount}만큼 늘리는", "subtract": "{amount}만큼 줄이는", "multiply": "{amount}배로 바꾸는"}
-OPERATORS = {"equals": "=", "not_equals": "≠", "contains": "포함", "greater_than": ">",
-             "greater_than_or_equal": "≥", "less_than": "<", "less_than_or_equal": "≤",
-             "is_blank": "빈칸", "not_blank": "빈칸 아님"}
-
 
 class RuleRejected(Exception):
     """The reading cannot be applied to every matching source row."""
@@ -50,72 +44,80 @@ def rule_drafts(rule, summary, index, instruction=""):
     filters = [item.model_copy(update={"column_id": resolve_unique_column(item.column_id, table)})
                for item in rule.filters]
     comparisons, source = other_columns(rule, table, resolve_unique_column)
+    source = None if rule.value_row_filters else source  # value_column_id then names the other row's column
     if None in targets or any(None in (item.column_id, getattr(item, "other_column_id", "")) for item in
-                              (*filters, *comparisons)) or (rule.value_column_id and source is None):
+                              (*filters, *comparisons)) or (rule.value_column_id and source is None and not rule.value_row_filters):
         raise RuleNotFound("해석한 열 이름을 원본 표에서 하나로 찾지 못했습니다.")
     if source is not None and rule.operation != "set":
         raise RuleRejected("다른 열의 값은 그 값으로 바꾸는 요청에만 가져올 수 있습니다.")
     targets = list(dict.fromkeys(targets))
     compared = {name for item in comparisons for name in (item.column_id, item.other_column_id)}
-    if not validated_table(table, index, {*targets, *(item.column_id for item in filters), *compared, *{source} - {None}}):
+    # Columns read to pick rows or take values; a target's formula rows elsewhere (매출총이익) are never written.
+    ranked = {resolve_unique_column(item.column_id, table) for item in (*rule.average_filters, *filter(None, [rule.rank]))}
+    if not validated_table(table, index, {*(item.column_id for item in filters), *compared, *{source, *ranked} - {None}}):
         raise RuleRejected("표 전체를 원본에서 확인하지 못해 조건에 맞는 모든 행을 바꾼다고 보장할 수 없습니다.")
     rows = matching_rows(table, filters)
     if rows and comparisons:  # 재고 < 안전재고, row by row
         rows = compared_rows(rows, comparisons)
     if rows is None:
         raise RuleRejected("해석한 조건을 원본 값과 비교하지 못했습니다.")
+    rows, problem = ranked_rows(rows, rule, resolve_unique_column, table)  # 가장 비싼, 상위 3명, 평균보다 낮은
+    if problem:
+        raise RuleRejected(problem)
     if not rows:
         raise RuleRejected("해석한 조건에 맞는 원본 행이 없습니다. 원본에 있는 이름으로 다시 요청해 주세요.")
     columns = {column.id: column for column in table.columns}
-    letters = {target: re.search(r"([A-Z]+)\d+$", columns[target].header_reference.upper()).group(1)
-               for target in {*targets, *{source} - {None}}}
     cells = {key(cell.sheet_name, cell.address): cell for item in index.rows
              if item.sheet_name == table.sheet_name for cell in item.cells}
-    drafts, copied = [], {}
-    for row in rows:
-        for target in targets:
-            address = f"{letters[target]}{row.row_number}"
-            cell = cells.get(key(table.sheet_name, address))
-            if cell is None and rule.operation not in ("set", "clear"):
-                raise RuleRejected(f"{table.sheet_name}!{address}: 빈 셀이 있어 같은 계산을 적용할 수 없습니다.")
-            value = None if source is not None or rule.operation == "clear" else _new_value(rule, cell, instruction) if cell else rule.amount
-            if source is not None:  # the other column's value on this row: 안전재고 → 재고
-                origin = f"{letters[source]}{row.row_number}"
-                value, problem = copied_value(cells.get(key(table.sheet_name, origin)), columns[source].display_header, instruction)
-                if problem:
-                    raise RuleRejected(problem)
-                copied[key(table.sheet_name, address)] = f"같은 행 ‘{columns[source].display_header}’({origin}) 값 {value}"
-            if rule.operation == "set" and source is None and (note := unit_note(columns[target].display_header, value, instruction)):
-                copied[key(table.sheet_name, address)] = note  # 90 in 영업이익(억원) for '90억원'
-            if value == (current := getattr(cell, "value", None)) and isinstance(value, bool) == isinstance(current, bool):
-                continue  # already so: a blank to clear, a Discount already 10%
-            drafts.append(WritebackChangeDraft(  # a blank cell is filled as written ('미정' where 공급사 is empty)
-                sheet_name=table.sheet_name, reference=address, new_value=value,
-                reason=f"조건에 맞는 {len(rows)}개 행 모두에 같은 변경을 적용합니다. {rule.reading}"[:500]))
+    letter = lambda column: re.search(r"([A-Z]+)\d+$", columns[column].header_reference.upper()).group(1)  # noqa: E731
+    try:
+        other = rule.value_row_filters and other_row_value(rule, table, resolve_unique_column, lambda address: cells.get(
+            key(table.sheet_name, address)), letter, instruction, targets[0])
+        drafts, copied = [], {}
+        for row in rows:
+            for target in targets:
+                _draft(rule, row, (table, target, letter, cells, source, other, len(rows)), instruction, (drafts, copied))
+    except ValueError as error:
+        raise RuleRejected(str(error)) from None
     if not drafts:
         raise RuleRejected("조건에 맞는 행이 이미 모두 요청한 값입니다.")
-    conditions = ", ".join(f"‘{columns[item.column_id].display_header}’ {OPERATORS[item.operator]} {condition_value(item.value)}"
-                           .rstrip() for item in filters) + "".join(", " + comparison_text(item, columns) for item in comparisons)
-    conditions = conditions.lstrip(", ")
-    # A value to set reads as the cells will show it: 0.013 in a 0.0% column is 1.3%.
-    shown_values = {exact(draft.new_value, getattr(cells.get(key(table.sheet_name, draft.reference)), "number_format",
-                                                   "General")) for draft in drafts} if rule.operation == "set" and source is None else set()
-    amount = shown_values.pop() if len(shown_values) == 1 and None not in shown_values else rule.amount
-    action = (f"같은 행의 ‘{columns[source].display_header}’ 값으로 바꾸는" if source is not None
-              else OPERATIONS[rule.operation].format(amount=amount))
-    scope = f"‘{table.sheet_name}’ 표에서 {conditions}인" if conditions else f"‘{table.sheet_name}’ 표 전체"
+    reading = rule_reading(rule, table, (filters, comparisons, rows, targets, source, other and other[1]), drafts, cells,
+                           resolve_unique_column, instruction)
     headers = [columns[target].display_header for target in targets]
-    reading = (f"{scope} {len(rows)}개 행의 {_named(headers)} 값을 "
-               f"{action} 것으로 해석했습니다 ({rule.reading}). 승인 전에 대상 행과 열을 확인해 주세요.")
     return drafts, reading, (headers, [column.display_header for column in table.columns], table), copied
 
 
-def _named(headers):
-    if len(headers) <= 4:
-        return ", ".join(f"‘{header}’" for header in headers)
-    return f"‘{headers[0]}’ 등 {len(headers)}개 열({', '.join(headers)})"
-
-
+def _draft(rule, row, place, instruction, found):
+    """One target cell's change; a value the request cannot state as a number is checked and explained here."""
+    (table, target, letter, cells, source, other, count), (drafts, copied) = place, found
+    address = f"{letter(target)}{row.row_number}"
+    cell = cells.get(key(table.sheet_name, address))
+    if cell is None and rule.operation not in ("set", "clear", "replace_text"):
+        raise ValueError(f"{table.sheet_name}!{address}: 빈 셀이 있어 같은 계산을 적용할 수 없습니다.")
+    note = None
+    if other:  # another row's value: 생수's 단가 for 우유
+        value, note = other
+    elif source is not None:  # the other column's value on this row: 안전재고 → 재고
+        origin = f"{letter(source)}{row.row_number}"
+        header = next(column.display_header for column in table.columns if column.id == source)
+        value, problem = copied_value(cells.get(key(table.sheet_name, origin)), header, instruction)
+        if problem:
+            raise ValueError(problem)
+        note = f"같은 행 ‘{header}’({origin}) 값 {value}"
+    elif special(rule):  # text, rounding, a date moved
+        value, note = special_value(rule, cell, instruction)
+    else:
+        value = None if rule.operation == "clear" else _new_value(rule, cell, instruction) if cell else rule.amount
+        column = next(column for column in table.columns if column.id == target)
+        if rule.operation == "set":  # 90 in 영업이익(억원) for '90억원'
+            note = unit_note(unit_texts(table, column, cells), value, instruction)
+    if value == (current := getattr(cell, "value", None)) and isinstance(value, bool) == isinstance(current, bool):
+        return  # already so: a blank to clear, a Discount already 10%
+    if note:
+        copied[key(table.sheet_name, address)] = note
+    drafts.append(WritebackChangeDraft(  # a blank cell is filled as written ('미정' where 공급사 is empty)
+        sheet_name=table.sheet_name, reference=address, new_value=value,
+        reason=f"조건에 맞는 {count}개 행 모두에 같은 변경을 적용합니다. {rule.reading}"[:500]))
 def _new_value(rule, cell, instruction):
     current = cell.value
     if rule.operation == "set":

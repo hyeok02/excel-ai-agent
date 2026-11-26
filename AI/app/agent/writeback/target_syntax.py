@@ -115,3 +115,17 @@ def target_mentions(instruction: str, sheets) -> tuple[str, list[TargetMention]]
         reference = reference.replace("부터", ":").replace("에서", ":")
         result.append(TargetMention(reference, match.start(), match.end(), sheet, not excluded))
     return masked, result
+
+
+def address_labels(index) -> set[str]:
+    """Source names that read like an address: '2024 Q3', 'FY2023', 'Q1' headers."""
+    return {cell.value.strip() for row in index.rows for cell in row.cells if isinstance(cell.value, str)
+            and len(cell.value.strip()) <= 40 and REFERENCE.search(cell.value)}
+
+
+def mask_labels(text: str, labels) -> str:
+    """'FY2023 Revenue를' names the FY2023 column, not cell FY2023: such names are blanked first."""
+    for label in sorted(labels, key=len, reverse=True):
+        pattern = rf"(?<![A-Za-z0-9_]){re.escape(label)}(?![A-Za-z0-9_])"
+        text = re.sub(pattern, lambda match: " " * len(match.group(0)), text, flags=re.I)
+    return text

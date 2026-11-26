@@ -4,7 +4,7 @@ import re
 from app.agent.writeback.references import expand_reference, key
 from app.agent.writeback.natural_operations import natural_operations, value_instruction
 from app.agent.writeback.target_semantics import semantic_target_risk
-from app.agent.writeback.target_syntax import sheet_mentions, target_mentions
+from app.agent.writeback.target_syntax import address_labels, mask_labels, sheet_mentions, target_mentions
 from app.agent.tools.workbook_header_index import detect_header_rows
 
 
@@ -12,7 +12,7 @@ class TargetAuthorization:
     def __init__(self, instruction, index):
         self.instruction, self.index = instruction, index
         sheets = {row.sheet_name for row in index.rows}
-        self.masked, mentions = target_mentions(instruction, sheets)
+        self.masked, mentions = target_mentions(mask_labels(instruction, address_labels(index)), sheets)
         self.all_mentions = mentions
         self.mentions = [item for item in mentions if item.destination]
         self.excluded = [item for item in mentions if not item.destination]

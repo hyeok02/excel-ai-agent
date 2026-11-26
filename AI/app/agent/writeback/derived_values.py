@@ -1,17 +1,19 @@
 """요청이 밝힌 계산을 현재 값에 직접 적용해 새 값이 맞는지 확인한다.
 
-새 값이 요청에 그대로 적혀 있지 않아도 "10% 줄여줘"처럼 계산 방법을 밝혔다면
-그 계산을 여기서 직접 해 보고 결과가 맞을 때만 허용한다. 계산은 LLM이 아니라
-이 코드가 한다. "1081에서 1000으로"처럼 바꿀 값을 직접 밝힌 요청은 그대로
-읽으면 되므로 계산을 추측하지 않는다.
+새 값이 요청에 그대로 적혀 있지 않아도 "10% 줄여줘"처럼 계산 방법을 밝혔다면 그 계산을 여기서 직접 해 보고
+결과가 맞을 때만 허용한다. 계산은 LLM이 아니라 이 코드가 한다. "1081에서 1000으로"처럼 바꿀 값을 직접
+밝힌 요청은 그대로 읽으면 되므로 계산을 추측하지 않는다.
 """
 import re
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, localcontext
 
 from app.agent.writeback.change_direction import amount_direction
+from app.agent.writeback.korean_numbers import plain_numbers
 from app.agent.writeback.value_authorization import as_number, value_is_authorized
 
-PERCENT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s*(?:%|퍼센트|프로|퍼)")
+PERCENT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s*(?:%|퍼센트|프로|퍼)(?!\s*(?:[pP](?![A-Za-z])|포인트))")
+# "1%p 내려줘": 비율 값(0.123)에서 0.01을 뺀다. 1% 줄이는 것(0.123 × 0.99)과 다르다.
+POINTS = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s*(?:%[pP](?![A-Za-z])|%\s*포인트|퍼센트\s*포인트)")
 # "1억 줄여줘"의 1은 1이 아니라 1e8이다. 단위를 빼고 읽으면 요청대로 계산한
 # 값은 거절되고, 1만 뺀 엉뚱한 값이 계산 근거까지 달고 승인 화면에 오른다.
 MAGNITUDE = {"조": Decimal("1e12"), "백만": Decimal("1e6"), "억": Decimal("1e8"),
@@ -66,6 +68,16 @@ def _percent(instruction: str, current: Decimal, target: Decimal) -> str | None:
     return None
 
 
+def _points(instruction: str, current: Decimal, target: Decimal) -> str | None:
+    for match in POINTS.finditer(instruction):
+        sign = amount_direction(instruction, match.start(), match.end())
+        step = Decimal(match.group(1)) / 100
+        if sign and target in _rounded(current + sign * step, current):
+            return (f"현재 비율 {_plain(current)}에서 요청한 {match.group(1)}%p를 {'더했습니다' if sign > 0 else '뺐습니다'}. "
+                    f"{_plain(current)} {'+' if sign > 0 else '-'} {_plain(step)} = {_plain(current + sign * step)}")
+    return None
+
+
 def _amount(instruction: str, current: Decimal, target: Decimal) -> str | None:
     for match in AMOUNT.finditer(instruction):
         sign = amount_direction(instruction, match.start(), match.end())
@@ -116,11 +128,12 @@ def _clean(value: Decimal) -> Decimal:
 
 def derived_value(current_value: object, new_value: object, instruction: str) -> str | None:
     """계산으로 설명되면 그 과정을 문장으로, 아니면 None."""
+    instruction = plain_numbers(instruction)  # 2천5백만원씩 → 25000000원씩
     current, target = as_number(current_value), as_number(new_value)
     if current is None or target is None or TRANSITION.search(instruction):
         return None
     for base in dict.fromkeys([current, _clean(current)]):
-        found = (_percent(instruction, base, target) or _multiple(instruction, base, target)
+        found = (_points(instruction, base, target) or _percent(instruction, base, target) or _multiple(instruction, base, target)
                  or _amount(instruction, base, target))
         if found:
             return found
