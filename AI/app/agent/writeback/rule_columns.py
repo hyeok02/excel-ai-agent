@@ -4,6 +4,8 @@ The rows are those where one column compares to another on that row, and a value
 column's value on that row. Both come from the source cells; a row the comparison cannot decide (a blank or
 text where a number is compared) stops the rule, and the copied column must be named in the request.
 """
+import re
+
 from app.agent.query.tabular_filters import same_value
 from app.agent.writeback.target_semantics import _label_matches
 
@@ -46,6 +48,24 @@ def copied_value(cell, header, instruction):
     if cell is None or cell.value in (None, "") or not isinstance(cell.value, (str, int, float, bool)):
         return None, f"{cell.sheet_name + '!' + cell.address if cell else header}: 가져올 ‘{header}’ 값이 비어 있습니다."
     return cell.value, None
+
+
+CALCULATION = re.compile(r"\d+(?:\.\d+)?\s*(?:배|%|퍼센트)|(?:두|세|네|다섯|열)\s*배|절반|반으로|"
+                         r"\d[\d,]*\s*(?:개|명|원|점)?\s*(?:씩|만큼)")
+
+
+def from_source(rule, value, note, instruction, calculate):
+    """(value, note) for a target taking another column's value: as it is, or calculated from it ('안전재고의 2배')."""
+    if rule.operation == "set":
+        if CALCULATION.search(instruction):
+            raise ValueError("요청에 있는 ‘2배·%·씩’ 같은 계산 조건이 해석에 빠졌습니다. 다른 열 값을 그대로 넣지 않았습니다.")
+        return value, note
+    from app.agent.writeback.derived_values import derived_value
+    result = calculate(rule, type("Source", (), {"value": value, "number_format": "General"})(), instruction)
+    found = derived_value(value, result, instruction)
+    if found is None:
+        raise ValueError("다른 열 값에 적용한 계산이 요청과 맞지 않습니다.")
+    return result, f"{note}에서 계산: {found}"
 
 
 def comparison_text(item, columns):

@@ -61,3 +61,18 @@ def test_code_ranges_column_units_and_a_text_edit_kept_in_its_named_column() -> 
     wrong = _propose("Product에 있는 'Chip'을 'Crisp'으로 바꿔줘", target_column_id="Category", operation="replace_text",
                      find_text="Chip", amount="Crisp", filters=[])
     assert wrong["status"] == "blocked"  # the request names Product; Category is not where the text is
+
+
+def test_another_columns_value_with_a_calculation_dotted_dates_and_named_weeks() -> None:
+    from app.agent.writeback.models import ColumnComparison
+    from app.agent.writeback.rule_rows import _date
+    from app.agent.writeback.rule_units import scaled_note
+    cheaper = [ColumnComparison(column_id="UnitPrice", operator="less_than", other_column_id="Qty")]
+    doubled = _propose("쿠키 중 UnitPrice가 Qty보다 낮으면 UnitPrice를 Qty의 2배로 맞춰줘", operation="multiply", amount=2,
+                       value_column_id="Qty", column_filters=cheaper)
+    assert _changes(doubled) == {"C2": 6, "C4": 10, "C5": 12}
+    dropped = _propose("쿠키 중 UnitPrice가 Qty보다 낮으면 UnitPrice를 Qty의 2배로 맞춰줘", operation="set", amount=None,
+                       value_column_id="Qty", column_filters=cheaper)
+    assert dropped["status"] == "blocked"  # the 2배 left out of the reading
+    assert _date("2024.03.02").day == 2 and moved_by("마감일을 일주일 연장해줘", 1, "weeks", 1)
+    assert scaled_note(["집행액(만원)"], 11024, 12024, "집행액을 1,000만원씩 늘려줘")

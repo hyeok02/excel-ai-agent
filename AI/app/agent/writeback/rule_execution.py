@@ -16,8 +16,8 @@ from app.agent.writeback.derived_values import _clean
 from app.agent.writeback.models import WritebackChangeDraft
 from app.agent.writeback.percent_amounts import stored_amount
 from app.agent.writeback.ruled_targets import RuledTargets  # noqa: F401  (imported from here by callers)
-from app.agent.writeback.rule_units import unit_note, unit_texts
-from app.agent.writeback.rule_columns import compared_rows, copied_value, other_columns
+from app.agent.writeback.rule_units import scaled_note, unit_note, unit_texts
+from app.agent.writeback.rule_columns import compared_rows, copied_value, from_source, other_columns
 from app.agent.writeback.references import key
 from app.agent.writeback.rule_mentions import UNREAD, guessed_rows
 from app.agent.writeback.rule_ranks import ranked_rows
@@ -51,8 +51,8 @@ def rule_drafts(rule, summary, index, instruction=""):
     if None in targets or any(None in (item.column_id, getattr(item, "other_column_id", "")) for item in
                               (*filters, *comparisons)) or (rule.value_column_id and source is None and not rule.value_row_filters):
         raise RuleNotFound("해석한 열 이름을 원본 표에서 하나로 찾지 못했습니다.")
-    if source is not None and rule.operation != "set":
-        raise RuleRejected("다른 열의 값은 그 값으로 바꾸는 요청에만 가져올 수 있습니다.")
+    if source is not None and rule.operation not in ("set", "multiply", "add", "subtract", "percent_increase", "percent_decrease"):
+        raise RuleRejected("다른 열의 값은 그 값으로 바꾸거나 그 값에서 계산하는 요청에만 가져올 수 있습니다.")
     targets = list(dict.fromkeys(targets))
     compared = {name for item in comparisons for name in (item.column_id, item.other_column_id)}
     # Columns read to pick rows or take values; a target's formula rows elsewhere (매출총이익) are never written.
@@ -108,14 +108,15 @@ def _draft(rule, row, place, instruction, found):
         value, problem = copied_value(cells.get(key(table.sheet_name, origin)), header, instruction)
         if problem:
             raise ValueError(problem)
-        note = f"같은 행 ‘{header}’({origin}) 값 {value}"
+        value, note = from_source(rule, value, f"같은 행 ‘{header}’({origin}) 값 {value}", instruction, _new_value)
     elif special(rule):  # text, rounding, a date moved
         value, note = special_value(rule, cell, instruction)
     else:
         value = None if rule.operation == "clear" else _new_value(rule, cell, instruction) if cell else rule.amount
         column = next(column for column in table.columns if column.id == target)
-        if rule.operation == "set":  # 90 in 영업이익(억원) for '90억원'
-            note = unit_note(unit_texts(table, column, cells), value, instruction)
+        texts = unit_texts(table, column, cells)  # 90 in 영업이익(억원) for '90억원'; '1,000만원씩' in 집행액(만원)
+        note = unit_note(texts, value, instruction) if rule.operation == "set" else cell and scaled_note(
+            texts, cell.value, value, instruction)
     if value == (current := getattr(cell, "value", None)) and isinstance(value, bool) == isinstance(current, bool):
         return  # already so: a blank to clear, a Discount already 10%
     if note:

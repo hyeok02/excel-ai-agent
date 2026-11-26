@@ -27,6 +27,23 @@ def unit_texts(table, column, cells):
             *(text for _, text in table.context), *above]
 
 
+def column_scale(texts):
+    """10,000 for a column counted in 만원 (예산(만원), '(단위: 만원)' above the table), else None."""
+    header = " ".join(str(text) for text in texts)
+    return next((MAGNITUDE[scale] for scale in SCALES
+                 if re.search(rf"[(\[（]\s*(?:단위\s*[:：]?\s*)?{scale}", header)), None)
+
+
+def scaled_note(texts, current, value, instruction):
+    """'1,000만원씩 늘려줘' in a 만원 column: the calculation checked in won (11,024만 → 12,024만)."""
+    from app.agent.writeback.derived_values import derived_value
+    scale, before, after = column_scale(texts), as_number(current), as_number(value)
+    if scale is None or before is None or after is None or isinstance(current, bool):
+        return None
+    found = derived_value(before * scale, after * scale, instruction)
+    return found and f"{found} (‘{texts[0]}’ 열 단위로 적은 값 {value})"
+
+
 def unit_note(texts, value, instruction):
     """The reason a number is the request's value in the column's unit, or None."""
     number = as_number(value)

@@ -36,6 +36,6 @@ def shown(value):
 def _date(value):
     if isinstance(value, datetime):
         return value
-    if isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?", value.strip()):
-        return datetime.fromisoformat(value.strip())
+    if isinstance(value, str) and re.fullmatch(r"\d{4}[-./]\d{2}[-./]\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?", value.strip()):
+        return datetime.fromisoformat(re.sub(r"^(\d{4})[./](\d{2})[./]", r"\1-\2-", value.strip()))  # '2024.03.02' as written
     return None
