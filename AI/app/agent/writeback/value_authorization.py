@@ -31,6 +31,7 @@ def value_is_authorized(value: object, instruction: str) -> bool:
     text = str(value).strip().casefold()
     if text and text in normalized:
         return True
+    text = re.sub(r"[t ]00:00(?::00)?$", "", text)  # 2024-12-31T00:00:00 is the date '2024년 12월 31일'
     return _iso_date(text) and numbers(text) <= numbers(instruction)
 
 

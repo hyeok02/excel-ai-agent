@@ -2,15 +2,17 @@
 from app.agent.writeback.period_columns import unread_years
 from app.agent.writeback.models import WritebackProposal, WritebackStatus
 from app.agent.writeback.references import key
+from app.agent.writeback.rule_mentions import unread_names
 from app.agent.writeback.rule_execution import RuleNotFound, RuleRejected, RuledTargets, rule_drafts
 from app.agent.writeback.validation import validate_changes
 
+UNREAD = "요청에 있는"  # a reading that left out a named condition: asked once more with the name
 PARTIAL = "일부 행만 바뀌지 않도록 이 요청의 변경안을 만들지 않았습니다."
 
 
 def ruled_proposal(instruction, rules, summary, index):
     """None when a rule names nothing in the source, so the cell drafts are used instead."""
-    drafts, readings, headers, offered, copied = [], [], [], [], {}
+    drafts, readings, headers, offered, copied, tables = [], [], [], [], {}, []
     try:
         for rule in rules:
             found, reading, changed, taken = rule_drafts(rule, summary, index, instruction)
@@ -19,10 +21,13 @@ def ruled_proposal(instruction, rules, summary, index):
             readings.append(reading)
             headers.extend(changed[0])
             offered.extend(changed[1])
+            tables.append((changed[2], rule))
     except RuleNotFound:
         return None
     except RuleRejected as error:
         return _blocked(instruction, [str(error)], readings)
+    if (unread := unread_names(instruction, tables)):
+        return _blocked(instruction, [f"{UNREAD} {', '.join(unread[:3])} 조건이 해석에 빠졌습니다. 조건을 다시 확인해 주세요."], readings)
     if (missing := unread_years(instruction, headers, offered)):
         return _blocked(instruction, [f"요청한 기간 중 {', '.join(missing)}년 열이 해석에서 빠졌습니다.", PARTIAL], readings)
     every = {key(cell.sheet_name, cell.address): cell for row in index.rows for cell in row.cells}

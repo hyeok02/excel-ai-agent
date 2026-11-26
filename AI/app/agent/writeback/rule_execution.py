@@ -1,13 +1,11 @@
 """Turn a model's reading of an edit request into source cells and computed values.
 
-The model reads the request ("쿠키 단가를 10% 올려줘") as one rule: a source table,
-the conditions that pick its rows (Category = Cookies), one target column
-(UnitPrice) and one operation. It may translate the user's words into source
-labels; it does not choose rows or values. Here every name must exist in the
-source, the whole table must be read, every matching row is taken, and each new
-value is computed from the operation. The reading is shown to the reviewer, and
-the stated value or calculation is still checked against the request itself.
-A rule that cannot be applied to every matching row is not applied at all.
+The model reads the request ("쿠키 단가를 10% 올려줘") as one rule: a source table, the conditions that pick
+its rows (Category = Cookies), one target column (UnitPrice) and one operation. It may translate the user's
+words into source labels; it does not choose rows or values. Every name must exist in the source, the whole
+table must be read, every matching row is taken, and each new value is computed from the operation. The
+reading is shown to the reviewer, and the stated value or calculation is still checked against the request.
+A rule that cannot be applied to every matching row is not applied at all; a row already at the value is left.
 """
 import re
 from decimal import Decimal
@@ -76,20 +74,22 @@ def rule_drafts(rule, summary, index, instruction=""):
         for target in targets:
             address = f"{letters[target]}{row.row_number}"
             cell = cells.get(key(table.sheet_name, address))
-            if cell is None and rule.operation == "clear":
-                continue  # already blank
-            if cell is None and rule.operation != "set":
+            if cell is None and rule.operation not in ("set", "clear"):
                 raise RuleRejected(f"{table.sheet_name}!{address}: 빈 셀이 있어 같은 계산을 적용할 수 없습니다.")
-            value = None if source is not None else _new_value(rule, cell, instruction) if cell is not None else rule.amount
+            value = None if source is not None or rule.operation == "clear" else _new_value(rule, cell, instruction) if cell else rule.amount
             if source is not None:  # the other column's value on this row: 안전재고 → 재고
                 origin = f"{letters[source]}{row.row_number}"
                 value, problem = copied_value(cells.get(key(table.sheet_name, origin)), columns[source].display_header, instruction)
                 if problem:
                     raise RuleRejected(problem)
                 copied[key(table.sheet_name, address)] = f"같은 행 ‘{columns[source].display_header}’({origin}) 값 {value}"
+            if value == (current := getattr(cell, "value", None)) and isinstance(value, bool) == isinstance(current, bool):
+                continue  # already so: a blank to clear, a Discount already 10%
             drafts.append(WritebackChangeDraft(  # a blank cell is filled as written ('미정' where 공급사 is empty)
                 sheet_name=table.sheet_name, reference=address, new_value=value,
                 reason=f"조건에 맞는 {len(rows)}개 행 모두에 같은 변경을 적용합니다. {rule.reading}"[:500]))
+    if not drafts:
+        raise RuleRejected("조건에 맞는 행이 이미 모두 요청한 값입니다.")
     conditions = ", ".join(f"‘{columns[item.column_id].display_header}’ {OPERATORS[item.operator]} {condition_value(item.value)}"
                            .rstrip() for item in filters) + "".join(", " + comparison_text(item, columns) for item in comparisons)
     conditions = conditions.lstrip(", ")
@@ -103,7 +103,7 @@ def rule_drafts(rule, summary, index, instruction=""):
     headers = [columns[target].display_header for target in targets]
     reading = (f"{scope} {len(rows)}개 행의 {_named(headers)} 값을 "
                f"{action} 것으로 해석했습니다 ({rule.reading}). 승인 전에 대상 행과 열을 확인해 주세요.")
-    return drafts, reading, (headers, [column.display_header for column in table.columns]), copied
+    return drafts, reading, (headers, [column.display_header for column in table.columns], table), copied
 
 
 def _named(headers):

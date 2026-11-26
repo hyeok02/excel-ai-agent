@@ -8,8 +8,9 @@ from app.agent.writeback.models import (
 )
 from app.agent.writeback.references import key
 from app.agent.writeback.row_scope import every_row_drafts
-from app.agent.writeback.rule_proposals import ruled_proposal
+from app.agent.writeback.rule_proposals import UNREAD, ruled_proposal
 from app.agent.writeback.target_syntax import REFERENCE, mask_formulas
+from app.agent.writeback.unsupported_requests import unsupported_request
 from app.agent.writeback.writeback_tables import writeback_catalog
 from app.agent.writeback.validation import validate_changes
 
@@ -21,6 +22,9 @@ class WorkbookWritebackProposalService:
     async def propose(
         self, instruction: str, data_index: WorkbookDataIndex, summary=None
     ) -> WritebackProposal:
+        if (unsupported := unsupported_request(instruction)) is not None:
+            return WritebackProposal(instruction=instruction, status=WritebackStatus.BLOCKED, changes=[],
+                                     summary="이 요청은 셀 값 변경으로 처리할 수 없습니다.", risks=[unsupported], limitations=[])
         candidates = select_writeback_candidates(instruction, data_index)
         available = {
             key(cell.sheet_name, cell.address): cell
@@ -51,6 +55,10 @@ class WorkbookWritebackProposalService:
         draft = await self._generator.generate(instruction, data_index.filename, context)
         if draft.rules and summary is not None:
             ruled = ruled_proposal(instruction, draft.rules, summary, data_index)
+            if ruled is not None and ruled.status == WritebackStatus.BLOCKED and ruled.risks[0].startswith(UNREAD):
+                note = f"이전 해석에서 {ruled.risks[0].removeprefix(UNREAD).split(' 조건이')[0]} 조건이 빠졌습니다. filters에 넣으세요."
+                retry = await self._generator.generate(instruction, data_index.filename, {**context, "note": note})
+                ruled = (ruled_proposal(instruction, retry.rules, summary, data_index) if retry.rules else None) or ruled
             if ruled is not None:
                 return ruled
         checked, note = interpreted_instruction(instruction, draft.changes, data_index)
