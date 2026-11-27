@@ -23,12 +23,27 @@ def year_problem(question, table, calc):
         if len(years) < 2 or not named & years:
             continue
         names = {" ".join(str(column.header).split()).casefold(), column.id.casefold()}
-        if any(" ".join(item.column.split()).casefold() in names or str(sorted(named)[0]) in str(item.value)
-               for item in calc.filters) or names & {" ".join(name.split()).casefold() for name in calc.group_by}:
-            return None
-        return (f"The question names {sorted(named & years)}, but the plan keeps the rows of every year in "
+        if any(str(year) in str(item.value) for item in calc.filters for year in named & years) or names & {
+                " ".join(name.split()).casefold() for name in calc.group_by}:
+            return None  # a filter holding the year asked ('2025' for 2026 is another year's total)
+        return (f"The question names {sorted(named & years)}, but the plan does not keep that year's rows in "
                 f"{column.header}: filter that column to the year (op year, or ge/lt on its dates).")
     return None
+
+
+def still_missing(question, table, calc, headings):
+    """A retried plan that still leaves out a named value, year or section is not run: its total is another's."""
+    from app.agent.query.gpt_calc_checks import unused_values
+    return bool(unused_values(question, table, calc) or year_problem(question, table, calc)
+                or section_problem(question, calc, headings))
+
+
+def section_problem(question, calc, headings):
+    """'2026년' naming one section of year headings that no filter of the plan keeps (under '2025년' is not it)."""
+    from app.agent.query.ambiguity_labels import distinct_sheet_mentioned
+    named = distinct_sheet_mentioned((headings or {}).values(), question)
+    return bool(named) and not any(any(name in str(item.value) or str(item.value) in name for name in named)
+                                   for item in calc.filters)  # 'under 2025년' for 2026년 is the wrong section
 
 
 def in_scope(cells, scopes):
@@ -36,6 +51,23 @@ def in_scope(cells, scopes):
     bounds = [(sheet, range_boundaries(area.replace("$", ""))) for sheet, area in scopes]
     return {reference: cell for reference, cell in cells.items() if any(
         sheet == getattr(cell, "sheet_name", None) and _inside(getattr(cell, "address", ""), box) for sheet, box in bounds)}
+
+
+_AREA = re.compile(r"(?:'([^']+)'|([^\s\[\]()+\-*/,!']+))!\$?([A-Za-z]{1,3}\$?\d+)(?::\$?([A-Za-z]{1,3}\$?\d+))?")
+
+
+def outside_scope(expression, scopes):
+    """Cells or ranges of a formula plan that reach past the range the question names: SUM(Sales!D2:D7) for A1:D3."""
+    bounds = [(sheet, range_boundaries(area.replace("$", ""))) for sheet, area in scopes]
+    found = []
+    bracketed = [(name, area) for name, area in re.findall(r"\[([^\[\]]+?)!([^\[\]!]+)\]", expression)]
+    plain = [(match.group(1) or match.group(2), match.group(0).rpartition("!")[2])
+             for match in _AREA.finditer(re.sub(r"\[[^\[\]]*\]", " ", expression))]  # [Cost variations!B4] keeps its space
+    for name, area in bracketed + plain:
+        sheet, corners = name.strip().strip("'"), [corner.replace("$", "").upper() for corner in area.split(":")]
+        if not any(sheet == name and all(_inside(corner, box) for corner in corners) for name, box in bounds):
+            found.append(f"{sheet}!{area}")
+    return found
 
 
 def _inside(address, box):

@@ -8,7 +8,7 @@ import re
 from app.agent.query.gpt_calc_bounds import _column_values, inclusive, year_to_date
 from app.agent.query.gpt_calc_cells import evaluate
 from app.agent.query.gpt_calc_planner import column_name
-from app.agent.query.gpt_calc_scope_checks import year_problem
+from app.agent.query.gpt_calc_scope_checks import section_problem, year_problem
 from app.agent.query.tabular_request_categories import value_matches
 
 MAX_DISTINCT = 60
@@ -36,7 +36,7 @@ def plan_problem(question, table, calc, headings=None):
     problems = []
     from app.agent.query.ambiguity_labels import distinct_sheet_mentioned
     named = distinct_sheet_mentioned((headings or {}).values(), question)  # "2026년" names the 'Year 2026' section
-    if named and not any(item.op == "under" for item in calc.filters):
+    if section_problem(question, calc, headings):  # no filter keeps the named section ('2025년' for 2026년)
         problems.append(f"The question names the section {sorted(named)} of group_rows, and rows of other sections "
                         "look alike (the same months each year): keep only its rows with a filter op under.")
     if unused := unused_values(question, table, calc):

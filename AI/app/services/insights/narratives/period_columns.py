@@ -38,8 +38,8 @@ def period_column_report(table):
     if not names or len(rows) < 2 or any(numbers(rows, p) is None for ps in years.values() for p in ps):
         return None
     first, last = min(years), max(years)
-    if level := STOCK.search(f"{table['title']} {table['unit']}"):
-        years = {year: parts[-1:] for year, parts in years.items()}  # the year's closing value
+    if level := STOCK.search(f"{table['title']} {table['unit']}"):  # the year's closing value, by the part's name
+        years = {year: [max(parts, key=lambda p: _order(label(table, p)))] for year, parts in years.items()}
     total = lambda y, row=None: sum(  # noqa: E731
         float(r[p]["value"]) for r in ([row] if row else rows) for p in years[y])
     basis = f"{label(table, years[first][0])} 기준 합계" if level else "연도별 합계"
@@ -67,3 +67,13 @@ def period_column_report(table):
         return items, f"{body}고, {grew}{subject_particle(grew)} 가장 많이 늘었습니다."
     return items, f"{body}습니다."
 
+
+
+def _order(name):
+    """Where a part falls in its year: 하반기 after 상반기, Q4 after Q1, 12월 after 1월, wherever its column is."""
+    name = " ".join(str(name).split())
+    if name in ("상반기", "하반기"):
+        return 6 if name == "상반기" else 12
+    found = re.search(r"(\d{1,2})", name)
+    number = int(found[1]) if found else 0
+    return number * 6 if re.search(r"H", name, re.I) else number * 3 if re.search(r"분기|Q", name, re.I) else number

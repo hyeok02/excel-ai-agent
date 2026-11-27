@@ -94,3 +94,8 @@ def test_a_bound_read_differently_or_named_in_other_words_is_held_to_the_request
     assert korean["status"] == "blocked"  # 수량 is Qty: the bound is still the request's
     five = [*COOKIES, TabularFilter(column_id="Qty", operator="greater_than_or_equal", value=5)]
     assert _changes(_propose("쿠키 중 수량이 5 이상인 상품만 단가를 4로 변경해줘", operation="set", amount=4, filters=five)) == {"C4": 4, "C5": 4}
+
+
+def test_the_comparison_is_held_to_the_wording_as_well_as_the_number() -> None:
+    above = [*COOKIES, TabularFilter(column_id="Qty", operator="greater_than", value=5)]
+    assert _propose("쿠키 중 Qty가 5 이상인 상품만 단가를 4로 변경해줘", operation="set", amount=4, filters=above)["status"] == "blocked"
