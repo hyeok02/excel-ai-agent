@@ -23,10 +23,10 @@ def year_problem(question, table, calc):
         if len(years) < 2 or not named & years:
             continue
         names = {" ".join(str(column.header).split()).casefold(), column.id.casefold()}
-        if any(" ".join(item.column.split()).casefold() in names or str(sorted(named)[0]) in str(item.value)
-               for item in calc.filters) or names & {" ".join(name.split()).casefold() for name in calc.group_by}:
-            return None
-        return (f"The question names {sorted(named & years)}, but the plan keeps the rows of every year in "
+        if any(str(year) in str(item.value) for item in calc.filters for year in named & years) or names & {
+                " ".join(name.split()).casefold() for name in calc.group_by}:
+            return None  # a filter holding the year asked ('2025' for 2026 is another year's total)
+        return (f"The question names {sorted(named & years)}, but the plan does not keep that year's rows in "
                 f"{column.header}: filter that column to the year (op year, or ge/lt on its dates).")
     return None
 
@@ -39,11 +39,11 @@ def still_missing(question, table, calc, headings):
 
 
 def section_problem(question, calc, headings):
-    """'2023년' naming one section of year headings that the plan neither keeps (op under) nor names in a filter."""
+    """'2026년' naming one section of year headings that no filter of the plan keeps (under '2025년' is not it)."""
     from app.agent.query.ambiguity_labels import distinct_sheet_mentioned
     named = distinct_sheet_mentioned((headings or {}).values(), question)
-    return bool(named) and not any(item.op == "under" or any(name in str(item.value) or str(item.value) in name
-                                                               for name in named) for item in calc.filters)
+    return bool(named) and not any(any(name in str(item.value) or str(item.value) in name for name in named)
+                                   for item in calc.filters)  # 'under 2025년' for 2026년 is the wrong section
 
 
 def in_scope(cells, scopes):
